@@ -38,16 +38,17 @@
     background-size:100% 100%,46px 46px,46px 46px}
   #svg{position:absolute;inset:0}
   .node{position:absolute;transform:translate(-50%,-50%);transition:transform .15s,box-shadow .15s}
-  .agent{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:9px;
-    background:rgba(11,17,26,0.92);color:var(--text);cursor:pointer;white-space:nowrap;
-    box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid transparent;font:600 11.5px system-ui}
-  .agent:hover{transform:translate(-50%,-50%) scale(1.08)}
-  .agent .sd{width:8px;height:8px;border-radius:50%}
-  .hub{text-align:center;pointer-events:none}
-  .hub .box{width:50px;height:50px;border-radius:12px;background:rgba(10,16,24,.9);
+  .agent{display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:9px;
+    background:rgba(11,17,26,0.94);color:var(--text);cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid transparent;
+    font:600 11px system-ui;line-height:1.15;text-align:left;max-width:108px;z-index:2}
+  .agent:hover{transform:translate(-50%,-50%) scale(1.08);z-index:9}
+  .agent .sd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .hub{text-align:center;pointer-events:none;z-index:3}
+  .hub .box{width:50px;height:50px;border-radius:12px;background:rgba(10,16,24,.95);
     display:flex;align-items:center;justify-content:center;margin:0 auto}
   .hub .nm{margin-top:5px;font-size:10px;letter-spacing:1.5px;font-weight:700}
-  .core{text-align:center;pointer-events:none}
+  .core{text-align:center;pointer-events:none;z-index:4}
   .core .orb{width:84px;height:84px;border-radius:50%;margin:0 auto;
     background:radial-gradient(circle,rgba(0,212,255,.32),rgba(0,212,255,.04));
     border:1.5px solid var(--cyan);display:flex;align-items:center;justify-content:center;
@@ -152,14 +153,16 @@ const stage = $("stage"), svg = $("svg"), nodesEl = $("nodes"), feedEl = $("feed
 function computePositions(){
   const w = stage.clientWidth, h = stage.clientHeight; pos = {};
   if(!w||!h) return;
-  const cx=w/2, cy=h/2, R=Math.min(w,h)*0.31, Ra=Math.min(w,h)*0.155;
+  const cx=w/2, cy=h/2;
+  const Rx=Math.min(w*0.34, w/2-150), Ry=Math.min(h*0.32, h/2-95);
+  const Rax=Math.min(w*0.135,160), Ray=Math.min(h*0.16,125);
   pos.core = {x:cx,y:cy};
   DEPTS.forEach(d=>{
-    const hx=cx+R*Math.cos(rad(d.angle)), hy=cy+R*Math.sin(rad(d.angle));
+    const hx=cx+Rx*Math.cos(rad(d.angle)), hy=cy+Ry*Math.sin(rad(d.angle));
     pos["hub-"+d.id]={x:hx,y:hy};
-    const n=d.agents.length, spread=Math.min(58,22+n*9);
+    const n=d.agents.length, spread=n===1?0:Math.min(84,30+n*12);
     d.agents.forEach((a,i)=>{ const off=n===1?0:lerp(-spread,spread,i/(n-1)); const ang=rad(d.angle+off);
-      pos[a.id]={x:hx+Ra*Math.cos(ang), y:hy+Ra*Math.sin(ang)}; });
+      pos[a.id]={x:hx+Rax*Math.cos(ang), y:hy+Ray*Math.sin(ang)}; });
   });
 }
 
