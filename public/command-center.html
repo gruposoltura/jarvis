@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JARVIS · Command Center</title>
+<style>
+  :root{
+    --bg:#070b12; --panel:rgba(13,20,31,0.72); --line:rgba(0,212,255,0.16);
+    --cyan:#00d4ff; --green:#3ee08f; --amber:#ffb547; --violet:#b58cff;
+    --red:#E31E24; --text:#cfe2ec; --dim:#5e7c8e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;overflow:hidden}
+  @keyframes jc-spin{to{transform:rotate(360deg)}}
+  @keyframes jc-spin-r{to{transform:rotate(-360deg)}}
+  @keyframes jc-dash{to{stroke-dashoffset:-200}}
+  @keyframes jc-pulse{0%,100%{opacity:.35}50%{opacity:1}}
+  @keyframes jc-blink{0%,100%{opacity:.25}50%{opacity:1}}
+  #app{display:flex;flex-direction:column;height:100%}
+  header{display:flex;align-items:center;gap:16px;padding:13px 22px;
+    border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(0,212,255,0.05),transparent);flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:10px}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px var(--amber);animation:jc-blink 2.4s infinite}
+  .ttl{font-weight:700;letter-spacing:3px;font-size:16px}
+  .sub{color:var(--dim);font-size:12px;letter-spacing:1px}
+  .spacer{flex:1}
+  .metric{text-align:right;min-width:56px}
+  .metric .v{font-size:17px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .metric .l{font-size:9px;letter-spacing:1.5px;color:var(--dim)}
+  .clock{display:flex;align-items:center;gap:6px;color:var(--cyan);font-weight:600;font-variant-numeric:tabular-nums}
+  .main{display:flex;flex:1;min-height:0}
+  #stage{position:relative;flex:1;overflow:hidden}
+  #grid{position:absolute;inset:0;opacity:.5;
+    background-image:radial-gradient(circle at 50% 50%,rgba(0,212,255,0.07),transparent 60%),
+      linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:100% 100%,46px 46px,46px 46px}
+  #svg{position:absolute;inset:0}
+  .node{position:absolute;transform:translate(-50%,-50%);transition:transform .15s,box-shadow .15s}
+  .agent{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:9px;
+    background:rgba(11,17,26,0.92);color:var(--text);cursor:pointer;white-space:nowrap;
+    box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid transparent;font:600 11.5px system-ui}
+  .agent:hover{transform:translate(-50%,-50%) scale(1.08)}
+  .agent .sd{width:8px;height:8px;border-radius:50%}
+  .hub{text-align:center;pointer-events:none}
+  .hub .box{width:50px;height:50px;border-radius:12px;background:rgba(10,16,24,.9);
+    display:flex;align-items:center;justify-content:center;margin:0 auto}
+  .hub .nm{margin-top:5px;font-size:10px;letter-spacing:1.5px;font-weight:700}
+  .core{text-align:center;pointer-events:none}
+  .core .orb{width:84px;height:84px;border-radius:50%;margin:0 auto;
+    background:radial-gradient(circle,rgba(0,212,255,.32),rgba(0,212,255,.04));
+    border:1.5px solid var(--cyan);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 28px rgba(0,212,255,.45);animation:jc-pulse 3.2s infinite;font-size:30px}
+  aside{width:320px;flex:0 0 320px;border-left:1px solid var(--line);background:var(--panel);
+    padding:16px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+  .lbl{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:11px;letter-spacing:1}
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,0,0,.25);
+    border:1px solid var(--line);border-radius:8px;font-size:12px}
+  .stat .c{width:9px;height:9px;border-radius:50%}
+  .stat .n{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+  #feed{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:7px;min-height:120px}
+  #feed::-webkit-scrollbar{width:6px}#feed::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+  .ev{display:flex;gap:8px;align-items:baseline;font-size:12px}
+  .ev .t{color:var(--dim);font-size:11px;font-variant-numeric:tabular-nums}
+  .ev .c{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0}
+  .foot{border-top:1px solid var(--line);padding-top:11px;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--dim)}
+  .det .row{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--line);font-size:12.5px}
+  .det .row .k{color:var(--dim)} .det .row .v{margin-left:auto;font-weight:600}
+  .det .close{float:right;background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer}
+  .banner{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;
+    color:var(--dim);font-size:13px;max-width:360px;line-height:1.5}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <span class="dot" id="connDot"></span>
+      <span class="ttl">J A R V I S</span>
+      <span class="sub">COMMAND CENTER</span>
+    </div>
+    <span class="sub" id="connTxt">· verbinden…</span>
+    <div class="spacer"></div>
+    <div class="metric"><div class="v" id="mAgents">0</div><div class="l">AGENTS</div></div>
+    <div class="metric"><div class="v" id="mOnline" style="color:var(--green)">0</div><div class="l">ONLINE</div></div>
+    <div class="metric"><div class="v" id="mErr" style="color:var(--dim)">0</div><div class="l">ERRORS</div></div>
+    <div class="metric"><div class="v" id="mRuns" style="color:var(--cyan)">0</div><div class="l">RUNS TOT.</div></div>
+    <div class="clock"><span id="clk">--:--:--</span><span class="sub">CET</span></div>
+  </header>
+  <div class="main">
+    <div id="stage">
+      <div id="grid"></div>
+      <svg id="svg"></svg>
+      <div id="nodes"></div>
+    </div>
+    <aside>
+      <div id="panel"></div>
+      <div class="lbl">⚡ LIVE ACTIVITY</div>
+      <div id="feed"><span class="sub">Awaiting telemetry…</span></div>
+      <div class="foot">📡 <span id="hb">Heartbeat —</span></div>
+    </aside>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+/* === CONFIG ============================================================= */
+const SUPABASE_URL  = "https://wuvpbwowdycsdlrqkaoq.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ";   // <-- vervang door je anon/publishable key
+/* ======================================================================= */
+
+const C = { cyan:"#00d4ff", green:"#3ee08f", amber:"#ffb547", violet:"#b58cff", red:"#E31E24", dim:"#5e7c8e", text:"#cfe2ec" };
+const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idle:{c:C.dim,l:"Idle"}, error:{c:C.red,l:"Error"} };
+
+const DEPTS = [
+  { id:"ops", name:"OPERATIONS", angle:-90, color:C.cyan, icon:"🖥", agents:[
+    {id:"prop-sync",name:"Properties Sync",sched:"05:00"},{id:"cont-sync",name:"Contacts Sync",sched:"hourly"},
+    {id:"view-batch",name:"Property View Batch",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}]},
+  { id:"sales", name:"SALES", angle:-30, color:C.green, icon:"👥", agents:[
+    {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"hot-follow",name:"HOT FollowUp",sched:"reminder"}]},
+  { id:"legal", name:"ADMIN / LEGAL", angle:30, color:C.amber, icon:"⚖", agents:[
+    {id:"contract",name:"Contract Generator",sched:"sheet"},{id:"modelo",name:"Modelo Reminder",sched:"07:00"}]},
+  { id:"finance", name:"FINANCE", angle:90, color:C.violet, icon:"🧾", agents:[
+    {id:"invoice",name:"Weekly Invoice Report",sched:"weekly"}]},
+  { id:"intel", name:"INTEL", angle:150, color:C.cyan, icon:"🧠", agents:[
+    {id:"gmail",name:"Gmail Triage",sched:"30 min"},{id:"briefing",name:"Morning Briefing",sched:"08:00"},{id:"ga4",name:"GA4 Stats",sched:"07:50"}]},
+  { id:"mktg", name:"MARKETING", angle:210, color:C.red, icon:"📣", agents:[
+    {id:"top10",name:"Top10 Mailing",sched:"weekly"},{id:"price-red",name:"Price-Reduced Mailing",sched:"weekly"},{id:"welcome",name:"Welcome Mailer",sched:"event"}]},
+];
+const CROSS = [["lead-proc","contract"],["prop-sync","top10"],["view-batch","lead-proc"],["cont-sync","welcome"],["invoice","briefing"],["gmail","hot-follow"]];
+
+const AGENTS = DEPTS.flatMap(d=>d.agents.map(a=>({...a,dept:d.id,deptName:d.name,color:d.color})));
+const BY_ID = Object.fromEntries(AGENTS.map(a=>[a.id,a]));
+const HUB_OF = Object.fromEntries(DEPTS.flatMap(d=>d.agents.map(a=>[a.id,d.id])));
+const rad=d=>d*Math.PI/180, lerp=(a,b,t)=>a+(b-a)*t;
+const ago=ts=>{ if(!ts)return"—"; const s=Math.floor((Date.now()-new Date(ts))/1000);
+  if(s<60)return"just now"; if(s<3600)return Math.floor(s/60)+"m ago"; if(s<86400)return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; };
+
+/* === STATE ============================================================== */
+const rows = {};            // agent_id -> row
+let packets = [];
+let pid = 0, selected = null, pos = {};
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SVGNS = "http://www.w3.org/2000/svg";
+const $ = id => document.getElementById(id);
+const stage = $("stage"), svg = $("svg"), nodesEl = $("nodes"), feedEl = $("feed");
+
+/* === LAYOUT ============================================================= */
+function computePositions(){
+  const w = stage.clientWidth, h = stage.clientHeight; pos = {};
+  if(!w||!h) return;
+  const cx=w/2, cy=h/2, R=Math.min(w,h)*0.31, Ra=Math.min(w,h)*0.155;
+  pos.core = {x:cx,y:cy};
+  DEPTS.forEach(d=>{
+    const hx=cx+R*Math.cos(rad(d.angle)), hy=cy+R*Math.sin(rad(d.angle));
+    pos["hub-"+d.id]={x:hx,y:hy};
+    const n=d.agents.length, spread=Math.min(58,22+n*9);
+    d.agents.forEach((a,i)=>{ const off=n===1?0:lerp(-spread,spread,i/(n-1)); const ang=rad(d.angle+off);
+      pos[a.id]={x:hx+Ra*Math.cos(ang), y:hy+Ra*Math.sin(ang)}; });
+  });
+}
+
+const edges=[];
+DEPTS.forEach(d=>{ edges.push({from:"hub-"+d.id,to:"core",kind:"spine",color:d.color});
+  d.agents.forEach(a=>edges.push({from:a.id,to:"hub-"+d.id,kind:"limb",color:d.color})); });
+CROSS.forEach(([a,b])=>edges.push({from:a,to:b,kind:"cross",color:C.amber}));
+
+let edgeEls=[], coreRings=[];
+function buildSvg(){
+  svg.innerHTML="";
+  const defs=document.createElementNS(SVGNS,"defs");
+  defs.innerHTML=`<filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+    <feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+  svg.appendChild(defs);
+  coreRings=[1,0.74,0.5].map((s,i)=>{ const g=document.createElementNS(SVGNS,"g");
+    const cr=document.createElementNS(SVGNS,"circle");
+    cr.setAttribute("fill","none"); cr.setAttribute("stroke",C.cyan);
+    cr.setAttribute("stroke-opacity",0.25+i*0.08); cr.setAttribute("stroke-width",1.2);
+    if(i===0)cr.setAttribute("stroke-dasharray","3 9");
+    if(!reduced)g.style.animation=`${i%2?"jc-spin-r":"jc-spin"} ${14+i*8}s linear infinite`;
+    g.appendChild(cr); svg.appendChild(g); return {g,cr,s}; });
+  edgeEls=edges.map(e=>{ const ln=document.createElementNS(SVGNS,"line");
+    ln.setAttribute("stroke",e.color);
+    ln.setAttribute("stroke-opacity",e.kind==="cross"?0.22:e.kind==="spine"?0.3:0.16);
+    ln.setAttribute("stroke-width",e.kind==="spine"?1.6:1);
+    if(e.kind==="cross"){ln.setAttribute("stroke-dasharray","4 6"); if(!reduced)ln.style.animation="jc-dash 6s linear infinite";}
+    svg.appendChild(ln); return {ln,e}; });
+  packetLayer=document.createElementNS(SVGNS,"g"); svg.appendChild(packetLayer);
+}
+let packetLayer;
+
+function positionSvg(){
+  const w=stage.clientWidth,h=stage.clientHeight; svg.setAttribute("width",w); svg.setAttribute("height",h);
+  coreRings.forEach(({g,cr,s})=>{ const r=Math.min(w,h)*0.13*s;
+    cr.setAttribute("cx",pos.core.x); cr.setAttribute("cy",pos.core.y); cr.setAttribute("r",r);
+    g.style.transformOrigin=`${pos.core.x}px ${pos.core.y}px`; });
+  edgeEls.forEach(({ln,e})=>{ const a=pos[e.from],b=pos[e.to]; if(!a||!b)return;
+    ln.setAttribute("x1",a.x);ln.setAttribute("y1",a.y);ln.setAttribute("x2",b.x);ln.setAttribute("y2",b.y); });
+}
+
+/* === NODES ============================================================== */
+function buildNodes(){
+  nodesEl.innerHTML="";
+  // core
+  const core=document.createElement("div"); core.className="node core"; core.id="n-core";
+  core.innerHTML=`<div class="orb">🛢</div><div style="margin-top:6px;font-size:11px;letter-spacing:2px;color:${C.cyan};font-weight:700">CRM CORE</div><div style="font-size:9.5px;color:${C.dim}">Supabase · EU-Frankfurt</div>`;
+  nodesEl.appendChild(core);
+  DEPTS.forEach(d=>{ const el=document.createElement("div"); el.className="node hub"; el.id="n-hub-"+d.id;
+    el.innerHTML=`<div class="box" style="border:1.4px solid ${d.color};box-shadow:0 0 16px ${d.color}55;font-size:22px">${d.icon}</div><div class="nm" style="color:${d.color}">${d.name}</div>`;
+    nodesEl.appendChild(el); });
+  AGENTS.forEach(a=>{ const el=document.createElement("button"); el.className="node agent"; el.id="n-"+a.id;
+    el.innerHTML=`<span class="sd"></span><span>${a.name}</span>`;
+    el.onclick=()=>{selected=a.id;renderPanel();};
+    nodesEl.appendChild(el); });
+}
+function positionNodes(){
+  for(const id in pos){ const el=$("n-"+id); if(el){el.style.left=pos[id].x+"px"; el.style.top=pos[id].y+"px";} }
+  paintNodes();
+}
+function paintNodes(){
+  AGENTS.forEach(a=>{ const el=$("n-"+a.id); if(!el)return;
+    const st=(rows[a.id]&&rows[a.id].status)||"idle"; const sc=STATUS[st].c; const active=st==="running";
+    el.style.border=`1px solid ${active?sc:a.color+"55"}`;
+    el.style.boxShadow=active?`0 0 16px ${sc}aa`:"0 2px 8px rgba(0,0,0,.4)";
+    const sd=el.querySelector(".sd"); sd.style.background=sc; sd.style.boxShadow=`0 0 7px ${sc}`;
+    sd.style.animation=active?"jc-blink .9s infinite":"none"; });
+}
+
+/* === PACKETS ============================================================ */
+function spawn(agentId,color){
+  if(reduced)return; const hub="hub-"+HUB_OF[agentId];
+  packets.push({id:pid++,from:agentId,to:hub,t:0,speed:.85,color});
+  packets.push({id:pid++,from:hub,to:"core",t:-.45,speed:.7,color});
+  const cr=CROSS.find(c=>c[0]===agentId); if(cr)packets.push({id:pid++,from:cr[0],to:cr[1],t:-.2,speed:.5,color:C.amber});
+}
+let last=performance.now();
+function loop(now){ const dt=Math.min(.05,(now-last)/1000); last=now;
+  packets=packets.filter(p=>{ p.t+=dt*p.speed; return p.t<1.04; });
+  packetLayer.innerHTML="";
+  packets.forEach(p=>{ if(p.t<0)return; const a=pos[p.from],b=pos[p.to]; if(!a||!b)return;
+    const x=lerp(a.x,b.x,p.t),y=lerp(a.y,b.y,p.t);
+    const g=document.createElementNS(SVGNS,"g"); g.setAttribute("filter","url(#glow)");
+    const c1=document.createElementNS(SVGNS,"circle"); c1.setAttribute("cx",x);c1.setAttribute("cy",y);c1.setAttribute("r",3.4);c1.setAttribute("fill",p.color);
+    g.appendChild(c1); packetLayer.appendChild(g); });
+  requestAnimationFrame(loop);
+}
+if(!reduced)requestAnimationFrame(loop);
+
+/* === PANEL / FEED / METRICS ============================================ */
+function renderPanel(){
+  const p=$("panel");
+  if(selected){ const a=BY_ID[selected],r=rows[selected]||{},st=STATUS[r.status||"idle"];
+    p.className="det";
+    p.innerHTML=`<button class="close">×</button>
+      <div style="font-size:11px;letter-spacing:1.5px;color:${a.color}">${a.deptName}</div>
+      <div style="font-size:18px;font-weight:700;margin:4px 0 3px">${a.name}</div>
+      <div style="font-size:12.5px;color:${C.dim};margin-bottom:12px">Schedule: ${a.sched}</div>
+      <div class="row"><span class="k">Status</span><span class="v" style="color:${st.c}">${st.l}</span></div>
+      <div class="row"><span class="k">Last run</span><span class="v">${ago(r.last_run)}</span></div>
+      <div class="row"><span class="k">Runs total</span><span class="v">${r.run_count??0}</span></div>
+      ${r.last_error?`<div class="row"><span class="k">Last error</span><span class="v" style="color:${C.red}">${r.last_error}</span></div>`:""}`;
+    p.querySelector(".close").onclick=()=>{selected=null;renderPanel();};
+  } else {
+    const c={ok:0,running:0,idle:0,error:0}; AGENTS.forEach(a=>c[(rows[a.id]&&rows[a.id].status)||"idle"]++);
+    p.className="";
+    p.innerHTML=`<div class="lbl" style="margin-bottom:10px">⚡ SYSTEM STATUS</div>
+      <div class="statgrid">${Object.entries(STATUS).map(([k,v])=>`<div class="stat"><span class="c" style="background:${v.c};box-shadow:0 0 7px ${v.c}"></span>${v.l}<span class="n" style="color:${v.c}">${c[k]}</span></div>`).join("")}</div>
+      <p style="font-size:11.5px;color:${C.dim};margin-top:12px;line-height:1.5">Selecteer een agent voor detail. Beams tonen live handoffs naar de hubs en de CRM-core.</p>`;
+  }
+}
+function renderMetrics(){
+  const c={ok:0,running:0,idle:0,error:0}; let runs=0;
+  AGENTS.forEach(a=>{ const r=rows[a.id]; c[(r&&r.status)||"idle"]++; if(r)runs+=r.run_count||0; });
+  $("mAgents").textContent=AGENTS.length; $("mOnline").textContent=c.ok+c.running;
+  $("mErr").textContent=c.error; $("mErr").style.color=c.error?C.red:C.dim; $("mRuns").textContent=runs;
+}
+let events=[];
+function pushEvent(a,err){ events.unshift({t:new Date(),agent:a.name,dept:a.deptName,color:err?C.red:a.color,err}); events=events.slice(0,14);
+  feedEl.innerHTML = events.length? events.map(e=>`<div class="ev"><span class="t">${e.t.toLocaleTimeString("en-GB",{timeZone:"Europe/Madrid",hour12:false})}</span><span class="c" style="background:${e.color}"></span><span><b style="color:${e.color}">${e.agent}</b><span style="color:${C.dim}"> · ${e.err?"error":e.dept.toLowerCase()}</span></span></div>`).join("") : `<span class="sub">Awaiting telemetry…</span>`;
+}
+
+/* === SUPABASE =========================================================== */
+function applyRow(r,animate){ rows[r.agent_id]=r; const a=BY_ID[r.agent_id]; if(!a){renderMetrics();return;}
+  paintNodes(); renderMetrics(); if(selected===r.agent_id)renderPanel();
+  if(animate&&(r.status==="running"||r.status==="error")){ pushEvent(a,r.status==="error"); if(r.status==="running")spawn(r.agent_id,a.color); }
+}
+async function start(){
+  if(SUPABASE_ANON.startsWith("PLAK")){ document.getElementById("connTxt").textContent="· anon key ontbreekt"; 
+    nodesEl.insertAdjacentHTML("beforeend",`<div class="banner">⚠ Plak je Supabase anon key in het bestand (regel SUPABASE_ANON) en upload opnieuw.</div>`); return; }
+  const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
+  const setConn=(ok,txt)=>{ const d=$("connDot"); d.style.background=ok?C.green:C.red; d.style.boxShadow=`0 0 10px ${ok?C.green:C.red}`; $("connTxt").textContent="· "+txt; };
+  const {data,error}=await sb.from("agent_status").select("*");
+  if(error){ setConn(false,"verbinding mislukt"); console.error(error); return; }
+  (data||[]).forEach(r=>rows[r.agent_id]=r); paintNodes(); renderMetrics(); renderPanel(); setConn(true,"live · gruposoltura-crm");
+  sb.channel("agent_status_live").on("postgres_changes",{event:"*",schema:"public",table:"agent_status"},
+    p=>applyRow(p.new,true)).subscribe(s=>{ if(s==="SUBSCRIBED")setConn(true,"live · gruposoltura-crm"); });
+  const {data:hb}=await sb.from("heartbeat").select("last_ping").order("last_ping",{ascending:false}).limit(1);
+  if(hb&&hb[0])$("hb").innerHTML=`Heartbeat online · last ping <b style="color:${C.green}">${ago(hb[0].last_ping)}</b>`;
+}
+
+/* === BOOT =============================================================== */
+function layout(){ computePositions(); positionSvg(); positionNodes(); }
+buildSvg(); buildNodes(); layout(); renderPanel(); renderMetrics();
+new ResizeObserver(layout).observe(stage);
+setInterval(()=>{ $("clk").textContent=new Date().toLocaleTimeString("en-GB",{timeZone:"Europe/Madrid",hour12:false}); },1000);
+start();
+</script>
+</body>
+</html>
