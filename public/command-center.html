@@ -130,13 +130,13 @@ const DEPTS = [
   { id:"intel", name:"INTEL", angle:115.71, color:C.cyan, icon:"🧠", agents:[
     {id:"gmail",name:"Gmail Triage",sched:"30 min"},{id:"briefing",name:"Morning Briefing",sched:"08:00"},{id:"ga4",name:"GA4 Stats",sched:"07:50"}]},
   { id:"mktg", name:"MARKETING", angle:167.14, color:C.red, icon:"📣", agents:[
-    {id:"top10",name:"Weekly Top10",sched:"weekly"},{id:"price-red",name:"Price Reduced",sched:"weekly"},{id:"welcome",name:"Welcome Seller",sched:"event"},{id:"review",name:"Google Review Invite",sched:"daily 10:00"}]},
+    {id:"top10",name:"Weekly Top10",sched:"weekly"},{id:"price-red",name:"Price Reduced",sched:"weekly"},{id:"welcome",name:"Welcome Seller",sched:"event"},{id:"review",name:"Google Review Invite",sched:"daily 10:00"},{id:"toolate",name:"Too Late",sched:"daily 11:00"}]},
   { id:"infra", name:"INFRA", angle:218.57, color:"#8aa0b5", icon:"⚙", agents:[
     {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"3 days"},
     {id:"run-purge",name:"Run Log Purge",sched:"daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
     {id:"active-sync",name:"Active Props Sync",sched:"05:00"},{id:"new-sync",name:"New Props Sync",sched:"08:45"}]},
 ];
-const CROSS = [["lead-proc","contract"],["prop-sync","top10"],["view-batch","lead-proc"],["cont-sync","welcome"],["invoice","briefing"],["req-sync","lead-proc"],["req-sync","review"]];
+const CROSS = [["lead-proc","contract"],["prop-sync","top10"],["view-batch","lead-proc"],["cont-sync","welcome"],["invoice","briefing"],["req-sync","lead-proc"],["req-sync","review"],["req-sync","toolate"]];
 
 const AGENTS = DEPTS.flatMap(d=>d.agents.map(a=>({...a,dept:d.id,deptName:d.name,color:d.color})));
 const BY_ID = Object.fromEntries(AGENTS.map(a=>[a.id,a]));
