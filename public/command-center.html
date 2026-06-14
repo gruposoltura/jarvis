@@ -159,16 +159,52 @@ function computePositions(){
   const w = stage.clientWidth, h = stage.clientHeight; pos = {};
   if(!w||!h) return;
   const cx=w/2, cy=h/2;
-  const Rx=Math.min(w*0.34, w/2-150), Ry=Math.min(h*0.32, h/2-95);
-  const Rax=Math.min(w*0.145,170), Ray=Math.min(h*0.14,118);
+  const Rx=Math.min(w*0.33, w/2-170), Ry=Math.min(h*0.30, h/2-150);
+  const Rax=Math.min(w*0.155,182), Ray=Math.min(h*0.16,136);
   pos.core = {x:cx,y:cy};
   DEPTS.forEach(d=>{
     const hx=cx+Rx*Math.cos(rad(d.angle)), hy=cy+Ry*Math.sin(rad(d.angle));
     pos["hub-"+d.id]={x:hx,y:hy};
-    const n=d.agents.length, spread=n===1?0:Math.min(100,26+n*13);
-    d.agents.forEach((a,i)=>{ const off=n===1?0:lerp(-spread,spread,i/(n-1)); const ang=rad(d.angle+off);
-      pos[a.id]={x:hx+Rax*Math.cos(ang), y:hy+Ray*Math.sin(ang)}; });
+    const n=d.agents.length, spread=n===1?0:Math.min(78,22+n*9);
+    d.agents.forEach((a,i)=>{
+      const off=n===1?0:lerp(-spread,spread,i/(n-1));
+      const ang=rad(d.angle+off);
+      const tier=n>=4?(i%2?1.55:1):1;           // dense hubs: stagger into 2 rings
+      pos[a.id]={x:hx+Rax*tier*Math.cos(ang), y:hy+Ray*tier*Math.sin(ang)};
+    });
   });
+  declutter(w,h);
+}
+
+// Push overlapping agent labels apart and away from hubs/core. Hubs+core stay fixed.
+function declutter(w,h){
+  const ids=AGENTS.map(a=>a.id);
+  const MINX=106, MINY=40;
+  const obst=[{x:pos.core.x,y:pos.core.y,rx:86,ry:72}]
+    .concat(DEPTS.map(d=>({x:pos["hub-"+d.id].x,y:pos["hub-"+d.id].y,rx:74,ry:58})));
+  for(let it=0;it<140;it++){
+    let moved=false;
+    for(let i=0;i<ids.length;i++){ const A=pos[ids[i]]; if(!A)continue;
+      for(let j=i+1;j<ids.length;j++){ const B=pos[ids[j]]; if(!B)continue;
+        const dx=B.x-A.x, dy=B.y-A.y;
+        const ox=MINX-Math.abs(dx), oy=MINY-Math.abs(dy);
+        if(ox>0&&oy>0){
+          if(ox<oy){ const s=((dx>=0?1:-1)*ox)/2||0.6; A.x-=s; B.x+=s; }
+          else      { const s=((dy>=0?1:-1)*oy)/2||0.6; A.y-=s; B.y+=s; }
+          moved=true;
+        }
+      }
+    }
+    for(const id of ids){ const A=pos[id]; if(!A)continue;
+      for(const o of obst){ const dx=A.x-o.x, dy=A.y-o.y;
+        const ox=o.rx-Math.abs(dx), oy=o.ry-Math.abs(dy);
+        if(ox>0&&oy>0){ if(ox<oy)A.x+=(dx>=0?1:-1)*ox; else A.y+=(dy>=0?1:-1)*oy; moved=true; }
+      }
+    }
+    for(const id of ids){ const A=pos[id]; if(!A)continue;
+      A.x=Math.max(58,Math.min(w-58,A.x)); A.y=Math.max(50,Math.min(h-44,A.y)); }
+    if(!moved) break;
+  }
 }
 
 const edges=[];
