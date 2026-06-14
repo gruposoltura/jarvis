@@ -121,16 +121,20 @@ const DEPTS = [
     {id:"prop-sync",name:"Properties Sync",sched:"05:00"},{id:"cont-sync",name:"Contacts Sync",sched:"hourly"},
     {id:"req-sync",name:"Requests Sync",sched:"incremental"},{id:"seo-enrich",name:"Agent SEO",sched:"daily"},
     {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}]},
-  { id:"sales", name:"SALES", angle:-30, color:C.green, icon:"👥", agents:[
+  { id:"sales", name:"SALES", angle:-38.57, color:C.green, icon:"👥", agents:[
     {id:"lead-proc",name:"Lead Processor",sched:"webhook"}]},
-  { id:"legal", name:"ADMIN / LEGAL", angle:30, color:C.amber, icon:"⚖", agents:[
+  { id:"legal", name:"ADMIN / LEGAL", angle:12.86, color:C.amber, icon:"⚖", agents:[
     {id:"contract",name:"Contract Generator",sched:"sheet"},{id:"modelo",name:"Modelo Reminder",sched:"07:00"}]},
-  { id:"finance", name:"FINANCE", angle:90, color:C.violet, icon:"🧾", agents:[
+  { id:"finance", name:"FINANCE", angle:64.29, color:C.violet, icon:"🧾", agents:[
     {id:"invoice",name:"Weekly VAT Report",sched:"weekly"}]},
-  { id:"intel", name:"INTEL", angle:150, color:C.cyan, icon:"🧠", agents:[
+  { id:"intel", name:"INTEL", angle:115.71, color:C.cyan, icon:"🧠", agents:[
     {id:"gmail",name:"Gmail Triage",sched:"30 min"},{id:"briefing",name:"Morning Briefing",sched:"08:00"},{id:"ga4",name:"GA4 Stats",sched:"07:50"}]},
-  { id:"mktg", name:"MARKETING", angle:210, color:C.red, icon:"📣", agents:[
+  { id:"mktg", name:"MARKETING", angle:167.14, color:C.red, icon:"📣", agents:[
     {id:"top10",name:"Weekly Top10",sched:"weekly"},{id:"price-red",name:"Price Reduced",sched:"weekly"},{id:"welcome",name:"Welcome Seller",sched:"event"},{id:"review",name:"Google Review Invite",sched:"daily 10:00"}]},
+  { id:"infra", name:"INFRA", angle:218.57, color:"#8aa0b5", icon:"⚙", agents:[
+    {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"3 days"},
+    {id:"run-purge",name:"Run Log Purge",sched:"daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
+    {id:"active-sync",name:"Active Props Sync",sched:"05:00"},{id:"new-sync",name:"New Props Sync",sched:"08:45"}]},
 ];
 const CROSS = [["lead-proc","contract"],["prop-sync","top10"],["view-batch","lead-proc"],["cont-sync","welcome"],["invoice","briefing"],["req-sync","lead-proc"],["req-sync","review"]];
 
