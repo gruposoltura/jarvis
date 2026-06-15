@@ -113,29 +113,35 @@ const SUPABASE_URL  = "https://wuvpbwowdycsdlrqkaoq.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ";   // <-- vervang door je anon/publishable key
 /* ======================================================================= */
 
-const C = { cyan:"#00d4ff", green:"#3ee08f", amber:"#ffb547", violet:"#b58cff", red:"#E31E24", dim:"#5e7c8e", text:"#cfe2ec" };
+const C = { cyan:"#00d4ff", green:"#3ee08f", amber:"#ffb547", violet:"#b58cff", red:"#E31E24", advert:"#ff5fa2", dim:"#5e7c8e", text:"#cfe2ec" };
 const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idle:{c:C.dim,l:"Idle"}, error:{c:C.red,l:"Error"} };
 
+// Hoeken (angle) worden automatisch verdeeld op basis van het aantal afdelingen,
+// zie de DEPTS.forEach hieronder. Nieuwe afdeling toevoegen = gewoon een blok bijzetten.
 const DEPTS = [
-  { id:"ops", name:"OPERATIONS", angle:-90, color:C.cyan, icon:"🖥", agents:[
+  { id:"ops", name:"OPERATIONS", color:C.cyan, icon:"🖥", agents:[
     {id:"prop-sync",name:"Properties Sync",sched:"05:00"},{id:"cont-sync",name:"Contacts Sync",sched:"hourly"},
     {id:"req-sync",name:"Requests Sync",sched:"incremental"},{id:"seo-enrich",name:"Agent SEO",sched:"daily"},
     {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}]},
-  { id:"sales", name:"SALES", angle:-38.57, color:C.green, icon:"👥", agents:[
+  { id:"sales", name:"SALES", color:C.green, icon:"👥", agents:[
     {id:"lead-proc",name:"Lead Processor",sched:"webhook"}]},
-  { id:"legal", name:"ADMIN / LEGAL", angle:12.86, color:C.amber, icon:"⚖", agents:[
+  { id:"legal", name:"ADMIN / LEGAL", color:C.amber, icon:"⚖", agents:[
     {id:"contract",name:"Contract Generator",sched:"sheet"},{id:"modelo",name:"Modelo Reminder",sched:"07:00"}]},
-  { id:"finance", name:"FINANCE", angle:64.29, color:C.violet, icon:"🧾", agents:[
+  { id:"finance", name:"FINANCE", color:C.violet, icon:"🧾", agents:[
     {id:"invoice",name:"Weekly VAT Report",sched:"weekly"}]},
-  { id:"intel", name:"INTEL", angle:115.71, color:C.cyan, icon:"🧠", agents:[
+  { id:"intel", name:"INTEL", color:C.cyan, icon:"🧠", agents:[
     {id:"gmail",name:"Gmail Triage",sched:"30 min"},{id:"briefing",name:"Morning Briefing",sched:"08:00"},{id:"ga4",name:"GA4 Stats",sched:"07:50"}]},
-  { id:"mktg", name:"MARKETING", angle:167.14, color:C.red, icon:"📣", agents:[
-    {id:"top10",name:"Weekly Top10",sched:"weekly"},{id:"price-red",name:"Price Reduced",sched:"weekly"},{id:"welcome",name:"Welcome Seller",sched:"event"},{id:"review",name:"Google Review Invite",sched:"daily 10:00"},{id:"social",name:"Social Agent",sched:"Mon+Thu 08:00"},{id:"toolate",name:"Too Late",sched:"daily 11:00"}]},
-  { id:"infra", name:"INFRA", angle:218.57, color:"#8aa0b5", icon:"⚙", agents:[
+  { id:"mktg", name:"MARKETING", color:C.red, icon:"📣", agents:[
+    {id:"top10",name:"Weekly Top10",sched:"weekly"},{id:"price-red",name:"Price Reduced",sched:"weekly"},{id:"welcome",name:"Welcome Seller",sched:"event"},{id:"review",name:"Google Review Invite",sched:"daily 10:00"},{id:"toolate",name:"Too Late",sched:"daily 11:00"}]},
+  { id:"advertising", name:"ADVERTISING", color:C.advert, icon:"🎯", agents:[
+    {id:"social",name:"Social Agent",sched:"Mon+Thu 08:00"}]},
+  { id:"infra", name:"INFRA", color:"#8aa0b5", icon:"⚙", agents:[
     {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"3 days"},
     {id:"run-purge",name:"Run Log Purge",sched:"daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
     {id:"active-sync",name:"Active Props Sync",sched:"05:00"},{id:"new-sync",name:"New Props Sync",sched:"08:45"}]},
 ];
+// Verdeel de afdelingen gelijkmatig over de cirkel; OPS blijft bovenaan (-90°).
+DEPTS.forEach((d,i)=>{ d.angle = -90 + i*360/DEPTS.length; });
 const CROSS = [["lead-proc","contract"],["prop-sync","top10"],["view-batch","lead-proc"],["cont-sync","welcome"],["invoice","briefing"],["req-sync","lead-proc"],["req-sync","review"],["req-sync","toolate"],["prop-sync","social"]];
 
 const AGENTS = DEPTS.flatMap(d=>d.agents.map(a=>({...a,dept:d.id,deptName:d.name,color:d.color})));
