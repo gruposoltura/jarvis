@@ -122,7 +122,8 @@ const DEPTS = [
   { id:"ops", name:"OPERATIONS", color:C.cyan, icon:"🖥", agents:[
     {id:"prop-sync",name:"Properties Sync",sched:"05:00"},{id:"cont-sync",name:"Contacts Sync",sched:"hourly"},
     {id:"req-sync",name:"Requests Sync",sched:"incremental"},{id:"seo-enrich",name:"Agent SEO",sched:"daily"},
-    {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}]},
+    {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"},
+    {id:"cont-recon",name:"Contacts Reconcile",sched:"03:30"},{id:"prop-recon",name:"Properties Reconcile",sched:"03:45"}]},
   { id:"sales", name:"SALES", color:C.green, icon:"👥", agents:[
     {id:"lead-proc",name:"Lead Processor",sched:"webhook"}]},
   { id:"legal", name:"ADMIN / LEGAL", color:C.amber, icon:"⚖", agents:[
@@ -348,15 +349,4 @@ async function start(){
   sb.channel("agent_status_live").on("postgres_changes",{event:"*",schema:"public",table:"agent_status"},
     p=>applyRow(p.new,true)).subscribe(s=>{ if(s==="SUBSCRIBED")setConn(true,"live · gruposoltura-crm"); });
   const {data:hb}=await sb.from("heartbeat").select("last_ping").order("last_ping",{ascending:false}).limit(1);
-  if(hb&&hb[0])$("hb").innerHTML=`Heartbeat online · last ping <b style="color:${C.green}">${ago(hb[0].last_ping)}</b>`;
-}
-
-/* === BOOT =============================================================== */
-function layout(){ computePositions(); positionSvg(); positionNodes(); }
-buildSvg(); buildNodes(); layout(); renderPanel(); renderMetrics();
-new ResizeObserver(layout).observe(stage);
-setInterval(()=>{ $("clk").textContent=new Date().toLocaleTimeString("en-GB",{timeZone:"Europe/Madrid",hour12:false}); },1000);
-start();
-</script>
-</body>
-</html>
+  if(hb&&hb[0])$("hb").innerHTML=`Heartbeat online · last ping <b style="color:${C.green}">${ago(hb[0
