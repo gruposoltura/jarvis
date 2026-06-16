@@ -120,10 +120,10 @@ const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idl
 // zie de DEPTS.forEach hieronder. Nieuwe afdeling toevoegen = gewoon een blok bijzetten.
 const DEPTS = [
   { id:"ops", name:"OPERATIONS", color:C.cyan, icon:"🖥", agents:[
-    {id:"prop-sync",name:"Properties Sync",sched:"05:00"},{id:"cont-sync",name:"Contacts Sync",sched:"hourly"},
+    {id:"cont-sync",name:"Contacts Sync",sched:"hourly"},{id:"cont-recon",name:"Contacts Reconcile",sched:"03:30"},
+    {id:"prop-sync",name:"Properties Sync",sched:"05:00"},{id:"prop-recon",name:"Properties Reconcile",sched:"03:45"},
     {id:"req-sync",name:"Requests Sync",sched:"incremental"},{id:"seo-enrich",name:"Agent SEO",sched:"daily"},
-    {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"},
-    {id:"cont-recon",name:"Contacts Reconcile",sched:"03:30"},{id:"prop-recon",name:"Properties Reconcile",sched:"03:45"}]},
+    {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}]},
   { id:"sales", name:"SALES", color:C.green, icon:"👥", agents:[
     {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"appointment",name:"Appointment Agent",sched:"email"}]},
   { id:"legal", name:"ADMIN / LEGAL", color:C.amber, icon:"⚖", agents:[
@@ -172,7 +172,7 @@ function computePositions(){
   DEPTS.forEach(d=>{
     const hx=cx+Rx*Math.cos(rad(d.angle)), hy=cy+Ry*Math.sin(rad(d.angle));
     pos["hub-"+d.id]={x:hx,y:hy};
-    const n=d.agents.length, spread=n===1?0:Math.min(78,22+n*9);
+    const n=d.agents.length, spread=n===1?0:Math.min(92,22+n*9);
     d.agents.forEach((a,i)=>{
       const off=n===1?0:lerp(-spread,spread,i/(n-1));
       const ang=rad(d.angle+off);
