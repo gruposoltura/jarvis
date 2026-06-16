@@ -356,4 +356,8 @@ async function start(){
 function layout(){ computePositions(); positionSvg(); positionNodes(); }
 buildSvg(); buildNodes(); layout(); renderPanel(); renderMetrics();
 new ResizeObserver(layout).observe(stage);
-setInterval(()=>{ $("clk").textContent=new Dat
+setInterval(()=>{ $("clk").textContent=new Date().toLocaleTimeString("en-GB",{timeZone:"Europe/Madrid",hour12:false}); },1000);
+start();
+</script>
+</body>
+</html>
