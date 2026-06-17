@@ -127,7 +127,7 @@ const DEPTS = [
     {id:"req-sync",name:"Requests Sync",sched:"incremental"},{id:"seo-enrich",name:"Agent SEO",sched:"daily"},
     {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}]},
   { id:"sales", name:"SALES", color:C.green, icon:"👥", agents:[
-    {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"appointment",name:"Appointment Agent",sched:"email"}]},
+    {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"appointment",name:"Appointment Agent",sched:"email"},{id:"idealista",name:"Idealista Leads",sched:"email"}]},
   { id:"legal", name:"ADMIN / LEGAL", color:C.amber, icon:"⚖", agents:[
     {id:"contract",name:"Contract Generator",sched:"sheet"},{id:"modelo",name:"Modelo Reminder",sched:"07:00"}]},
   { id:"finance", name:"FINANCE", color:C.violet, icon:"🧾", agents:[
@@ -145,7 +145,7 @@ const DEPTS = [
 ];
 // Verdeel de afdelingen gelijkmatig over de cirkel; OPS blijft bovenaan (-90°).
 DEPTS.forEach((d,i)=>{ d.angle = -90 + i*360/DEPTS.length; });
-const CROSS = [["lead-proc","contract"],["prop-sync","top10"],["view-batch","lead-proc"],["cont-sync","welcome"],["invoice","briefing"],["req-sync","lead-proc"],["req-sync","review"],["req-sync","toolate"],["prop-sync","social"],["cont-sync","appointment"]];
+const CROSS = [["lead-proc","contract"],["prop-sync","top10"],["view-batch","lead-proc"],["cont-sync","welcome"],["invoice","briefing"],["req-sync","lead-proc"],["req-sync","review"],["req-sync","toolate"],["prop-sync","social"],["cont-sync","appointment"],["req-sync","idealista"]];
 
 const AGENTS = DEPTS.flatMap(d=>d.agents.map(a=>({...a,dept:d.id,deptName:d.name,color:d.color})));
 const BY_ID = Object.fromEntries(AGENTS.map(a=>[a.id,a]));
