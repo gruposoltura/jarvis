@@ -137,7 +137,7 @@ const DEPTS = [
   { id:"mktg", name:"MARKETING", color:C.red, icon:"📣", agents:[
     {id:"top10",name:"Weekly Top10",sched:"weekly"},{id:"price-red",name:"Price Reduced",sched:"weekly"},{id:"welcome",name:"Welcome Seller",sched:"event"},{id:"review",name:"Google Review Invite",sched:"daily 10:00"},{id:"review_viewing",name:"Review Invite Viewing",sched:"daily 11:00"},{id:"toolate",name:"Too Late",sched:"daily 11:00"},{id:"research",name:"Competitor Research",sched:"monthly"},{id:"improve",name:"Improvement Planner",sched:"monthly"}]},
   { id:"advertising", name:"ADVERTISING", color:C.advert, icon:"🎯", agents:[
-    {id:"social",name:"Social Agent",sched:"Mon+Thu 08:00"}]},
+    {id:"social",name:"Social Agent",sched:"Sun+Mon · Thu · 08:00",members:["SocialProposer","SocialPublisher","LifestyleProposer"]}]},
   { id:"infra", name:"INFRA", color:"#8aa0b5", icon:"⚙", agents:[
     {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"3 days"},
     {id:"run-purge",name:"Run Log Purge",sched:"daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
@@ -311,6 +311,7 @@ function renderPanel(){
       <div style="font-size:11px;letter-spacing:1.5px;color:${a.color}">${a.deptName}</div>
       <div style="font-size:18px;font-weight:700;margin:4px 0 3px">${a.name}</div>
       <div style="font-size:12.5px;color:${C.dim};margin-bottom:12px">Schedule: ${a.sched}</div>
+      ${a.members?`<div class="row"><span class="k">Workflows</span><span class="v" style="font-weight:600;text-align:right;line-height:1.5">${a.members.join("<br>")}</span></div>`:""}
       <div class="row"><span class="k">Status</span><span class="v" style="color:${st.c}">${st.l}</span></div>
       <div class="row"><span class="k">Last run</span><span class="v">${ago(r.last_run)}</span></div>
       <div class="row"><span class="k">Runs total</span><span class="v">${r.run_count??0}</span></div>
