@@ -38,17 +38,13 @@
       linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
     background-size:100% 100%,46px 46px,46px 46px}
   #svg{position:absolute;inset:0}
-  .node{position:absolute;transform:translate(-50%,-50%);transition:transform .15s,box-shadow .15s,left .25s,top .25s}
+  .node{position:absolute;transform:translate(-50%,-50%);transition:transform .15s,box-shadow .15s}
   .agent{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:9px;
     background:rgba(11,17,26,0.94);color:var(--text);cursor:pointer;
     box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid transparent;
-    font:600 10px system-ui;line-height:1.12;text-align:left;max-width:104px;z-index:2}
+    font:600 10px system-ui;line-height:1.12;text-align:left;max-width:92px;z-index:2}
   .agent:hover{transform:translate(-50%,-50%) scale(1.08);z-index:9}
   .agent .sd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-  .agent.cluster{background:rgba(8,13,20,0.96);font-weight:700;max-width:120px}
-  .agent .cnt{margin-left:2px;font-size:9px;font-weight:800;background:rgba(255,255,255,.10);
-    border-radius:6px;padding:1px 5px;font-variant-numeric:tabular-nums}
-  .agent .caret{font-size:9px;color:var(--dim);margin-left:1px}
   .hub{text-align:center;pointer-events:none;z-index:3}
   .hub .box{width:50px;height:50px;border-radius:12px;background:rgba(10,16,24,.95);
     display:flex;align-items:center;justify-content:center;margin:0 auto}
@@ -77,8 +73,6 @@
   .det .close{float:right;background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer}
   .banner{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;
     color:var(--dim);font-size:13px;max-width:360px;line-height:1.5}
-  .hint{position:absolute;left:16px;bottom:14px;color:var(--dim);font-size:11px;letter-spacing:.3px;
-    background:rgba(8,13,20,.7);border:1px solid var(--line);border-radius:8px;padding:7px 11px;max-width:300px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -103,7 +97,6 @@
       <div id="grid"></div>
       <svg id="svg"></svg>
       <div id="nodes"></div>
-      <div class="hint">Klik op een <b>groep</b> (badge = aantal agents) om uit- of in te klappen. Klik op een agent voor detail.</div>
     </div>
     <aside>
       <div id="panel"></div>
@@ -119,60 +112,36 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /* === CONFIG ============================================================= */
 const SUPABASE_URL  = "https://wuvpbwowdycsdlrqkaoq.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ";   // <-- vervang door je anon/publishable key
 /* ======================================================================= */
 
 const C = { cyan:"#00d4ff", green:"#3ee08f", amber:"#ffb547", violet:"#b58cff", red:"#E31E24", advert:"#ff5fa2", dim:"#5e7c8e", text:"#cfe2ec" };
 const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idle:{c:C.dim,l:"Idle"}, error:{c:C.red,l:"Error"} };
 
-/* Afdelingen + agents. clusters[] = inklapbare groepen (members = agent-ids).
-   Een agent die in geen enkel cluster zit, blijft een losse node.
-   Hoeken worden automatisch verdeeld; nieuwe afdeling = blok bijzetten. */
+// Hoeken (angle) worden automatisch verdeeld op basis van het aantal afdelingen,
+// zie de DEPTS.forEach hieronder. Nieuwe afdeling toevoegen = gewoon een blok bijzetten.
 const DEPTS = [
   { id:"ops", name:"OPERATIONS", color:C.cyan, icon:"🖥", agents:[
     {id:"cont-sync",name:"Contacts Sync",sched:"hourly"},{id:"cont-recon",name:"Contacts Reconcile",sched:"03:30"},
     {id:"prop-sync",name:"Properties Sync",sched:"05:00"},{id:"prop-recon",name:"Properties Reconcile",sched:"03:45"},
     {id:"req-sync",name:"Requests Sync",sched:"incremental"},{id:"seo-enrich",name:"Agent SEO",sched:"daily"},
-    {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}],
-    clusters:[
-      {id:"data-sync",label:"Data Sync",members:["cont-sync","prop-sync","req-sync","cont-recon","prop-recon"]}]},
-
+    {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}]},
   { id:"sales", name:"SALES", color:C.green, icon:"👥", agents:[
-    {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"appointment",name:"Appointment Agent",sched:"email"},
-    {id:"idealista",name:"Idealista Leads",sched:"email"},{id:"idealista-feed",name:"Idealista Feed",sched:"webhook"}],
-    clusters:[
-      {id:"idealista-grp",label:"Idealista",members:["idealista","idealista-feed"]}]},
-
+    {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"appointment",name:"Appointment Agent",sched:"email"},{id:"idealista",name:"Idealista Leads",sched:"email"},{id:"idealista-feed",name:"Idealista Feed",sched:"30min"}]},
   { id:"legal", name:"ADMIN / LEGAL", color:C.amber, icon:"⚖", agents:[
-    {id:"contract",name:"Contract Generator",sched:"sheet"},{id:"modelo",name:"Modelo Reminder",sched:"07:00"}],
-    clusters:[]},
-
+    {id:"contract",name:"Contract Generator",sched:"sheet"},{id:"modelo",name:"Modelo Reminder",sched:"07:00"}]},
   { id:"finance", name:"FINANCE", color:C.violet, icon:"🧾", agents:[
-    {id:"invoice",name:"Weekly VAT Report",sched:"weekly"}],
-    clusters:[]},
-
+    {id:"invoice",name:"Weekly VAT Report",sched:"weekly"}]},
   { id:"intel", name:"INTEL", color:C.cyan, icon:"🧠", agents:[
-    {id:"gmail",name:"Gmail Triage",sched:"30 min"},{id:"briefing",name:"Morning Briefing",sched:"08:00"},{id:"ga4",name:"GA4 Stats",sched:"07:50"}],
-    clusters:[]},
-
+    {id:"gmail",name:"Gmail Triage",sched:"30 min"},{id:"briefing",name:"Morning Briefing",sched:"08:00"},{id:"ga4",name:"GA4 Stats",sched:"07:50"}]},
   { id:"mktg", name:"MARKETING", color:C.red, icon:"📣", agents:[
-    {id:"top10",name:"Weekly Top10",sched:"weekly"},{id:"price-red",name:"Price Reduced",sched:"weekly"},{id:"welcome",name:"Welcome Seller",sched:"event"},{id:"review",name:"Google Review Invite",sched:"daily 10:00"},{id:"review_viewing",name:"Review Invite Viewing",sched:"daily 11:00"},{id:"toolate",name:"Too Late",sched:"daily 11:00"},{id:"research",name:"Competitor Research",sched:"monthly"},{id:"improve",name:"Improvement Planner",sched:"monthly"}],
-    clusters:[
-      {id:"mailings",label:"Mailings",members:["top10","price-red","welcome","toolate"]},
-      {id:"reviews",label:"Reviews",members:["review","review_viewing"]},
-      {id:"research-grp",label:"Research",members:["research","improve"]}]},
-
+    {id:"top10",name:"Weekly Top10",sched:"weekly"},{id:"price-red",name:"Price Reduced",sched:"weekly"},{id:"welcome",name:"Welcome Seller",sched:"event"},{id:"review",name:"Google Review Invite",sched:"daily 10:00"},{id:"review_viewing",name:"Review Invite Viewing",sched:"daily 11:00"},{id:"toolate",name:"Too Late",sched:"daily 11:00"},{id:"research",name:"Competitor Research",sched:"monthly"},{id:"improve",name:"Improvement Planner",sched:"monthly"}]},
   { id:"advertising", name:"ADVERTISING", color:C.advert, icon:"🎯", agents:[
-    {id:"social",name:"Social Agent",sched:"Mon+Thu 08:00"}],
-    clusters:[]},
-
+    {id:"social",name:"Social Agent",sched:"Mon+Thu 08:00"}]},
   { id:"infra", name:"INFRA", color:"#8aa0b5", icon:"⚙", agents:[
     {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"3 days"},
     {id:"run-purge",name:"Run Log Purge",sched:"daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
-    {id:"active-sync",name:"Active Props Sync",sched:"05:00"},{id:"new-sync",name:"New Props Sync",sched:"08:45"}],
-    clusters:[
-      {id:"props-sync",label:"Props Sync",members:["active-sync","new-sync"]},
-      {id:"housekeep",label:"Housekeeping",members:["sb-heartbeat","run-purge","session-notes"]}]},
+    {id:"active-sync",name:"Active Props Sync",sched:"05:00"},{id:"new-sync",name:"New Props Sync",sched:"08:45"}]},
 ];
 // Verdeel de afdelingen gelijkmatig over de cirkel; OPS blijft bovenaan (-90°).
 DEPTS.forEach((d,i)=>{ d.angle = -90 + i*360/DEPTS.length; });
@@ -181,44 +150,18 @@ const CROSS = [["lead-proc","contract"],["prop-sync","top10"],["view-batch","lea
 const AGENTS = DEPTS.flatMap(d=>d.agents.map(a=>({...a,dept:d.id,deptName:d.name,color:d.color})));
 const BY_ID = Object.fromEntries(AGENTS.map(a=>[a.id,a]));
 const HUB_OF = Object.fromEntries(DEPTS.flatMap(d=>d.agents.map(a=>[a.id,d.id])));
-const CLUSTER_OF = {};                              // agentId -> clusterId
-DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>cl.members.forEach(m=>CLUSTER_OF[m]=cl.id)));
 const rad=d=>d*Math.PI/180, lerp=(a,b,t)=>a+(b-a)*t;
 const ago=ts=>{ if(!ts)return"—"; const s=Math.floor((Date.now()-new Date(ts))/1000);
   if(s<60)return"just now"; if(s<3600)return Math.floor(s/60)+"m ago"; if(s<86400)return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; };
 
 /* === STATE ============================================================== */
 const rows = {};            // agent_id -> row
-const expanded = {};        // clusterId -> bool (default: ingeklapt)
 let packets = [];
-let pid = 0, selected = null, pos = {}, UNITS = [];
+let pid = 0, selected = null, pos = {};
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const SVGNS = "http://www.w3.org/2000/svg";
 const $ = id => document.getElementById(id);
 const stage = $("stage"), svg = $("svg"), nodesEl = $("nodes"), feedEl = $("feed");
-
-/* === GROUPING HELPERS =================================================== */
-// Zichtbare units = cluster-chips (+ leden als uitgeklapt) + losse agents.
-function visibleUnits(){
-  const units=[];
-  DEPTS.forEach(d=>{
-    (d.clusters||[]).forEach(cl=>{
-      units.push({type:"cluster", uid:"cl-"+cl.id, clusterId:cl.id, dept:d.id, color:d.color, deptName:d.name, label:cl.label, members:cl.members});
-      if(expanded[cl.id]) cl.members.forEach(m=>units.push({type:"agent", uid:m, agentId:m, dept:d.id, color:d.color, deptName:d.name}));
-    });
-    d.agents.forEach(a=>{ if(!CLUSTER_OF[a.id]) units.push({type:"agent", uid:a.id, agentId:a.id, dept:d.id, color:d.color, deptName:d.name}); });
-  });
-  return units;
-}
-const unitsOfDept=(depId)=>UNITS.filter(u=>u.dept===depId);
-// Waar zit een agent visueel? Eigen node, of zijn cluster-chip als ingeklapt.
-function anchorOf(agentId){ const cl=CLUSTER_OF[agentId]; return (cl && !expanded[cl]) ? "cl-"+cl : agentId; }
-// Geaggregeerde clusterstatus: error > running > ok > idle.
-function clusterStatus(members){ let s="idle";
-  for(const m of members){ const st=(rows[m]&&rows[m].status)||"idle";
-    if(st==="error")return "error"; if(st==="running")s="running"; else if(st==="ok"&&s!=="running")s="ok"; }
-  return s;
-}
 
 /* === LAYOUT ============================================================= */
 function computePositions(){
@@ -231,25 +174,24 @@ function computePositions(){
   DEPTS.forEach(d=>{
     const hx=cx+Rx*Math.cos(rad(d.angle)), hy=cy+Ry*Math.sin(rad(d.angle));
     pos["hub-"+d.id]={x:hx,y:hy};
-    const list=unitsOfDept(d.id);
-    const n=list.length, spread=n===1?0:Math.min(96,24+n*9);
-    list.forEach((u,i)=>{
+    const n=d.agents.length, spread=n===1?0:Math.min(92,22+n*9);
+    d.agents.forEach((a,i)=>{
       const off=n===1?0:lerp(-spread,spread,i/(n-1));
       const ang=rad(d.angle+off);
-      const tier=n>=4?(i%2?1.55:1):1;           // drukke hubs: 2 ringen
-      pos[u.uid]={x:hx+Rax*tier*Math.cos(ang), y:hy+Ray*tier*Math.sin(ang)};
+      const tier=n>=4?(i%2?1.55:1):1;           // dense hubs: stagger into 2 rings
+      pos[a.id]={x:hx+Rax*tier*Math.cos(ang), y:hy+Ray*tier*Math.sin(ang)};
     });
   });
   declutter(w,h);
 }
 
-// Duw overlappende labels uit elkaar en weg van hubs/core. Hubs+core staan vast.
+// Push overlapping agent labels apart and away from hubs/core. Hubs+core stay fixed.
 function declutter(w,h){
-  const ids=UNITS.map(u=>u.uid);
-  const MINX=112, MINY=42;
+  const ids=AGENTS.map(a=>a.id);
+  const MINX=106, MINY=40;
   const obst=[{x:pos.core.x,y:pos.core.y,rx:86,ry:72}]
     .concat(DEPTS.map(d=>({x:pos["hub-"+d.id].x,y:pos["hub-"+d.id].y,rx:74,ry:58})));
-  for(let it=0;it<160;it++){
+  for(let it=0;it<140;it++){
     let moved=false;
     for(let i=0;i<ids.length;i++){ const A=pos[ids[i]]; if(!A)continue;
       for(let j=i+1;j<ids.length;j++){ const B=pos[ids[j]]; if(!B)continue;
@@ -274,9 +216,13 @@ function declutter(w,h){
   }
 }
 
-/* === SVG (rings, edges, packets) ======================================= */
-let coreRings=[], edgeLayer, packetLayer;
-function buildSvgStatic(){
+const edges=[];
+DEPTS.forEach(d=>{ edges.push({from:"hub-"+d.id,to:"core",kind:"spine",color:d.color});
+  d.agents.forEach(a=>edges.push({from:a.id,to:"hub-"+d.id,kind:"limb",color:d.color})); });
+CROSS.forEach(([a,b])=>edges.push({from:a,to:b,kind:"cross",color:C.amber}));
+
+let edgeEls=[], coreRings=[];
+function buildSvg(){
   svg.innerHTML="";
   const defs=document.createElementNS(SVGNS,"defs");
   defs.innerHTML=`<filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
@@ -289,48 +235,38 @@ function buildSvgStatic(){
     if(i===0)cr.setAttribute("stroke-dasharray","3 9");
     if(!reduced)g.style.animation=`${i%2?"jc-spin-r":"jc-spin"} ${14+i*8}s linear infinite`;
     g.appendChild(cr); svg.appendChild(g); return {g,cr,s}; });
-  edgeLayer=document.createElementNS(SVGNS,"g"); svg.appendChild(edgeLayer);
+  edgeEls=edges.map(e=>{ const ln=document.createElementNS(SVGNS,"line");
+    ln.setAttribute("stroke",e.color);
+    ln.setAttribute("stroke-opacity",e.kind==="cross"?0.22:e.kind==="spine"?0.3:0.16);
+    ln.setAttribute("stroke-width",e.kind==="spine"?1.6:1);
+    if(e.kind==="cross"){ln.setAttribute("stroke-dasharray","4 6"); if(!reduced)ln.style.animation="jc-dash 6s linear infinite";}
+    svg.appendChild(ln); return {ln,e}; });
   packetLayer=document.createElementNS(SVGNS,"g"); svg.appendChild(packetLayer);
 }
-// Edges hangen af van in-/uitgeklapte clusters, dus elke layout opnieuw.
-function buildEdges(){
-  edgeLayer.innerHTML="";
-  const line=(a,b,col,op,wd,dash,anim)=>{ if(!a||!b)return; const ln=document.createElementNS(SVGNS,"line");
-    ln.setAttribute("x1",a.x);ln.setAttribute("y1",a.y);ln.setAttribute("x2",b.x);ln.setAttribute("y2",b.y);
-    ln.setAttribute("stroke",col);ln.setAttribute("stroke-opacity",op);ln.setAttribute("stroke-width",wd);
-    if(dash)ln.setAttribute("stroke-dasharray",dash); if(anim&&!reduced)ln.style.animation="jc-dash 6s linear infinite";
-    edgeLayer.appendChild(ln); };
-  DEPTS.forEach(d=>line(pos["hub-"+d.id],pos.core,d.color,0.30,1.6));                         // spines
-  UNITS.forEach(u=>line(pos[u.uid],pos["hub-"+u.dept],u.color,0.16,1, u.type==="cluster"?"5 5":null)); // limbs
-  const seen=new Set();
-  CROSS.forEach(([a,b])=>{ const fa=anchorOf(a), fb=anchorOf(b); if(fa===fb)return;
-    const key=fa<fb?fa+"|"+fb:fb+"|"+fa; if(seen.has(key))return; seen.add(key);
-    line(pos[fa],pos[fb],C.amber,0.22,1,"4 6",true); });                                       // cross handoffs
-}
+let packetLayer;
+
 function positionSvg(){
   const w=stage.clientWidth,h=stage.clientHeight; svg.setAttribute("width",w); svg.setAttribute("height",h);
   coreRings.forEach(({g,cr,s})=>{ const r=Math.min(w,h)*0.13*s;
     cr.setAttribute("cx",pos.core.x); cr.setAttribute("cy",pos.core.y); cr.setAttribute("r",r);
     g.style.transformOrigin=`${pos.core.x}px ${pos.core.y}px`; });
+  edgeEls.forEach(({ln,e})=>{ const a=pos[e.from],b=pos[e.to]; if(!a||!b)return;
+    ln.setAttribute("x1",a.x);ln.setAttribute("y1",a.y);ln.setAttribute("x2",b.x);ln.setAttribute("y2",b.y); });
 }
 
 /* === NODES ============================================================== */
 function buildNodes(){
   nodesEl.innerHTML="";
+  // core
   const core=document.createElement("div"); core.className="node core"; core.id="n-core";
   core.innerHTML=`<div class="orb">🛢</div><div style="margin-top:6px;font-size:11px;letter-spacing:2px;color:${C.cyan};font-weight:700">CRM CORE</div><div style="font-size:9.5px;color:${C.dim}">Supabase · EU-Frankfurt</div>`;
   nodesEl.appendChild(core);
   DEPTS.forEach(d=>{ const el=document.createElement("div"); el.className="node hub"; el.id="n-hub-"+d.id;
     el.innerHTML=`<div class="box" style="border:1.4px solid ${d.color};box-shadow:0 0 16px ${d.color}55;font-size:22px">${d.icon}</div><div class="nm" style="color:${d.color}">${d.name}</div>`;
     nodesEl.appendChild(el); });
-  UNITS.forEach(u=>{ const el=document.createElement("button"); el.className="node agent"+(u.type==="cluster"?" cluster":""); el.id="n-"+u.uid;
-    if(u.type==="cluster"){ const open=!!expanded[u.clusterId];
-      el.innerHTML=`<span class="sd"></span><span>${u.label}</span><span class="cnt">${u.members.length}</span><span class="caret">${open?"⌃":"⌄"}</span>`;
-      el.onclick=()=>{ expanded[u.clusterId]=!expanded[u.clusterId]; selected=null; render(); };
-    } else {
-      el.innerHTML=`<span class="sd"></span><span>${BY_ID[u.agentId].name}</span>`;
-      el.onclick=()=>{ selected=u.agentId; renderPanel(); };
-    }
+  AGENTS.forEach(a=>{ const el=document.createElement("button"); el.className="node agent"; el.id="n-"+a.id;
+    el.innerHTML=`<span class="sd"></span><span>${a.name}</span>`;
+    el.onclick=()=>{selected=a.id;renderPanel();};
     nodesEl.appendChild(el); });
 }
 function positionNodes(){
@@ -338,21 +274,20 @@ function positionNodes(){
   paintNodes();
 }
 function paintNodes(){
-  UNITS.forEach(u=>{ const el=$("n-"+u.uid); if(!el)return;
-    const st=u.type==="cluster"?clusterStatus(u.members):((rows[u.agentId]&&rows[u.agentId].status)||"idle");
-    const sc=STATUS[st].c, active=st==="running"||st==="error";
-    el.style.border=`1px solid ${active?sc:u.color+"55"}`;
+  AGENTS.forEach(a=>{ const el=$("n-"+a.id); if(!el)return;
+    const st=(rows[a.id]&&rows[a.id].status)||"idle"; const sc=STATUS[st].c; const active=st==="running";
+    el.style.border=`1px solid ${active?sc:a.color+"55"}`;
     el.style.boxShadow=active?`0 0 16px ${sc}aa`:"0 2px 8px rgba(0,0,0,.4)";
     const sd=el.querySelector(".sd"); sd.style.background=sc; sd.style.boxShadow=`0 0 7px ${sc}`;
-    sd.style.animation=(st==="running")?"jc-blink .9s infinite":"none"; });
+    sd.style.animation=active?"jc-blink .9s infinite":"none"; });
 }
 
 /* === PACKETS ============================================================ */
 function spawn(agentId,color){
   if(reduced)return; const hub="hub-"+HUB_OF[agentId];
-  packets.push({id:pid++,from:anchorOf(agentId),to:hub,t:0,speed:.85,color});
+  packets.push({id:pid++,from:agentId,to:hub,t:0,speed:.85,color});
   packets.push({id:pid++,from:hub,to:"core",t:-.45,speed:.7,color});
-  const cr=CROSS.find(c=>c[0]===agentId); if(cr){ const fa=anchorOf(cr[0]), fb=anchorOf(cr[1]); if(fa!==fb)packets.push({id:pid++,from:fa,to:fb,t:-.2,speed:.5,color:C.amber}); }
+  const cr=CROSS.find(c=>c[0]===agentId); if(cr)packets.push({id:pid++,from:cr[0],to:cr[1],t:-.2,speed:.5,color:C.amber});
 }
 let last=performance.now();
 function loop(now){ const dt=Math.min(.05,(now-last)/1000); last=now;
@@ -386,7 +321,7 @@ function renderPanel(){
     p.className="";
     p.innerHTML=`<div class="lbl" style="margin-bottom:10px">⚡ SYSTEM STATUS</div>
       <div class="statgrid">${Object.entries(STATUS).map(([k,v])=>`<div class="stat"><span class="c" style="background:${v.c};box-shadow:0 0 7px ${v.c}"></span>${v.l}<span class="n" style="color:${v.c}">${c[k]}</span></div>`).join("")}</div>
-      <p style="font-size:11.5px;color:${C.dim};margin-top:12px;line-height:1.5">Drukke afdelingen tonen als clusters. Klik een groep om uit te klappen, een agent voor detail. Beams tonen live handoffs naar de hubs en de CRM-core.</p>`;
+      <p style="font-size:11.5px;color:${C.dim};margin-top:12px;line-height:1.5">Selecteer een agent voor detail. Beams tonen live handoffs naar de hubs en de CRM-core.</p>`;
   }
 }
 function renderMetrics(){
@@ -406,7 +341,7 @@ function applyRow(r,animate){ rows[r.agent_id]=r; const a=BY_ID[r.agent_id]; if(
   if(animate&&(r.status==="running"||r.status==="error")){ pushEvent(a,r.status==="error"); if(r.status==="running")spawn(r.agent_id,a.color); }
 }
 async function start(){
-  if(SUPABASE_ANON.startsWith("PLAK")){ $("connTxt").textContent="· anon key ontbreekt";
+  if(SUPABASE_ANON.startsWith("PLAK")){ document.getElementById("connTxt").textContent="· anon key ontbreekt"; 
     nodesEl.insertAdjacentHTML("beforeend",`<div class="banner">⚠ Plak je Supabase anon key in het bestand (regel SUPABASE_ANON) en upload opnieuw.</div>`); return; }
   const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
   const setConn=(ok,txt)=>{ const d=$("connDot"); d.style.background=ok?C.green:C.red; d.style.boxShadow=`0 0 10px ${ok?C.green:C.red}`; $("connTxt").textContent="· "+txt; };
@@ -419,10 +354,9 @@ async function start(){
   if(hb&&hb[0])$("hb").innerHTML=`Heartbeat online · last ping <b style="color:${C.green}">${ago(hb[0].last_ping)}</b>`;
 }
 
-/* === RENDER / BOOT ===================================================== */
-function render(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); buildNodes(); positionNodes(); renderMetrics(); renderPanel(); }
-function layout(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); positionNodes(); }
-buildSvgStatic(); render();
+/* === BOOT =============================================================== */
+function layout(){ computePositions(); positionSvg(); positionNodes(); }
+buildSvg(); buildNodes(); layout(); renderPanel(); renderMetrics();
 new ResizeObserver(layout).observe(stage);
 setInterval(()=>{ $("clk").textContent=new Date().toLocaleTimeString("en-GB",{timeZone:"Europe/Madrid",hour12:false}); },1000);
 start();
