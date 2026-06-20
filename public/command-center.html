@@ -128,7 +128,8 @@ const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idl
 const DEPTS = [
   { id:"mgmt", name:"MANAGEMENT", color:C.gold, icon:"🧭",
     agents:[
-      {id:"ops-supervisor",name:"Ops Supervisor (Jack)",sched:"07:45 Mon-Fri"}],
+      {id:"ops-supervisor",name:"Ops Supervisor (Jack)",sched:"07:45 Mon-Fri"},
+      {id:"integrity-check",name:"Data Integrity",sched:"05:00 Daily"}],
     clusters:[]},
 
   { id:"ops", name:"OPERATIONS", color:C.cyan, icon:"🖥",
