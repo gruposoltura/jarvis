@@ -120,12 +120,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL  = "https://wuvpbwowdycsdlrqkaoq.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ";
 /* ======================================================================= */
-const C = { cyan:"#00d4ff", green:"#3ee08f", amber:"#ffb547", violet:"#b58cff", red:"#E31E24", advert:"#ff5fa2", grey:"#8aa0b5", dim:"#5e7c8e", text:"#cfe2ec" };
+const C = { cyan:"#00d4ff", green:"#3ee08f", amber:"#ffb547", violet:"#b58cff", red:"#E31E24", advert:"#ff5fa2", grey:"#8aa0b5", gold:"#ffd166", dim:"#5e7c8e", text:"#cfe2ec" };
 const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idle:{c:C.dim,l:"Idle"}, error:{c:C.red,l:"Error"} };
 
 /* Afdelingen + agents. clusters[] = inklapbare groepen (members = agent-ids).
    Een agent die in geen enkel cluster zit, blijft een losse node. */
 const DEPTS = [
+  { id:"mgmt", name:"MANAGEMENT", color:C.gold, icon:"🧭",
+    agents:[
+      {id:"ops-supervisor",name:"Ops Supervisor (Jack)",sched:"07:45 Mon-Fri"}],
+    clusters:[]},
+
   { id:"ops", name:"OPERATIONS", color:C.cyan, icon:"🖥",
     agents:[
       {id:"cont-sync",name:"Contacts Sync",sched:"hourly"},{id:"cont-recon",name:"Contacts Reconcile",sched:"03:30"},
