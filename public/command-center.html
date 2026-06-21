@@ -9,6 +9,7 @@
     --bg:#070b12; --panel:rgba(13,20,31,0.72); --line:rgba(0,212,255,0.16);
     --cyan:#00d4ff; --green:#3ee08f; --amber:#ffb547; --violet:#b58cff;
     --red:#E31E24; --text:#cfe2ec; --dim:#5e7c8e;
+    --panelSolid:#0e1421; --panel2:#121a29; --hair:#1c2636;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
@@ -24,14 +25,32 @@
   .dot{width:11px;height:11px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:jc-blink 2.4s infinite}
   .ttl{font-weight:700;letter-spacing:3px;font-size:16px}
   .byrick{font-weight:700;font-size:11px;letter-spacing:.5px;color:#ffe600;text-shadow:0 0 8px rgba(255,230,0,.45)}
-  .tag{font-weight:700;font-size:9px;letter-spacing:1.5px;color:#070b12;background:var(--cyan);padding:2px 6px;border-radius:5px}
   .sub{color:var(--dim);font-size:12px;letter-spacing:1px}
   .spacer{flex:1}
   .metric{text-align:right;min-width:56px}
   .metric .v{font-size:17px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
   .metric .l{font-size:9px;letter-spacing:1.5px;color:var(--dim)}
   .clock{display:flex;align-items:center;gap:6px;color:var(--cyan);font-weight:600;font-variant-numeric:tabular-nums}
-  .main{display:flex;flex:1;min-height:0}
+
+  /* ---- view toggle ---- */
+  .viewtoggle{display:inline-flex;background:rgba(0,0,0,.32);border:1px solid var(--line);
+    border-radius:11px;padding:3px;gap:2px}
+  .viewtoggle button{appearance:none;border:0;background:none;color:var(--dim);
+    font:700 11px system-ui;letter-spacing:1px;padding:7px 13px;border-radius:8px;cursor:pointer;
+    display:flex;align-items:center;gap:7px;transition:color .15s,background .15s}
+  .viewtoggle button .ic{font-size:13px}
+  .viewtoggle button.active{background:linear-gradient(180deg,rgba(0,212,255,.22),rgba(0,212,255,.07));
+    color:var(--cyan);box-shadow:inset 0 0 0 1px rgba(0,212,255,.42)}
+  .viewtoggle button:hover:not(.active){color:var(--text)}
+
+  #views{position:relative;flex:1;min-height:0}
+  #view-radial,#view-org{position:absolute;inset:0}
+  #view-org{overflow:auto;padding:22px 22px 30px;display:none}
+  #view-org::-webkit-scrollbar{height:10px;width:10px}
+  #view-org::-webkit-scrollbar-thumb{background:#1b2638;border-radius:8px}
+
+  /* ============================ RADIAL VIEW ============================ */
+  .main{display:flex;height:100%;min-height:0}
   #stage{position:relative;flex:1;overflow:hidden}
   #grid{position:absolute;inset:0;opacity:.5;
     background-image:radial-gradient(circle at 50% 50%,rgba(0,212,255,0.07),transparent 60%),
@@ -75,10 +94,85 @@
   .det .row{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--line);font-size:12.5px}
   .det .row .k{color:var(--dim)} .det .row .v{margin-left:auto;font-weight:600}
   .det .close{float:right;background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer}
-  .det .mem{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;border-top:1px solid var(--line)}
-  .det .mem .c{width:8px;height:8px;border-radius:50%}
   .hint{position:absolute;left:16px;bottom:14px;color:var(--dim);font-size:11px;letter-spacing:.3px;
     background:rgba(8,13,20,.7);border:1px solid var(--line);border-radius:8px;padding:7px 11px;max-width:300px;line-height:1.5}
+
+  /* ============================ ORG VIEW ============================ */
+  .org-board{display:flex;gap:18px;align-items:flex-start;min-width:min-content;padding-bottom:8px}
+  .org-lane{--a:var(--cyan);flex:0 0 222px;display:flex;flex-direction:column;gap:13px}
+  .lane-head{display:flex;align-items:center;gap:10px;padding:2px 2px 9px;
+    border-bottom:1px solid color-mix(in srgb,var(--a) 30%, transparent)}
+  .lane-ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:15px;
+    background:color-mix(in srgb,var(--a) 16%, var(--panelSolid));
+    border:1px solid color-mix(in srgb,var(--a) 40%, transparent);
+    box-shadow:0 0 16px color-mix(in srgb,var(--a) 22%, transparent)}
+  .lane-name{font-weight:700;font-size:12px;letter-spacing:1.4px;color:var(--a);line-height:1.1}
+  .lane-sub{font-size:9.5px;color:var(--dim);letter-spacing:.5px}
+  .lane-count{margin-left:auto;font-size:11px;color:var(--text);background:var(--panelSolid);
+    border:1px solid var(--hair);border-radius:6px;padding:3px 7px;font-variant-numeric:tabular-nums}
+
+  .mgr-card{position:relative;border:1px solid color-mix(in srgb,var(--a) 38%, var(--hair));border-radius:15px;
+    padding:16px 12px 13px;display:flex;flex-direction:column;align-items:center;text-align:center;
+    background:linear-gradient(180deg, color-mix(in srgb,var(--a) 12%, var(--panel2)), var(--panelSolid));
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--a) 9%, transparent)}
+  .mgr-eyebrow{position:absolute;top:-7px;left:12px;font-size:8.5px;letter-spacing:1.8px;text-transform:uppercase;
+    color:var(--a);background:var(--bg);padding:1px 7px;border-radius:5px;
+    border:1px solid color-mix(in srgb,var(--a) 35%, var(--hair))}
+  .mgr-name{font-weight:700;font-size:15px;margin-top:11px;display:flex;align-items:center;gap:7px}
+  .mgr-name .sd{width:8px;height:8px;border-radius:50%}
+  .mgr-role{font-size:10.5px;color:var(--dim);margin-top:1px}
+
+  .team{position:relative;display:flex;flex-direction:column;gap:9px;padding-left:14px;margin-top:2px}
+  .team::before{content:"";position:absolute;left:5px;top:-11px;bottom:16px;width:2px;
+    background:linear-gradient(180deg, color-mix(in srgb,var(--a) 55%, transparent), color-mix(in srgb,var(--a) 7%, transparent))}
+  .agent-card{position:relative;display:flex;align-items:center;gap:10px;cursor:pointer;
+    background:linear-gradient(180deg,var(--panel2),var(--panelSolid));
+    border:1px solid var(--hair);border-radius:11px;padding:8px 10px;
+    transition:transform .13s ease,border-color .13s ease,box-shadow .13s ease}
+  .agent-card:hover{transform:translateY(-2px);
+    border-color:color-mix(in srgb,var(--a) 45%, var(--hair));box-shadow:0 7px 20px rgba(0,0,0,.45)}
+  .agent-card::before{content:"";position:absolute;left:-9px;top:50%;width:9px;height:2px;
+    background:color-mix(in srgb,var(--a) 40%, transparent)}
+  .mini-av{position:relative;width:30px;height:30px;border-radius:50%;flex:0 0 30px;display:grid;place-items:center;
+    font:700 11px system-ui;color:#06131a;
+    background:radial-gradient(120% 120% at 30% 25%, color-mix(in srgb,var(--a) 92%, #fff), color-mix(in srgb,var(--a) 66%,#0b0f17) 72%)}
+  .mini-av .sd{position:absolute;left:-2px;top:-2px;width:9px;height:9px;border-radius:50%;border:2px solid var(--panelSolid)}
+  .ac-meta{min-width:0;flex:1}
+  .ac-name{font-weight:600;font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ac-sched{font-size:9.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .org-foot{margin-top:22px;font-size:11px;color:var(--dim);letter-spacing:.4px}
+  .org-foot b{color:var(--text);font-weight:600}
+
+  /* ---- 3D manager avatar ---- */
+  .stage3d{position:relative;width:76px;height:76px;perspective:600px}
+  .floor3d{position:absolute;left:50%;bottom:2px;width:54px;height:12px;transform:translateX(-50%);
+    background:radial-gradient(ellipse at center, rgba(0,0,0,.5), transparent 70%);filter:blur(2px)}
+  .av3d{position:absolute;inset:0;transform-style:preserve-3d;
+    transform:rotateX(var(--ry,0deg)) rotateY(var(--rx,0deg));
+    transition:transform .18s ease-out;animation:breathe 5.5s ease-in-out infinite}
+  @keyframes breathe{0%,100%{translate:0 0}50%{translate:0 -2px}}
+  .layer{position:absolute;inset:0}
+  .layer svg{width:100%;height:100%;display:block}
+  .l-back{transform:translateZ(0)}
+  .l-back svg{filter:drop-shadow(0 0 11px color-mix(in srgb,var(--a) 45%, transparent))}
+  .l-mid{transform:translateZ(14px)}
+  .gloss{position:absolute;inset:0;transform:translateZ(26px);border-radius:50%;
+    background:radial-gradient(34px 34px at calc(34% + var(--gx,0px)) calc(24% + var(--gy,0px)),
+      rgba(255,255,255,.32), rgba(255,255,255,.05) 45%, transparent 62%);
+    mix-blend-mode:screen;pointer-events:none}
+  .pupils{transition:transform .14s ease-out}
+  .lids{transform:scaleY(0);transform-box:fill-box;transform-origin:top;transition:transform .08s ease}
+  .blink .lids{transform:scaleY(1)}
+
+  @media (max-width:760px){
+    .org-board{flex-direction:column}
+    .org-lane{flex-basis:auto;width:100%}
+    aside{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .av3d{animation:none;transform:none!important}.pupils,.lids{transition:none}
+  }
 </style>
 </head>
 <body>
@@ -91,26 +185,42 @@
       <span class="sub">COMMAND CENTER</span>
     </div>
     <span class="sub" id="connTxt">· verbinden…</span>
+    <div class="viewtoggle" id="viewToggle">
+      <button data-view="radial" class="active"><span class="ic">🌐</span>CONSTELLATION</button>
+      <button data-view="org"><span class="ic">🏢</span>ORGANIGRAM</button>
+    </div>
     <div class="spacer"></div>
-    <div class="metric"><div class="v" id="mNodes">0</div><div class="l">NODES ZICHTBAAR</div></div>
+    <div class="metric"><div class="v" id="mNodes">0</div><div class="l" id="mNodesL">NODES ZICHTBAAR</div></div>
     <div class="metric"><div class="v" id="mAgents">0</div><div class="l">AGENTS TOT.</div></div>
     <div class="metric"><div class="v" id="mOnline" style="color:var(--green)">0</div><div class="l">ONLINE</div></div>
     <div class="metric"><div class="v" id="mErr" style="color:var(--dim)">0</div><div class="l">ERRORS</div></div>
     <div class="clock"><span id="clk">--:--:--</span><span class="sub">CET</span></div>
   </header>
-  <div class="main">
-    <div id="stage">
-      <div id="grid"></div>
-      <svg id="svg"></svg>
-      <div id="nodes"></div>
-      <div class="hint">Klik op een <b>groep</b> (badge = aantal agents) om uit- of in te klappen. Klik op een losse agent voor detail.</div>
+
+  <div id="views">
+    <!-- ============ RADIAL ============ -->
+    <div id="view-radial">
+      <div class="main">
+        <div id="stage">
+          <div id="grid"></div>
+          <svg id="svg"></svg>
+          <div id="nodes"></div>
+          <div class="hint">Klik op een <b>groep</b> (badge = aantal agents) om uit- of in te klappen. Klik op een losse agent voor detail.</div>
+        </div>
+        <aside>
+          <div id="panel"></div>
+          <div class="lbl">⚡ LIVE ACTIVITY</div>
+          <div id="feed"><span class="sub">Awaiting telemetry…</span></div>
+          <div class="foot">📡 <span id="hb">Heartbeat —</span></div>
+        </aside>
+      </div>
     </div>
-    <aside>
-      <div id="panel"></div>
-      <div class="lbl">⚡ LIVE ACTIVITY</div>
-      <div id="feed"><span class="sub">Awaiting telemetry…</span></div>
-      <div class="foot">📡 <span id="hb">Heartbeat —</span></div>
-    </aside>
+
+    <!-- ============ ORG ============ -->
+    <div id="view-org">
+      <div class="org-board" id="orgBoard"></div>
+      <div class="org-foot">Organigram · live · <b>gruposoltura-crm</b> · managers tonen de samengevatte afdelingsstatus · zelfde data als constellation</div>
+    </div>
   </div>
 </div>
 
@@ -123,15 +233,13 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const C = { cyan:"#00d4ff", green:"#3ee08f", amber:"#ffb547", violet:"#b58cff", red:"#E31E24", advert:"#ff5fa2", grey:"#8aa0b5", gold:"#ffd166", dim:"#5e7c8e", text:"#cfe2ec" };
 const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idle:{c:C.dim,l:"Idle"}, error:{c:C.red,l:"Error"} };
 
-/* Afdelingen + agents. clusters[] = inklapbare groepen (members = agent-ids).
-   Een agent die in geen enkel cluster zit, blijft een losse node. */
+/* Afdelingen + agents (identiek aan v1 — gedeeld door beide views). */
 const DEPTS = [
   { id:"mgmt", name:"MANAGEMENT", color:C.gold, icon:"🧭",
     agents:[
       {id:"ops-supervisor",name:"Ops Supervisor (Jack)",sched:"07:45 Mon-Fri"},
       {id:"integrity-check",name:"Data Integrity",sched:"05:00 Daily"}],
     clusters:[]},
-
   { id:"ops", name:"OPERATIONS", color:C.cyan, icon:"🖥",
     agents:[
       {id:"cont-sync",name:"Contacts Sync",sched:"hourly"},{id:"cont-recon",name:"Contacts Reconcile",sched:"03:30"},
@@ -140,26 +248,22 @@ const DEPTS = [
       {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}],
     clusters:[
       {id:"data-sync",label:"Data Sync",members:["cont-sync","prop-sync","req-sync","cont-recon","prop-recon"]}]},
-
   { id:"sales", name:"SALES", color:C.green, icon:"👥",
     agents:[
       {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"appointment",name:"Appointment Agent",sched:"email"},
       {id:"idealista",name:"Idealista Leads",sched:"email"},{id:"idealista-feed",name:"Idealista Feed",sched:"webhook"}],
     clusters:[
       {id:"idealista-grp",label:"Idealista",members:["idealista","idealista-feed"]}]},
-
   { id:"admin", name:"ADMIN & FIN.", color:C.amber, icon:"⚖",
     agents:[
       {id:"contract",name:"Contract Generator",sched:"sheet"},{id:"modelo",name:"Modelo Reminder",sched:"07:00"},
       {id:"invoice",name:"Weekly VAT Report",sched:"weekly"}],
     clusters:[]},
-
   { id:"intel", name:"OFFICE", color:C.violet, icon:"🧠",
     agents:[
       {id:"gmail",name:"Gmail Triage",sched:"30 min"},{id:"briefing",name:"Morning Briefing",sched:"08:00"},
       {id:"ga4",name:"GA4 Stats",sched:"07:50"}],
     clusters:[]},
-
   { id:"mktg", name:"MARKETING", color:C.red, icon:"📣",
     agents:[
       {id:"top10",name:"Weekly Top10",sched:"weekly"},{id:"price-red",name:"Price Reduced",sched:"weekly"},
@@ -172,7 +276,6 @@ const DEPTS = [
       {id:"mailings",label:"Mailings",members:["top10","price-red","welcome","toolate","news-mailing","new-listing"]},
       {id:"reviews",label:"Reviews",members:["review","review_viewing"]},
       {id:"research-grp",label:"Research",members:["research","improve"]}]},
-
   { id:"advertising", name:"ADVERTISING", color:C.advert, icon:"🎯",
     agents:[
       {id:"social-proposer",name:"Social Proposer",sched:"Sun+Mon 08:00"},
@@ -180,7 +283,6 @@ const DEPTS = [
       {id:"social-lifestyle",name:"Lifestyle Proposer",sched:"Thu 08:00"}],
     clusters:[
       {id:"social",label:"Social Agent",members:["social-proposer","social-publisher","social-lifestyle"]}]},
-
   { id:"infra", name:"INFRA", color:C.grey, icon:"⚙",
     agents:[
       {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"3 days"},
@@ -192,18 +294,18 @@ const DEPTS = [
 ];
 DEPTS.forEach((d,i)=>{ d.angle = -90 + i*360/DEPTS.length; });
 
-/* afgeleide maps */
+/* afgeleide maps (gedeeld) */
 const AGENTS = DEPTS.flatMap(d=>d.agents.map(a=>({...a,dept:d.id,deptName:d.name,color:d.color})));
 const BY_ID  = Object.fromEntries(AGENTS.map(a=>[a.id,a]));
 const HUB_OF = Object.fromEntries(DEPTS.flatMap(d=>d.agents.map(a=>[a.id,d.id])));
-const CLUSTER_OF = {}; // agentId -> clusterId
+const CLUSTER_OF = {};
 DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>cl.members.forEach(m=>CLUSTER_OF[m]=cl.id)));
 const CLUSTER_BY_ID = {}; DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>CLUSTER_BY_ID[cl.id]={...cl,dept:d.id,color:d.color,deptName:d.name}));
 
-/* state */
-const rows = {};          // agentId -> {status, last_run, run_count, last_error}
-const expanded = {};      // clusterId -> bool
-let pos = {}, selected = null, packets = [], pid = 0;
+/* gedeelde state */
+const rows = {};
+const expanded = {};
+let pos = {}, selected = null, packets = [];
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const SVGNS = "http://www.w3.org/2000/svg";
 const $ = id => document.getElementById(id);
@@ -211,12 +313,14 @@ const stage=$("stage"), svg=$("svg"), nodesEl=$("nodes"), feedEl=$("feed");
 const rad=d=>d*Math.PI/180, lerp=(a,b,t)=>a+(b-a)*t;
 const ago=ts=>{ if(!ts)return"—"; const s=Math.floor((Date.now()-new Date(ts))/1000);
   if(s<60)return"just now"; if(s<3600)return Math.floor(s/60)+"m ago"; if(s<86400)return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; };
+const statusOf=id=>(rows[id]&&rows[id].status)||"idle";
 
-/* live data komt uit Supabase (zie start()) */
+let currentView="radial";
 
-/* ---- zichtbare units per layout (cluster-chip of losse agent) ---- */
+/* ---- zichtbare units per layout (radial) ---- */
+let UNITS=[];
 function visibleUnits(){
-  const units=[]; // {type, uid, dept, color, label, members?, agentId?}
+  const units=[];
   DEPTS.forEach(d=>{
     (d.clusters||[]).forEach(cl=>{
       units.push({type:"cluster", uid:"cl-"+cl.id, clusterId:cl.id, dept:d.id, color:d.color, deptName:d.name, label:cl.label, members:cl.members});
@@ -227,26 +331,17 @@ function visibleUnits(){
   return units;
 }
 function unitsOfDept(units,depId){ return units.filter(u=>u.dept===depId); }
-
-/* anchor: waar zit een agent visueel? (eigen node of zijn collapsed-cluster-chip) */
-function anchorOf(agentId){
-  const cl=CLUSTER_OF[agentId];
-  if(cl && !expanded[cl]) return "cl-"+cl;
-  return agentId;
-}
-
-/* ---- status-aggregatie voor cluster ---- */
+function anchorOf(agentId){ const cl=CLUSTER_OF[agentId]; if(cl && !expanded[cl]) return "cl-"+cl; return agentId; }
 function clusterStatus(members){
   let s="idle";
-  for(const m of members){ const st=(rows[m]&&rows[m].status)||"idle";
-    if(st==="error")return "error";
-    if(st==="running")s="running";
+  for(const m of members){ const st=statusOf(m);
+    if(st==="error")return "error"; if(st==="running")s="running";
     else if(st==="ok"&&s!=="running")s="ok"; }
   return s;
 }
+function deptStatus(depId){ return clusterStatus(DEPTS.find(d=>d.id===depId).agents.map(a=>a.id)); }
 
-/* === LAYOUT ============================================================ */
-let UNITS=[];
+/* === RADIAL: LAYOUT ==================================================== */
 function computePositions(){
   const w=stage.clientWidth,h=stage.clientHeight; pos={}; if(!w||!h)return;
   const cx=w/2, cy=h/2;
@@ -268,8 +363,7 @@ function computePositions(){
   declutter(w,h);
 }
 function declutter(w,h){
-  const ids=UNITS.map(u=>u.uid);
-  const MINX=112, MINY=42;
+  const ids=UNITS.map(u=>u.uid); const MINX=112, MINY=42;
   const obst=[{x:pos.core.x,y:pos.core.y,rx:88,ry:74}]
     .concat(DEPTS.map(d=>({x:pos["hub-"+d.id].x,y:pos["hub-"+d.id].y,rx:76,ry:60})));
   for(let it=0;it<160;it++){ let moved=false;
@@ -286,8 +380,6 @@ function declutter(w,h){
     if(!moved)break;
   }
 }
-
-/* === SVG (rings + edges) =============================================== */
 let coreRings=[], packetLayer, edgeLayer;
 function buildSvgStatic(){
   svg.innerHTML="";
@@ -311,8 +403,8 @@ function buildEdges(){
     ln.setAttribute("x1",a.x);ln.setAttribute("y1",a.y);ln.setAttribute("x2",b.x);ln.setAttribute("y2",b.y);
     ln.setAttribute("stroke",col);ln.setAttribute("stroke-opacity",op);ln.setAttribute("stroke-width",wd);
     if(dash)ln.setAttribute("stroke-dasharray",dash); edgeLayer.appendChild(ln); };
-  DEPTS.forEach(d=>{ line(pos["hub-"+d.id],pos.core,d.color,0.30,1.6); });          // spines
-  UNITS.forEach(u=>{ line(pos[u.uid],pos["hub-"+u.dept],u.color,0.16,1, u.type==="cluster"?"5 5":null); }); // limbs
+  DEPTS.forEach(d=>{ line(pos["hub-"+d.id],pos.core,d.color,0.30,1.6); });
+  UNITS.forEach(u=>{ line(pos[u.uid],pos["hub-"+u.dept],u.color,0.16,1, u.type==="cluster"?"5 5":null); });
 }
 function positionSvg(){
   const w=stage.clientWidth,h=stage.clientHeight; svg.setAttribute("width",w);svg.setAttribute("height",h);
@@ -320,8 +412,6 @@ function positionSvg(){
     cr.setAttribute("cx",pos.core.x);cr.setAttribute("cy",pos.core.y);cr.setAttribute("r",r);
     g.style.transformOrigin=`${pos.core.x}px ${pos.core.y}px`; });
 }
-
-/* === NODES ============================================================= */
 function buildNodes(){
   nodesEl.innerHTML="";
   const core=document.createElement("div"); core.className="node core";
@@ -335,7 +425,7 @@ function buildNodes(){
     if(u.type==="cluster"){
       const open=!!expanded[u.clusterId];
       el.innerHTML=`<span class="sd"></span><span>${u.label}</span><span class="cnt">${u.members.length}</span><span class="caret">${open?"⌃":"⌄"}</span>`;
-      el.onclick=()=>{ expanded[u.clusterId]=!expanded[u.clusterId]; selected=null; render(); };
+      el.onclick=()=>{ expanded[u.clusterId]=!expanded[u.clusterId]; selected=null; renderRadial(); };
     }else{
       el.innerHTML=`<span class="sd"></span><span>${BY_ID[u.agentId].name}</span>`;
       el.onclick=()=>{ selected=u.agentId; renderPanel(); };
@@ -349,9 +439,7 @@ function positionNodes(){
 }
 function paintNodes(){
   UNITS.forEach(u=>{ const el=$("n-"+u.uid); if(!el)return;
-    let st;
-    if(u.type==="cluster") st=clusterStatus(u.members);
-    else st=(rows[u.agentId]&&rows[u.agentId].status)||"idle";
+    let st = u.type==="cluster" ? clusterStatus(u.members) : statusOf(u.agentId);
     const sc=STATUS[st].c, active=st==="running"||st==="error";
     el.style.border=`1px solid ${active?sc:u.color+"55"}`;
     el.style.boxShadow=active?`0 0 16px ${sc}aa`:"0 2px 8px rgba(0,0,0,.4)";
@@ -359,9 +447,8 @@ function paintNodes(){
     sd.style.animation=(st==="running")?"jc-blink .9s infinite":"none";
   });
 }
-
-/* === PACKETS =========================================================== */
-function spawn(agentId,color){ if(reduced)return;
+/* packets */
+function spawn(agentId,color){ if(reduced||currentView!=="radial")return;
   const anc=anchorOf(agentId), hub="hub-"+HUB_OF[agentId];
   packets.push({from:anc,to:hub,t:0,speed:.85,color});
   packets.push({from:hub,to:"core",t:-.45,speed:.7,color});
@@ -370,7 +457,7 @@ let last=performance.now();
 function loop(now){ const dt=Math.min(.05,(now-last)/1000); last=now;
   packets=packets.filter(p=>{ p.t+=dt*p.speed; return p.t<1.04; });
   if(packetLayer){ packetLayer.innerHTML="";
-    packets.forEach(p=>{ if(p.t<0)return; const a=pos[p.from],b=pos[p.to]; if(!a||!b)return;
+    if(currentView==="radial") packets.forEach(p=>{ if(p.t<0)return; const a=pos[p.from],b=pos[p.to]; if(!a||!b)return;
       const x=lerp(a.x,b.x,p.t),y=lerp(a.y,b.y,p.t);
       const g=document.createElementNS(SVGNS,"g"); g.setAttribute("filter","url(#glow)");
       const c1=document.createElementNS(SVGNS,"circle"); c1.setAttribute("cx",x);c1.setAttribute("cy",y);c1.setAttribute("r",3.4);c1.setAttribute("fill",p.color);
@@ -379,7 +466,6 @@ function loop(now){ const dt=Math.min(.05,(now-last)/1000); last=now;
 }
 if(!reduced)requestAnimationFrame(loop);
 
-/* === PANEL / FEED / METRICS =========================================== */
 function renderPanel(){
   const p=$("panel");
   if(selected){ const a=BY_ID[selected],r=rows[selected]||{},st=STATUS[r.status||"idle"];
@@ -394,48 +480,245 @@ function renderPanel(){
       ${r.last_error?`<div class="row"><span class="k">Last error</span><span class="v" style="color:${C.red}">${r.last_error}</span></div>`:""}`;
     p.querySelector(".close").onclick=()=>{selected=null;renderPanel();};
   } else {
-    const c={ok:0,running:0,idle:0,error:0}; AGENTS.forEach(a=>c[(rows[a.id]&&rows[a.id].status)||"idle"]++);
+    const c={ok:0,running:0,idle:0,error:0}; AGENTS.forEach(a=>c[statusOf(a.id)]++);
     p.className="";
     p.innerHTML=`<div class="lbl" style="margin-bottom:10px">⚡ SYSTEM STATUS</div>
       <div class="statgrid">${Object.entries(STATUS).map(([k,v])=>`<div class="stat"><span class="c" style="background:${v.c};box-shadow:0 0 7px ${v.c}"></span>${v.l}<span class="n" style="color:${v.c}">${c[k]}</span></div>`).join("")}</div>
       <p style="font-size:11.5px;color:${C.dim};margin-top:12px;line-height:1.5">Gegroepeerde weergave: drukke afdelingen tonen als clusters. Klik een groep om uit te klappen, een agent voor detail.</p>`;
   }
 }
-function renderMetrics(){
-  const c={ok:0,running:0,idle:0,error:0}; AGENTS.forEach(a=>c[(rows[a.id]&&rows[a.id].status)||"idle"]++);
-  $("mNodes").textContent=UNITS.length;
-  $("mAgents").textContent=AGENTS.length;
-  $("mOnline").textContent=c.ok+c.running;
-  $("mErr").textContent=c.error; $("mErr").style.color=c.error?C.red:C.dim;
-}
 let events=[];
 function pushEvent(a,err){ events.unshift({t:new Date(),agent:a.name,dept:a.deptName,color:err?C.red:a.color,err}); events=events.slice(0,14);
   feedEl.innerHTML=events.map(e=>`<div class="ev"><span class="t">${e.t.toLocaleTimeString("en-GB",{hour12:false})}</span><span class="c" style="background:${e.color}"></span><span><b style="color:${e.color}">${e.agent}</b><span style="color:${C.dim}"> · ${e.err?"error":e.dept.toLowerCase()}</span></span></div>`).join("");
 }
 
-/* === RENDER + BOOT ===================================================== */
-function render(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); buildNodes(); positionNodes(); renderMetrics(); renderPanel(); }
-function layout(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); positionNodes(); }
-buildSvgStatic(); render();
-new ResizeObserver(layout).observe(stage);
+/* === SHARED METRICS ==================================================== */
+function renderMetrics(){
+  const c={ok:0,running:0,idle:0,error:0}; AGENTS.forEach(a=>c[statusOf(a.id)]++);
+  if(currentView==="radial"){ $("mNodes").textContent=UNITS.length; $("mNodesL").textContent="NODES ZICHTBAAR"; }
+  else { $("mNodes").textContent=AGENTS.length; $("mNodesL").textContent="AGENTS ZICHTBAAR"; }
+  $("mAgents").textContent=AGENTS.length;
+  $("mOnline").textContent=c.ok+c.running;
+  $("mErr").textContent=c.error; $("mErr").style.color=c.error?C.red:C.dim;
+}
+
+function renderRadial(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); buildNodes(); positionNodes(); renderMetrics(); renderPanel(); }
+function layoutRadial(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); positionNodes(); }
+
+/* ====================================================================== */
+/* === ORG VIEW (organigram) ============================================ */
+/* ====================================================================== */
+function mix(a,b,t){
+  const pa=[1,3,5].map(i=>parseInt(a.slice(i,i+2),16));
+  const pb=[1,3,5].map(i=>parseInt(b.slice(i,i+2),16));
+  return "#"+pa.map((v,i)=>Math.round(v+(pb[i]-v)*t).toString(16).padStart(2,"0")).join("");
+}
+function initials(name){
+  const clean=name.replace(/\(.*?\)/g,"").trim();
+  const p=clean.split(/\s+/);
+  return ((p[0][0]||"")+(p[1]?p[1][0]:(p[0][1]||""))).toUpperCase();
+}
+
+/* persona's per afdeling (figureheads — vrij te hernoemen) */
+const ORG_MGR = {
+  mgmt:{persona:"Jack", role:"Ops Supervisor",   skin:"#e8b48c", hair:"#3a2c25", style:"short",    acc:"headset",       expr:"smile"},
+  ops:{persona:"Sven",  role:"Operations Lead",  skin:"#f2c9a0", hair:"#6b4a2f", style:"buzz",     acc:"round-glasses", expr:"calm"},
+  sales:{persona:"Mara",role:"Sales Lead",       skin:"#f6d3b3", hair:"#4a3326", style:"wavy",     acc:"headset",       expr:"grin"},
+  admin:{persona:"Fred",role:"Finance Lead",     skin:"#caa07a", hair:"#3a3f4a", style:"short",    acc:"glasses",       expr:"calm"},
+  intel:{persona:"Gwen",role:"Office Lead",       skin:"#f2c9a0", hair:"#caa84a", style:"ponytail", acc:"none",          expr:"grin", blush:true},
+  mktg:{persona:"Mia",  role:"Marketing Lead",   skin:"#e8b48c", hair:"#b5553f", style:"bob",      acc:"none",          expr:"grin", blush:true},
+  advertising:{persona:"Sol",role:"Advertising Lead",skin:"#a9744f",hair:"#23242a",style:"curly",  acc:"sunglasses",    expr:"smile"},
+  infra:{persona:"Ada", role:"Infra Lead",       skin:"#8a5a3b", hair:"#1f2128", style:"buzz",     acc:"cap",           expr:"calm"},
+};
+
+/* ---- SVG face builder ---- */
+function hairPath(style,hair){
+  const hi=mix(hair,'#ffffff',.22), sh=mix(hair,'#000000',.25), H=`fill="${hair}"`;
+  switch(style){
+    case "buzz": return `<path d="M34,40 Q34,26 50,26 Q66,26 66,40 Q58,33 50,33 Q42,33 34,40Z" ${H}/><path d="M37,31 Q46,26 56,28" stroke="${hi}" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+    case "short": return `<path d="M32.5,42 Q31,24 50,23 Q69,24 67.5,42 Q63,31 50,30 Q37,31 32.5,42Z" ${H}/><path d="M36,30 Q46,24 58,27" stroke="${hi}" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M33,41 Q33,30 40,26" stroke="${sh}" stroke-width="1.4" fill="none" stroke-linecap="round"/>`;
+    case "wavy": return `<path d="M31,44 Q30,23 50,23 Q70,23 69,44 Q66,38 64,46 Q61,40 58,48 L58,30 Q50,27 42,30 L42,48 Q39,40 36,46 Q34,38 31,44Z" ${H}/><path d="M40,28 Q50,25 60,29" stroke="${hi}" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+    case "bob": return `<path d="M31,56 Q30,24 50,23 Q70,24 69,56 Q66,52 64,40 L64,33 Q50,28 36,33 L36,40 Q34,52 31,56Z" ${H}/><path d="M38,30 Q50,26 62,30" stroke="${hi}" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+    case "ponytail": return `<ellipse cx="70" cy="34" rx="6.5" ry="11" ${H} transform="rotate(18 70 34)"/><ellipse cx="70" cy="31" rx="2.6" ry="5" fill="${hi}" transform="rotate(18 70 31)"/><path d="M33,40 Q32,24 50,24 Q68,24 67,40 Q60,30 50,30 Q40,30 33,40Z" ${H}/><path d="M37,29 Q48,25 60,28" stroke="${hi}" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+    case "curly": return `<g ${H}><circle cx="38" cy="30" r="6"/><circle cx="46" cy="26" r="6.5"/><circle cx="54" cy="26" r="6.5"/><circle cx="62" cy="30" r="6"/><circle cx="34" cy="38" r="5"/><circle cx="66" cy="38" r="5"/></g><g fill="${hi}"><circle cx="45" cy="25" r="1.7"/><circle cx="55" cy="25" r="1.7"/></g>`;
+    default: return "";
+  }
+}
+function accessory(acc){
+  switch(acc){
+    case "glasses": return `<g stroke="#2a2f3a" stroke-width="1.6" fill="rgba(170,205,255,.14)"><rect x="38" y="41" width="9" height="7" rx="2.5"/><rect x="53" y="41" width="9" height="7" rx="2.5"/><line x1="47" y1="44" x2="53" y2="44"/></g><line x1="40" y1="42.4" x2="44" y2="42.4" stroke="rgba(255,255,255,.4)" stroke-width="1" stroke-linecap="round"/>`;
+    case "round-glasses": return `<g stroke="#2a2f3a" stroke-width="1.6" fill="rgba(170,205,255,.14)"><circle cx="43" cy="44.5" r="4.6"/><circle cx="57" cy="44.5" r="4.6"/><line x1="47.6" y1="44.5" x2="52.4" y2="44.5"/></g><path d="M40,42 Q42,41 44,42" stroke="rgba(255,255,255,.4)" stroke-width="1" fill="none" stroke-linecap="round"/>`;
+    case "sunglasses": return `<g fill="#15171d"><rect x="37.5" y="40.5" width="10" height="8" rx="3.4"/><rect x="52.5" y="40.5" width="10" height="8" rx="3.4"/><rect x="46.8" y="42.6" width="6.4" height="1.8" rx="1"/></g><rect x="39.6" y="42" width="3.6" height="2" rx="1" fill="rgba(255,255,255,.3)"/><rect x="54.6" y="42" width="3.6" height="2" rx="1" fill="rgba(255,255,255,.18)"/>`;
+    case "headset": return `<path d="M33,46 Q31,28 50,28 Q69,28 67,46" fill="none" stroke="#2b313d" stroke-width="2.6" stroke-linecap="round"/><rect x="29.2" y="43.5" width="6.4" height="9.5" rx="2.6" fill="#2b313d"/><rect x="64.4" y="43.5" width="6.4" height="9.5" rx="2.6" fill="#2b313d"/><path d="M32,53 Q40,61 46,55" fill="none" stroke="#2b313d" stroke-width="1.8" stroke-linecap="round"/><circle cx="46.5" cy="55" r="1.9" fill="#2b313d"/>`;
+    case "cap": return `<path d="M30,38 Q31,23 50,23 Q70,24 69,38 Q50,33 30,38Z" fill="#2c3340"/><path d="M30,38 Q22,39 21,43 Q31,41 41,40 Z" fill="#222833"/><circle cx="50" cy="27" r="1.8" fill="#3a414f"/>`;
+    default: return "";
+  }
+}
+function brows(expr,hair){
+  const c=mix(hair,'#000000',.05);
+  if(expr==="grin") return `<path d="M40,39 Q43,37.5 46,39" stroke="${c}" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M54,39 Q57,37.5 60,39" stroke="${c}" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+  return `<path d="M40,39.5 L46,39.2" stroke="${c}" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M54,39.2 L60,39.5" stroke="${c}" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+}
+function mouth(expr){
+  if(expr==="grin") return `<path d="M43,51 Q50,58.5 57,51 Q50,54 43,51Z" fill="#7a3b34"/><path d="M44.5,51.4 Q50,53 55.5,51.4" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+  return `<path d="M44.5,51.5 Q50,56.5 55.5,51.5" stroke="#7a3b34" stroke-width="1.7" fill="none" stroke-linecap="round"/>`;
+}
+function backLayer(accent,i){
+  const bgL=mix(accent,"#ffffff",.34), bgD=mix(accent,"#0b0f17",.58);
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="disc${i}" cx="34%" cy="24%" r="88%"><stop offset="0" stop-color="${bgL}"/><stop offset=".6" stop-color="${accent}"/><stop offset="1" stop-color="${bgD}"/></radialGradient></defs><circle cx="50" cy="50" r="49" fill="url(#disc${i})"/><path d="M14,32 Q50,8 86,32 Q50,20 14,32Z" fill="rgba(255,255,255,.22)"/><circle cx="50" cy="50" r="48" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="2"/><circle cx="50" cy="50" r="48.4" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1"/></svg>`;
+}
+function midLayer(o,accent,i){
+  const shirt=mix(accent,"#0b0f17",.42), shirtHi=mix(shirt,"#ffffff",.12);
+  const skinHi=mix(o.skin,"#ffffff",.30), skinSh=mix(o.skin,"#000000",.20), skinDk=mix(o.skin,"#000000",.10);
+  const blush=o.blush?`<ellipse cx="38.5" cy="49" rx="3" ry="1.8" fill="rgba(255,120,120,.4)"/><ellipse cx="61.5" cy="49" rx="3" ry="1.8" fill="rgba(255,120,120,.4)"/>`:"";
+  const lidColor=mix(o.skin,"#000000",.06);
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="head${i}" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="${skinHi}"/><stop offset=".55" stop-color="${o.skin}"/><stop offset="1" stop-color="${skinSh}"/></radialGradient><clipPath id="clip${i}"><circle cx="50" cy="50" r="48"/></clipPath></defs>
+    <g clip-path="url(#clip${i})">
+      <path d="M14,100 Q14,72 37,68 L63,68 Q86,72 86,100 Z" fill="${shirt}"/>
+      <path d="M40,67 Q50,74 60,67 L60,61 L40,61 Z" fill="${shirtHi}"/>
+      <rect x="44.5" y="55" width="11" height="14" rx="5" fill="${skinDk}"/>
+      <circle cx="34" cy="46" r="3.2" fill="${o.skin}"/><circle cx="66" cy="46" r="3.2" fill="${o.skin}"/>
+      <ellipse cx="50" cy="44" rx="16.5" ry="18" fill="url(#head${i})"/>
+      <path d="M58,40 Q63,48 57,55" stroke="rgba(0,0,0,.07)" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M37,32 Q44,26 56,28" stroke="rgba(255,255,255,.45)" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+      <path d="M50,44.5 Q51.8,48 49.2,49.4" stroke="${skinSh}" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+      ${hairPath(o.style,o.hair)}
+      ${brows(o.expr,o.hair)}
+      <ellipse cx="43" cy="44.2" rx="3.2" ry="3.6" fill="#f3f6fb"/><ellipse cx="57" cy="44.2" rx="3.2" ry="3.6" fill="#f3f6fb"/>
+      <g class="pupils"><circle cx="43" cy="44.6" r="2" fill="#2b2a33"/><circle cx="57" cy="44.6" r="2" fill="#2b2a33"/><circle cx="43.8" cy="43.8" r=".7" fill="#fff"/><circle cx="57.8" cy="43.8" r=".7" fill="#fff"/></g>
+      <g class="lids" fill="${lidColor}"><path d="M39.6,40.4 h6.8 v4 q-3.4,2.4 -6.8,0 Z"/><path d="M53.6,40.4 h6.8 v4 q-3.4,2.4 -6.8,0 Z"/></g>
+      ${blush}${mouth(o.expr)}${accessory(o.acc)}
+    </g></svg>`;
+}
+
+const orgRefs=[];  // {av,pupils,gloss,stage,hovered,mgrDot,deptId}
+const orgAgentDots={}; // agentId -> dot element
+
+function buildOrgOnce(){
+  const board=$("orgBoard"); board.innerHTML="";
+  DEPTS.forEach((d,i)=>{
+    const mgr=ORG_MGR[d.id];
+    const lane=document.createElement("section"); lane.className="org-lane"; lane.style.setProperty("--a",d.color);
+    const agentCards=d.agents.map(a=>`
+      <div class="agent-card" data-agent="${a.id}">
+        <div class="mini-av">${initials(a.name)}<span class="sd"></span></div>
+        <div class="ac-meta"><div class="ac-name">${a.name}</div><div class="ac-sched">${a.sched}</div></div>
+      </div>`).join("");
+    lane.innerHTML=`
+      <div class="lane-head">
+        <div class="lane-ic">${d.icon}</div>
+        <div><div class="lane-name">${d.name}</div><div class="lane-sub">${d.agents.length} agents</div></div>
+        <span class="lane-count">${d.agents.length}</span>
+      </div>
+      <div class="mgr-card">
+        <span class="mgr-eyebrow">Manager</span>
+        <div class="stage3d">
+          <div class="floor3d"></div>
+          <div class="av3d">
+            <div class="layer l-back">${backLayer(d.color,i)}</div>
+            <div class="layer l-mid">${midLayer(mgr,d.color,i)}</div>
+            <div class="gloss"></div>
+          </div>
+        </div>
+        <div class="mgr-name"><span class="sd"></span>${mgr.persona}</div>
+        <div class="mgr-role">${mgr.role}</div>
+      </div>
+      <div class="team">${agentCards}</div>`;
+    board.appendChild(lane);
+
+    // refs
+    lane.querySelectorAll(".agent-card").forEach(card=>{
+      const id=card.getAttribute("data-agent");
+      orgAgentDots[id]=card.querySelector(".sd");
+      card.onclick=()=>{ selected=id; setView("radial"); };  // klik = open detail in constellation
+    });
+    const ref={ av:lane.querySelector(".av3d"), pupils:lane.querySelector(".pupils"),
+      gloss:lane.querySelector(".gloss"), stage:lane.querySelector(".stage3d"),
+      mgrDot:lane.querySelector(".mgr-name .sd"), deptId:d.id, hovered:false };
+    orgRefs.push(ref);
+
+    if(!reduced){
+      const st=ref.stage;
+      st.addEventListener("pointermove",(e)=>{
+        ref.hovered=true; const r=st.getBoundingClientRect();
+        const px=(e.clientX-r.left)/r.width-0.5, py=(e.clientY-r.top)/r.height-0.5;
+        ref.av.style.setProperty("--rx",(px*13).toFixed(2)+"deg");
+        ref.av.style.setProperty("--ry",(-py*13).toFixed(2)+"deg");
+        ref.gloss.style.setProperty("--gx",(px*16).toFixed(1)+"px");
+        ref.gloss.style.setProperty("--gy",(py*12).toFixed(1)+"px");
+        ref.pupils.style.transform=`translate(${(px*2).toFixed(2)}px,${(py*1.6).toFixed(2)}px)`;
+      });
+      st.addEventListener("pointerleave",()=>{
+        ref.hovered=false;
+        ref.av.style.setProperty("--rx","0deg"); ref.av.style.setProperty("--ry","0deg");
+        ref.gloss.style.setProperty("--gx","0px"); ref.gloss.style.setProperty("--gy","0px");
+        ref.pupils.style.transform="translate(0,0)";
+      });
+    }
+    // blink
+    const laneEl=lane;
+    function blink(){ laneEl.classList.add("blink"); setTimeout(()=>laneEl.classList.remove("blink"),95);
+      if(Math.random()<0.18) setTimeout(()=>{laneEl.classList.add("blink");setTimeout(()=>laneEl.classList.remove("blink"),95);},230); }
+    function bloop(){ blink(); setTimeout(bloop, 2400+Math.random()*4200); }
+    if(!reduced) setTimeout(bloop, 800+Math.random()*3000);
+  });
+}
+function updateOrgStatus(){
+  for(const id in orgAgentDots){ const st=statusOf(id), sc=STATUS[st].c, dot=orgAgentDots[id];
+    dot.style.background=sc; dot.style.boxShadow=`0 0 6px ${sc}`;
+    dot.style.animation=(st==="running")?"jc-blink .9s infinite":"none"; }
+  orgRefs.forEach(ref=>{ const st=deptStatus(ref.deptId), sc=STATUS[st].c;
+    ref.mgrDot.style.background=sc; ref.mgrDot.style.boxShadow=`0 0 7px ${sc}`;
+    ref.mgrDot.style.animation=(st==="running")?"jc-blink .9s infinite":"none"; });
+}
+/* idle look-around voor managers */
+if(!reduced) setInterval(()=>{ if(currentView!=="org")return;
+  orgRefs.forEach(ref=>{ if(ref.hovered)return;
+    const dx=(Math.random()*2-1)*1.4, dy=(Math.random()*2-1)*1;
+    ref.pupils.style.transition="transform .6s ease";
+    ref.pupils.style.transform=`translate(${dx.toFixed(2)}px,${dy.toFixed(2)}px)`;
+    setTimeout(()=>{ if(!ref.hovered) ref.pupils.style.transform="translate(0,0)"; },900);
+    setTimeout(()=>{ ref.pupils.style.transition="transform .14s ease-out"; },1500);
+  });
+}, 3400);
+
+/* === VIEW SWITCH ====================================================== */
+function setView(v){
+  currentView=v;
+  $("view-radial").style.display = v==="radial"?"block":"none";
+  $("view-org").style.display    = v==="org"?"block":"none";
+  document.querySelectorAll("#viewToggle button").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
+  if(v==="radial"){ renderRadial(); }
+  else { updateOrgStatus(); renderMetrics(); }
+}
+$("viewToggle").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) setView(b.dataset.view); });
+
+/* === BOOT ============================================================= */
+buildSvgStatic(); renderRadial(); buildOrgOnce();
+new ResizeObserver(()=>{ if(currentView==="radial") layoutRadial(); }).observe(stage);
 setInterval(()=>{ $("clk").textContent=new Date().toLocaleTimeString("en-GB",{hour12:false}); },1000);
 
-/* === SUPABASE (live) =================================================== */
+/* === SUPABASE (live) ================================================== */
 function setConn(ok,txt){ const d=$("connDot"); if(d){d.style.background=ok?C.green:C.red;d.style.boxShadow=`0 0 10px ${ok?C.green:C.red}`;} const t=$("connTxt"); if(t)t.textContent="· "+txt; }
 function applyRow(r){ if(!r||!r.agent_id)return;
   rows[r.agent_id]={status:r.status,last_run:r.last_run,run_count:r.run_count,last_error:r.last_error};
-  const a=BY_ID[r.agent_id]; paintNodes(); renderMetrics(); if(selected===r.agent_id)renderPanel();
-  if(a&&(r.status==="running"||r.status==="error")){ pushEvent(a,r.status==="error"); if(r.status==="running")spawn(r.agent_id,a.color); } }
+  const a=BY_ID[r.agent_id];
+  renderMetrics(); updateOrgStatus();
+  if(currentView==="radial"){ paintNodes(); if(selected===r.agent_id)renderPanel(); }
+  if(a&&(r.status==="running"||r.status==="error")){ pushEvent(a,r.status==="error"); if(r.status==="running")spawn(r.agent_id,a.color); }
+}
 async function start(){
   const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
   const {data,error}=await sb.from("agent_status").select("*");
   if(error){ setConn(false,"verbinding mislukt"); console.error(error); return; }
   (data||[]).forEach(r=>{ rows[r.agent_id]={status:r.status,last_run:r.last_run,run_count:r.run_count,last_error:r.last_error}; });
-  render(); setConn(true,"live · gruposoltura-crm");
+  if(currentView==="radial") renderRadial(); updateOrgStatus(); renderMetrics();
+  setConn(true,"live · gruposoltura-crm");
   sb.channel("agent_status_live").on("postgres_changes",{event:"*",schema:"public",table:"agent_status"},p=>applyRow(p.new)).subscribe(s=>{ if(s==="SUBSCRIBED")setConn(true,"live · gruposoltura-crm"); });
   const {data:hb}=await sb.from("heartbeat").select("last_ping").order("last_ping",{ascending:false}).limit(1);
   if(hb&&hb[0]&&$("hb"))$("hb").innerHTML=`Heartbeat online · last ping <b style="color:${C.green}">${ago(hb[0].last_ping)}</b>`;
 }
+setView("radial");
 start();
 </script>
 </body>
