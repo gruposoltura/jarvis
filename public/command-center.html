@@ -144,6 +144,15 @@
   .ac-meta{min-width:0;flex:1}
   .ac-name{font-weight:600;font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ac-sched{font-size:9.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* laatst-gedraaid badge rechts op de kaart */
+  .ac-run{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px;
+    margin-left:auto;padding-left:6px;text-align:right;line-height:1.05}
+  .ac-run .rk{font-size:12px;font-weight:800;line-height:1;color:var(--dim)}
+  .ac-run .rt{font-size:9px;color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:.2px;white-space:nowrap}
+  .ac-run.run-ok  .rk{color:var(--green)} .ac-run.run-ok  .rt{color:#9fc7b1}
+  .ac-run.run-err .rk{color:var(--red)}   .ac-run.run-err .rt{color:#e2a3a5}
+  .ac-run.run-go  .rk{color:var(--cyan);animation:jc-blink .9s infinite}
+  .ac-run.run-go  .rt{color:#8fd6e8}
 
   .org-foot{margin-top:22px;font-size:11px;color:var(--dim);letter-spacing:.4px}
   .org-foot b{color:var(--text);font-weight:600}
@@ -351,6 +360,11 @@ const rad=d=>d*Math.PI/180, lerp=(a,b,t)=>a+(b-a)*t;
 const ago=ts=>{ if(!ts)return"—"; const s=Math.floor((Date.now()-new Date(ts))/1000);
   if(s<60)return"just now"; if(s<3600)return Math.floor(s/60)+"m ago"; if(s<86400)return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; };
 const statusOf=id=>(rows[id]&&rows[id].status)||"idle";
+const fmtRun=ts=>{ if(!ts)return"—"; const d=new Date(ts); if(isNaN(d))return"—";
+  const p=n=>String(n).padStart(2,"0");
+  return `${p(d.getDate())}/${p(d.getMonth()+1)} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+const RUNGLYPH={ ok:{ch:"✓",cls:"run-ok"}, running:{ch:"⟳",cls:"run-go"},
+  error:{ch:"✕",cls:"run-err"}, idle:{ch:"·",cls:""} };
 
 let currentView="radial";
 
@@ -630,6 +644,7 @@ function midLayer(o,accent,i){
 
 const orgRefs=[];  // {av,pupils,gloss,stage,hovered,mgrDot,deptId}
 const orgAgentDots={}; // agentId -> dot element
+const orgAgentRun={};  // agentId -> .ac-run element (laatst-gedraaid badge)
 
 /* ---- gedeelde org-builders ---- */
 function agentCardsHTML(d){
@@ -637,6 +652,7 @@ function agentCardsHTML(d){
     <div class="agent-card" data-agent="${a.id}">
       <div class="mini-av">${initials(a.name)}<span class="sd"></span></div>
       <div class="ac-meta"><div class="ac-name">${a.name}</div><div class="ac-sched">${a.sched}</div></div>
+      <div class="ac-run" data-run="${a.id}" title="laatst gedraaid"><span class="rk">·</span><span class="rt">—</span></div>
     </div>`).join("");
 }
 function managerVisualHTML(mgr,color,i){
@@ -655,6 +671,7 @@ function wireAgentCards(scope){
   scope.querySelectorAll(".agent-card").forEach(card=>{
     const id=card.getAttribute("data-agent");
     orgAgentDots[id]=card.querySelector(".sd");
+    orgAgentRun[id]=card.querySelector(".ac-run");
     card.onclick=()=>{ selected=id; setView("radial"); };  // klik = open detail in constellation
   });
 }
@@ -730,6 +747,12 @@ function updateOrgStatus(){
   for(const id in orgAgentDots){ const st=statusOf(id), sc=STATUS[st].c, dot=orgAgentDots[id];
     dot.style.background=sc; dot.style.boxShadow=`0 0 6px ${sc}`;
     dot.style.animation=(st==="running")?"jc-blink .9s infinite":"none"; }
+  for(const id in orgAgentRun){ const el=orgAgentRun[id]; if(!el)continue;
+    const r=rows[id]||{}, st=r.status||"idle", g=RUNGLYPH[st]||RUNGLYPH.idle, lr=r.last_run;
+    el.className="ac-run "+g.cls;
+    el.querySelector(".rk").textContent=g.ch;
+    el.querySelector(".rt").textContent=lr?fmtRun(lr):"—";
+    el.title=lr?("laatst gedraaid · "+ago(lr)):"nog niet gedraaid"; }
   orgRefs.forEach(ref=>{ const st=deptStatus(ref.deptId), sc=STATUS[st].c;
     ref.mgrDot.style.background=sc; ref.mgrDot.style.boxShadow=`0 0 7px ${sc}`;
     ref.mgrDot.style.animation=(st==="running")?"jc-blink .9s infinite":"none"; });
