@@ -98,8 +98,12 @@
     background:rgba(8,13,20,.7);border:1px solid var(--line);border-radius:8px;padding:7px 11px;max-width:300px;line-height:1.5}
 
   /* ============================ ORG VIEW ============================ */
-  .org-board{display:flex;gap:18px;align-items:flex-start;min-width:min-content;padding-bottom:8px}
-  .org-lane{--a:var(--cyan);flex:0 0 222px;display:flex;flex-direction:column;gap:13px}
+  .org-board{position:relative;display:flex;gap:18px;align-items:flex-start;min-width:min-content;padding:18px 0 8px}
+  .org-board::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;
+    background:linear-gradient(90deg,transparent,color-mix(in srgb,#ffd166 55%,transparent) 7%,color-mix(in srgb,#ffd166 55%,transparent) 93%,transparent)}
+  .org-lane{--a:var(--cyan);position:relative;flex:0 0 222px;display:flex;flex-direction:column;gap:13px}
+  .org-lane::before{content:"";position:absolute;left:50%;top:-18px;width:2px;height:18px;transform:translateX(-50%);
+    background:color-mix(in srgb,#ffd166 55%,transparent)}
   .lane-head{display:flex;align-items:center;gap:10px;padding:2px 2px 9px;
     border-bottom:1px solid color-mix(in srgb,var(--a) 30%, transparent)}
   .lane-ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:15px;
@@ -144,6 +148,29 @@
   .org-foot{margin-top:22px;font-size:11px;color:var(--dim);letter-spacing:.4px}
   .org-foot b{color:var(--text);font-weight:600}
 
+  /* ---- supervisie-tier (MANAGEMENT bovenop) ---- */
+  .org-tree{display:flex;flex-direction:column;min-width:min-content}
+  .org-top{display:flex;justify-content:center;padding:2px 2px 0}
+  .org-connect{position:relative;height:22px}
+  .org-trunk{position:absolute;left:50%;top:0;bottom:0;width:2px;transform:translateX(-50%);
+    background:linear-gradient(180deg,color-mix(in srgb,#ffd166 75%,transparent),color-mix(in srgb,#ffd166 22%,transparent))}
+
+  .mgmt-block{--a:#ffd166;position:relative;display:flex;flex-direction:column;gap:13px;
+    width:min(780px,100%);padding:15px 22px 18px;border-radius:18px;
+    border:1px solid color-mix(in srgb,var(--a) 42%, var(--hair));
+    background:linear-gradient(180deg, color-mix(in srgb,var(--a) 14%, var(--panel2)), var(--panelSolid));
+    box-shadow:0 0 34px color-mix(in srgb,var(--a) 16%, transparent), inset 0 0 0 1px color-mix(in srgb,var(--a) 10%, transparent)}
+  .mgmt-head{display:flex;align-items:center;gap:11px;
+    border-bottom:1px solid color-mix(in srgb,var(--a) 28%, transparent);padding-bottom:10px}
+  .mgmt-tag{margin-left:auto;font-size:10px;letter-spacing:.6px;color:var(--a);
+    background:color-mix(in srgb,var(--a) 14%, var(--panelSolid));
+    border:1px solid color-mix(in srgb,var(--a) 38%, var(--hair));border-radius:7px;padding:4px 9px}
+  .mgmt-body{display:flex;align-items:center;gap:28px;flex-wrap:wrap;justify-content:center}
+  .mgmt-person{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;flex:0 0 auto}
+  .mgmt-tasks{display:flex;gap:11px;flex-wrap:wrap;justify-content:center;flex:1 1 320px;min-width:0}
+  .mgmt-tasks .agent-card{flex:0 0 210px}
+  .mgmt-tasks .agent-card::before{display:none}
+
   /* ---- 3D manager avatar ---- */
   .stage3d{position:relative;width:76px;height:76px;perspective:600px}
   .floor3d{position:absolute;left:50%;bottom:2px;width:54px;height:12px;transform:translateX(-50%);
@@ -168,6 +195,10 @@
   @media (max-width:760px){
     .org-board{flex-direction:column}
     .org-lane{flex-basis:auto;width:100%}
+    .org-lane::before,.org-board::before,.org-connect{display:none}
+    .mgmt-block{width:100%;padding:14px}
+    .mgmt-body{gap:16px}
+    .mgmt-tasks .agent-card{flex:1 1 100%}
     aside{display:none}
   }
   @media (prefers-reduced-motion:reduce){
@@ -218,8 +249,12 @@
 
     <!-- ============ ORG ============ -->
     <div id="view-org">
-      <div class="org-board" id="orgBoard"></div>
-      <div class="org-foot">Organigram · live · <b>gruposoltura-crm</b> · managers tonen de samengevatte afdelingsstatus · zelfde data als constellation</div>
+      <div class="org-tree">
+        <div class="org-top" id="orgTop"></div>
+        <div class="org-connect"><span class="org-trunk"></span></div>
+        <div class="org-board" id="orgBoard"></div>
+      </div>
+      <div class="org-foot">Organigram · live · <b>gruposoltura-crm</b> · <b style="color:#ffd166">MANAGEMENT</b> overziet alle afdelingen · managers tonen de samengevatte afdelingsstatus · zelfde data als constellation</div>
     </div>
   </div>
 </div>
@@ -525,7 +560,7 @@ const ORG_MGR = {
   ops:{persona:"Sven",  role:"Operations Lead",  skin:"#f2c9a0", hair:"#6b4a2f", style:"buzz",     acc:"round-glasses", expr:"calm"},
   sales:{persona:"Mara",role:"Sales Lead",       skin:"#f6d3b3", hair:"#4a3326", style:"wavy",     acc:"headset",       expr:"grin"},
   admin:{persona:"Fred",role:"Finance Lead",     skin:"#caa07a", hair:"#3a3f4a", style:"short",    acc:"glasses",       expr:"calm"},
-  intel:{persona:"Gwen",role:"Office Lead",       skin:"#f2c9a0", hair:"#caa84a", style:"ponytail", acc:"none",          expr:"grin", blush:true},
+  intel:{persona:"Gwen",role:"Intel Lead",       skin:"#f2c9a0", hair:"#caa84a", style:"ponytail", acc:"none",          expr:"grin", blush:true},
   mktg:{persona:"Mia",  role:"Marketing Lead",   skin:"#e8b48c", hair:"#b5553f", style:"bob",      acc:"none",          expr:"grin", blush:true},
   advertising:{persona:"Sol",role:"Advertising Lead",skin:"#a9744f",hair:"#23242a",style:"curly",  acc:"sunglasses",    expr:"smile"},
   infra:{persona:"Ada", role:"Infra Lead",       skin:"#8a5a3b", hair:"#1f2128", style:"buzz",     acc:"cap",           expr:"calm"},
@@ -594,73 +629,99 @@ function midLayer(o,accent,i){
 const orgRefs=[];  // {av,pupils,gloss,stage,hovered,mgrDot,deptId}
 const orgAgentDots={}; // agentId -> dot element
 
+/* ---- gedeelde org-builders ---- */
+function agentCardsHTML(d){
+  return d.agents.map(a=>`
+    <div class="agent-card" data-agent="${a.id}">
+      <div class="mini-av">${initials(a.name)}<span class="sd"></span></div>
+      <div class="ac-meta"><div class="ac-name">${a.name}</div><div class="ac-sched">${a.sched}</div></div>
+    </div>`).join("");
+}
+function managerVisualHTML(mgr,color,i){
+  return `<div class="stage3d">
+      <div class="floor3d"></div>
+      <div class="av3d">
+        <div class="layer l-back">${backLayer(color,i)}</div>
+        <div class="layer l-mid">${midLayer(mgr,color,i)}</div>
+        <div class="gloss"></div>
+      </div>
+    </div>
+    <div class="mgr-name"><span class="sd"></span>${mgr.persona}</div>
+    <div class="mgr-role">${mgr.role}</div>`;
+}
+function wireAgentCards(scope){
+  scope.querySelectorAll(".agent-card").forEach(card=>{
+    const id=card.getAttribute("data-agent");
+    orgAgentDots[id]=card.querySelector(".sd");
+    card.onclick=()=>{ selected=id; setView("radial"); };  // klik = open detail in constellation
+  });
+}
+function wireManager(scope,d){
+  const ref={ av:scope.querySelector(".av3d"), pupils:scope.querySelector(".pupils"),
+    gloss:scope.querySelector(".gloss"), stage:scope.querySelector(".stage3d"),
+    mgrDot:scope.querySelector(".mgr-name .sd"), deptId:d.id, hovered:false };
+  orgRefs.push(ref);
+  if(!reduced){
+    const st=ref.stage;
+    st.addEventListener("pointermove",(e)=>{
+      ref.hovered=true; const r=st.getBoundingClientRect();
+      const px=(e.clientX-r.left)/r.width-0.5, py=(e.clientY-r.top)/r.height-0.5;
+      ref.av.style.setProperty("--rx",(px*13).toFixed(2)+"deg");
+      ref.av.style.setProperty("--ry",(-py*13).toFixed(2)+"deg");
+      ref.gloss.style.setProperty("--gx",(px*16).toFixed(1)+"px");
+      ref.gloss.style.setProperty("--gy",(py*12).toFixed(1)+"px");
+      ref.pupils.style.transform=`translate(${(px*2).toFixed(2)}px,${(py*1.6).toFixed(2)}px)`;
+    });
+    st.addEventListener("pointerleave",()=>{
+      ref.hovered=false;
+      ref.av.style.setProperty("--rx","0deg"); ref.av.style.setProperty("--ry","0deg");
+      ref.gloss.style.setProperty("--gx","0px"); ref.gloss.style.setProperty("--gy","0px");
+      ref.pupils.style.transform="translate(0,0)";
+    });
+  }
+  // blink
+  function blink(){ scope.classList.add("blink"); setTimeout(()=>scope.classList.remove("blink"),95);
+    if(Math.random()<0.18) setTimeout(()=>{scope.classList.add("blink");setTimeout(()=>scope.classList.remove("blink"),95);},230); }
+  function bloop(){ blink(); setTimeout(bloop, 2400+Math.random()*4200); }
+  if(!reduced) setTimeout(bloop, 800+Math.random()*3000);
+}
 function buildOrgOnce(){
-  const board=$("orgBoard"); board.innerHTML="";
+  const top=$("orgTop"), board=$("orgBoard"); top.innerHTML=""; board.innerHTML="";
   DEPTS.forEach((d,i)=>{
     const mgr=ORG_MGR[d.id];
-    const lane=document.createElement("section"); lane.className="org-lane"; lane.style.setProperty("--a",d.color);
-    const agentCards=d.agents.map(a=>`
-      <div class="agent-card" data-agent="${a.id}">
-        <div class="mini-av">${initials(a.name)}<span class="sd"></span></div>
-        <div class="ac-meta"><div class="ac-name">${a.name}</div><div class="ac-sched">${a.sched}</div></div>
-      </div>`).join("");
-    lane.innerHTML=`
-      <div class="lane-head">
-        <div class="lane-ic">${d.icon}</div>
-        <div><div class="lane-name">${d.name}</div><div class="lane-sub">${d.agents.length} agents</div></div>
-        <span class="lane-count">${d.agents.length}</span>
-      </div>
-      <div class="mgr-card">
-        <span class="mgr-eyebrow">Manager</span>
-        <div class="stage3d">
-          <div class="floor3d"></div>
-          <div class="av3d">
-            <div class="layer l-back">${backLayer(d.color,i)}</div>
-            <div class="layer l-mid">${midLayer(mgr,d.color,i)}</div>
-            <div class="gloss"></div>
-          </div>
+    if(d.id==="mgmt"){
+      // supervisie-blok bovenop, taken (agents) horizontaal ernaast
+      const block=document.createElement("section"); block.className="mgmt-block"; block.style.setProperty("--a",d.color);
+      block.innerHTML=`
+        <div class="mgmt-head">
+          <div class="lane-ic">${d.icon}</div>
+          <div><div class="lane-name">${d.name}</div><div class="lane-sub">supervisie · ${d.agents.length} agents</div></div>
+          <span class="mgmt-tag">overziet alle afdelingen</span>
         </div>
-        <div class="mgr-name"><span class="sd"></span>${mgr.persona}</div>
-        <div class="mgr-role">${mgr.role}</div>
-      </div>
-      <div class="team">${agentCards}</div>`;
-    board.appendChild(lane);
-
-    // refs
-    lane.querySelectorAll(".agent-card").forEach(card=>{
-      const id=card.getAttribute("data-agent");
-      orgAgentDots[id]=card.querySelector(".sd");
-      card.onclick=()=>{ selected=id; setView("radial"); };  // klik = open detail in constellation
-    });
-    const ref={ av:lane.querySelector(".av3d"), pupils:lane.querySelector(".pupils"),
-      gloss:lane.querySelector(".gloss"), stage:lane.querySelector(".stage3d"),
-      mgrDot:lane.querySelector(".mgr-name .sd"), deptId:d.id, hovered:false };
-    orgRefs.push(ref);
-
-    if(!reduced){
-      const st=ref.stage;
-      st.addEventListener("pointermove",(e)=>{
-        ref.hovered=true; const r=st.getBoundingClientRect();
-        const px=(e.clientX-r.left)/r.width-0.5, py=(e.clientY-r.top)/r.height-0.5;
-        ref.av.style.setProperty("--rx",(px*13).toFixed(2)+"deg");
-        ref.av.style.setProperty("--ry",(-py*13).toFixed(2)+"deg");
-        ref.gloss.style.setProperty("--gx",(px*16).toFixed(1)+"px");
-        ref.gloss.style.setProperty("--gy",(py*12).toFixed(1)+"px");
-        ref.pupils.style.transform=`translate(${(px*2).toFixed(2)}px,${(py*1.6).toFixed(2)}px)`;
-      });
-      st.addEventListener("pointerleave",()=>{
-        ref.hovered=false;
-        ref.av.style.setProperty("--rx","0deg"); ref.av.style.setProperty("--ry","0deg");
-        ref.gloss.style.setProperty("--gx","0px"); ref.gloss.style.setProperty("--gy","0px");
-        ref.pupils.style.transform="translate(0,0)";
-      });
+        <div class="mgmt-body">
+          <div class="mgmt-person">${managerVisualHTML(mgr,d.color,i)}</div>
+          <div class="mgmt-tasks">${agentCardsHTML(d)}</div>
+        </div>`;
+      top.appendChild(block);
+      wireAgentCards(block);
+      wireManager(block.querySelector(".mgmt-person"),d);
+    } else {
+      const lane=document.createElement("section"); lane.className="org-lane"; lane.style.setProperty("--a",d.color);
+      lane.innerHTML=`
+        <div class="lane-head">
+          <div class="lane-ic">${d.icon}</div>
+          <div><div class="lane-name">${d.name}</div><div class="lane-sub">${d.agents.length} agents</div></div>
+          <span class="lane-count">${d.agents.length}</span>
+        </div>
+        <div class="mgr-card">
+          <span class="mgr-eyebrow">Manager</span>
+          ${managerVisualHTML(mgr,d.color,i)}
+        </div>
+        <div class="team">${agentCardsHTML(d)}</div>`;
+      board.appendChild(lane);
+      wireAgentCards(lane);
+      wireManager(lane,d);
     }
-    // blink
-    const laneEl=lane;
-    function blink(){ laneEl.classList.add("blink"); setTimeout(()=>laneEl.classList.remove("blink"),95);
-      if(Math.random()<0.18) setTimeout(()=>{laneEl.classList.add("blink");setTimeout(()=>laneEl.classList.remove("blink"),95);},230); }
-    function bloop(){ blink(); setTimeout(bloop, 2400+Math.random()*4200); }
-    if(!reduced) setTimeout(bloop, 800+Math.random()*3000);
   });
 }
 function updateOrgStatus(){
