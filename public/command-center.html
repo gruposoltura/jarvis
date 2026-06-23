@@ -213,6 +213,36 @@
   @media (prefers-reduced-motion:reduce){
     .av3d{animation:none;transform:none!important}.pupils,.lids{transition:none}
   }
+
+  /* ============================ DEPENDENCIES ============================ */
+  /* DEPS toggle (constellation edge layer) */
+  .depbtn{appearance:none;border:1px solid var(--line);background:rgba(0,0,0,.32);
+    color:var(--dim);font:700 11px system-ui;letter-spacing:1px;padding:7px 12px;border-radius:11px;
+    cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:color .15s,background .15s,box-shadow .15s}
+  .depbtn .ic{font-size:12px}
+  .depbtn:hover{color:var(--text)}
+  .depbtn.active{background:linear-gradient(180deg,rgba(181,140,255,.22),rgba(181,140,255,.07));
+    color:var(--violet);box-shadow:inset 0 0 0 1px rgba(181,140,255,.45)}
+  /* readiness pip on radial nodes */
+  .agent .rdy{position:absolute;top:-4px;right:-4px;width:9px;height:9px;border-radius:50%;
+    border:1.5px solid var(--panelSolid);display:none}
+  .agent .rdy.on{display:block;animation:jc-blink 1.4s infinite}
+  /* readiness pip on org cards */
+  .ac-dep{position:absolute;top:-5px;left:-5px;width:11px;height:11px;border-radius:50%;
+    border:1.5px solid var(--panelSolid);display:none;z-index:4}
+  .ac-dep.on{display:block;animation:jc-blink 1.4s infinite}
+  /* deps block in detail panel */
+  .det .deps{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  .det .deps .dh{display:flex;align-items:center;gap:7px;color:var(--dim);font-size:11px;letter-spacing:1;margin-bottom:8px}
+  .det .deprow{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px}
+  .det .deprow .dn{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .det .deprow .sev{font-size:8.5px;letter-spacing:.6px;text-transform:uppercase;padding:1px 5px;border-radius:5px;
+    border:1px solid var(--hair);color:var(--dim);flex:0 0 auto}
+  .det .deprow .sev.hard{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--hair))}
+  .det .deprow .hl{margin-left:auto;display:flex;align-items:center;gap:6px;flex:0 0 auto}
+  .det .deprow .hl .c{width:8px;height:8px;border-radius:50%}
+  .det .deprow .hl .ts{color:var(--dim);font-size:10.5px;font-variant-numeric:tabular-nums}
+  .det .rdyline .v.ready{color:var(--green)} .det .rdyline .v.degraded{color:var(--amber)} .det .rdyline .v.blocked{color:var(--red)}
 </style>
 </head>
 <body>
@@ -229,6 +259,7 @@
       <button data-view="radial" class="active"><span class="ic">🌐</span>CONSTELLATION</button>
       <button data-view="org"><span class="ic">🏢</span>ORGANIGRAM</button>
     </div>
+    <button class="depbtn" id="depsBtn" title="Toon afhankelijkheidslijnen (constellation)"><span class="ic">🔗</span>DEPS</button>
     <div class="spacer"></div>
     <div class="metric"><div class="v" id="mNodes">0</div><div class="l" id="mNodesL">NODES ZICHTBAAR</div></div>
     <div class="metric"><div class="v" id="mAgents">0</div><div class="l">AGENTS TOT.</div></div>
@@ -366,6 +397,17 @@ const fmtRun=ts=>{ if(!ts)return"—"; const d=new Date(ts); if(isNaN(d))return"
 const RUNGLYPH={ ok:{ch:"✓",cls:"run-ok"}, running:{ch:"⟳",cls:"run-go"},
   error:{ch:"✕",cls:"run-err"}, idle:{ch:"·",cls:""} };
 
+/* ---- dependencies / readiness ---- */
+const readiness = {};        // agent_id -> { agent_id, readiness, deps:[{upstream,name,kind,severity,health,upstream_last_run}] }
+let showDeps = false;
+const RDYC = { ready:null, degraded:C.amber, blocked:C.red };
+const HEALTHC = { ok:C.green, stale:C.amber, failed:C.red, missing:C.red };
+const HEALTHL = { ok:"actueel", stale:"verouderd", failed:"fout", missing:"nooit gedraaid" };
+const rdyOf = id => (readiness[id] && readiness[id].readiness) || null;
+function rdyWorst(ids){ let w=null;
+  for(const m of ids){ const r=rdyOf(m); if(r==="blocked")return "blocked"; if(r==="degraded")w="degraded"; }
+  return w; }
+
 let currentView="radial";
 
 /* ---- zichtbare units per layout (radial) ---- */
@@ -431,12 +473,13 @@ function declutter(w,h){
     if(!moved)break;
   }
 }
-let coreRings=[], packetLayer, edgeLayer;
+let coreRings=[], packetLayer, edgeLayer, depLayer;
 function buildSvgStatic(){
   svg.innerHTML="";
   const defs=document.createElementNS(SVGNS,"defs");
+  const markers=Object.keys(HEALTHC).map(h=>`<marker id="da-${h}" markerWidth="8" markerHeight="8" refX="6.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="${HEALTHC[h]}"/></marker>`).join("");
   defs.innerHTML=`<filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
-    <feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+    <feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>${markers}`;
   svg.appendChild(defs);
   coreRings=[1,0.74,0.5].map((s,i)=>{ const g=document.createElementNS(SVGNS,"g");
     const cr=document.createElementNS(SVGNS,"circle");
@@ -446,7 +489,32 @@ function buildSvgStatic(){
     if(!reduced)g.style.animation=`${i%2?"jc-spin-r":"jc-spin"} ${14+i*8}s linear infinite`;
     g.appendChild(cr); svg.appendChild(g); return {g,cr,s}; });
   edgeLayer=document.createElementNS(SVGNS,"g"); svg.appendChild(edgeLayer);
+  depLayer=document.createElementNS(SVGNS,"g"); svg.appendChild(depLayer);
   packetLayer=document.createElementNS(SVGNS,"g"); svg.appendChild(packetLayer);
+}
+function buildDepEdges(){
+  if(!depLayer)return;
+  depLayer.innerHTML="";
+  if(!showDeps || currentView!=="radial")return;
+  Object.values(readiness).forEach(node=>{
+    (node.deps||[]).forEach(dep=>{
+      const a=pos[anchorOf(dep.upstream)], b=pos[anchorOf(node.agent_id)];
+      if(!a||!b||a===b)return;
+      const col=HEALTHC[dep.health]||C.dim, okEdge=dep.health==="ok", soft=dep.severity==="soft";
+      const mx=(a.x+b.x)/2, my=(a.y+b.y)/2, dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
+      const nx=-dy/len, ny=dx/len, bow=Math.min(58,len*0.16);
+      const cxp=mx+nx*bow, cyp=my+ny*bow;
+      const p=document.createElementNS(SVGNS,"path");
+      p.setAttribute("d",`M${a.x},${a.y} Q${cxp},${cyp} ${b.x},${b.y}`);
+      p.setAttribute("fill","none"); p.setAttribute("stroke",col);
+      p.setAttribute("stroke-width", okEdge?1.4:2.1);
+      p.setAttribute("stroke-opacity", okEdge?0.45:0.95);
+      if(soft)p.setAttribute("stroke-dasharray","2 5");
+      p.setAttribute("marker-end",`url(#da-${dep.health||"ok"})`);
+      if(!okEdge)p.setAttribute("filter","url(#glow)");
+      depLayer.appendChild(p);
+    });
+  });
 }
 function buildEdges(){
   edgeLayer.innerHTML="";
@@ -475,10 +543,10 @@ function buildNodes(){
     const el=document.createElement("button"); el.className="node agent"+(u.type==="cluster"?" cluster":""); el.id="n-"+u.uid;
     if(u.type==="cluster"){
       const open=!!expanded[u.clusterId];
-      el.innerHTML=`<span class="sd"></span><span>${u.label}</span><span class="cnt">${u.members.length}</span><span class="caret">${open?"⌃":"⌄"}</span>`;
+      el.innerHTML=`<span class="sd"></span><span>${u.label}</span><span class="cnt">${u.members.length}</span><span class="caret">${open?"⌃":"⌄"}</span><span class="rdy"></span>`;
       el.onclick=()=>{ expanded[u.clusterId]=!expanded[u.clusterId]; selected=null; renderRadial(); };
     }else{
-      el.innerHTML=`<span class="sd"></span><span>${BY_ID[u.agentId].name}</span>`;
+      el.innerHTML=`<span class="sd"></span><span>${BY_ID[u.agentId].name}</span><span class="rdy"></span>`;
       el.onclick=()=>{ selected=u.agentId; renderPanel(); };
     }
     nodesEl.appendChild(el);
@@ -496,6 +564,11 @@ function paintNodes(){
     el.style.boxShadow=active?`0 0 16px ${sc}aa`:"0 2px 8px rgba(0,0,0,.4)";
     const sd=el.querySelector(".sd"); sd.style.background=sc; sd.style.boxShadow=`0 0 7px ${sc}`;
     sd.style.animation=(st==="running")?"jc-blink .9s infinite":"none";
+    const rdy=el.querySelector(".rdy");
+    if(rdy){ const rk = u.type==="cluster" ? rdyWorst(u.members) : rdyOf(u.agentId);
+      const rc = rk && RDYC[rk];
+      if(rc){ rdy.classList.add("on"); rdy.style.background=rc; rdy.style.boxShadow=`0 0 8px ${rc}`; }
+      else { rdy.classList.remove("on"); } }
   });
 }
 /* packets */
@@ -521,6 +594,17 @@ function renderPanel(){
   const p=$("panel");
   if(selected){ const a=BY_ID[selected],r=rows[selected]||{},st=STATUS[r.status||"idle"];
     p.className="det";
+    const rd=readiness[selected];
+    const RDYL={ready:"gereed",degraded:"gedegradeerd",blocked:"geblokkeerd"};
+    const rdyHtml = rd ? `<div class="row rdyline"><span class="k">Inputs</span><span class="v ${rd.readiness}">${RDYL[rd.readiness]||rd.readiness}</span></div>` : "";
+    const depsHtml = (rd && rd.deps && rd.deps.length) ? `<div class="deps">
+        <div class="dh">🔗 AFHANKELIJK VAN</div>
+        ${rd.deps.map(dep=>{ const hc=HEALTHC[dep.health]||C.dim; return `<div class="deprow">
+          <span class="dn">${dep.name||dep.upstream}</span>
+          <span class="sev ${dep.severity}">${dep.severity}</span>
+          <span class="hl"><span class="c" style="background:${hc};box-shadow:0 0 6px ${hc}"></span>${HEALTHL[dep.health]||dep.health||"?"}<span class="ts">· ${ago(dep.upstream_last_run)}</span></span>
+        </div>`; }).join("")}
+      </div>` : "";
     p.innerHTML=`<button class="close">×</button>
       <div style="font-size:11px;letter-spacing:1.5px;color:${a.color}">${a.deptName}</div>
       <div style="font-size:18px;font-weight:700;margin:4px 0 3px">${a.name}</div>
@@ -528,7 +612,8 @@ function renderPanel(){
       <div class="row"><span class="k">Status</span><span class="v" style="color:${st.c}">${st.l}</span></div>
       <div class="row"><span class="k">Last run</span><span class="v">${ago(r.last_run)}</span></div>
       <div class="row"><span class="k">Runs total</span><span class="v">${r.run_count??0}</span></div>
-      ${r.last_error?`<div class="row"><span class="k">Last error</span><span class="v" style="color:${C.red}">${r.last_error}</span></div>`:""}`;
+      ${r.last_error?`<div class="row"><span class="k">Last error</span><span class="v" style="color:${C.red}">${r.last_error}</span></div>`:""}
+      ${rdyHtml}${depsHtml}`;
     p.querySelector(".close").onclick=()=>{selected=null;renderPanel();};
   } else {
     const c={ok:0,running:0,idle:0,error:0}; AGENTS.forEach(a=>c[statusOf(a.id)]++);
@@ -553,8 +638,8 @@ function renderMetrics(){
   $("mErr").textContent=c.error; $("mErr").style.color=c.error?C.red:C.dim;
 }
 
-function renderRadial(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); buildNodes(); positionNodes(); renderMetrics(); renderPanel(); }
-function layoutRadial(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); positionNodes(); }
+function renderRadial(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); buildDepEdges(); buildNodes(); positionNodes(); renderMetrics(); renderPanel(); }
+function layoutRadial(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); buildDepEdges(); positionNodes(); }
 
 /* ====================================================================== */
 /* === ORG VIEW (organigram) ============================================ */
@@ -645,11 +730,13 @@ function midLayer(o,accent,i){
 const orgRefs=[];  // {av,pupils,gloss,stage,hovered,mgrDot,deptId}
 const orgAgentDots={}; // agentId -> dot element
 const orgAgentRun={};  // agentId -> .ac-run element (laatst-gedraaid badge)
+const orgAgentDep={};  // agentId -> .ac-dep element (readiness badge)
 
 /* ---- gedeelde org-builders ---- */
 function agentCardsHTML(d){
   return d.agents.map(a=>`
     <div class="agent-card" data-agent="${a.id}">
+      <span class="ac-dep" data-dep="${a.id}" title="afhankelijkheden"></span>
       <div class="mini-av">${initials(a.name)}<span class="sd"></span></div>
       <div class="ac-meta"><div class="ac-name">${a.name}</div><div class="ac-sched">${a.sched}</div></div>
       <div class="ac-run" data-run="${a.id}" title="laatst gedraaid"><span class="rk">·</span><span class="rt">—</span></div>
@@ -672,6 +759,7 @@ function wireAgentCards(scope){
     const id=card.getAttribute("data-agent");
     orgAgentDots[id]=card.querySelector(".sd");
     orgAgentRun[id]=card.querySelector(".ac-run");
+    orgAgentDep[id]=card.querySelector(".ac-dep");
     card.onclick=()=>{ selected=id; setView("radial"); };  // klik = open detail in constellation
   });
 }
@@ -753,6 +841,12 @@ function updateOrgStatus(){
     el.querySelector(".rk").textContent=g.ch;
     el.querySelector(".rt").textContent=lr?fmtRun(lr):"—";
     el.title=lr?("laatst gedraaid · "+ago(lr)):"nog niet gedraaid"; }
+  for(const id in orgAgentDep){ const el=orgAgentDep[id]; if(!el)continue;
+    const rk=rdyOf(id), rc=rk&&RDYC[rk];
+    if(rc){ el.classList.add("on"); el.style.background=rc; el.style.boxShadow=`0 0 7px ${rc}`;
+      const rd=readiness[id], bad=(rd&&rd.deps||[]).filter(d=>d.health!=="ok").map(d=>(d.name||d.upstream)+" "+(HEALTHL[d.health]||d.health));
+      el.title = bad.length ? ("inputs "+rk+" · "+bad.join(", ")) : ("inputs "+rk); }
+    else { el.classList.remove("on"); el.title="afhankelijkheden"; } }
   orgRefs.forEach(ref=>{ const st=deptStatus(ref.deptId), sc=STATUS[st].c;
     ref.mgrDot.style.background=sc; ref.mgrDot.style.boxShadow=`0 0 7px ${sc}`;
     ref.mgrDot.style.animation=(st==="running")?"jc-blink .9s infinite":"none"; });
@@ -778,6 +872,9 @@ function setView(v){
   else { updateOrgStatus(); renderMetrics(); }
 }
 $("viewToggle").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) setView(b.dataset.view); });
+$("depsBtn").addEventListener("click",()=>{ showDeps=!showDeps;
+  $("depsBtn").classList.toggle("active",showDeps);
+  if(showDeps && currentView!=="radial"){ setView("radial"); } else { buildDepEdges(); } });
 
 /* === BOOT ============================================================= */
 buildSvgStatic(); renderRadial(); buildOrgOnce();
@@ -793,14 +890,25 @@ function applyRow(r){ if(!r||!r.agent_id)return;
   if(currentView==="radial"){ paintNodes(); if(selected===r.agent_id)renderPanel(); }
   if(a&&(r.status==="running"||r.status==="error")){ pushEvent(a,r.status==="error"); if(r.status==="running")spawn(r.agent_id,a.color); }
 }
+let sbClient=null, _rdyT=null;
+async function loadReadiness(){ if(!sbClient)return;
+  const {data,error}=await sbClient.from("agent_readiness").select("*");
+  if(error){ console.warn("agent_readiness:",error.message); return; }
+  for(const k in readiness) delete readiness[k];
+  (data||[]).forEach(r=>{ readiness[r.agent_id]=r; });
+  if(currentView==="radial"){ buildDepEdges(); paintNodes(); if(selected)renderPanel(); }
+  updateOrgStatus();
+}
+function refreshReadiness(){ clearTimeout(_rdyT); _rdyT=setTimeout(loadReadiness,600); }
 async function start(){
-  const sb=createClient(SUPABASE_URL,SUPABASE_ANON);
+  const sb=createClient(SUPABASE_URL,SUPABASE_ANON); sbClient=sb;
   const {data,error}=await sb.from("agent_status").select("*");
   if(error){ setConn(false,"verbinding mislukt"); console.error(error); return; }
   (data||[]).forEach(r=>{ rows[r.agent_id]={status:r.status,last_run:r.last_run,run_count:r.run_count,last_error:r.last_error}; });
   if(currentView==="radial") renderRadial(); updateOrgStatus(); renderMetrics();
   setConn(true,"live · gruposoltura-crm");
-  sb.channel("agent_status_live").on("postgres_changes",{event:"*",schema:"public",table:"agent_status"},p=>applyRow(p.new)).subscribe(s=>{ if(s==="SUBSCRIBED")setConn(true,"live · gruposoltura-crm"); });
+  loadReadiness();
+  sb.channel("agent_status_live").on("postgres_changes",{event:"*",schema:"public",table:"agent_status"},p=>{ applyRow(p.new); refreshReadiness(); }).subscribe(s=>{ if(s==="SUBSCRIBED")setConn(true,"live · gruposoltura-crm"); });
   const {data:hb}=await sb.from("heartbeat").select("last_ping").order("last_ping",{ascending:false}).limit(1);
   if(hb&&hb[0]&&$("hb"))$("hb").innerHTML=`Heartbeat online · last ping <b style="color:${C.green}">${ago(hb[0].last_ping)}</b>`;
 }
