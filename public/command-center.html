@@ -501,6 +501,7 @@ function buildDepEdges(){
   if(!depLayer)return;
   depLayer.innerHTML="";
   if(!showDeps || currentView!=="radial")return;
+  const frag=document.createDocumentFragment();
   Object.values(readiness).forEach(node=>{
     (node.deps||[]).forEach(dep=>{
       const a=pos[anchorOf(dep.upstream)], b=pos[anchorOf(node.agent_id)];
@@ -517,9 +518,10 @@ function buildDepEdges(){
       if(soft)p.setAttribute("stroke-dasharray","2 5");
       p.setAttribute("marker-end",`url(#da-${dep.health||"ok"})`);
       if(!okEdge)p.setAttribute("filter","url(#glow)");
-      depLayer.appendChild(p);
+      frag.appendChild(p);
     });
   });
+  depLayer.appendChild(frag);
 }
 function buildEdges(){
   edgeLayer.innerHTML="";
@@ -879,7 +881,10 @@ function setView(v){
 $("viewToggle").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) setView(b.dataset.view); });
 $("depsBtn").addEventListener("click",()=>{ showDeps=!showDeps;
   $("depsBtn").classList.toggle("active",showDeps);
-  if(showDeps && currentView!=="radial"){ setView("radial"); } else { buildDepEdges(); } });
+  // Defer heavy SVG work off the interaction so the button paints immediately (fixes INP long-task warning)
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(showDeps && currentView!=="radial"){ setView("radial"); } else { buildDepEdges(); }
+  })); });
 
 /* === BOOT ============================================================= */
 buildSvgStatic(); renderRadial(); buildOrgOnce();
