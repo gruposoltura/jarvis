@@ -359,11 +359,12 @@ const DEPTS = [
       {id:"social-publisher",name:"Social Publisher",sched:"on approve"},
       {id:"social-lifestyle",name:"Lifestyle Proposer",sched:"Thu 08:00"},
       {id:"meta-ads-proposer",name:"Meta Ads Proposer",sched:"manual"},
+      {id:"meta-ads-video",name:"Meta Ads Video",sched:"manual"},
       {id:"meta-ads-publisher",name:"Meta Ads Publisher",sched:"on approve"},
       {id:"ad-playbook",name:"Ad Viral Playbook",sched:"Mon 06:00"}],
     clusters:[
       {id:"social",label:"Social Agent",members:["social-proposer","social-publisher","social-lifestyle"]},
-      {id:"meta-ads",label:"Meta Ads",members:["meta-ads-proposer","meta-ads-publisher"]}]},
+      {id:"meta-ads",label:"Meta Ads",members:["meta-ads-proposer","meta-ads-video","meta-ads-publisher"]}]},
   { id:"infra", name:"INFRA", color:C.grey, icon:"⚙",
     agents:[
       {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"3 days"},
