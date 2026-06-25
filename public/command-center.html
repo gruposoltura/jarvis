@@ -320,7 +320,7 @@ const DEPTS = [
     agents:[
       {id:"cont-sync",name:"Contacts Sync",sched:"hourly"},{id:"cont-recon",name:"Contacts Reconcile",sched:"03:30"},
       {id:"prop-sync",name:"Properties Sync",sched:"05:00"},{id:"prop-recon",name:"Properties Reconcile",sched:"03:45"},
-      {id:"req-sync",name:"Requests Sync",sched:"incremental"},{id:"seo-enrich",name:"Agent SEO",sched:"daily"},
+      {id:"req-sync",name:"Requests Sync",sched:"incremental"},{id:"seo-enrich",name:"Agent SEO",sched:"09:15 Daily"},
       {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}],
     clusters:[
       {id:"data-sync",label:"Data Sync",members:["cont-sync","prop-sync","req-sync","cont-recon","prop-recon"]}]},
@@ -334,7 +334,7 @@ const DEPTS = [
   { id:"admin", name:"ADMIN & FIN.", color:C.amber, icon:"⚖",
     agents:[
       {id:"contract",name:"Contract Generator",sched:"sheet"},{id:"modelo",name:"Modelo Reminder",sched:"07:00"},
-      {id:"invoice",name:"Weekly VAT Report",sched:"weekly"}],
+      {id:"invoice",name:"Weekly VAT Report",sched:"Fri 09:00"}],
     clusters:[]},
   { id:"intel", name:"OFFICE", color:C.violet, icon:"🧠",
     agents:[
@@ -343,10 +343,10 @@ const DEPTS = [
     clusters:[]},
   { id:"mktg", name:"MARKETING", color:C.red, icon:"📣",
     agents:[
-      {id:"top10",name:"Weekly Top10",sched:"weekly"},{id:"price-red",name:"Price Reduced",sched:"weekly"},
+      {id:"top10",name:"Weekly Top10",sched:"Mon 09:00"},{id:"price-red",name:"Price Reduced",sched:"Wed 10:00"},
       {id:"welcome",name:"Welcome Seller",sched:"event"},{id:"toolate",name:"Too Late",sched:"daily 11:00"},
       {id:"review",name:"Google Review Invite",sched:"daily 10:00"},{id:"review_viewing",name:"Review Invite Viewing",sched:"daily 11:00"},
-      {id:"research",name:"Competitor Research",sched:"monthly"},{id:"improve",name:"Improvement Planner",sched:"monthly"},
+      {id:"research",name:"Competitor Research",sched:"monthly · day 1 · 06:00"},{id:"improve",name:"Improvement Planner",sched:"monthly · day 3 · 07:00"},
       {id:"news",name:"News Curation",sched:"Mon/Thu/Sun 09:00"},{id:"news-mailing",name:"Weekly News",sched:"Fri 10:00"},
       {id:"new-listing",name:"New Listing",sched:"event"},{id:"seller-update",name:"Seller Weekly Update",sched:"Fri 16:00"},{id:"suspect-matches",name:"Suspect Matches",sched:"monthly · day 1"}],
     clusters:[
@@ -367,8 +367,8 @@ const DEPTS = [
       {id:"meta-ads",label:"Meta Ads",members:["meta-ads-proposer","meta-ads-video","meta-ads-publisher"]}]},
   { id:"infra", name:"INFRA", color:C.grey, icon:"⚙",
     agents:[
-      {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"3 days"},
-      {id:"run-purge",name:"Run Log Purge",sched:"daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
+      {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"00:00 Daily"},
+      {id:"run-purge",name:"Run Log Purge",sched:"04:00 Daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
       {id:"active-sync",name:"Active Props Sync",sched:"05:00"},{id:"new-sync",name:"New Props Sync",sched:"08:45"},
       {id:"workflow-backup",name:"Workflow Backup",sched:"Mon/Wed/Fri 22:00"}],
     clusters:[
