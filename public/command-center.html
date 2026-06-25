@@ -65,6 +65,12 @@
   .agent:hover{transform:translate(-50%,-50%) scale(1.08);z-index:9}
   .agent .sd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   .agent.cluster{background:rgba(8,13,20,0.96);font-weight:700;max-width:118px}
+  .agent.cluster.open{box-shadow:0 0 18px rgba(0,212,255,.32);border-color:rgba(255,255,255,.20)}
+  /* uitgeklapte cluster-leden: verticale stapel direct onder het cluster-label */
+  .agent.member{z-index:7;padding-left:11px;background:rgba(9,15,25,0.97);
+    border-color:color-mix(in srgb,var(--mc,#00d4ff) 32%, transparent)}
+  .agent.member::after{content:"";position:absolute;left:-1px;top:6px;bottom:6px;width:3px;
+    border-radius:3px;background:var(--mc,#00d4ff);opacity:.75}
   .agent .cnt{margin-left:2px;font-size:9px;font-weight:800;background:rgba(255,255,255,.10);
     border-radius:6px;padding:1px 5px;font-variant-numeric:tabular-nums}
   .agent .caret{font-size:9px;color:var(--dim);margin-left:1px}
@@ -388,6 +394,8 @@ const CLUSTER_BY_ID = {}; DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>CLUSTER_
 /* gedeelde state */
 const rows = {};
 const expanded = {};
+const pendingExpand = new Set();   // clusters die net opengeklapt zijn (voor de roll-down animatie)
+let collapsing = null;             // cluster dat momenteel terugrolt
 let pos = {}, selected = null, packets = [];
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const SVGNS = "http://www.w3.org/2000/svg";
@@ -423,7 +431,7 @@ function visibleUnits(){
   DEPTS.forEach(d=>{
     (d.clusters||[]).forEach(cl=>{
       units.push({type:"cluster", uid:"cl-"+cl.id, clusterId:cl.id, dept:d.id, color:d.color, deptName:d.name, label:cl.label, members:cl.members});
-      if(expanded[cl.id]) cl.members.forEach(m=>units.push({type:"agent", uid:m, agentId:m, dept:d.id, color:d.color, deptName:d.name}));
+      if(expanded[cl.id]) cl.members.forEach((m,mi)=>units.push({type:"agent", uid:m, agentId:m, dept:d.id, color:d.color, deptName:d.name, parent:cl.id, idx:mi}));
     });
     d.agents.forEach(a=>{ if(!CLUSTER_OF[a.id]) units.push({type:"agent", uid:a.id, agentId:a.id, dept:d.id, color:d.color, deptName:d.name}); });
   });
@@ -447,10 +455,12 @@ function computePositions(){
   const Rx=Math.min(w*0.33, w/2-180), Ry=Math.min(h*0.30, h/2-150);
   const Rax=Math.min(w*0.16,190), Ray=Math.min(h*0.165,140);
   pos.core={x:cx,y:cy};
+  // alleen "slot"-units (clusters + losse agents) krijgen een arc-positie; uitgeklapte leden stapelen we apart
+  const slots=UNITS.filter(u=>!u.parent);
   DEPTS.forEach(d=>{
     const hx=cx+Rx*Math.cos(rad(d.angle)), hy=cy+Ry*Math.sin(rad(d.angle));
     pos["hub-"+d.id]={x:hx,y:hy};
-    const list=unitsOfDept(UNITS,d.id);
+    const list=slots.filter(u=>u.dept===d.id);
     const n=list.length, spread=n===1?0:Math.min(96,24+n*9);
     list.forEach((u,i)=>{
       const off=n===1?0:lerp(-spread,spread,i/(n-1));
@@ -459,10 +469,23 @@ function computePositions(){
       pos[u.uid]={x:hx+Rax*tier*Math.cos(ang), y:hy+Ray*tier*Math.sin(ang)};
     });
   });
-  declutter(w,h);
+  declutter(w,h,slots.map(u=>u.uid));
+  layoutClusterStacks(w,h);
 }
-function declutter(w,h){
-  const ids=UNITS.map(u=>u.uid); const MINX=112, MINY=42;
+/* uitgeklapte cluster-leden hangen in een nette verticale stapel recht onder hun cluster-label */
+const STACK_TOP=30, STACK_GAP=31;
+function layoutClusterStacks(w,h){
+  DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>{
+    if(!expanded[cl.id])return;
+    const anchor=pos["cl-"+cl.id]; if(!anchor)return;
+    const m=cl.members, stackH=STACK_TOP+m.length*STACK_GAP;
+    const dir=(anchor.y+stackH < h-30)?1:-1;     // klap omhoog als er onder geen ruimte is
+    const x=Math.max(70,Math.min(w-70,anchor.x));
+    m.forEach((id,idx)=>{ pos[id]={x, y:anchor.y+dir*(STACK_TOP+idx*STACK_GAP)}; });
+  }));
+}
+function declutter(w,h,ids){
+  const MINX=112, MINY=42;
   const obst=[{x:pos.core.x,y:pos.core.y,rx:88,ry:74}]
     .concat(DEPTS.map(d=>({x:pos["hub-"+d.id].x,y:pos["hub-"+d.id].y,rx:76,ry:60})));
   for(let it=0;it<160;it++){ let moved=false;
@@ -526,12 +549,17 @@ function buildDepEdges(){
 }
 function buildEdges(){
   edgeLayer.innerHTML="";
-  const line=(a,b,col,op,wd,dash)=>{ if(!a||!b)return; const ln=document.createElementNS(SVGNS,"line");
+  const memG=document.createElementNS(SVGNS,"g"); memG.setAttribute("id","memberEdges");
+  const line=(parent,a,b,col,op,wd,dash)=>{ if(!a||!b)return; const ln=document.createElementNS(SVGNS,"line");
     ln.setAttribute("x1",a.x);ln.setAttribute("y1",a.y);ln.setAttribute("x2",b.x);ln.setAttribute("y2",b.y);
     ln.setAttribute("stroke",col);ln.setAttribute("stroke-opacity",op);ln.setAttribute("stroke-width",wd);
-    if(dash)ln.setAttribute("stroke-dasharray",dash); edgeLayer.appendChild(ln); };
-  DEPTS.forEach(d=>{ line(pos["hub-"+d.id],pos.core,d.color,0.30,1.6); });
-  UNITS.forEach(u=>{ line(pos[u.uid],pos["hub-"+u.dept],u.color,0.16,1, u.type==="cluster"?"5 5":null); });
+    if(dash)ln.setAttribute("stroke-dasharray",dash); parent.appendChild(ln); };
+  DEPTS.forEach(d=>{ line(edgeLayer,pos["hub-"+d.id],pos.core,d.color,0.30,1.6); });
+  UNITS.forEach(u=>{
+    if(u.parent){ line(memG, pos[u.uid], pos["cl-"+u.parent], u.color, 0.40, 1.3); }
+    else { line(edgeLayer, pos[u.uid], pos["hub-"+u.dept], u.color, 0.16, 1, u.type==="cluster"?"5 5":null); }
+  });
+  edgeLayer.appendChild(memG);
 }
 function positionSvg(){
   const w=stage.clientWidth,h=stage.clientHeight; svg.setAttribute("width",w);svg.setAttribute("height",h);
@@ -548,12 +576,16 @@ function buildNodes(){
     el.innerHTML=`<div class="box" style="border:1.4px solid ${d.color};box-shadow:0 0 16px ${d.color}55;font-size:22px">${d.icon}</div><div class="nm" style="color:${d.color}">${d.name}</div>`;
     nodesEl.appendChild(el); });
   UNITS.forEach(u=>{
-    const el=document.createElement("button"); el.className="node agent"+(u.type==="cluster"?" cluster":""); el.id="n-"+u.uid;
+    const el=document.createElement("button");
+    el.className="node agent"+(u.type==="cluster"?" cluster":"")+(u.parent?" member":"");
+    el.id="n-"+u.uid;
     if(u.type==="cluster"){
       const open=!!expanded[u.clusterId];
+      if(open)el.classList.add("open");
       el.innerHTML=`<span class="sd"></span><span>${u.label}</span><span class="cnt">${u.members.length}</span><span class="caret">${open?"⌃":"⌄"}</span><span class="rdy"></span>`;
-      el.onclick=()=>{ expanded[u.clusterId]=!expanded[u.clusterId]; selected=null; renderRadial(); };
+      el.onclick=()=>{ toggleCluster(u.clusterId); };
     }else{
+      if(u.parent)el.style.setProperty("--mc",u.color);
       el.innerHTML=`<span class="sd"></span><span>${BY_ID[u.agentId].name}</span><span class="rdy"></span>`;
       el.onclick=()=>{ selected=u.agentId; renderPanel(); };
     }
@@ -562,7 +594,54 @@ function buildNodes(){
 }
 function positionNodes(){
   for(const id in pos){ const el=$("n-"+id); if(el){el.style.left=pos[id].x+"px";el.style.top=pos[id].y+"px";} }
+  if(pendingExpand.size) runExpandAnim();
   paintNodes();
+}
+/* roll-down: leden starten boven op het cluster-label en rollen gestaffeld naar beneden */
+function runExpandAnim(){
+  const memG=$("memberEdges"); if(memG){ memG.style.transition="none"; memG.style.opacity="0"; }
+  pendingExpand.forEach(clId=>{
+    const cl=CLUSTER_BY_ID[clId], anchor=pos["cl-"+clId]; if(!cl||!anchor)return;
+    cl.members.forEach((m,idx)=>{
+      const el=$("n-"+m); if(!el)return;
+      const fx=pos[m].x, fy=pos[m].y;
+      el.style.transition="none";
+      el.style.left=anchor.x+"px"; el.style.top=anchor.y+"px";
+      el.style.opacity="0"; el.style.transform="translate(-50%,-50%) scale(.55)";
+      void el.offsetWidth;                                  // forceer reflow
+      el.style.transition="left .30s cubic-bezier(.22,.7,.2,1),top .30s cubic-bezier(.22,.7,.2,1),opacity .26s ease,transform .26s ease";
+      el.style.transitionDelay=(idx*45)+"ms";
+      el.style.left=fx+"px"; el.style.top=fy+"px";
+      el.style.opacity="1"; el.style.transform="translate(-50%,-50%) scale(1)";
+    });
+    // inline styles weer opruimen zodat hover/scale en latere layouts normaal werken
+    const maxd=300+(cl.members.length-1)*45+90;
+    setTimeout(()=>{ cl.members.forEach(m=>{ const el=$("n-"+m); if(!el)return;
+      el.style.transition=""; el.style.transitionDelay=""; el.style.transform=""; el.style.opacity=""; }); }, maxd);
+  });
+  requestAnimationFrame(()=>{ const mg=$("memberEdges"); if(mg){ mg.style.transition="opacity .4s ease"; mg.style.opacity="1"; } });
+  pendingExpand.clear();
+}
+function toggleCluster(clId){
+  if(collapsing===clId)return;
+  if(expanded[clId]){ collapseCluster(clId); }
+  else { expanded[clId]=true; pendingExpand.add(clId); selected=null; renderRadial(); }
+}
+/* roll-up: leden rollen gestaffeld terug in het cluster-label, daarna pas opnieuw renderen */
+function collapseCluster(clId){
+  const cl=CLUSTER_BY_ID[clId], anchor=pos["cl-"+clId];
+  if(!cl||!anchor){ expanded[clId]=false; selected=null; renderRadial(); return; }
+  collapsing=clId;
+  const memG=$("memberEdges"); if(memG){ memG.style.transition="opacity .22s ease"; memG.style.opacity="0"; }
+  cl.members.forEach((id,idx)=>{
+    const el=$("n-"+id); if(!el)return;
+    el.style.transition="left .26s cubic-bezier(.5,0,.7,.3),top .26s cubic-bezier(.5,0,.7,.3),opacity .22s ease,transform .22s ease";
+    el.style.transitionDelay=((cl.members.length-1-idx)*26)+"ms";   // onderste eerst terug
+    el.style.left=anchor.x+"px"; el.style.top=anchor.y+"px";
+    el.style.opacity="0"; el.style.transform="translate(-50%,-50%) scale(.55)";
+  });
+  const total=260+(cl.members.length-1)*26+60;
+  setTimeout(()=>{ expanded[clId]=false; collapsing=null; selected=null; renderRadial(); }, total);
 }
 function paintNodes(){
   UNITS.forEach(u=>{ const el=$("n-"+u.uid); if(!el)return;
