@@ -377,7 +377,7 @@ const DEPTS = [
       {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"00:00 Daily"},
       {id:"run-purge",name:"Run Log Purge",sched:"04:00 Daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
       {id:"active-sync",name:"Active Props Sync",sched:"05:00"},{id:"new-sync",name:"New Props Sync",sched:"08:45"},
-      {id:"workflow-backup",name:"Workflow Backup",sched:"Mon/Wed/Fri 22:00"}],
+      {id:"workflow-backup",name:"Workflow Backup",sched:"Daily 02:30"}],
     clusters:[
       {id:"props-sync",label:"Props Sync",members:["active-sync","new-sync"]},
       {id:"housekeep",label:"Housekeeping",members:["sb-heartbeat","run-purge","session-notes"]}]},
