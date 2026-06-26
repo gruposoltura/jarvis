@@ -367,11 +367,13 @@ const DEPTS = [
       {id:"social-lifestyle",name:"Lifestyle Proposer",sched:"Thu 08:00"},
       {id:"meta-ads-proposer",name:"Meta Ads Proposer",sched:"manual"},
       {id:"meta-ads-video",name:"Meta Ads Video",sched:"manual"},
-      {id:"meta-ads-publisher",name:"Meta Ads Publisher",sched:"on approve"},
+      {id:"metaads-builder",name:"MetaAds Builder",sched:"Sun 12:00"},
+      {id:"metaads-manager",name:"MetaAds Manager",sched:"daily 09:00"},
+      {id:"metaads-executer",name:"MetaAds Executer",sched:"on approve"},
       {id:"ad-playbook",name:"Ad Viral Playbook",sched:"Mon 06:00"}],
     clusters:[
       {id:"social",label:"Social Agent",members:["social-proposer","social-publisher","social-lifestyle"]},
-      {id:"meta-ads",label:"Meta Ads",members:["meta-ads-proposer","meta-ads-video","meta-ads-publisher"]}]},
+      {id:"meta-ads",label:"Meta Ads",members:["meta-ads-proposer","meta-ads-video","metaads-builder","metaads-manager","metaads-executer"]}]},
   { id:"infra", name:"INFRA", color:C.grey, icon:"⚙",
     agents:[
       {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"00:00 Daily"},
@@ -1014,10 +1016,4 @@ async function start(){
   loadReadiness();
   sb.channel("agent_status_live").on("postgres_changes",{event:"*",schema:"public",table:"agent_status"},p=>{ applyRow(p.new); refreshReadiness(); }).subscribe(s=>{ if(s==="SUBSCRIBED")setConn(true,"live · gruposoltura-crm"); });
   const {data:hb}=await sb.from("heartbeat").select("last_ping").order("last_ping",{ascending:false}).limit(1);
-  if(hb&&hb[0]&&$("hb"))$("hb").innerHTML=`Heartbeat online · last ping <b style="color:${C.green}">${ago(hb[0].last_ping)}</b>`;
-}
-setView("radial");
-start();
-</script>
-</body>
-</html>
+  if(hb&&hb[0]&&$(
