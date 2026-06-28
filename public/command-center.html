@@ -334,7 +334,7 @@ const DEPTS = [
   { id:"sales", name:"SALES", color:C.green, icon:"👥",
     agents:[
       {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"appointment",name:"Appointment Agent",sched:"email"},
-      {id:"idealista",name:"Idealista Leads",sched:"email"},{id:"idealista-feed",name:"Idealista Feed",sched:"webhook"},
+      {id:"idealista",name:"Idealista Leads",sched:"email"},{id:"idealista-feed",name:"Idealista Feed",sched:"daily 18:00"},
       {id:"purchase-info",name:"Purchase Info",sched:"webhook"}],
     clusters:[
       {id:"idealista-grp",label:"Idealista",members:["idealista","idealista-feed"]}]},
@@ -376,7 +376,7 @@ const DEPTS = [
       {id:"meta-ads",label:"Meta Ads",members:["meta-ads-proposer","meta-ads-video","metaads-builder","metaads-manager","metaads-executer"]}]},
   { id:"infra", name:"INFRA", color:C.grey, icon:"⚙",
     agents:[
-      {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"00:00 Daily"},
+      {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"command-sync",name:"Command Center Sync",sched:"10 min · 06-23h"},{id:"sb-heartbeat",name:"Heartbeat",sched:"00:00 Daily"},
       {id:"run-purge",name:"Run Log Purge",sched:"04:00 Daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
       {id:"active-sync",name:"Active Props Sync",sched:"05:00"},{id:"new-sync",name:"New Props Sync",sched:"08:45"},
       {id:"workflow-backup",name:"Workflow Backup",sched:"Daily 02:30"}],
