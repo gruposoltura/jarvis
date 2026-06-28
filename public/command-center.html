@@ -275,6 +275,41 @@
   .det .deprow .hl .c{width:8px;height:8px;border-radius:50%}
   .det .deprow .hl .ts{color:var(--dim);font-size:10.5px;font-variant-numeric:tabular-nums}
   .det .rdyline .v.ready{color:var(--green)} .det .rdyline .v.degraded{color:var(--amber)} .det .rdyline .v.blocked{color:var(--red)}
+
+  /* === Suspect Match Loop (floating overlay) ====================== */
+  #smlPill{position:fixed;left:16px;bottom:16px;z-index:60;display:flex;align-items:center;gap:7px;
+    padding:8px 13px;border:1px solid var(--line);border-radius:999px;background:var(--panel);
+    backdrop-filter:blur(8px);color:var(--text);font:600 11px/1 system-ui;letter-spacing:.08em;
+    cursor:pointer;user-select:none;box-shadow:0 4px 18px rgba(0,0,0,.4)}
+  #smlPill:hover{border-color:var(--cyan)}
+  #smlPill .ic{color:var(--violet);font-size:13px}
+  #smlPanel{position:fixed;left:16px;bottom:60px;z-index:60;width:312px;
+    border:1px solid var(--line);border-radius:14px;background:var(--panelSolid);
+    box-shadow:0 10px 40px rgba(0,0,0,.55);overflow:hidden;
+    opacity:0;transform:translateY(8px) scale(.98);pointer-events:none;transition:.18s ease}
+  #smlPanel.open{opacity:1;transform:none;pointer-events:auto}
+  #smlPanel .sml-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:11px 14px;border-bottom:1px solid var(--hair);background:var(--panel2)}
+  #smlPanel .sml-hd .t{font:700 11px/1 system-ui;letter-spacing:.12em;color:var(--cyan)}
+  #smlPanel .sml-hd .s{font:500 10px/1 system-ui;color:var(--dim)}
+  #smlBody{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+  .sml-arm{border:1px solid var(--hair);border-radius:10px;padding:8px 10px;background:rgba(255,255,255,.012)}
+  .sml-arm-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+  .sml-tag{font:700 9px/1 system-ui;letter-spacing:.1em;padding:3px 7px;border-radius:6px}
+  .sml-tag.champ{color:#0a1018;background:var(--green)}
+  .sml-tag.chal{color:#0a1018;background:var(--amber)}
+  .sml-w{font:600 10px/1 ui-monospace,monospace;color:var(--dim)}
+  .sml-arm-b{display:flex;gap:6px}
+  .sml-stat{flex:1;text-align:center;background:rgba(0,0,0,.25);border-radius:7px;padding:6px 2px}
+  .sml-v{font:700 14px/1 system-ui;color:var(--text)}
+  .sml-v .sml-sub{font:500 10px/1 system-ui;color:var(--dim)}
+  .sml-l{font:600 8px/1 system-ui;letter-spacing:.08em;color:var(--dim);margin-top:3px;text-transform:uppercase}
+  .sml-verdict{font:600 10px/1.35 system-ui;padding:7px 9px;border-radius:8px;background:var(--panel2);color:var(--text)}
+  .sml-verdict.win{color:var(--green);border:1px solid rgba(62,224,143,.3)}
+  .sml-verdict.hold{color:var(--cyan);border:1px solid var(--line)}
+  .sml-verdict.neutral{color:var(--amber);border:1px solid rgba(255,181,71,.25)}
+  .sml-foot{font:500 9px/1.3 system-ui;color:var(--dim);text-align:center}
+  .sml-msg{font:500 11px/1.4 system-ui;color:var(--dim);padding:10px;text-align:center}
 </style>
 </head>
 <body>
@@ -330,6 +365,12 @@
     </div>
   </div>
 </div>
+
+<div id="smlPanel">
+  <div class="sml-hd"><span class="t">SUSPECT MATCH LOOP</span><span class="s">champion vs challenger</span></div>
+  <div id="smlBody"><div class="sml-msg">laden…</div></div>
+</div>
+<div id="smlPill"><span class="ic">⚖</span><span>MATCH LOOP</span></div>
 
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -1102,11 +1143,56 @@ async function start(){
   updateOrgStatus(); renderMetrics(); fillRuns24();
   setConn(true,"live · gruposoltura-crm");
   loadReadiness();
+  loadSuspectLoop();
   sb.channel("agent_status_live").on("postgres_changes",{event:"*",schema:"public",table:"agent_status"},p=>{ applyRow(p.new); refreshReadiness(); }).subscribe(s=>{ if(s==="SUBSCRIBED")setConn(true,"live · gruposoltura-crm"); });
-  setInterval(async()=>{ await load24h(); fillRuns24(); }, 5*60*1000);   // ververs 24u-tellers (zonder herordening)
+  setInterval(async()=>{ await load24h(); fillRuns24(); loadSuspectLoop(); }, 5*60*1000);   // ververs 24u-tellers (zonder herordening)
   const {data:hb}=await sb.from("heartbeat").select("last_ping").order("last_ping",{ascending:false}).limit(1);
   if(hb&&hb[0]&&$("hb"))$("hb").innerHTML=`Heartbeat online · last ping <b style="color:${C.green}">${ago(hb[0].last_ping)}</b>`;
 }
+
+/* === Suspect Match Loop (live champion vs challenger) ============== */
+async function loadSuspectLoop(){
+  if(!sbClient) return;
+  const wrap=document.getElementById("smlBody"); if(!wrap) return;
+  try{
+    const {data,error}=await sbClient.from("suspect_match_loop_public").select("*");
+    if(error){ wrap.innerHTML='<div class="sml-msg">kon loop niet laden</div>'; return; }
+    const champ=(data||[]).find(r=>r.role==="champion");
+    const chal =(data||[]).find(r=>r.role==="challenger");
+    if(!champ){ wrap.innerHTML='<div class="sml-msg">geen champion ingesteld</div>'; return; }
+    const minS=champ.min_sample||0, margin=Number(champ.promote_margin||0);
+    const rate=r=> r==null?"\u2014":(Number(r)*100).toFixed(2)+"%";
+    const wv=r=>`${r.w_category}/${r.w_proptype}/${r.w_price_tight}/${r.w_price_loose}`;
+    const armRow=(r,label,cls)=> !r
+      ? `<div class="sml-arm"><div class="sml-arm-h"><span class="sml-tag ${cls}">${label}</span><span class="sml-w">geen</span></div></div>`
+      : `<div class="sml-arm">
+           <div class="sml-arm-h"><span class="sml-tag ${cls}">${label}</span><span class="sml-w">w ${wv(r)}</span></div>
+           <div class="sml-arm-b">
+             <div class="sml-stat"><div class="sml-v">${rate(r.matched_conv_rate)}</div><div class="sml-l">conv</div></div>
+             <div class="sml-stat"><div class="sml-v">${r.matched_n||0}<span class="sml-sub">/${minS}</span></div><div class="sml-l">matched</div></div>
+             <div class="sml-stat"><div class="sml-v">${r.pending_n||0}</div><div class="sml-l">in flight</div></div>
+           </div></div>`;
+    let verdict, vcls="neutral";
+    if(!chal){ verdict="geen challenger actief"; }
+    else if((chal.matched_n||0)<minS || (champ.matched_n||0)<minS){
+      const need=Math.max(minS-(champ.matched_n||0), minS-(chal.matched_n||0), 0);
+      verdict=`verzamelt data \u00b7 nog ${need} matched nodig`; }
+    else{
+      const cr=Number(champ.matched_conv_rate||0), hr=Number(chal.matched_conv_rate||0);
+      const dpp=((hr-cr)*100).toFixed(2);
+      if(hr>=cr+margin){ verdict=`challenger wint (+${dpp}pp) \u2192 promotie bij volgende roll`; vcls="win"; }
+      else if(hr<cr){ verdict=`champion houdt stand (challenger ${dpp}pp)`; vcls="hold"; }
+      else{ verdict=`gelijk binnen marge (+${dpp}pp) \u00b7 doormeten`; vcls="neutral"; } }
+    wrap.innerHTML =
+      armRow(champ,"CHAMPION","champ") +
+      armRow(chal,"CHALLENGER","chal") +
+      `<div class="sml-verdict ${vcls}">${verdict}</div>` +
+      `<div class="sml-foot">split ${champ.split_pct}% \u00b7 venster ${champ.window_days}d \u00b7 marge ${(margin*100).toFixed(1)}pp \u00b7 floor ${champ.min_match_score}</div>`;
+  }catch(e){ wrap.innerHTML='<div class="sml-msg">fout bij laden</div>'; }
+}
+(function(){ const p=document.getElementById("smlPill");
+  if(p) p.addEventListener("click",()=>document.getElementById("smlPanel").classList.toggle("open")); })();
+
 setView("org");
 start();
 </script>
