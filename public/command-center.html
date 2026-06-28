@@ -64,10 +64,10 @@
     font:600 10px system-ui;line-height:1.12;text-align:left;max-width:104px;z-index:2}
   .agent:hover{transform:translate(-50%,-50%) scale(1.08);z-index:9}
   .agent .sd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-  .agent.cluster{background:rgba(8,13,20,0.96);font-weight:700;max-width:118px}
+  .agent.cluster{background:rgba(8,13,20,0.96);font-weight:700;max-width:none;white-space:nowrap}
   .agent.cluster.open{box-shadow:0 0 18px rgba(0,212,255,.32);border-color:rgba(255,255,255,.20)}
   /* uitgeklapte cluster-leden: verticale stapel direct onder het cluster-label */
-  .agent.member{z-index:7;padding-left:11px;background:rgba(9,15,25,0.97);
+  .agent.member{z-index:7;padding-left:11px;background:rgba(9,15,25,0.97);white-space:nowrap;max-width:none;
     border-color:color-mix(in srgb,var(--mc,#00d4ff) 32%, transparent)}
   .agent.member::after{content:"";position:absolute;left:-1px;top:6px;bottom:6px;width:3px;
     border-radius:3px;background:var(--mc,#00d4ff);opacity:.75}
@@ -149,7 +149,10 @@
   .mini-av .sd{position:absolute;left:-2px;top:-2px;width:9px;height:9px;border-radius:50%;border:2px solid var(--panelSolid)}
   .ac-meta{min-width:0;flex:1}
   .ac-name{font-weight:600;font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ac-sched{font-size:9.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ac-sched{display:flex;align-items:center;gap:5px;font-size:9.5px;color:var(--dim)}
+  .ac-sched .schedtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .ac-sched .ac24{flex:0 0 auto;font-size:9px;letter-spacing:.2px}
+  .ac-sched .ac24 b{font-weight:800;font-variant-numeric:tabular-nums;color:var(--cyan)}
   /* laatst-gedraaid badge rechts op de kaart */
   .ac-run{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px;
     margin-left:auto;padding-left:6px;text-align:right;line-height:1.05}
@@ -159,6 +162,28 @@
   .ac-run.run-err .rk{color:var(--red)}   .ac-run.run-err .rt{color:#e2a3a5}
   .ac-run.run-go  .rk{color:var(--cyan);animation:jc-blink .9s infinite}
   .ac-run.run-go  .rt{color:#8fd6e8}
+
+  /* expand-caret + uitgeklapte kaart-highlight */
+  .ac-caret{flex:0 0 auto;margin-left:2px;font-size:10px;color:var(--dim);
+    transition:transform .25s ease,color .15s}
+  .agent-card.exp .ac-caret{transform:rotate(180deg);color:var(--a)}
+  .agent-card.exp{border-color:color-mix(in srgb,var(--a) 55%,var(--hair));
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--a) 22%,transparent),0 7px 20px rgba(0,0,0,.4)}
+  /* accordion: laatste 10 executies (vouwt naar beneden, schuift de rest mee) */
+  .agent-unit{display:block}
+  .ac-exec{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+  .ac-exec.open{grid-template-rows:1fr}
+  .ac-exec>.inner{overflow:hidden;min-height:0}
+  .ac-exec .exec-head{font-size:8.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);padding:9px 4px 6px}
+  .exec-list{list-style:none;margin:0;padding:0 2px 8px;display:flex;flex-direction:column;gap:3px}
+  .exec-list li{display:flex;align-items:center;gap:9px;font-size:11px;padding:5px 9px;
+    background:rgba(0,0,0,.24);border:1px solid var(--hair);border-radius:8px}
+  .exec-list .ex-k{flex:0 0 12px;text-align:center;font-size:11px;font-weight:800;color:var(--dim)}
+  .exec-list .ex-k.run-ok{color:var(--green)} .exec-list .ex-k.run-err{color:var(--red)}
+  .exec-list .ex-k.run-go{color:var(--cyan)}
+  .exec-list .ex-when{color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:.2px}
+  .exec-list .ex-dur{margin-left:auto;color:var(--dim);font-size:10px;font-variant-numeric:tabular-nums}
+  .exec-msg{font-size:11px;color:var(--dim);padding:9px 4px 11px}
 
   .org-foot{margin-top:22px;font-size:11px;color:var(--dim);letter-spacing:.4px}
   .org-foot b{color:var(--text);font-weight:600}
@@ -182,8 +207,9 @@
     border:1px solid color-mix(in srgb,var(--a) 38%, var(--hair));border-radius:7px;padding:4px 9px}
   .mgmt-body{display:flex;align-items:center;gap:28px;flex-wrap:wrap;justify-content:center}
   .mgmt-person{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;flex:0 0 auto}
-  .mgmt-tasks{display:flex;gap:11px;flex-wrap:wrap;justify-content:center;flex:1 1 320px;min-width:0}
-  .mgmt-tasks .agent-card{flex:0 0 210px}
+  .mgmt-tasks{display:flex;gap:11px;flex-wrap:wrap;align-items:flex-start;justify-content:center;flex:1 1 320px;min-width:0}
+  .mgmt-tasks .agent-unit{flex:0 0 210px}
+  .mgmt-tasks .agent-card{width:100%}
   .mgmt-tasks .agent-card::before{display:none}
 
   /* ---- 3D manager avatar ---- */
@@ -213,7 +239,7 @@
     .org-lane::before,.org-board::before,.org-connect{display:none}
     .mgmt-block{width:100%;padding:14px}
     .mgmt-body{gap:16px}
-    .mgmt-tasks .agent-card{flex:1 1 100%}
+    .mgmt-tasks .agent-unit{flex:1 1 100%}
     aside{display:none}
   }
   @media (prefers-reduced-motion:reduce){
@@ -262,8 +288,8 @@
     </div>
     <span class="sub" id="connTxt">· verbinden…</span>
     <div class="viewtoggle" id="viewToggle">
-      <button data-view="radial" class="active"><span class="ic">🌐</span>CONSTELLATION</button>
-      <button data-view="org"><span class="ic">🏢</span>ORGANIGRAM</button>
+      <button data-view="radial"><span class="ic">🌐</span>CONSTELLATION</button>
+      <button data-view="org" class="active"><span class="ic">🏢</span>ORGANIGRAM</button>
     </div>
     <button class="depbtn" id="depsBtn" title="Toon afhankelijkheidslijnen (constellation)"><span class="ic">🔗</span>DEPS</button>
     <div class="spacer"></div>
@@ -300,7 +326,7 @@
         <div class="org-connect"><span class="org-trunk"></span></div>
         <div class="org-board" id="orgBoard"></div>
       </div>
-      <div class="org-foot">Organigram · live · <b>gruposoltura-crm</b> · <b style="color:#ffd166">MANAGEMENT</b> overziet alle afdelingen · managers tonen de samengevatte afdelingsstatus · zelfde data als constellation</div>
+      <div class="org-foot">Organigram · live · <b>gruposoltura-crm</b> · klik een agent voor de <b>laatste 10 executies</b> · agents gesorteerd op <b>runs/24u</b> (meeste eerst) · <b style="color:#ffd166">MANAGEMENT</b> overziet alle afdelingen</div>
     </div>
   </div>
 </div>
@@ -318,10 +344,11 @@ const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idl
 const DEPTS = [
   { id:"mgmt", name:"MANAGEMENT", color:C.gold, icon:"🧭",
     agents:[
-      {id:"ops-supervisor",name:"Ops Supervisor (Jack)",sched:"07:45 Mon-Fri"},
-      {id:"roll-call",name:"Morning Roll-Call",sched:"07:00 Daily"},
-      {id:"integrity-check",name:"Data Integrity",sched:"05:00 Daily"}],
-    clusters:[]},
+      {id:"integrity-check",name:"Data Integrity",sched:"05:45 Daily"},
+      {id:"roll-call",name:"Morning Roll-Call",sched:"06:00 Daily"},
+      {id:"ops-supervisor",name:"Ops Supervisor (Jack)",sched:"06:15 Daily"}],
+    clusters:[
+      {id:"morning-report",label:"Morning Report",members:["integrity-check","roll-call","ops-supervisor"]}]},
   { id:"ops", name:"OPERATIONS", color:C.cyan, icon:"🖥",
     agents:[
       {id:"cont-sync",name:"Contacts Sync",sched:"hourly"},{id:"cont-recon",name:"Contacts Reconcile",sched:"03:30"},
@@ -333,7 +360,7 @@ const DEPTS = [
   { id:"sales", name:"SALES", color:C.green, icon:"👥",
     agents:[
       {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"appointment",name:"Appointment Agent",sched:"email"},
-      {id:"idealista",name:"Idealista Leads",sched:"email"},{id:"idealista-feed",name:"Idealista Feed",sched:"webhook"},
+      {id:"idealista",name:"Idealista Leads",sched:"email"},{id:"idealista-feed",name:"Idealista Feed",sched:"daily 18:00"},
       {id:"purchase-info",name:"Purchase Info",sched:"webhook"}],
     clusters:[
       {id:"idealista-grp",label:"Idealista",members:["idealista","idealista-feed"]}]},
@@ -366,17 +393,19 @@ const DEPTS = [
       {id:"social-lifestyle",name:"Lifestyle Proposer",sched:"Thu 08:00"},
       {id:"meta-ads-proposer",name:"Meta Ads Proposer",sched:"manual"},
       {id:"meta-ads-video",name:"Meta Ads Video",sched:"manual"},
-      {id:"meta-ads-publisher",name:"Meta Ads Publisher",sched:"on approve"},
+      {id:"metaads-builder",name:"MetaAds Builder",sched:"Sun 12:00"},
+      {id:"metaads-manager",name:"MetaAds Manager",sched:"daily 09:00"},
+      {id:"metaads-executer",name:"MetaAds Executer",sched:"on approve"},
       {id:"ad-playbook",name:"Ad Viral Playbook",sched:"Mon 06:00"}],
     clusters:[
       {id:"social",label:"Social Agent",members:["social-proposer","social-publisher","social-lifestyle"]},
-      {id:"meta-ads",label:"Meta Ads",members:["meta-ads-proposer","meta-ads-video","meta-ads-publisher"]}]},
+      {id:"meta-ads",label:"Meta Ads",members:["meta-ads-proposer","meta-ads-video","metaads-builder","metaads-manager","metaads-executer"]}]},
   { id:"infra", name:"INFRA", color:C.grey, icon:"⚙",
     agents:[
-      {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"sb-heartbeat",name:"Heartbeat",sched:"00:00 Daily"},
+      {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"command-sync",name:"Command Center Sync",sched:"10 min · 06-23h"},{id:"sb-heartbeat",name:"Heartbeat",sched:"00:00 Daily"},
       {id:"run-purge",name:"Run Log Purge",sched:"04:00 Daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
       {id:"active-sync",name:"Active Props Sync",sched:"05:00"},{id:"new-sync",name:"New Props Sync",sched:"08:45"},
-      {id:"workflow-backup",name:"Workflow Backup",sched:"Mon/Wed/Fri 22:00"}],
+      {id:"workflow-backup",name:"Workflow Backup",sched:"Daily 02:30"}],
     clusters:[
       {id:"props-sync",label:"Props Sync",members:["active-sync","new-sync"]},
       {id:"housekeep",label:"Housekeeping",members:["sb-heartbeat","run-purge","session-notes"]}]},
@@ -393,6 +422,9 @@ const CLUSTER_BY_ID = {}; DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>CLUSTER_
 
 /* gedeelde state */
 const rows = {};
+const runs24 = {};                 // agent_id -> aantal runs laatste 24u (voor sortering + chip)
+const execCache = {};              // agent_id -> array runs | "none" | "notoken" | "error"
+const execOpen = new Set();        // agent_id's met open accordion
 const expanded = {};
 const pendingExpand = new Set();   // clusters die net opengeklapt zijn (voor de roll-down animatie)
 let collapsing = null;             // cluster dat momenteel terugrolt
@@ -480,7 +512,7 @@ function layoutClusterStacks(w,h){
     const anchor=pos["cl-"+cl.id]; if(!anchor)return;
     const m=cl.members, stackH=STACK_TOP+m.length*STACK_GAP;
     const dir=(anchor.y+stackH < h-30)?1:-1;     // klap omhoog als er onder geen ruimte is
-    const x=Math.max(70,Math.min(w-70,anchor.x));
+    const x=Math.max(95,Math.min(w-95,anchor.x));
     m.forEach((id,idx)=>{ pos[id]={x, y:anchor.y+dir*(STACK_TOP+idx*STACK_GAP)}; });
   }));
 }
@@ -625,7 +657,7 @@ function runExpandAnim(){
 function toggleCluster(clId){
   if(collapsing===clId)return;
   if(expanded[clId]){ collapseCluster(clId); }
-  else { expanded[clId]=true; pendingExpand.add(clId); selected=null; renderRadial(); }
+  else { expanded[clId]=true; pendingExpand.add(clId); selected=null; deferHeavy(renderRadial); }
 }
 /* roll-up: leden rollen gestaffeld terug in het cluster-label, daarna pas opnieuw renderen */
 function collapseCluster(clId){
@@ -728,6 +760,18 @@ function renderMetrics(){
 function renderRadial(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); buildDepEdges(); buildNodes(); positionNodes(); renderMetrics(); renderPanel(); }
 function layoutRadial(){ UNITS=visibleUnits(); computePositions(); buildEdges(); positionSvg(); buildDepEdges(); positionNodes(); }
 
+/* INP fix: run heavy SVG/DOM renders AFTER the interaction has painted, and coalesce
+   bursts of clicks into a single render so a click handler never blocks the main thread. */
+let _deferQueued=false, _deferFn=null;
+function deferHeavy(fn){
+  _deferFn=fn;
+  if(_deferQueued) return;
+  _deferQueued=true;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    _deferQueued=false; const f=_deferFn; _deferFn=null; if(f) f();
+  }));
+}
+
 /* ====================================================================== */
 /* === ORG VIEW (organigram) ============================================ */
 /* ====================================================================== */
@@ -822,11 +866,18 @@ const orgAgentDep={};  // agentId -> .ac-dep element (readiness badge)
 /* ---- gedeelde org-builders ---- */
 function agentCardsHTML(d){
   return d.agents.map(a=>`
-    <div class="agent-card" data-agent="${a.id}">
-      <span class="ac-dep" data-dep="${a.id}" title="afhankelijkheden"></span>
-      <div class="mini-av">${initials(a.name)}<span class="sd"></span></div>
-      <div class="ac-meta"><div class="ac-name">${a.name}</div><div class="ac-sched">${a.sched}</div></div>
-      <div class="ac-run" data-run="${a.id}" title="laatst gedraaid"><span class="rk">·</span><span class="rt">—</span></div>
+    <div class="agent-unit" data-unit="${a.id}">
+      <div class="agent-card" data-agent="${a.id}">
+        <span class="ac-dep" data-dep="${a.id}" title="afhankelijkheden"></span>
+        <div class="mini-av">${initials(a.name)}<span class="sd"></span></div>
+        <div class="ac-meta">
+          <div class="ac-name">${a.name}</div>
+          <div class="ac-sched"><span class="schedtxt">${a.sched}</span><span class="ac24" data-24="${a.id}"></span></div>
+        </div>
+        <div class="ac-run" data-run="${a.id}" title="laatst gedraaid"><span class="rk">·</span><span class="rt">—</span></div>
+        <span class="ac-caret">⌄</span>
+      </div>
+      <div class="ac-exec" data-exec="${a.id}"><div class="inner"></div></div>
     </div>`).join("");
 }
 function managerVisualHTML(mgr,color,i){
@@ -842,12 +893,13 @@ function managerVisualHTML(mgr,color,i){
     <div class="mgr-role">${mgr.role}</div>`;
 }
 function wireAgentCards(scope){
-  scope.querySelectorAll(".agent-card").forEach(card=>{
-    const id=card.getAttribute("data-agent");
+  scope.querySelectorAll(".agent-unit").forEach(unit=>{
+    const id=unit.getAttribute("data-unit");
+    const card=unit.querySelector(".agent-card");
     orgAgentDots[id]=card.querySelector(".sd");
     orgAgentRun[id]=card.querySelector(".ac-run");
     orgAgentDep[id]=card.querySelector(".ac-dep");
-    card.onclick=()=>{ selected=id; setView("radial"); };  // klik = open detail in constellation
+    card.addEventListener("click",()=>toggleExec(id,unit));   // klik = laatste 10 executies uit/in klappen
   });
 }
 function wireManager(scope,d){
@@ -879,8 +931,55 @@ function wireManager(scope,d){
   function bloop(){ blink(); setTimeout(bloop, 2400+Math.random()*4200); }
   if(!reduced) setTimeout(bloop, 800+Math.random()*3000);
 }
+/* ---- runs/24u + laatste-10-executies (org accordion) ---- */
+const NL_DOW=["zo","ma","di","wo","do","vr","za"];
+function fmtRunFull(ts){ if(!ts)return"—"; const d=new Date(ts); if(isNaN(d))return"—";
+  const p=n=>String(n).padStart(2,"0");
+  return `${NL_DOW[d.getDay()]} ${p(d.getDate())}/${p(d.getMonth()+1)} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
+function fmtDur(ms){ if(ms==null)return"—"; if(ms<1000)return ms+"ms"; const s=ms/1000; return (s<10?s.toFixed(1):Math.round(s))+"s"; }
+async function load24h(){ if(!sbClient)return;
+  const {data,error}=await sbClient.from("jarvis_runs_24h").select("workflow,runs_24h");
+  if(error){ console.warn("jarvis_runs_24h:",error.message); return; }
+  const byWf={}; (data||[]).forEach(r=>byWf[r.workflow]=r.runs_24h);
+  for(const id in BY_ID){ const tok=(rows[id]||{}).run_token; runs24[id]= tok?(byWf[tok]||0):0; } }
+function sortDepts(){ DEPTS.forEach(d=>{ d.agents.sort((a,b)=>{
+    const ra=runs24[a.id]||0, rb=runs24[b.id]||0; if(rb!==ra)return rb-ra;            // meeste runs/24u eerst
+    const ca=(rows[a.id]&&rows[a.id].run_count)||0, cb=(rows[b.id]&&rows[b.id].run_count)||0;
+    if(cb!==ca)return cb-ca; return a.name.localeCompare(b.name); }); }); }
+function fillRuns24(){ document.querySelectorAll("[data-24]").forEach(el=>{
+    const id=el.getAttribute("data-24"), n=runs24[id]||0;
+    el.innerHTML = n>0 ? `<b>${n}</b>/24u` : `<b style="color:var(--dim)">0</b>/24u`; }); }
+async function toggleExec(id,unit){
+  const panel=unit.querySelector(".ac-exec"), card=unit.querySelector(".agent-card");
+  if(panel.classList.contains("open")){ panel.classList.remove("open"); card.classList.remove("exp"); execOpen.delete(id); return; }
+  panel.classList.add("open"); card.classList.add("exp"); execOpen.add(id);
+  renderExec(id,panel);                                   // toon cache of "laden…"
+  if(execCache[id]===undefined){ await loadExec(id); if(panel.classList.contains("open"))renderExec(id,panel); } }
+async function loadExec(id){
+  const tok=(rows[id]||{}).run_token;
+  if(!tok){ execCache[id]="notoken"; return; }
+  if(!sbClient)return;
+  try{ const {data,error}=await sbClient.from("jarvis_runs_public")
+      .select("run_at,status,duration_ms").eq("workflow",tok).order("run_at",{ascending:false}).limit(10);
+    if(error){ console.warn("jarvis_runs_public:",error.message); execCache[id]="error"; return; }
+    execCache[id]=(data&&data.length)?data:"none";
+  }catch(e){ execCache[id]="error"; } }
+function renderExec(id,panel){
+  const inner=panel.querySelector(".inner"), data=execCache[id]; let body;
+  if(data===undefined) body=`<div class="exec-msg">laden…</div>`;
+  else if(data==="notoken") body=`<div class="exec-msg">geen run-token gekoppeld</div>`;
+  else if(data==="none") body=`<div class="exec-msg">nog geen executies gelogd</div>`;
+  else if(data==="error") body=`<div class="exec-msg">kon executies niet laden</div>`;
+  else body=`<div class="exec-head">laatste ${data.length} executies</div><ul class="exec-list">`+
+    data.map(r=>{ const g=RUNGLYPH[r.status]||RUNGLYPH.idle; return `<li><span class="ex-k ${g.cls}">${g.ch}</span><span class="ex-when">${fmtRunFull(r.run_at)}</span><span class="ex-dur">${fmtDur(r.duration_ms)}</span></li>`; }).join("")+`</ul>`;
+  inner.innerHTML=body; }
+
 function buildOrgOnce(){
   const top=$("orgTop"), board=$("orgBoard"); top.innerHTML=""; board.innerHTML="";
+  orgRefs.length=0; execOpen.clear();                     // herbouw-veilig: oude refs wissen
+  for(const k in orgAgentDots)delete orgAgentDots[k];
+  for(const k in orgAgentRun)delete orgAgentRun[k];
+  for(const k in orgAgentDep)delete orgAgentDep[k];
   DEPTS.forEach((d,i)=>{
     const mgr=ORG_MGR[d.id];
     if(d.id==="mgmt"){
@@ -952,19 +1051,20 @@ if(!reduced) setInterval(()=>{ if(currentView!=="org")return;
 /* === VIEW SWITCH ====================================================== */
 function setView(v){
   currentView=v;
+  // Cheap, instant feedback so the button paints on the same frame as the click:
   $("view-radial").style.display = v==="radial"?"block":"none";
   $("view-org").style.display    = v==="org"?"block":"none";
   document.querySelectorAll("#viewToggle button").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
-  if(v==="radial"){ renderRadial(); }
-  else { updateOrgStatus(); renderMetrics(); }
+  // Heavy SVG/DOM build runs after the paint so it never blocks the interaction:
+  deferHeavy(()=>{ if(currentView==="radial"){ renderRadial(); } else { updateOrgStatus(); renderMetrics(); } });
 }
 $("viewToggle").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) setView(b.dataset.view); });
 $("depsBtn").addEventListener("click",()=>{ showDeps=!showDeps;
   $("depsBtn").classList.toggle("active",showDeps);
   // Defer heavy SVG work off the interaction so the button paints immediately (fixes INP long-task warning)
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  deferHeavy(()=>{
     if(showDeps && currentView!=="radial"){ setView("radial"); } else { buildDepEdges(); }
-  })); });
+  }); });
 
 /* === BOOT ============================================================= */
 buildSvgStatic(); renderRadial(); buildOrgOnce();
@@ -974,7 +1074,7 @@ setInterval(()=>{ $("clk").textContent=new Date().toLocaleTimeString("en-GB",{ho
 /* === SUPABASE (live) ================================================== */
 function setConn(ok,txt){ const d=$("connDot"); if(d){d.style.background=ok?C.green:C.red;d.style.boxShadow=`0 0 10px ${ok?C.green:C.red}`;} const t=$("connTxt"); if(t)t.textContent="· "+txt; }
 function applyRow(r){ if(!r||!r.agent_id)return;
-  rows[r.agent_id]={status:r.status,last_run:r.last_run,run_count:r.run_count,last_error:r.last_error};
+  rows[r.agent_id]={status:r.status,last_run:r.last_run,run_count:r.run_count,last_error:r.last_error,run_token:r.run_token};
   const a=BY_ID[r.agent_id];
   renderMetrics(); updateOrgStatus();
   if(currentView==="radial"){ paintNodes(); if(selected===r.agent_id)renderPanel(); }
@@ -994,15 +1094,20 @@ async function start(){
   const sb=createClient(SUPABASE_URL,SUPABASE_ANON); sbClient=sb;
   const {data,error}=await sb.from("agent_status").select("*");
   if(error){ setConn(false,"verbinding mislukt"); console.error(error); return; }
-  (data||[]).forEach(r=>{ rows[r.agent_id]={status:r.status,last_run:r.last_run,run_count:r.run_count,last_error:r.last_error}; });
-  if(currentView==="radial") renderRadial(); updateOrgStatus(); renderMetrics();
+  (data||[]).forEach(r=>{ rows[r.agent_id]={status:r.status,last_run:r.last_run,run_count:r.run_count,last_error:r.last_error,run_token:r.run_token}; });
+  await load24h();                 // tellers per agent (laatste 24u)
+  sortDepts();                     // sorteer agents per afdeling: meeste runs/24u -> minste
+  buildOrgOnce();                  // herbouw organigram in gesorteerde volgorde
+  if(currentView==="radial") renderRadial();
+  updateOrgStatus(); renderMetrics(); fillRuns24();
   setConn(true,"live · gruposoltura-crm");
   loadReadiness();
   sb.channel("agent_status_live").on("postgres_changes",{event:"*",schema:"public",table:"agent_status"},p=>{ applyRow(p.new); refreshReadiness(); }).subscribe(s=>{ if(s==="SUBSCRIBED")setConn(true,"live · gruposoltura-crm"); });
+  setInterval(async()=>{ await load24h(); fillRuns24(); }, 5*60*1000);   // ververs 24u-tellers (zonder herordening)
   const {data:hb}=await sb.from("heartbeat").select("last_ping").order("last_ping",{ascending:false}).limit(1);
   if(hb&&hb[0]&&$("hb"))$("hb").innerHTML=`Heartbeat online · last ping <b style="color:${C.green}">${ago(hb[0].last_ping)}</b>`;
 }
-setView("radial");
+setView("org");
 start();
 </script>
 </body>
