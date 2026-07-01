@@ -188,6 +188,19 @@
   .org-foot{margin-top:22px;font-size:11px;color:var(--dim);letter-spacing:.4px}
   .org-foot b{color:var(--text);font-weight:600}
 
+  /* ---- Meta Ads 3-staps pijplijn (org view) ---- */
+  .pipeline{position:relative;display:flex;flex-direction:column;gap:9px;margin:2px 0;
+    padding:8px 0 9px 10px;border-left:2px solid color-mix(in srgb,var(--a) 55%,transparent);
+    border-radius:0 10px 10px 0;
+    background:linear-gradient(90deg,color-mix(in srgb,var(--a) 8%,transparent),transparent 60%)}
+  .pl-head{display:flex;align-items:center;gap:7px;padding:0 2px 1px}
+  .pl-badge{font:800 8px/1 system-ui;letter-spacing:.1em;color:#06131a;background:var(--a);
+    border-radius:5px;padding:3px 5px}
+  .pl-title{font:800 11px/1 system-ui;letter-spacing:.14em;color:var(--a)}
+  .pl-flow{margin-left:auto;font:600 8px/1 system-ui;letter-spacing:.04em;color:var(--dim);white-space:nowrap}
+  .pl-unit .agent-card::before{display:none}
+  .pl-av .pl-num{font:800 15px/1 system-ui;color:#06131a;font-variant-numeric:tabular-nums}
+
   /* ---- supervisie-tier (MANAGEMENT bovenop) ---- */
   .org-tree{display:flex;flex-direction:column;min-width:min-content}
   .org-top{display:flex;justify-content:center;padding:2px 2px 0}
@@ -438,13 +451,14 @@ const DEPTS = [
       {id:"social-lifestyle",name:"Lifestyle Proposer",sched:"Thu 08:00"},
       {id:"meta-ads-proposer",name:"Meta Ads Proposer",sched:"manual"},
       {id:"meta-ads-video",name:"Meta Ads Video",sched:"manual"},
-      {id:"metaads-builder",name:"MetaAds Builder",sched:"Sun 12:00"},
-      {id:"metaads-manager",name:"MetaAds Manager",sched:"daily 09:00"},
-      {id:"metaads-executer",name:"MetaAds Executer",sched:"on approve"},
+      {id:"metaads-builder",name:"MetaAds Builder",sched:"Sun 12:00",grp:"metaads",step:1},
+      {id:"metaads-executer",name:"MetaAds Executer",sched:"on approve",grp:"metaads",step:2},
+      {id:"metaads-manager",name:"MetaAds Manager",sched:"daily 09:00",grp:"metaads",step:3},
       {id:"ad-playbook",name:"Ad Viral Playbook",sched:"Mon 06:00"}],
     clusters:[
       {id:"social",label:"Social Agent",members:["social-proposer","social-publisher","social-lifestyle"]},
-      {id:"meta-ads",label:"Meta Ads",members:["meta-ads-proposer","meta-ads-video","metaads-builder","metaads-manager","metaads-executer"]}]},
+      {id:"meta-pipe",label:"Meta Ads 1-2-3",members:["metaads-builder","metaads-executer","metaads-manager"]},
+      {id:"meta-prop",label:"Ad Proposers",members:["meta-ads-proposer","meta-ads-video"]}]},
   { id:"infra", name:"INFRA", color:C.grey, icon:"⚙",
     agents:[
       {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"command-sync",name:"Command Center Sync",sched:"10 min · 06-23h"},{id:"sb-heartbeat",name:"Heartbeat",sched:"00:00 Daily"},
@@ -464,6 +478,8 @@ const HUB_OF = Object.fromEntries(DEPTS.flatMap(d=>d.agents.map(a=>[a.id,d.id]))
 const CLUSTER_OF = {};
 DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>cl.members.forEach(m=>CLUSTER_OF[m]=cl.id)));
 const CLUSTER_BY_ID = {}; DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>CLUSTER_BY_ID[cl.id]={...cl,dept:d.id,color:d.color,deptName:d.name}));
+/* geordende pijplijn-groepen (org view): agents met a.grp blijven samen + in a.step-volgorde */
+const GRP = { metaads:{label:"META ADS", flow:"BOUW \u2192 PUBLICEER \u2192 BEHEER"} };
 
 /* gedeelde state */
 const rows = {};
@@ -909,21 +925,36 @@ const orgAgentRun={};  // agentId -> .ac-run element (laatst-gedraaid badge)
 const orgAgentDep={};  // agentId -> .ac-dep element (readiness badge)
 
 /* ---- gedeelde org-builders ---- */
-function agentCardsHTML(d){
-  return d.agents.map(a=>`
-    <div class="agent-unit" data-unit="${a.id}">
+function agentCardHTML(a){
+  const step=a.step, av = step ? `<span class="pl-num">${step}</span>` : initials(a.name);
+  const nm = a.grp ? a.name.replace(/^MetaAds\s*/,"") : a.name;   // in de pijplijn tonen we alleen de functiewoord (Builder/Executer/Manager)
+  return `
+    <div class="agent-unit${a.grp?' pl-unit':''}" data-unit="${a.id}">
       <div class="agent-card${a.paused?' paused':''}" data-agent="${a.id}">
         <span class="ac-dep" data-dep="${a.id}" title="afhankelijkheden"></span>
-        <div class="mini-av">${initials(a.name)}<span class="sd"></span></div>
+        <div class="mini-av${step?' pl-av':''}">${av}<span class="sd"></span></div>
         <div class="ac-meta">
-          <div class="ac-name">${a.name}${a.paused?'<span class="ac-paused">PAUSED</span>':''}</div>
+          <div class="ac-name">${nm}${a.paused?'<span class="ac-paused">PAUSED</span>':''}</div>
           <div class="ac-sched"><span class="schedtxt">${a.sched}</span><span class="ac24" data-24="${a.id}"></span></div>
         </div>
         <div class="ac-run" data-run="${a.id}" title="laatst gedraaid"><span class="rk">·</span><span class="rt">—</span></div>
         <span class="ac-caret">⌄</span>
       </div>
       <div class="ac-exec" data-exec="${a.id}"><div class="inner"></div></div>
-    </div>`).join("");
+    </div>`;
+}
+function agentCardsHTML(d){
+  let html="", i=0; const ags=d.agents;
+  while(i<ags.length){
+    const a=ags[i];
+    if(a.grp){
+      const g=a.grp, mem=[];
+      while(i<ags.length && ags[i].grp===g){ mem.push(ags[i]); i++; }   // pak alle opeenvolgende leden van dezelfde groep
+      const meta=GRP[g]||{label:g,flow:""};
+      html+=`<div class="pipeline" data-pl="${g}"><div class="pl-head"><span class="pl-badge">3-STAP</span><span class="pl-title">${meta.label}</span><span class="pl-flow">${meta.flow}</span></div>${mem.map(agentCardHTML).join("")}</div>`;
+    } else { html+=agentCardHTML(a); i++; }
+  }
+  return html;
 }
 function managerVisualHTML(mgr,color,i){
   return `<div class="stage3d">
@@ -987,10 +1018,23 @@ async function load24h(){ if(!sbClient)return;
   if(error){ console.warn("jarvis_runs_24h:",error.message); return; }
   const byWf={}; (data||[]).forEach(r=>byWf[r.workflow]=r.runs_24h);
   for(const id in BY_ID){ const tok=(rows[id]||{}).run_token; runs24[id]= tok?(byWf[tok]||0):0; } }
-function sortDepts(){ DEPTS.forEach(d=>{ d.agents.sort((a,b)=>{
-    const ra=runs24[a.id]||0, rb=runs24[b.id]||0; if(rb!==ra)return rb-ra;            // meeste runs/24u eerst
-    const ca=(rows[a.id]&&rows[a.id].run_count)||0, cb=(rows[b.id]&&rows[b.id].run_count)||0;
-    if(cb!==ca)return cb-ca; return a.name.localeCompare(b.name); }); }); }
+function sortDepts(){
+  const actKey=a=>[runs24[a.id]||0,(rows[a.id]&&rows[a.id].run_count)||0];
+  DEPTS.forEach(d=>{
+    const groups={}, order=[];
+    d.agents.forEach(a=>{ if(a.grp){ if(!groups[a.grp]){ groups[a.grp]={grp:a.grp,members:[]}; order.push(groups[a.grp]); } groups[a.grp].members.push(a); }
+      else order.push({loose:a}); });
+    const keyOf=e=>{ if(e.loose)return actKey(e.loose); let br=0,bc=0;
+      e.members.forEach(m=>{ const k=actKey(m); if(k[0]>br)br=k[0]; if(k[1]>bc)bc=k[1]; }); return [br,bc]; };
+    order.sort((x,y)=>{ const kx=keyOf(x),ky=keyOf(y); if(ky[0]!==kx[0])return ky[0]-kx[0];   // groep telt als 1 blok, gesorteerd op drukste lid
+      if(ky[1]!==kx[1])return ky[1]-kx[1];
+      const nx=x.loose?x.loose.name:x.grp, ny=y.loose?y.loose.name:y.grp; return nx.localeCompare(ny); });
+    const out=[];
+    order.forEach(e=>{ if(e.loose)out.push(e.loose);
+      else { e.members.sort((a,b)=>(a.step||0)-(b.step||0)); e.members.forEach(m=>out.push(m)); } });   // leden altijd 1-2-3
+    d.agents=out;
+  });
+}
 function fillRuns24(){ document.querySelectorAll("[data-24]").forEach(el=>{
     const id=el.getAttribute("data-24"), n=runs24[id]||0;
     el.innerHTML = n>0 ? `<b>${n}</b>/24u` : `<b style="color:var(--dim)">0</b>/24u`; }); }
