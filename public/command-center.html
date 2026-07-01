@@ -193,11 +193,14 @@
     padding:8px 0 9px 10px;border-left:2px solid color-mix(in srgb,var(--a) 55%,transparent);
     border-radius:0 10px 10px 0;
     background:linear-gradient(90deg,color-mix(in srgb,var(--a) 8%,transparent),transparent 60%)}
-  .pl-head{display:flex;align-items:center;gap:7px;padding:0 2px 1px}
+  .pl-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:0 2px 1px}
   .pl-badge{font:800 8px/1 system-ui;letter-spacing:.1em;color:#06131a;background:var(--a);
     border-radius:5px;padding:3px 5px}
   .pl-title{font:800 11px/1 system-ui;letter-spacing:.14em;color:var(--a)}
-  .pl-flow{margin-left:auto;font:600 8px/1 system-ui;letter-spacing:.04em;color:var(--dim);white-space:nowrap}
+  .pl-flow{margin-left:auto;font:600 8px/1.3 system-ui;letter-spacing:.04em;color:var(--dim)}
+  .pl-body{display:flex;flex-direction:column;gap:9px}
+  .mgmt-tasks .pipeline{flex:1 1 340px;max-width:440px}
+  .mgmt-tasks .pl-body .agent-unit{flex:1 1 auto}
   .pl-unit .agent-card::before{display:none}
   .pl-av .pl-num{font:800 15px/1 system-ui;color:#06131a;font-variant-numeric:tabular-nums}
 
@@ -402,9 +405,9 @@ const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idl
 const DEPTS = [
   { id:"mgmt", name:"MANAGEMENT", color:C.gold, icon:"🧭",
     agents:[
-      {id:"integrity-check",name:"Data Integrity",sched:"05:45 Daily"},
-      {id:"roll-call",name:"Morning Roll-Call",sched:"06:00 Daily"},
-      {id:"ops-supervisor",name:"Ops Supervisor (Jack)",sched:"06:15 Daily"}],
+      {id:"integrity-check",name:"Data Integrity",sched:"05:45 Daily",grp:"morning",step:1},
+      {id:"roll-call",name:"Morning Roll-Call",sched:"06:00 Daily",grp:"morning",step:2},
+      {id:"ops-supervisor",name:"Ops Supervisor (Jack)",sched:"06:15 Daily",grp:"morning",step:3}],
     clusters:[
       {id:"morning-report",label:"Morning Report",members:["integrity-check","roll-call","ops-supervisor"]}]},
   { id:"ops", name:"OPERATIONS", color:C.cyan, icon:"🖥",
@@ -438,7 +441,7 @@ const DEPTS = [
       {id:"welcome",name:"Welcome Seller",sched:"event"},{id:"toolate",name:"Too Late",sched:"daily 11:00"},
       {id:"review",name:"Google Review Invite",sched:"daily 10:00"},{id:"review_viewing",name:"Review Invite Viewing",sched:"daily 11:00"},
       {id:"research",name:"Competitor Research",sched:"monthly · day 1 · 06:00"},{id:"improve",name:"Improvement Planner",sched:"monthly · day 3 · 07:00"},
-      {id:"news",name:"News Curation",sched:"Mon/Thu/Sun 09:00"},{id:"news-mailing",name:"Weekly News",sched:"Fri 10:00"},
+      {id:"news",name:"News Curation",sched:"Mon/Thu/Sun 09:00",grp:"news",step:1},{id:"news-mailing",name:"Weekly News",sched:"Fri 10:00",grp:"news",step:2},
       {id:"new-listing",name:"New Listing",sched:"event"},{id:"seller-update",name:"Seller Weekly Update",sched:"Fri 16:00"},{id:"suspect-matches",name:"Suspect Matches",sched:"Mon 09:00"}],
     clusters:[
       {id:"mailings",label:"Mailings",members:["top10","price-red","welcome","toolate","news-mailing","new-listing","seller-update","suspect-matches"]},
@@ -446,9 +449,9 @@ const DEPTS = [
       {id:"research-grp",label:"Research",members:["research","improve"]}]},
   { id:"advertising", name:"ADVERTISING", color:C.advert, icon:"🎯",
     agents:[
-      {id:"social-proposer",name:"Social Proposer",sched:"Sun+Mon 08:00"},
-      {id:"social-publisher",name:"Social Publisher",sched:"on approve"},
-      {id:"social-lifestyle",name:"Lifestyle Proposer",sched:"Thu 08:00"},
+      {id:"social-proposer",name:"Social Proposer",sched:"Sun+Mon 08:00",grp:"social",step:1},
+      {id:"social-lifestyle",name:"Lifestyle Proposer",sched:"Thu 08:00",grp:"social",step:2},
+      {id:"social-publisher",name:"Social Publisher",sched:"on approve",grp:"social",step:3},
       {id:"meta-ads-proposer",name:"Meta Ads Proposer",sched:"manual"},
       {id:"meta-ads-video",name:"Meta Ads Video",sched:"manual"},
       {id:"metaads-builder",name:"MetaAds Builder",sched:"Sun 12:00",grp:"metaads",step:1},
@@ -456,7 +459,7 @@ const DEPTS = [
       {id:"metaads-manager",name:"MetaAds Manager",sched:"daily 09:00",grp:"metaads",step:3},
       {id:"ad-playbook",name:"Ad Viral Playbook",sched:"Mon 06:00"}],
     clusters:[
-      {id:"social",label:"Social Agent",members:["social-proposer","social-publisher","social-lifestyle"]},
+      {id:"social",label:"Social 1-2-3",members:["social-proposer","social-lifestyle","social-publisher"]},
       {id:"meta-pipe",label:"Meta Ads 1-2-3",members:["metaads-builder","metaads-executer","metaads-manager"]},
       {id:"meta-prop",label:"Ad Proposers",members:["meta-ads-proposer","meta-ads-video"]}]},
   { id:"infra", name:"INFRA", color:C.grey, icon:"⚙",
@@ -479,7 +482,12 @@ const CLUSTER_OF = {};
 DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>cl.members.forEach(m=>CLUSTER_OF[m]=cl.id)));
 const CLUSTER_BY_ID = {}; DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>CLUSTER_BY_ID[cl.id]={...cl,dept:d.id,color:d.color,deptName:d.name}));
 /* geordende pijplijn-groepen (org view): agents met a.grp blijven samen + in a.step-volgorde */
-const GRP = { metaads:{label:"META ADS", flow:"BOUW \u2192 PUBLICEER \u2192 BEHEER"} };
+const GRP = {
+  metaads:{label:"META ADS",       flow:"BOUW \u2192 PUBLICEER \u2192 BEHEER"},
+  social: {label:"SOCIAL",         flow:"VOORSTEL \u2192 PUBLICEER"},
+  morning:{label:"MORNING REPORT", flow:"CHECK \u2192 ROLL-CALL \u2192 SUPERVISOR"},
+  news:   {label:"NIEUWS",         flow:"CURATIE \u2192 MAILING"}
+};
 
 /* gedeelde state */
 const rows = {};
@@ -951,7 +959,7 @@ function agentCardsHTML(d){
       const g=a.grp, mem=[];
       while(i<ags.length && ags[i].grp===g){ mem.push(ags[i]); i++; }   // pak alle opeenvolgende leden van dezelfde groep
       const meta=GRP[g]||{label:g,flow:""};
-      html+=`<div class="pipeline" data-pl="${g}"><div class="pl-head"><span class="pl-badge">3-STAP</span><span class="pl-title">${meta.label}</span><span class="pl-flow">${meta.flow}</span></div>${mem.map(agentCardHTML).join("")}</div>`;
+      html+=`<div class="pipeline" data-pl="${g}"><div class="pl-head"><span class="pl-badge">${mem.length}-STAP</span><span class="pl-title">${meta.label}</span><span class="pl-flow">${meta.flow}</span></div><div class="pl-body">${mem.map(agentCardHTML).join("")}</div></div>`;
     } else { html+=agentCardHTML(a); i++; }
   }
   return html;
