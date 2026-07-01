@@ -452,12 +452,12 @@ const DEPTS = [
       {id:"social-proposer",name:"Social Proposer",sched:"Sun+Mon 08:00",grp:"social",step:1},
       {id:"social-lifestyle",name:"Lifestyle Proposer",sched:"Thu 08:00",grp:"social",step:2},
       {id:"social-publisher",name:"Social Publisher",sched:"on approve",grp:"social",step:3},
-      {id:"meta-ads-proposer",name:"Meta Ads Proposer",sched:"manual"},
-      {id:"meta-ads-video",name:"Meta Ads Video",sched:"manual"},
       {id:"metaads-builder",name:"MetaAds Builder",sched:"Sun 12:00",grp:"metaads",step:1},
       {id:"metaads-executer",name:"MetaAds Executer",sched:"on approve",grp:"metaads",step:2},
       {id:"metaads-manager",name:"MetaAds Manager",sched:"daily 09:00",grp:"metaads",step:3},
-      {id:"ad-playbook",name:"Ad Viral Playbook",sched:"Mon 06:00"}],
+      {id:"ad-playbook",name:"Ad Viral Playbook",sched:"Mon 06:00"},
+      {id:"meta-ads-proposer",name:"Meta Ads Proposer",sched:"manual",paused:true},
+      {id:"meta-ads-video",name:"Meta Ads Video",sched:"manual",paused:true}],
     clusters:[
       {id:"social",label:"Social 1-2-3",members:["social-proposer","social-lifestyle","social-publisher"]},
       {id:"meta-pipe",label:"Meta Ads 1-2-3",members:["metaads-builder","metaads-executer","metaads-manager"]},
@@ -1034,7 +1034,9 @@ function sortDepts(){
       else order.push({loose:a}); });
     const keyOf=e=>{ if(e.loose)return actKey(e.loose); let br=0,bc=0;
       e.members.forEach(m=>{ const k=actKey(m); if(k[0]>br)br=k[0]; if(k[1]>bc)bc=k[1]; }); return [br,bc]; };
-    order.sort((x,y)=>{ const kx=keyOf(x),ky=keyOf(y); if(ky[0]!==kx[0])return ky[0]-kx[0];   // groep telt als 1 blok, gesorteerd op drukste lid
+    const pausedRank=e=> e.loose ? (e.loose.paused?1:0) : (e.members.every(m=>m.paused)?1:0);   // gepauzeerd -> onderaan
+    order.sort((x,y)=>{ const px=pausedRank(x),py=pausedRank(y); if(px!==py)return px-py;   // actieve agents boven gepauzeerde
+      const kx=keyOf(x),ky=keyOf(y); if(ky[0]!==kx[0])return ky[0]-kx[0];   // groep telt als 1 blok, gesorteerd op drukste lid
       if(ky[1]!==kx[1])return ky[1]-kx[1];
       const nx=x.loose?x.loose.name:x.grp, ny=y.loose?y.loose.name:y.grp; return nx.localeCompare(ny); });
     const out=[];
