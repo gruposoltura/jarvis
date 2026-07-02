@@ -422,12 +422,12 @@ const DEPTS = [
     agents:[
       {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"appointment",name:"Appointment Agent",sched:"email"},
       {id:"idealista",name:"Idealista Leads",sched:"email"},{id:"idealista-feed",name:"Idealista Feed",sched:"daily 18:00"},
-      {id:"purchase-info",name:"Purchase Info",sched:"webhook"}],
+      {id:"purchase-info",name:"Purchase Info",sched:"webhook"},{id:"contract",name:"Contract Generator",sched:"sheet"}],
     clusters:[
       {id:"idealista-grp",label:"Idealista",members:["idealista","idealista-feed"]}]},
   { id:"admin", name:"ADMIN & FIN.", color:C.amber, icon:"⚖",
     agents:[
-      {id:"contract",name:"Contract Generator",sched:"sheet"},{id:"modelo",name:"Modelo Reminder",sched:"07:00"},
+      {id:"modelo",name:"Modelo Reminder",sched:"07:00"},
       {id:"invoice",name:"Weekly VAT Report",sched:"Fri 09:00"}],
     clusters:[]},
   { id:"intel", name:"OFFICE", color:C.violet, icon:"🧠",
