@@ -359,6 +359,14 @@
   .prop-age{font:600 9px/1 system-ui;color:var(--amber)}
   .prop-age.old{color:#E31E24}
   .prop-link{font:600 9px/1 system-ui;color:var(--cyan);text-decoration:none}
+  .prop-btns{display:flex;gap:6px;margin-top:7px}
+  .prop-btn{flex:1;font:700 9px/1 system-ui;letter-spacing:.06em;padding:7px 0;border-radius:6px;
+    border:1px solid var(--hair);background:rgba(0,0,0,.25);color:var(--text);cursor:pointer;text-align:center}
+  .prop-btn.ok{border-color:rgba(62,224,143,.4);color:var(--green)}
+  .prop-btn.ok:hover{background:var(--green);color:#0a1018}
+  .prop-btn.no{border-color:rgba(227,30,36,.4);color:#ff6b6f}
+  .prop-btn.no:hover{background:#E31E24;color:#fff}
+  .prop-pin{font:600 9px/1 system-ui;color:var(--dim);cursor:pointer;text-decoration:underline}
   .agent-card.paused{opacity:.5}
   .agent-card.paused .mini-av .sd{filter:grayscale(1)}
   .ac-paused{margin-left:6px;font:800 8px/1 system-ui;letter-spacing:.1em;color:#ffb547;
@@ -1340,11 +1348,38 @@ async function loadSuspectLoop(){
 (function(){ const p=document.getElementById("smlPill");
   if(p) p.addEventListener("click",()=>document.getElementById("smlPanel").classList.toggle("open")); })();
 
-/* === Proposals queue (fase 1: uniforme wachtrij over social / mailing / ads) ===
-   Bron: Supabase view 'proposals_pending' (token-vrij, alleen preview-data).
-   Goedkeuren loopt in fase 1 nog via de bestaande links in de voorstel-mails;
-   fase 2 voegt hier approve/reject-knoppen toe via een PIN-beveiligde
-   dispatcher-webhook die de tokens server-side opzoekt. */
+/* === Proposals queue (fase 2: goedkeuren/afwijzen vanuit het paneel) ===
+   Bron: Supabase view 'proposals_pending' (token-vrij).
+   Acties lopen via JARVIS-Infra-ProposalDispatcher: een PIN-beveiligde
+   webhook die het approve-token SERVER-SIDE opzoekt en doorstuurt (302)
+   naar de bestaande publisher-webhook. Social en Meta Ads tonen daarna hun
+   eigen bevestigingspagina (met preview/budget); de mailing-flow verstuurt
+   direct, daarom vraagt de knop daar expliciet om bevestiging. */
+const PROP_DISPATCH_URL="https://gruposoltura.app.n8n.cloud/webhook/proposal-dispatch";
+function propGetPin(force){
+  let pin=localStorage.getItem("jarvis_prop_pin")||"";
+  if(force||!pin){
+    pin=window.prompt("JARVIS goedkeurings-PIN:","")||"";
+    pin=pin.trim();
+    if(pin) localStorage.setItem("jarvis_prop_pin",pin); else localStorage.removeItem("jarvis_prop_pin");
+  }
+  return pin;
+}
+function propDispatch(kind,id,action){
+  const pin=propGetPin(false);
+  if(!pin) return;
+  const CONFIRM={
+    "new_listing:approve":"LET OP: dit verstuurt de mailing DIRECT naar alle ontvangers. Doorgaan?",
+    "meta_ads:skip":"Advertentievoorstel afwijzen? De klaargezette (PAUSED) campagne wordt dan verwijderd.",
+    "social:skip":"Social post afwijzen?",
+    "new_listing:skip":"Mailing-voorstel afwijzen?"
+  };
+  const msg=CONFIRM[kind+":"+action];
+  if(msg && !window.confirm(msg)) return;
+  window.open(PROP_DISPATCH_URL+"?pin="+encodeURIComponent(pin)+"&kind="+encodeURIComponent(kind)
+    +"&id="+encodeURIComponent(id)+"&action="+encodeURIComponent(action),"_blank","noopener");
+  setTimeout(loadProposals,4000); setTimeout(loadProposals,12000);
+}
 async function loadProposals(){
   if(!sbClient) return;
   const body=document.getElementById("propBody"), badge=document.getElementById("propBadge");
@@ -1363,6 +1398,7 @@ async function loadProposals(){
       const days=Math.floor(ageMs/86400000);
       const age=days>0?days+"d":Math.max(1,Math.floor(ageMs/3600000))+"u";
       const thumb=r.image_url?'<img class="prop-thumb" src="'+escp(r.image_url)+'" loading="lazy" alt="">':'<div class="prop-thumb ph">\u2709</div>';
+      const okLbl=(r.kind==='meta_ads')?'\u2713 ACTIVEER':(r.kind==='new_listing')?'\u2713 VERSTUUR':'\u2713 PUBLICEER';
       return '<div class="prop-item">'+thumb+'<div class="prop-main">'
         +'<div class="prop-h"><span class="prop-tag '+escp(r.kind)+'">'+k.l+'</span>'
         +'<span class="prop-title">'+escp(r.title)+(r.subtitle?' \u00B7 '+escp(r.subtitle):'')+'</span></div>'
@@ -1370,13 +1406,25 @@ async function loadProposals(){
         +(r.preview?'<div class="prop-prev">'+escp(r.preview)+'</div>':'')
         +'<div class="prop-foot"><span class="prop-age'+(days>=3?' old':'')+'">wacht '+age+'</span>'
         +(r.link?'<a class="prop-link" href="'+escp(r.link)+'" target="_blank" rel="noopener">bekijk object \u203A</a>':'')
+        +'</div>'
+        +'<div class="prop-btns">'
+        +'<button class="prop-btn ok" data-kind="'+escp(r.kind)+'" data-id="'+escp(r.id)+'" data-action="approve">'+okLbl+'</button>'
+        +'<button class="prop-btn no" data-kind="'+escp(r.kind)+'" data-id="'+escp(r.id)+'" data-action="skip">\u2715 AFWIJZEN</button>'
         +'</div></div></div>';
     }).join('')
-    +'<div class="sml-foot">goedkeuren/afwijzen: via de voorstel-mail \u00B7 knoppen hier volgen in fase 2</div>';
+    +'<div class="sml-foot">social &amp; ads: eerst een bevestigingspagina \u00B7 <span class="prop-pin" id="propPinReset">PIN wijzigen</span></div>';
   }catch(e){ console.warn("proposals:",e); body.innerHTML='<div class="sml-msg">fout bij laden</div>'; }
 }
-(function(){ const p=document.getElementById("propPill");
-  if(p) p.addEventListener("click",()=>document.getElementById("propPanel").classList.toggle("open")); })();
+(function(){
+  const p=document.getElementById("propPill");
+  if(p) p.addEventListener("click",()=>document.getElementById("propPanel").classList.toggle("open"));
+  const b=document.getElementById("propBody");
+  if(b) b.addEventListener("click",(ev)=>{
+    const btn=ev.target.closest(".prop-btn");
+    if(btn){ propDispatch(btn.dataset.kind,btn.dataset.id,btn.dataset.action); return; }
+    if(ev.target.id==="propPinReset"){ propGetPin(true); }
+  });
+})();
 
 setView("org");
 start();
