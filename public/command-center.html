@@ -401,8 +401,13 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const C = { cyan:"#00d4ff", green:"#3ee08f", amber:"#ffb547", violet:"#b58cff", red:"#E31E24", advert:"#ff5fa2", grey:"#8aa0b5", gold:"#ffd166", dim:"#5e7c8e", text:"#cfe2ec" };
 const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idle:{c:C.dim,l:"Idle"}, error:{c:C.red,l:"Error"}, paused:{c:"#ffb547",l:"Paused"} };
 
-/* Afdelingen + agents (identiek aan v1 — gedeeld door beide views). */
-const DEPTS = [
+/* Afdelingen + agents — FALLBACK.
+   Sinds de registry-migratie (2026-07-04) is Supabase 'bridge_layout' de bron
+   van de indeling; deze array is het ingebouwde vangnet als de registry
+   onbereikbaar is of de sanity-check niet haalt. Nieuwe agents voeg je toe in
+   de 'agents' tabel (bridge_dept/cluster_id/grp/...), NIET meer hier.
+   Deze fallback alleen bijwerken bij een bewuste her-baseline. */
+const FALLBACK_DEPTS = [
   { id:"mgmt", name:"MANAGEMENT", color:C.gold, icon:"🧭",
     agents:[
       {id:"integrity-check",name:"Data Integrity",sched:"05:45 Daily",grp:"morning",step:1},
@@ -472,15 +477,20 @@ const DEPTS = [
       {id:"props-sync",label:"Props Sync",members:["active-sync","new-sync"]},
       {id:"housekeep",label:"Housekeeping",members:["sb-heartbeat","run-purge","session-notes"]}]},
 ];
-DEPTS.forEach((d,i)=>{ d.angle = -90 + i*360/DEPTS.length; });
+let DEPTS = FALLBACK_DEPTS;
 
-/* afgeleide maps (gedeeld) */
-const AGENTS = DEPTS.flatMap(d=>d.agents.map(a=>({...a,dept:d.id,deptName:d.name,color:d.color})));
-const BY_ID  = Object.fromEntries(AGENTS.map(a=>[a.id,a]));
-const HUB_OF = Object.fromEntries(DEPTS.flatMap(d=>d.agents.map(a=>[a.id,d.id])));
-const CLUSTER_OF = {};
-DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>cl.members.forEach(m=>CLUSTER_OF[m]=cl.id)));
-const CLUSTER_BY_ID = {}; DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>CLUSTER_BY_ID[cl.id]={...cl,dept:d.id,color:d.color,deptName:d.name}));
+/* afgeleide maps (gedeeld) — herbouwbaar zodat de registry ze kan verversen */
+let AGENTS, BY_ID, HUB_OF, CLUSTER_OF, CLUSTER_BY_ID;
+function buildDerived(){
+  DEPTS.forEach((d,i)=>{ d.angle = -90 + i*360/DEPTS.length; });
+  AGENTS = DEPTS.flatMap(d=>d.agents.map(a=>({...a,dept:d.id,deptName:d.name,color:d.color})));
+  BY_ID  = Object.fromEntries(AGENTS.map(a=>[a.id,a]));
+  HUB_OF = Object.fromEntries(DEPTS.flatMap(d=>d.agents.map(a=>[a.id,d.id])));
+  CLUSTER_OF = {};
+  DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>cl.members.forEach(m=>CLUSTER_OF[m]=cl.id)));
+  CLUSTER_BY_ID = {}; DEPTS.forEach(d=>(d.clusters||[]).forEach(cl=>CLUSTER_BY_ID[cl.id]={...cl,dept:d.id,color:d.color,deptName:d.name}));
+}
+buildDerived();
 /* geordende pijplijn-groepen (org view): agents met a.grp blijven samen + in a.step-volgorde */
 const GRP = {
   metaads:{label:"META ADS",       flow:"BOUW \u2192 PUBLICEER \u2192 BEHEER"},
@@ -1080,7 +1090,7 @@ function buildOrgOnce(){
   for(const k in orgAgentRun)delete orgAgentRun[k];
   for(const k in orgAgentDep)delete orgAgentDep[k];
   DEPTS.forEach((d,i)=>{
-    const mgr=ORG_MGR[d.id];
+    const mgr=ORG_MGR[d.id]||{persona:"Bot",role:d.name+" Lead",skin:"#e8b48c",hair:"#3a2c25",style:"buzz",acc:"none",expr:"calm"};
     if(d.id==="mgmt"){
       // supervisie-blok bovenop, taken (agents) horizontaal ernaast
       const block=document.createElement("section"); block.className="mgmt-block"; block.style.setProperty("--a",d.color);
@@ -1189,8 +1199,47 @@ async function loadReadiness(){ if(!sbClient)return;
   updateOrgStatus();
 }
 function refreshReadiness(){ clearTimeout(_rdyT); _rdyT=setTimeout(loadReadiness,600); }
+/* ---- registry-gedreven indeling (fail-safe) --------------------------
+   Bron: Supabase view 'bridge_layout' (agents + bridge_depts + bridge_clusters).
+   Sanity-check: >=6 afdelingen EN >=25 agents, anders blijft FALLBACK_DEPTS
+   gewoon staan. Elke fout of exception -> fallback. De pagina is op dat
+   moment al gerenderd vanaf de fallback, dus een registry-storing kan het
+   dashboard nooit blank trekken. */
+async function loadRegistryLayout(sb){
+  try{
+    const {data,error}=await sb.from("bridge_layout").select("*");
+    if(error||!data||!data.length){ console.warn("bridge_layout:",(error&&error.message)||"leeg"); return false; }
+    const deptIds=new Set(data.map(r=>r.bridge_dept));
+    if(deptIds.size<6||data.length<25){
+      console.warn("bridge_layout sanity gefaald ("+deptIds.size+" depts / "+data.length+" agents) -> fallback"); return false; }
+    const dm={};
+    for(const r of data){
+      if(!dm[r.bridge_dept]) dm[r.bridge_dept]={id:r.bridge_dept,name:r.dept_name,color:r.dept_color,icon:r.dept_icon,_s:r.dept_sort||100,agents:[],_cl:{}};
+      const d=dm[r.bridge_dept];
+      const a={id:r.agent_id,name:r.agent_name,sched:r.schedule_human||"\u2014",_s:r.agent_sort||100};
+      if(r.grp){ a.grp=r.grp; a.step=r.grp_step||0; }
+      if(r.paused) a.paused=true;
+      d.agents.push(a);
+      if(r.cluster_id){
+        if(!d._cl[r.cluster_id]) d._cl[r.cluster_id]={id:r.cluster_id,label:r.cluster_label||r.cluster_id,_s:r.cluster_sort||100,members:[]};
+        d._cl[r.cluster_id].members.push(r.agent_id);
+      }
+    }
+    DEPTS=Object.values(dm).sort((a,b)=>a._s-b._s).map(d=>({
+      id:d.id,name:d.name,color:d.color,icon:d.icon,
+      agents:d.agents.sort((a,b)=>(a._s-b._s)||a.name.localeCompare(b.name)).map(({_s,...a})=>a),
+      clusters:Object.values(d._cl).sort((a,b)=>a._s-b._s).map(({_s,...c})=>c)
+    }));
+    buildDerived();
+    buildOrgOnce(); if(currentView==="radial") renderRadial();
+    console.log("Bridge-indeling: registry ("+data.length+" agents, "+DEPTS.length+" afdelingen)");
+    return true;
+  }catch(e){ console.warn("bridge_layout exception -> fallback:",e); return false; }
+}
 async function start(){
   const sb=createClient(SUPABASE_URL,SUPABASE_ANON); sbClient=sb;
+  const fromRegistry=await loadRegistryLayout(sb);
+  if(!fromRegistry) console.log("Bridge-indeling: fallback (ingebouwde DEPTS)");
   const {data,error}=await sb.from("agent_status").select("*");
   if(error){ setConn(false,"verbinding mislukt"); console.error(error); return; }
   (data||[]).forEach(r=>{ rows[r.agent_id]={status:r.status,last_run:r.last_run,run_count:r.run_count,last_error:r.last_error,run_token:r.run_token}; });
