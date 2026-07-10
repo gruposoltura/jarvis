@@ -9,7 +9,7 @@
 // Vereiste Vercel environment variables (Project Settings -> Environment Variables):
 //   N8N_API_KEY        - n8n Cloud API key (Settings -> n8n API -> Create key)
 //   SUPABASE_URL       - https://wuvpbwowdycsdlrqkaoq.supabase.co
-//   SUPABASE_ANON_KEY  - eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ
+//   SUPABASE_ANON_KEY  - dezelfde anon key als in index.html
 //   N8N_API_URL        - optioneel; default https://gruposoltura.app.n8n.cloud/api/v1
 //
 // Endpoints:
@@ -18,14 +18,26 @@
 
 const N8N_API_URL = process.env.N8N_API_URL || "https://gruposoltura.app.n8n.cloud/api/v1";
 
+// Supabase URL + anon key zijn publieke waarden (staan ook client-side in
+// bridge-config.js). Fallback-volgorde: nieuwe env var -> oude VITE_-variant
+// (nog aanwezig uit het Vite-tijdperk) -> vaste waarde.
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  "https://wuvpbwowdycsdlrqkaoq.supabase.co";
+const SUPABASE_ANON_KEY =
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ";
+
 async function verifySupabaseUser(req) {
   const auth = req.headers["authorization"] || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
   if (!token) return null;
   try {
-    const r = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: {
-        apikey: process.env.SUPABASE_ANON_KEY,
+        apikey: SUPABASE_ANON_KEY,
         authorization: `Bearer ${token}`
       }
     });
@@ -87,8 +99,8 @@ module.exports = async function handler(req, res) {
     res.status(405).json({ error: "method_not_allowed" });
     return;
   }
-  if (!process.env.N8N_API_KEY || !process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-    res.status(500).json({ error: "server_misconfigured", detail: "Env vars N8N_API_KEY / SUPABASE_URL / SUPABASE_ANON_KEY ontbreken in Vercel." });
+  if (!process.env.N8N_API_KEY) {
+    res.status(500).json({ error: "server_misconfigured", detail: "Env var N8N_API_KEY ontbreekt in Vercel (Settings -> Environment Variables, daarna Redeploy)." });
     return;
   }
 
