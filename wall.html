@@ -18,11 +18,12 @@
   /* topbar verdwijnt vanzelf bij inactiviteit (wall-stand) */
   #bar{display:flex;align-items:center;gap:14px;padding:8px 16px;
     background:var(--panel);border-bottom:1px solid var(--line);
-    transition:margin-top .4s ease}
+    transition:margin-top .4s ease;flex-wrap:wrap}
   body.idle #bar{margin-top:-46px}
   #bar .brand{font-weight:900;letter-spacing:.28em;color:var(--cyan);font-size:13px}
   #bar .grp{display:flex;gap:6px;align-items:center}
   #bar .lbl{color:var(--muted);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+  #toggles{display:inline-flex;gap:6px}
   #bar button{background:none;border:1px solid var(--line);color:var(--muted);
     border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit;font-size:12px}
   #bar button:hover{color:var(--text)}
@@ -44,17 +45,13 @@
 <div id="bar">
   <span class="brand">THE&nbsp;BRIDGE&nbsp;&mdash;&nbsp;WALL</span>
 
-  <span class="grp"><span class="lbl">Panelen</span>
-    <button data-toggle="0" class="on">Overzicht</button>
-    <button data-toggle="1" class="on">Agents</button>
-    <button data-toggle="2" class="on">Concurrentie</button>
-  </span>
+  <span class="grp"><span class="lbl">Panelen</span><span id="toggles"></span></span>
 
   <span class="grp"><span class="lbl">Indeling</span>
-    <button data-preset="33,34,33">&#8531; &#8531; &#8531;</button>
-    <button data-preset="50,25,25">50/25/25</button>
-    <button data-preset="25,50,25">25/50/25</button>
-    <button data-preset="25,25,50">25/25/50</button>
+    <button data-preset="25,25,25,25">&frac14; &frac14; &frac14; &frac14;</button>
+    <button data-preset="40,20,20,20">40 / 20 / 20 / 20</button>
+    <button data-preset="20,20,20,40">20 / 20 / 20 / 40</button>
+    <button data-preset="30,30,20,20">30 / 30 / 20 / 20</button>
   </span>
 
   <span class="grp"><span class="lbl">Verversen</span>
@@ -65,28 +62,55 @@
   <span id="clock"></span>
 </div>
 
-<div id="wall">
-  <div class="pane" data-i="0"><iframe src="/" title="Overzicht"></iframe></div>
-  <div class="divider" data-d="0"></div>
-  <div class="pane" data-i="1"><iframe src="/agents.html" title="Agents"></iframe></div>
-  <div class="divider" data-d="1"></div>
-  <div class="pane" data-i="2"><iframe src="/competitie.html" title="Concurrentie"></iframe></div>
-</div>
+<div id="wall"></div>
 
 <script>
 (function(){
+  // --- Paneel-registry: nieuw paneel = één regel erbij (label + iframe-URL) ---
+  const PANELS = [
+    { label:"Overzicht",     src:"/" },
+    { label:"Agents",        src:"/agents.html" },
+    { label:"Concurrentie",  src:"/competitie.html" },
+    { label:"Credentials",   src:"/credentials.html" },
+  ];
+  const N = PANELS.length;
+
+  // --- DOM opbouwen uit de registry ---
+  const wallEl = document.getElementById("wall");
+  PANELS.forEach((p,i)=>{
+    const pane = document.createElement("div");
+    pane.className = "pane"; pane.dataset.i = i;
+    const f = document.createElement("iframe");
+    f.src = p.src; f.title = p.label; f.loading = "lazy";
+    pane.appendChild(f);
+    wallEl.appendChild(pane);
+    if(i < N-1){
+      const dv = document.createElement("div");
+      dv.className = "divider"; dv.dataset.d = i;
+      wallEl.appendChild(dv);
+    }
+  });
+
+  const tg = document.getElementById("toggles");
+  PANELS.forEach((p,i)=>{
+    const b = document.createElement("button");
+    b.dataset.toggle = i; b.textContent = p.label; b.className = "on";
+    tg.appendChild(b);
+  });
+
   const panes = [...document.querySelectorAll(".pane")];
   const dividers = [...document.querySelectorAll(".divider")];
   const frames = panes.map(p=>p.querySelector("iframe"));
 
   // --- state (bewaard per browser) ---
-  let widths = [33,34,33];
-  let visible = [true,true,true];
+  const equal = () => PANELS.map(()=> +(100/N).toFixed(2));
+  let widths = equal();
+  let visible = PANELS.map(()=> true);
   let autoRefresh = true;
   try{
     const s = JSON.parse(localStorage.getItem("bridge_wall")||"{}");
-    if(Array.isArray(s.widths) && s.widths.length===3) widths = s.widths;
-    if(Array.isArray(s.visible) && s.visible.length===3) visible = s.visible;
+    if(Array.isArray(s.widths)  && s.widths.length===N)  widths  = s.widths;
+    if(Array.isArray(s.visible) && s.visible.length===N) visible = s.visible;
     if(typeof s.autoRefresh === "boolean") autoRefresh = s.autoRefresh;
   }catch(e){}
   function save(){
@@ -94,15 +118,17 @@
   }
 
   function apply(){
-    const shown = visible.filter(Boolean).length || 1;
     const sum = widths.reduce((t,w,i)=>t+(visible[i]?w:0),0) || 1;
     panes.forEach((p,i)=>{
       p.classList.toggle("hidden", !visible[i]);
       p.style.flex = visible[i] ? ("0 0 calc("+(widths[i]/sum*100)+"% - 4px)") : "";
     });
-    // dividers alleen tussen twee zichtbare panelen
-    dividers[0].classList.toggle("hidden", !(visible[0] && (visible[1]||visible[2])));
-    dividers[1].classList.toggle("hidden", !(visible[2] && visible[1]));
+    // toon één scheidingslijn vóór elk zichtbaar paneel behalve het eerste zichtbare
+    dividers.forEach(dv=>dv.classList.add("hidden"));
+    let prev = -1;
+    panes.forEach((p,i)=>{
+      if(visible[i]){ if(prev!==-1) dividers[i-1].classList.remove("hidden"); prev = i; }
+    });
     document.querySelectorAll("[data-toggle]").forEach(b=>{
       b.classList.toggle("on", visible[+b.dataset.toggle]);
     });
@@ -122,8 +148,9 @@
   // --- presets ---
   document.querySelectorAll("[data-preset]").forEach(b=>{
     b.addEventListener("click", ()=>{
-      widths = b.dataset.preset.split(",").map(Number);
-      visible = [true,true,true];
+      const w = b.dataset.preset.split(",").map(Number);
+      widths = (w.length===N && w.every(n=>!isNaN(n))) ? w : equal();
+      visible = PANELS.map(()=> true);
       apply();
     });
   });
@@ -134,16 +161,17 @@
       e.preventDefault();
       div.classList.add("drag");
       const d = +div.dataset.d;
-      // links/rechts aangrenzende zichtbare panelen
-      const left = d===0 ? 0 : (visible[1]?1:0);
-      const right = d===0 ? (visible[1]?1:2) : 2;
-      const total = document.getElementById("wall").clientWidth;
+      const right = d+1;                    // rechterpaneel van deze (zichtbare) lijn
+      let left = -1;                        // dichtstbijzijnde zichtbare paneel links ervan
+      for(let i=d;i>=0;i--){ if(visible[i]){ left=i; break; } }
+      if(left===-1 || !visible[right]){ div.classList.remove("drag"); return; }
+      const total = wallEl.clientWidth;
       const startX = e.clientX, wL = widths[left], wR = widths[right];
       // iframes vangen muisbewegingen af: tijdelijk uitschakelen
       frames.forEach(f=>f.style.pointerEvents = "none");
       function move(ev){
         const deltaPct = (ev.clientX - startX)/total*100*(widths.reduce((a,b)=>a+b,0)/100);
-        widths[left] = Math.max(12, wL + deltaPct);
+        widths[left]  = Math.max(12, wL + deltaPct);
         widths[right] = Math.max(12, wR - deltaPct);
         apply();
       }
@@ -156,13 +184,13 @@
       window.addEventListener("mousemove", move);
       window.addEventListener("mouseup", up);
     });
-    div.addEventListener("dblclick", ()=>{ widths=[33,34,33]; apply(); });
+    div.addEventListener("dblclick", ()=>{ widths = equal(); apply(); });
   });
 
   // --- auto-refresh ---
   const rt = document.getElementById("refresh-toggle");
   function refreshAll(){
-    frames.forEach((f,i)=>{ if(visible[i]) { try{ f.contentWindow.location.reload(); }catch(e){ f.src = f.src; } } });
+    frames.forEach((f,i)=>{ if(visible[i]){ try{ f.contentWindow.location.reload(); }catch(e){ f.src = f.src; } } });
   }
   rt.classList.toggle("on", autoRefresh);
   rt.addEventListener("click", ()=>{ autoRefresh = !autoRefresh; rt.classList.toggle("on", autoRefresh); save(); });
