@@ -42,7 +42,15 @@
   .d.up{color:var(--green)} .d.down{color:var(--red)} .d.flat{color:var(--muted)}
   .warnval{color:var(--orange)} .badval{color:var(--red)} .goodval{color:var(--green)}
 
+  .chart{position:relative}
   .chart svg{display:block;width:100%;height:auto}
+  .tip{position:absolute;top:8px;left:0;pointer-events:none;display:none;z-index:5;
+    background:#0a111c;border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+    font-size:12px;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+  .tip .td{color:var(--muted);font-size:11px;margin-bottom:4px}
+  .tip .tr{display:flex;align-items:center;gap:7px;line-height:1.6}
+  .tip .tr i{width:8px;height:8px;border-radius:2px;display:inline-block;flex:none}
+  .tip .tr b{margin-left:auto;padding-left:14px;font-variant-numeric:tabular-nums}
   .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:var(--muted)}
   .legend span{display:inline-flex;align-items:center;gap:6px}
   .legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
@@ -108,7 +116,10 @@
         <span class="when" id="social-when"></span></h2>
       <div class="nums" id="social-nums"></div>
       <div class="chart" id="social-chart"></div>
-      <div class="legend"><span><i style="background:var(--green)"></i>IG volgers</span></div>
+      <div class="legend"><span><i style="background:var(--green)"></i>IG likes per postdag</span>
+        <span><i style="background:var(--blue)"></i>Comments</span></div>
+      <div class="chart" id="social-growth" style="margin-top:10px"></div>
+      <div class="legend" id="social-growth-legend"></div>
     </div>
   </div>
   <div style="height:14px"></div>
@@ -161,6 +172,23 @@
       + '<div class="l">'+label+'</div></div>';
   }
   function dayLabel(iso){ return iso.slice(8,10) + '/' + iso.slice(5,7); }
+  function dayFull(iso){
+    var d = new Date(iso + 'T12:00:00');
+    return d.toLocaleDateString('nl-NL', { weekday:'short', day:'numeric', month:'short' });
+  }
+  function isoLocal(d){
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0')
+      + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  // Doorlopende kalenderreeks van `days` dagen, eindigend op gisteren
+  // (zelfde venster-semantiek als GA4/Brevo: dagen zonder data tellen als 0).
+  function dateRange(days){
+    var out = [], now = new Date();
+    for(var i = days; i >= 1; i--){
+      out.push(isoLocal(new Date(now.getTime() - i*86400000)));
+    }
+    return out;
+  }
   function niceMax(v){
     if(v <= 10) return 10;
     var mag = Math.pow(10, Math.floor(Math.log10(v)));
@@ -170,18 +198,26 @@
   }
 
   // ---------- Lijndiagram met assen, raster en datumlabels ----------
-  function lineChart(dates, seriesList, height){
+  // yMin (optioneel): basislijn van de Y-as. Voor groeigrafieken met kleine
+  // delta's op een groot absoluut niveau (bv. volgers 2220 -> 2223) maakt een
+  // nul-as elke beweging onzichtbaar; met yMin zoomt de as in op het bereik.
+  function lineChart(dates, seriesList, height, yMin){
     var w = 900, h = height || 240, padL = 46, padR = 10, padT = 12, padB = 26;
     var iW = w - padL - padR, iH = h - padT - padB;
     var max = 1;
     seriesList.forEach(function(s){ s.values.forEach(function(v){ if(v > max) max = v; }); });
-    max = niceMax(max);
+    if(yMin !== undefined && yMin !== null){
+      max = yMin + niceMax(Math.max(1, max - yMin));
+    } else {
+      yMin = 0;
+      max = niceMax(max);
+    }
     var n = dates.length;
     var X = function(i){ return padL + (n <= 1 ? iW/2 : i * (iW / (n-1))); };
-    var Y = function(v){ return padT + iH - (v / max) * iH; };
+    var Y = function(v){ return padT + iH - ((v - yMin) / (max - yMin)) * iH; };
     var svg = '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet">';
     for(var g = 0; g <= 4; g++){
-      var gv = max * g / 4, gy = Y(gv);
+      var gv = yMin + (max - yMin) * g / 4, gy = Y(gv);
       svg += '<line x1="'+padL+'" y1="'+gy.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+gy.toFixed(1)
         + '" stroke="'+CLR.grid+'" stroke-width="1"/>'
         + '<text x="'+(padL-8)+'" y="'+(gy+4).toFixed(1)+'" text-anchor="end" font-size="11" fill="'+CLR.muted+'">'
@@ -197,7 +233,8 @@
       s.values.forEach(function(v, i){ d += (i ? ' L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1); });
       // vulling onder de eerste (hoofd)serie voor visueel gewicht
       if(s.fill){
-        svg += '<path d="'+d+' L'+X(n-1).toFixed(1)+' '+Y(0).toFixed(1)+' L'+X(0).toFixed(1)+' '+Y(0).toFixed(1)
+        var yBot = (padT + iH).toFixed(1);
+        svg += '<path d="'+d+' L'+X(n-1).toFixed(1)+' '+yBot+' L'+X(0).toFixed(1)+' '+yBot
           + ' Z" fill="'+s.color+'" opacity="0.08"/>';
       }
       svg += '<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="2.4" stroke-linejoin="round"/>';
@@ -257,6 +294,83 @@
     return svg + '</svg>';
   }
 
+  // ---------- Hover: crosshair + tooltip per dag ----------
+  // cfg: { mode:'line'|'bar', dates:[iso], h:hoogte, rows:function(i) -> [{label,color,value}] }
+  // Geometrie identiek aan lineChart/barChart (w=900, padL=46, padR=10, padT=12, padB=26).
+  function attachHover(el, cfg){
+    var svgEl = el.querySelector('svg');
+    if(!svgEl || !cfg || !cfg.dates || !cfg.dates.length) return;
+    var w = 900, padL = 46, padR = 10, padT = 12, padB = 26;
+    var iW = w - padL - padR, n = cfg.dates.length;
+    var NS = 'http://www.w3.org/2000/svg';
+    var marker;
+    if(cfg.mode === 'bar'){
+      marker = document.createElementNS(NS, 'rect');
+      marker.setAttribute('y', padT);
+      marker.setAttribute('height', cfg.h - padT - padB);
+      marker.setAttribute('width', (iW / n).toFixed(1));
+      marker.setAttribute('fill', '#ffffff');
+      marker.setAttribute('opacity', '0.06');
+    } else {
+      marker = document.createElementNS(NS, 'line');
+      marker.setAttribute('y1', padT);
+      marker.setAttribute('y2', cfg.h - padB);
+      marker.setAttribute('stroke', CLR.muted);
+      marker.setAttribute('stroke-width', '1');
+      marker.setAttribute('stroke-dasharray', '3 3');
+      marker.setAttribute('opacity', '0.8');
+    }
+    marker.style.display = 'none';
+    svgEl.appendChild(marker);
+    var tip = document.createElement('div');
+    tip.className = 'tip';
+    el.appendChild(tip);
+
+    function hide(){ tip.style.display = 'none'; marker.style.display = 'none'; }
+    // Listeners op het svg-element: dat wordt bij elke refresh vervangen,
+    // dus oude handlers verdwijnen vanzelf (geen opstapeling op de container).
+    svgEl.addEventListener('pointermove', function(e){
+      var rect = svgEl.getBoundingClientRect();
+      if(!rect.width) return;
+      var vx = (e.clientX - rect.left) / rect.width * w;
+      if(vx < padL - 6 || vx > w - padR + 6){ hide(); return; }
+      var i, cx;
+      if(cfg.mode === 'bar'){
+        var slot = iW / n;
+        i = Math.floor((vx - padL) / slot);
+        i = Math.max(0, Math.min(n - 1, i));
+        cx = padL + i * slot + slot / 2;
+        marker.setAttribute('x', (padL + i * slot).toFixed(1));
+      } else {
+        var stepX = n <= 1 ? iW : iW / (n - 1);
+        i = Math.round((vx - padL) / stepX);
+        i = Math.max(0, Math.min(n - 1, i));
+        cx = padL + (n <= 1 ? iW / 2 : i * stepX);
+        marker.setAttribute('x1', cx.toFixed(1));
+        marker.setAttribute('x2', cx.toFixed(1));
+      }
+      marker.style.display = '';
+      var html = '<div class="td">' + dayFull(cfg.dates[i]) + '</div>';
+      cfg.rows(i).forEach(function(r){
+        html += '<div class="tr"><i style="background:' + r.color + '"></i>'
+          + r.label + '<b>' + r.value + '</b></div>';
+      });
+      tip.innerHTML = html;
+      tip.style.display = 'block';
+      var px = cx / w * rect.width;
+      var left = px + 12;
+      if(left + tip.offsetWidth > el.clientWidth - 4){
+        left = px - tip.offsetWidth - 12;
+      }
+      tip.style.left = Math.max(4, left) + 'px';
+    });
+    svgEl.addEventListener('pointerleave', hide);
+  }
+  function showChart(el, svg, hoverCfg){
+    el.innerHTML = svg;
+    if(hoverCfg) attachHover(el, hoverCfg);
+  }
+
   // ---------- data helpers ----------
   function pivot(rows, source){
     var out = {};
@@ -301,10 +415,14 @@
         num('weergaven', fmt(wl.last.pageviews||0), delta(wl.last.pageviews, wl.prev.pageviews)) +
         num('engagement', (wl.last.engagement_rate||0) + '%', delta(wl.last.engagement_rate, wl.prev.engagement_rate)) +
         num('nieuwe gebruikers', fmt(wl.last.new_users||0), '');
-      $('web-chart').innerHTML = lineChart(wd, [
-        { values: vals(web, wd, 'sessions'), color: CLR.cyan, fill: true },
-        { values: vals(web, wd, 'users'), color: CLR.blue }
-      ], 250);
+      var wSes = vals(web, wd, 'sessions'), wUsr = vals(web, wd, 'users');
+      showChart($('web-chart'), lineChart(wd, [
+        { values: wSes, color: CLR.cyan, fill: true },
+        { values: wUsr, color: CLR.blue }
+      ], 250), { mode:'line', dates: wd, h: 250, rows: function(i){ return [
+        { label:'Sessies', color: CLR.cyan, value: fmt(wSes[i]) },
+        { label:'Gebruikers', color: CLR.blue, value: fmt(wUsr[i]) }
+      ]; } });
 
       // ---- MAIL: kolommen 14d + bounce-lijn ----
       var mail = pivot(kpi, 'brevo'); var md = lastDates(mail, 14); var ml = lastTwo(mail);
@@ -321,30 +439,64 @@
       var bounceVals = md.map(function(d){
         var r = mail[d] || {}; return (r.hard_bounces||0) + (r.soft_bounces||0);
       });
-      $('mail-chart').innerHTML = barChart(md, [
-        { values: vals(mail, md, 'sent'), color: CLR.yellow },
-        { values: vals(mail, md, 'delivered'), color: CLR.green }
-      ], { values: bounceVals, color: CLR.red }, 230);
+      var mSent = vals(mail, md, 'sent'), mDel = vals(mail, md, 'delivered');
+      showChart($('mail-chart'), barChart(md, [
+        { values: mSent, color: CLR.yellow },
+        { values: mDel, color: CLR.green }
+      ], { values: bounceVals, color: CLR.red }, 230),
+      { mode:'bar', dates: md, h: 230, rows: function(i){ return [
+        { label:'Verzonden', color: CLR.yellow, value: fmt(mSent[i]) },
+        { label:'Delivered', color: CLR.green, value: fmt(mDel[i]) },
+        { label:'Bounces', color: CLR.red, value: fmt(bounceVals[i]) }
+      ]; } });
 
-      // ---- SOCIAL: IG-groei lijndiagram ----
-      var soc = pivot(kpi, 'meta_social'); var sd = lastDates(soc, 28); var sl = lastTwo(soc);
-      var igNow = sl.last.ig_followers||0, igPrev = sl.prev.ig_followers;
+      // ---- SOCIAL: engagement-kolommen 28d + volger-groeilijn ----
+      var soc = pivot(kpi, 'meta_social');
+      // snapshot-cijfers (volgers) komen uit de dagen waarop een ig_followers-rij bestaat
+      var fDates = Object.keys(soc).filter(function(d){
+        return soc[d].ig_followers !== undefined;
+      }).sort();
+      var flLast = soc[fDates[fDates.length-1]] || {},
+          flPrev = soc[fDates[fDates.length-2]] || {};
+      var igNow = flLast.ig_followers||0, igPrev = flPrev.ig_followers;
       var igD = (igPrev !== undefined) ? igNow - igPrev : null;
-      $('social-when').textContent = sl.lastDate ? '\u2014 stand ' + sl.lastDate : '';
+      var ed = dateRange(28);
+      var likes = vals(soc, ed, 'ig_likes'),
+          comments = vals(soc, ed, 'ig_comments'),
+          posts = vals(soc, ed, 'ig_posts');
+      var likes28 = likes.reduce(function(a,b){ return a+b; }, 0);
+      $('social-when').textContent = '\u2014 engagement 28 dagen, t/m ' + ed[ed.length-1];
       $('social-nums').innerHTML =
         num('IG volgers', fmt(igNow), igD === null ? '' :
           '<span class="d '+(igD>0?'up':(igD<0?'down':'flat'))+'">'+(igD>=0?'+':'')+igD+'</span>') +
-        num('IG posts', fmt(sl.last.ig_media_count||0), '') +
-        num('FB volgers', fmt(sl.last.fb_followers||0), '') +
-        num('FB fans', fmt(sl.last.fb_fans||0), '');
-      if(sd.length >= 2){
-        $('social-chart').innerHTML = lineChart(sd, [
-          { values: vals(soc, sd, 'ig_followers'), color: CLR.green, fill: true }
-        ], 230);
+        num('likes 28d', fmt(likes28), '') +
+        num('IG posts', fmt(flLast.ig_media_count||0), '') +
+        num('FB volgers', fmt(flLast.fb_followers||0), '');
+      showChart($('social-chart'), barChart(ed, [
+        { values: likes, color: CLR.green },
+        { values: comments, color: CLR.blue }
+      ], null, 170), { mode:'bar', dates: ed, h: 170, rows: function(i){ return [
+        { label:'Likes', color: CLR.green, value: fmt(likes[i]) },
+        { label:'Comments', color: CLR.blue, value: fmt(comments[i]) },
+        { label:'Posts', color: CLR.muted, value: fmt(posts[i]) }
+      ]; } });
+      // volgerslijn: niet backfillbaar, bouwt zichzelf dag voor dag op
+      var gd = fDates.slice(-28);
+      if(gd.length >= 2){
+        var gVals = gd.map(function(d){ return soc[d].ig_followers||0; });
+        var gMin = Math.max(0, Math.floor((Math.min.apply(null, gVals) - 1) / 5) * 5);
+        showChart($('social-growth'), lineChart(gd, [
+          { values: gVals, color: CLR.cyan, fill: true }
+        ], 120, gMin), { mode:'line', dates: gd, h: 120, rows: function(i){ return [
+          { label:'IG volgers', color: CLR.cyan, value: fmt(gVals[i]) }
+        ]; } });
+        $('social-growth-legend').innerHTML =
+          '<span><i style="background:var(--cyan)"></i>IG volgers (dagelijkse snapshot)</span>';
       } else {
-        $('social-chart').innerHTML = '<p style="color:var(--muted);font-size:12px;margin:30px 0">'
-          + 'Groeigrafiek verschijnt zodra er meerdere dagen historie is &mdash; volger-aantallen zijn '
-          + 'alleen als dagelijkse snapshot beschikbaar (opbouw gestart 10 juli).</p>';
+        $('social-growth').innerHTML = '<p style="color:var(--muted);font-size:11px;margin:6px 0 0">'
+          + 'Volger-groeilijn verschijnt vanaf morgen &mdash; snapshots zijn niet backfillbaar '
+          + '(opbouw gestart 10 juli, nu ' + fmt(igNow) + ' IG-volgers).</p>';
+        $('social-growth-legend').innerHTML = '';
       }
 
       // ---- ADVERTISING ----
