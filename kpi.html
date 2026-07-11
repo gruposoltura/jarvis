@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Bridge - KPI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="bridge-config.js"></script>
+<style>
+  :root{
+    --bg:#04070d; --panel:#0d1420; --panel2:#111a2a; --line:#1c2940;
+    --cyan:#00d4ff; --green:#4fd1a1; --orange:#e67e22; --red:#ff5d5d;
+    --muted:#7d8ca3; --text:#dfe8f5; --yellow:#ffd400;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:14px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif;padding:18px}
+  a{color:var(--cyan);text-decoration:none}
+
+  #top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  #top .brand{font-weight:900;letter-spacing:.28em;color:var(--cyan);font-size:15px}
+  #top .sub{color:var(--muted);font-size:12px}
+  #top #stamp{margin-left:auto;color:var(--muted);font-size:12px;
+    font-family:ui-monospace,Consolas,monospace}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .card h2{margin:0 0 10px;font-size:12px;letter-spacing:.18em;color:var(--muted);
+    text-transform:uppercase;display:flex;align-items:center;gap:8px}
+  .card h2 .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  .kpi .val{font-size:26px;font-weight:800;line-height:1.1}
+  .kpi .lbl{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  .kpi .delta{font-size:11px;font-weight:700}
+  .delta.up{color:var(--green)} .delta.down{color:var(--red)} .delta.flat{color:var(--muted)}
+  .spark{margin-top:8px}
+  .spark svg{display:block;width:100%;height:44px}
+
+  .warnval{color:var(--orange)} .badval{color:var(--red)} .goodval{color:var(--green)}
+
+  #memos .memo{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;
+    padding:9px 0;border-bottom:1px solid var(--line)}
+  #memos .memo:last-child{border-bottom:none}
+  #memos .t{font-weight:600}
+  #memos .n{font-size:12px;color:var(--muted);margin-top:2px;max-width:520px}
+  .pill{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;white-space:nowrap}
+  .pill.red{background:rgba(255,93,93,.15);color:var(--red)}
+  .pill.orange{background:rgba(230,126,34,.15);color:var(--orange)}
+  .pill.grey{background:rgba(125,140,163,.12);color:var(--muted)}
+  .pill.green{background:rgba(79,209,161,.15);color:var(--green)}
+
+  #system .row{display:flex;justify-content:space-between;padding:7px 0;
+    border-bottom:1px solid var(--line);font-size:13px}
+  #system .row:last-child{border-bottom:none}
+
+  #login{max-width:420px;margin:80px auto;text-align:center;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:30px}
+  .hidden{display:none}
+  #err{color:var(--red);font-size:12px;margin-top:14px;white-space:pre-wrap}
+  @media (max-width:640px){ body{padding:10px} .kpis{grid-template-columns:1fr 1fr} }
+</style>
+</head>
+<body>
+
+<div id="login" class="hidden">
+  <div class="brand" style="color:var(--cyan);font-weight:900;letter-spacing:.28em">THE BRIDGE</div>
+  <p style="color:var(--muted)">Geen actieve sessie. Log eerst in via het hoofdscherm.</p>
+  <p><a href="/">Naar login</a></p>
+</div>
+
+<div id="app" class="hidden">
+  <div id="top">
+    <span class="brand">SOLTURA &mdash; KPI</span>
+    <span class="sub">mail &middot; website &middot; social &middot; memo's &middot; systeem</span>
+    <span id="stamp"></span>
+  </div>
+
+  <div class="grid" id="cards">
+    <div class="card" id="card-mail">
+      <h2><span class="dot" style="background:var(--yellow)"></span>Mail (Brevo) <span id="mail-date" class="sub"></span></h2>
+      <div class="kpis" id="mail-kpis"></div>
+      <div class="spark" id="mail-spark"></div>
+    </div>
+    <div class="card" id="card-web">
+      <h2><span class="dot" style="background:var(--cyan)"></span>Website (GA4) <span id="web-date" class="sub"></span></h2>
+      <div class="kpis" id="web-kpis"></div>
+      <div class="spark" id="web-spark"></div>
+    </div>
+    <div class="card" id="card-social">
+      <h2><span class="dot" style="background:var(--green)"></span>Social (Meta) <span id="social-date" class="sub"></span></h2>
+      <div class="kpis" id="social-kpis"></div>
+      <div class="spark" id="social-spark"></div>
+    </div>
+    <div class="card" id="memos-card">
+      <h2><span class="dot" style="background:var(--orange)"></span>Memo's <span id="memo-count" class="sub"></span></h2>
+      <div id="memos"></div>
+    </div>
+    <div class="card" id="system-card">
+      <h2><span class="dot" style="background:var(--red)"></span>Systeem &mdash; stilte-detectie</h2>
+      <div id="system"></div>
+    </div>
+  </div>
+  <div id="err"></div>
+</div>
+
+<script>
+(function(){
+  // --- config: leest bridge-config.js; valt terug op window-globals ---
+  var CFG = window.BRIDGE_CONFIG || {};
+  var SB_URL = CFG.SUPABASE_URL || window.SUPABASE_URL || 'https://wuvpbwowdycsdlrqkaoq.supabase.co';
+  var SB_KEY = CFG.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || '';
+  if(!SB_KEY){ document.getElementById('err') && (document.body.innerHTML =
+    '<div id="login"><p style="color:#ff5d5d">bridge-config.js niet gevonden of anon key ontbreekt.</p></div>'); return; }
+
+  var sb = supabase.createClient(SB_URL, SB_KEY);
+  var $ = function(id){ return document.getElementById(id); };
+
+  var fmt = function(n){ return Number(n).toLocaleString('nl-NL'); };
+
+  function delta(cur, prev){
+    if(prev === null || prev === undefined || prev === 0) return '<span class="delta flat">&mdash;</span>';
+    var d = ((cur - prev) / prev) * 100;
+    var cls = d > 0.5 ? 'up' : (d < -0.5 ? 'down' : 'flat');
+    var arr = d > 0.5 ? '\u25B2' : (d < -0.5 ? '\u25BC' : '\u25CF');
+    return '<span class="delta '+cls+'">'+arr+' '+Math.abs(d).toFixed(0)+'%</span>';
+  }
+  function kpiBox(label, value, extraHtml, cls){
+    return '<div class="kpi"><div class="val '+(cls||'')+'">'+value+'</div>'
+      + '<div class="lbl">'+label+' '+(extraHtml||'')+'</div></div>';
+  }
+  function sparkline(values, color){
+    if(!values || values.length < 2) return '';
+    var w = 300, h = 44, pad = 3;
+    var max = Math.max.apply(null, values.concat([1]));
+    var min = Math.min.apply(null, values.concat([0]));
+    var span = (max - min) || 1;
+    var pts = values.map(function(v, i){
+      var x = pad + i * ((w - 2*pad) / (values.length - 1));
+      var y = h - pad - ((v - min) / span) * (h - 2*pad);
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    });
+    return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">'
+      + '<polyline points="'+pts.join(' ')+'" fill="none" stroke="'+color+'" stroke-width="2"/>'
+      + '</svg>';
+  }
+
+  // pivot rows -> { 'YYYY-MM-DD': { metric: value } } per source
+  function pivot(rows, source){
+    var out = {};
+    rows.forEach(function(r){
+      if(r.source !== source) return;
+      (out[r.kpi_date] = out[r.kpi_date] || {})[r.metric] = Number(r.value);
+    });
+    return out;
+  }
+  function series(byDate, metric, days){
+    var dates = Object.keys(byDate).sort();
+    return dates.slice(-days).map(function(d){ return (byDate[d] || {})[metric] || 0; });
+  }
+  function lastTwo(byDate){
+    var dates = Object.keys(byDate).sort();
+    return {
+      lastDate: dates[dates.length-1] || null,
+      last: byDate[dates[dates.length-1]] || {},
+      prev: byDate[dates[dates.length-2]] || {}
+    };
+  }
+
+  async function load(){
+    var errEl = $('err'); errEl.textContent = '';
+    try{
+      var results = await Promise.all([
+        sb.from('bridge_kpi_daily').select('*'),
+        sb.from('bridge_memos').select('*'),
+        sb.from('bridge_agent_silence').select('*')
+      ]);
+      var kpi = results[0].data || [], memos = results[1].data || [], sil = results[2].data || [];
+      if(results[0].error) throw results[0].error;
+
+      // ---- MAIL ----
+      var mail = pivot(kpi, 'brevo'); var m = lastTwo(mail);
+      var mSent = m.last.sent||0, mDel = m.last.delivered||0;
+      var mB = (m.last.hard_bounces||0)+(m.last.soft_bounces||0);
+      var mBPct = mSent ? (mB/mSent*100) : 0;
+      $('mail-date').textContent = m.lastDate ? '('+m.lastDate+')' : '';
+      $('mail-kpis').innerHTML =
+        kpiBox('verzonden', fmt(mSent), delta(mSent, m.prev.sent)) +
+        kpiBox('delivered', fmt(mDel), delta(mDel, m.prev.delivered)) +
+        kpiBox('bounces', fmt(mB) + ' <span style="font-size:13px">('+mBPct.toFixed(0)+'%)</span>', '',
+               mBPct >= 10 ? 'badval' : (mBPct >= 5 ? 'warnval' : 'goodval')) +
+        kpiBox('opens uniek', fmt(m.last.opens_unique||0), delta(m.last.opens_unique, m.prev.opens_unique));
+      $('mail-spark').innerHTML = sparkline(series(mail,'sent',14), 'var(--yellow)');
+
+      // ---- WEB ----
+      var web = pivot(kpi, 'ga4'); var w = lastTwo(web);
+      $('web-date').textContent = w.lastDate ? '('+w.lastDate+')' : '';
+      $('web-kpis').innerHTML =
+        kpiBox('sessies', fmt(w.last.sessions||0), delta(w.last.sessions, w.prev.sessions)) +
+        kpiBox('gebruikers', fmt(w.last.users||0), delta(w.last.users, w.prev.users)) +
+        kpiBox('weergaven', fmt(w.last.pageviews||0), delta(w.last.pageviews, w.prev.pageviews)) +
+        kpiBox('engagement', (w.last.engagement_rate||0) + '%', delta(w.last.engagement_rate, w.prev.engagement_rate));
+      $('web-spark').innerHTML = sparkline(series(web,'sessions',28), 'var(--cyan)');
+
+      // ---- SOCIAL ----
+      var soc = pivot(kpi, 'meta_social'); var s = lastTwo(soc);
+      var igNow = s.last.ig_followers||0, igPrev = s.prev.ig_followers;
+      var igDelta = (igPrev!==undefined && igPrev!==null) ? (igNow - igPrev) : null;
+      $('social-date').textContent = s.lastDate ? '('+s.lastDate+')' : '';
+      $('social-kpis').innerHTML =
+        kpiBox('IG volgers', fmt(igNow),
+          igDelta === null ? '' : '<span class="delta '+(igDelta>0?'up':(igDelta<0?'down':'flat'))+'">'+(igDelta>=0?'+':'')+igDelta+' vandaag</span>') +
+        kpiBox('IG posts', fmt(s.last.ig_media_count||0), '') +
+        kpiBox('FB volgers', fmt(s.last.fb_followers||0), delta(s.last.fb_followers, s.prev.fb_followers)) +
+        kpiBox('FB fans', fmt(s.last.fb_fans||0), '');
+      $('social-spark').innerHTML = sparkline(series(soc,'ig_followers',28), 'var(--green)');
+
+      // ---- MEMO'S ----
+      var open = memos.slice().sort(function(a,b){ return (a.days_left||0) - (b.days_left||0); });
+      $('memo-count').textContent = '('+open.length+' open)';
+      $('memos').innerHTML = open.length ? open.map(function(mm){
+        var cls = mm.overdue ? 'red' : (mm.in_warning_window ? 'orange' : 'grey');
+        var lbl = mm.overdue ? (Math.abs(mm.days_left)+'d over tijd')
+                : (mm.days_left === 0 ? 'vandaag' : 'nog '+mm.days_left+'d');
+        var link = mm.related_url ? ' &middot; <a href="'+mm.related_url+'" target="_blank" rel="noopener">openen</a>' : '';
+        return '<div class="memo"><div><div class="t">'+mm.title+'</div>'
+          + '<div class="n">'+(mm.note||'')+link+'</div></div>'
+          + '<div><span class="pill '+cls+'">'+lbl+'</span><div class="n" style="text-align:right">'+mm.due_date+'</div></div></div>';
+      }).join('') : '<p style="color:var(--muted)">Geen open memo\'s.</p>';
+
+      // ---- SYSTEEM ----
+      var silent = sil.filter(function(a){ return a.silent; });
+      var sysHtml = '<div class="row"><span>Bewaakte agents</span><b>'+sil.length+'</b></div>'
+        + '<div class="row"><span>Stille agents</span>'
+        + (silent.length ? '<span class="pill red">'+silent.length+' STIL</span>' : '<span class="pill green">0 &mdash; alles draait</span>')
+        + '</div>';
+      silent.forEach(function(a){
+        var since = (a.hours_since_last_run === null) ? 'nooit gedraaid' : a.hours_since_last_run + 'u geleden';
+        sysHtml += '<div class="row"><span style="color:var(--red)">'+a.agent_name+'</span><span>'+since+'</span></div>';
+      });
+      $('system').innerHTML = sysHtml;
+
+      $('stamp').textContent = 'bijgewerkt ' + new Date().toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'});
+    }catch(e){
+      errEl.textContent = 'Fout bij laden: ' + (e.message || e);
+    }
+  }
+
+  async function init(){
+    var sess = await sb.auth.getSession();
+    if(!sess.data.session){ $('login').classList.remove('hidden'); return; }
+    $('app').classList.remove('hidden');
+    load();
+    setInterval(load, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible') load();
+    });
+  }
+  init();
+})();
+</script>
+</body>
+</html>
