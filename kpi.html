@@ -263,11 +263,23 @@
     var best = null, bestLen = Infinity;
     for(var i = 0; i < all.length; i++){
       var n = norm(all[i].textContent);
-      if(n.indexOf('THEBRIDGE') === 0 && n.length < 25 && n.length < bestLen){
+      if((n.indexOf('THEBRIDGE') === 0 || n === norm(title)) && n.length < 25 && n.length < bestLen){
         best = all[i]; bestLen = n.length;
       }
     }
-    if(best) best.textContent = title;
+    if(best){
+      best.textContent = title;
+      best.style.color = '#00d4ff';                        // zelfde blauw als AGENTS
+      // tekstloze buurtjes (zoals het groene lampje) verbergen
+      if(best.parentElement){
+        var sibs = best.parentElement.children;
+        for(var s = 0; s < sibs.length; s++){
+          if(sibs[s] !== best && norm(sibs[s].textContent) === ''){
+            sibs[s].style.display = 'none';
+          }
+        }
+      }
+    }
     // buurtjes van het merkje ook opruimen: alleen de paneelnaam blijft over
     var extras = ['BYRICK', 'COMMANDCENTER'];
     for(var k = 0; k < extras.length; k++){
@@ -277,6 +289,27 @@
         if(nn === extras[k] && nn.length < tLen){ target = all[m]; tLen = nn.length; }
       }
       if(target) target.style.display = 'none';
+    }
+    return best;
+  }
+
+  // Command-Center-chroom strippen: live-regel, weergaveknoppen, DEPS en EXIT.
+  // Weergaveknoppen alleen als klikbaar element verbergen zodat de paneeltitel
+  // (die 'CONSTELLATION' kan heten) blijft staan.
+  function hideExtras(doc, titleEl){
+    var all = doc.body.getElementsByTagName('*');
+    var target = null, tLen = Infinity;
+    for(var i = 0; i < all.length; i++){
+      var n = norm(all[i].textContent);
+      if(n === 'LIVEGRUPOSOLTURACRM' && n.length < tLen){ target = all[i]; tLen = n.length; }
+    }
+    if(target) target.style.display = 'none';
+    var kill = ['CONSTELLATION', 'ORGANIGRAM', 'DEPS', 'EXIT'];
+    var clickables = doc.body.querySelectorAll('button, [role="button"], a');
+    for(var c = 0; c < clickables.length; c++){
+      var el = clickables[c];
+      if(el === titleEl) continue;
+      if(kill.indexOf(norm(el.textContent)) !== -1) el.style.display = 'none';
     }
   }
 
@@ -295,7 +328,9 @@
         if(!doc || !doc.body) return;
         hideNav(doc);
         if(p.clickView) clickView(doc, p.clickView);
-        if(p.title) rebrand(doc, p.title);
+        var titleEl = null;
+        if(p.title) titleEl = rebrand(doc, p.title);
+        if(p.clickView) hideExtras(doc, titleEl);   // alleen Command-Center-panelen
       }catch(e){ /* nooit de cockpit laten breken op een paneel */ }
     };
     // meerdere passes: pagina-JS rendert soms na load nog door
