@@ -182,7 +182,8 @@
     { id:'org',           label:'ORGANISATIE',  url:'/#organigram' },
     { id:'agents',        label:'AGENTS',       url:'/agents.html' },
     { id:'creds',         label:'CREDENTIALS',  url:'/credentials.html' },
-    { id:'constellation', label:'CONSTELLATIE', url:'/#constellation' }
+    { id:'constellation', label:'CONSTELLATIE', url:'/#constellation' },
+    { id:'comp',          label:'CONCURRENTIE', url:'/competitie.html' }
   ];
   var state = { open:{}, widths:{} };   // widths in % van het werkvlak
   try{
@@ -218,6 +219,7 @@
       pane.style.flex = '0 0 ' + (state.widths[p.id] || 30) + '%';
       var f = document.createElement('iframe');
       f.src = p.url; f.title = p.label;
+      f.addEventListener('load', function(){ deChrome(f); });
       pane.appendChild(f);
       work.appendChild(div);
       work.appendChild(pane);
@@ -230,6 +232,31 @@
     if(state.open[id] && !state.widths[id]) state.widths[id] = 30;
     saveState();
     buildPanes();
+  }
+
+  // Verberg de interne navigatie (Overzicht/Agents/Concurrentie) van ingesloten
+  // panelen: de cockpit is nu de enige plek waar panelen gekozen worden.
+  function deChrome(frame){
+    try{
+      var doc = frame.contentDocument;
+      if(!doc || !doc.body) return;
+      var labels = ['overzicht','agents','concurrentie'];
+      var all = doc.body.getElementsByTagName('*');
+      var best = null, bestLen = Infinity;
+      for(var i = 0; i < all.length; i++){
+        var el = all[i];
+        var t = (el.textContent || '').toLowerCase();
+        if(t.length > 400) continue;                    // hele pagina's overslaan
+        var hits = 0;
+        for(var j = 0; j < labels.length; j++){
+          if(t.indexOf(labels[j]) !== -1) hits++;
+        }
+        if(hits === labels.length && t.length < bestLen){
+          best = el; bestLen = t.length;                 // kleinste container met alle drie
+        }
+      }
+      if(best) best.style.display = 'none';
+    }catch(e){ /* nooit de cockpit laten breken op een paneel */ }
   }
 
   function attachDrag(divider, pane, pid){
