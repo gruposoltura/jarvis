@@ -145,11 +145,26 @@
     </div>
     <div style="height:14px"></div>
 
-    <div class="row3">
-      <div class="card">
-        <h2><span class="dot" style="background:var(--blue)"></span>Advertising (Meta)</h2>
-        <div id="ads"></div>
+    <div class="card">
+      <h2><span class="dot" style="background:var(--blue)"></span>Paid Ads (Meta)
+        <span class="when" id="ads-when"></span></h2>
+      <div class="nums" id="ads-nums"></div>
+      <div class="row2">
+        <div>
+          <div class="chart" id="ads-chart-spend"></div>
+          <div class="legend"><span><i style="background:var(--blue)"></i>Spend per day (&euro;)</span></div>
+        </div>
+        <div>
+          <div class="chart" id="ads-chart-reach"></div>
+          <div class="legend"><span><i style="background:var(--cyan)"></i>Impressions</span>
+            <span><i style="background:var(--yellow)"></i>Link clicks</span></div>
+        </div>
       </div>
+      <p id="ads-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
+    </div>
+    <div style="height:0"></div>
+
+    <div class="row3">
       <div class="card">
         <h2><span class="dot" style="background:var(--orange)"></span>Memo's
           <span class="when" id="memo-count"></span></h2>
@@ -552,15 +567,41 @@
           + 'alleen als dagelijkse snapshot beschikbaar (opbouw gestart 10 juli).</p>';
       }
 
-      $('ads').innerHTML = ads ? (
-        '<div class="kv"><span>Actieve campagnes</span><b>'+fmt(ads.active_campaigns)+'</b></div>' +
-        '<div class="kv"><span>Dagbudget actief</span><b>&euro;'+Number(ads.active_daily_budget_eur).toFixed(2)+'</b></div>' +
-        '<div class="kv"><span>Wachtend op akkoord</span><b>'+fmt(ads.pending_campaigns)+'</b></div>' +
-        '<div class="kv"><span>Geactiveerd (30d)</span><b>'+fmt(ads.activated_30d)+'</b></div>' +
-        '<div class="kv"><span>Afgerond (30d)</span><b>'+fmt(ads.completed_30d)+'</b></div>' +
-        '<div class="kv"><span>Laatste activatie</span><b>'+(ads.last_activation ? ads.last_activation.slice(0,10) : '&mdash;')+'</b></div>' +
-        '<p style="color:var(--muted);font-size:11px;margin:10px 0 0">Spend/resultaten per campagne volgen via de Leerloop (ad_learnings).</p>'
-      ) : '<p style="color:var(--muted)">Geen campagnedata.</p>';
+      // ---- PAID ADS (META) ----
+      var pad = pivot(kpi, 'meta_ads'); var ad28 = lastDates(pad, 28); var pl = lastTwo(pad);
+      $('ads-when').textContent = pl.lastDate ? '\u2014 last 28 days, t/m ' + pl.lastDate : '';
+      var spend30 = 0, likes30 = 0;
+      Object.keys(pad).forEach(function(d){
+        spend30 += (pad[d].spend || 0); likes30 += (pad[d].page_likes || 0);
+      });
+      $('ads-nums').innerHTML =
+        num('spend (' + (pl.lastDate ? pl.lastDate.slice(5) : 'last day') + ')',
+            '\u20AC' + (pl.last.spend || 0).toFixed(2), delta(pl.last.spend, pl.prev.spend)) +
+        num('spend 30d', '\u20AC' + spend30.toFixed(2), '') +
+        num('impressions', fmt(pl.last.impressions || 0), delta(pl.last.impressions, pl.prev.impressions)) +
+        num('link clicks', fmt(pl.last.link_clicks || 0), '') +
+        num('CTR', (pl.last.ctr || 0).toFixed(1) + '%', '') +
+        num('CPC', '\u20AC' + (pl.last.cpc || 0).toFixed(2), '') +
+        num('page likes 30d', fmt(likes30), '');
+      if(ad28.length >= 2){
+        $('ads-chart-spend').innerHTML = barChart(ad28, [
+          { values: vals(pad, ad28, 'spend'), color: CLR.blue }
+        ], null, 210);
+        $('ads-chart-reach').innerHTML = lineChart(ad28, [
+          { values: vals(pad, ad28, 'impressions'), color: CLR.cyan, fill: true },
+          { values: vals(pad, ad28, 'link_clicks'), color: CLR.yellow }
+        ], 210);
+      } else {
+        $('ads-chart-spend').innerHTML = '<p style="color:var(--muted);font-size:12px;margin:20px 0">Geen delivery in de laatste 28 dagen.</p>';
+        $('ads-chart-reach').innerHTML = '';
+      }
+      $('ads-foot').textContent = ads
+        ? (fmt(ads.active_campaigns) + ' active campaigns \u00B7 ' + fmt(ads.pending_campaigns)
+          + ' pending \u00B7 \u20AC' + Number(ads.active_daily_budget_eur).toFixed(2) + '/day budget \u00B7 '
+          + fmt(ads.activated_30d) + ' activated (30d) \u00B7 last activation '
+          + (ads.last_activation ? ads.last_activation.slice(0,10) : '\u2014')
+          + ' \u00B7 per-campaign results via de Leerloop (ad_learnings)')
+        : '';
 
       var open = memos.slice().sort(function(a,b){ return (a.days_left||0) - (b.days_left||0); });
       $('memo-count').textContent = '('+open.length+' open)';
