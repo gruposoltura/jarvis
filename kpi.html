@@ -22,7 +22,12 @@
   /* ---- cockpit-balk: alleen hier worden panelen aan/uit gezet ---- */
   #top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
     padding:9px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex:none}
-  #top .brand{font-weight:900;letter-spacing:.28em;color:var(--cyan);font-size:14px}
+  #top .brand{font-weight:900;letter-spacing:.28em;color:var(--cyan);font-size:14px;
+    display:inline-flex;align-items:center;gap:9px}
+  #top .brand .live{width:9px;height:9px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 8px var(--green);animation:pulse 1.6s ease-in-out infinite}
+  #top .brand .byrick{color:var(--yellow);font-size:10px;letter-spacing:.08em;font-weight:800}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
   #top .grp{display:flex;gap:6px;align-items:center}
   #top .lbl{color:var(--muted);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
   #top button{background:none;border:1px solid var(--line);color:var(--muted);
@@ -104,8 +109,8 @@
 </div>
 
 <div id="top" class="hidden">
-  <span class="brand">SOLTURA &mdash; KPI</span>
-  <span class="grp"><span class="lbl">Panelen</span></span>
+  <span class="brand"><span class="live"></span>THE BRIDGE<span class="byrick">by Rick</span></span>
+  <span class="grp"><span class="lbl">Panels</span></span>
   <span id="stamp"></span>
 </div>
 
@@ -179,11 +184,11 @@
 
   /* ================= secundaire panelen (volgorde = knopvolgorde) ================= */
   var PANELS = [
-    { id:'org',           label:'ORGANISATIE',  url:'/#organigram' },
-    { id:'agents',        label:'AGENTS',       url:'/agents.html' },
-    { id:'creds',         label:'CREDENTIALS',  url:'/credentials.html' },
-    { id:'constellation', label:'CONSTELLATIE', url:'/#constellation' },
-    { id:'comp',          label:'CONCURRENTIE', url:'/competitie.html' }
+    { id:'org',           label:'ORGANISATION',  url:'/',                 title:'ORGANISATION',  clickView:'organigram' },
+    { id:'agents',        label:'AGENTS',        url:'/agents.html',      title:'AGENTS' },
+    { id:'creds',         label:'CREDENTIALS',   url:'/credentials.html', title:'CREDENTIALS' },
+    { id:'constellation', label:'CONSTELLATION', url:'/',                 title:'CONSTELLATION', clickView:'constellation' },
+    { id:'comp',          label:'COMPETITION',   url:'/competitie.html',  title:'COMPETITION' }
   ];
   var state = { open:{}, widths:{} };   // widths in % van het werkvlak
   try{
@@ -219,7 +224,7 @@
       pane.style.flex = '0 0 ' + (state.widths[p.id] || 30) + '%';
       var f = document.createElement('iframe');
       f.src = p.url; f.title = p.label;
-      f.addEventListener('load', function(){ deChrome(f); });
+      f.addEventListener('load', function(){ dressPanel(f, p); });
       pane.appendChild(f);
       work.appendChild(div);
       work.appendChild(pane);
@@ -234,29 +239,59 @@
     buildPanes();
   }
 
-  // Verberg de interne navigatie (Overzicht/Agents/Concurrentie) van ingesloten
-  // panelen: de cockpit is nu de enige plek waar panelen gekozen worden.
-  function deChrome(frame){
-    try{
-      var doc = frame.contentDocument;
-      if(!doc || !doc.body) return;
-      var labels = ['overzicht','agents','concurrentie'];
-      var all = doc.body.getElementsByTagName('*');
-      var best = null, bestLen = Infinity;
-      for(var i = 0; i < all.length; i++){
-        var el = all[i];
-        var t = (el.textContent || '').toLowerCase();
-        if(t.length > 400) continue;                    // hele pagina's overslaan
-        var hits = 0;
-        for(var j = 0; j < labels.length; j++){
-          if(t.indexOf(labels[j]) !== -1) hits++;
-        }
-        if(hits === labels.length && t.length < bestLen){
-          best = el; bestLen = t.length;                 // kleinste container met alle drie
-        }
+  // Cockpit kleedt elk paneel aan: interne navigatie weg, titel hernoemen,
+  // en waar nodig de juiste weergave aanklikken (organigram/constellation).
+  var norm = function(t){ return (t||'').toUpperCase().replace(/[^A-Z]/g,''); };
+
+  function hideNav(doc){
+    var labels = ['overzicht','agents','concurrentie'];
+    var all = doc.body.getElementsByTagName('*');
+    var best = null, bestLen = Infinity;
+    for(var i = 0; i < all.length; i++){
+      var t = (all[i].textContent || '').toLowerCase();
+      if(t.length > 400) continue;
+      var hits = 0;
+      for(var j = 0; j < labels.length; j++){ if(t.indexOf(labels[j]) !== -1) hits++; }
+      if(hits === labels.length && t.length < bestLen){ best = all[i]; bestLen = t.length; }
+    }
+    if(best) best.style.display = 'none';
+  }
+
+  function rebrand(doc, title){
+    // kleinste element waarvan de genormaliseerde tekst met THEBRIDGE begint
+    var all = doc.body.getElementsByTagName('*');
+    var best = null, bestLen = Infinity;
+    for(var i = 0; i < all.length; i++){
+      var n = norm(all[i].textContent);
+      if(n.indexOf('THEBRIDGE') === 0 && n.length < 25 && n.length < bestLen){
+        best = all[i]; bestLen = n.length;
       }
-      if(best) best.style.display = 'none';
-    }catch(e){ /* nooit de cockpit laten breken op een paneel */ }
+    }
+    if(best) best.textContent = title;
+  }
+
+  function clickView(doc, view){
+    var want = norm(view);
+    var all = doc.body.querySelectorAll('button, [role="button"], a');
+    for(var i = 0; i < all.length; i++){
+      if(norm(all[i].textContent) === want){ all[i].click(); return; }
+    }
+  }
+
+  function dressPanel(frame, p){
+    var pass = function(){
+      try{
+        var doc = frame.contentDocument;
+        if(!doc || !doc.body) return;
+        hideNav(doc);
+        if(p.clickView) clickView(doc, p.clickView);
+        if(p.title) rebrand(doc, p.title);
+      }catch(e){ /* nooit de cockpit laten breken op een paneel */ }
+    };
+    // meerdere passes: pagina-JS rendert soms na load nog door
+    setTimeout(pass, 300);
+    setTimeout(pass, 1200);
+    setTimeout(pass, 3000);
   }
 
   function attachDrag(divider, pane, pid){
