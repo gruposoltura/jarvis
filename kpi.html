@@ -66,7 +66,16 @@
   .d.up{color:var(--green)} .d.down{color:var(--red)} .d.flat{color:var(--muted)}
   .warnval{color:var(--orange)} .badval{color:var(--red)} .goodval{color:var(--green)}
 
+  .chart{position:relative}
   .chart svg{display:block;width:100%;height:auto}
+  .chart .tip{position:absolute;pointer-events:none;display:none;z-index:5;
+    background:#0d1420;border:1px solid var(--cyan);border-radius:8px;
+    padding:7px 10px;font-size:11px;line-height:1.6;white-space:nowrap;
+    box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  .chart .tip b{color:var(--cyan)}
+  .chart .tip i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+  .chart .guide{position:absolute;top:4px;bottom:20px;width:1px;
+    background:rgba(0,212,255,.45);pointer-events:none;display:none}
   .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:var(--muted)}
   .legend span{display:inline-flex;align-items:center;gap:6px}
   .legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
@@ -482,6 +491,46 @@
     return svg + '</svg>';
   }
 
+  // ---------- hover: tooltip + hulplijn op elke grafiek ----------
+  // series: [{label, values, color, format?}] - format is optionele functie op de waarde
+  function hookHover(el, dates, series, isBars){
+    if(!el || !dates || dates.length < 2) return;
+    var tip = document.createElement('div'); tip.className = 'tip';
+    var guide = document.createElement('div'); guide.className = 'guide';
+    el.appendChild(guide); el.appendChild(tip);
+    var W = 900, padL = 46, padR = 10, n = dates.length;
+    var iW = W - padL - padR;
+    var slot = iW / n, stepX = iW / (n - 1);
+    var xOf = function(i){ return isBars ? (padL + i * slot + slot / 2) : (padL + i * stepX); };
+    var idxOf = function(viewX){
+      var i = isBars ? Math.floor((viewX - padL) / slot) : Math.round((viewX - padL) / stepX);
+      if(i < 0) i = 0; if(i > n - 1) i = n - 1; return i;
+    };
+    el.onmousemove = function(e){
+      var svg = el.querySelector('svg'); if(!svg) return;
+      var rect = svg.getBoundingClientRect();
+      var viewX = (e.clientX - rect.left) / rect.width * W;
+      var i = idxOf(viewX);
+      var cssX = xOf(i) / W * rect.width;
+      guide.style.left = cssX + 'px'; guide.style.display = 'block';
+      var html = '<b>' + dayLabel(dates[i]) + '</b>';
+      for(var s = 0; s < series.length; s++){
+        var sr = series[s], v = sr.values[i];
+        html += '<br><i style="background:' + sr.color + '"></i>' + sr.label + ': <b style="color:#dfe8f5">'
+          + (sr.format ? sr.format(v) : fmt(v)) + '</b>';
+      }
+      tip.innerHTML = html;
+      tip.style.display = 'block';
+      var tw = tip.offsetWidth, left = cssX + 12;
+      if(left + tw > el.clientWidth) left = cssX - tw - 12;
+      tip.style.left = Math.max(0, left) + 'px';
+      tip.style.top = '6px';
+    };
+    el.onmouseleave = function(){ tip.style.display = 'none'; guide.style.display = 'none'; };
+  }
+  var eur2 = function(v){ return '\u20AC' + Number(v || 0).toFixed(2); };
+  var pct1 = function(v){ return Number(v || 0).toFixed(1) + '%'; };
+
   function pivot(rows, source){
     var out = {};
     rows.forEach(function(r){
@@ -527,6 +576,11 @@
         { values: vals(web, wd, 'sessions'), color: CLR.cyan, fill: true },
         { values: vals(web, wd, 'users'), color: CLR.blue }
       ], 250);
+      hookHover($('web-chart'), wd, [
+        { label: 'Sessies', values: vals(web, wd, 'sessions'), color: CLR.cyan },
+        { label: 'Gebruikers', values: vals(web, wd, 'users'), color: CLR.blue },
+        { label: 'Weergaven', values: vals(web, wd, 'pageviews'), color: CLR.muted }
+      ]);
 
       var mail = pivot(kpi, 'brevo'); var md = lastDates(mail, 14); var ml = lastTwo(mail);
       var sent = ml.last.sent||0;
@@ -546,6 +600,12 @@
         { values: vals(mail, md, 'sent'), color: CLR.yellow },
         { values: vals(mail, md, 'delivered'), color: CLR.green }
       ], { values: bounceVals, color: CLR.red }, 230);
+      hookHover($('mail-chart'), md, [
+        { label: 'Verzonden', values: vals(mail, md, 'sent'), color: CLR.yellow },
+        { label: 'Delivered', values: vals(mail, md, 'delivered'), color: CLR.green },
+        { label: 'Bounces', values: bounceVals, color: CLR.red },
+        { label: 'Opens uniek', values: vals(mail, md, 'opens_unique'), color: CLR.muted }
+      ], true);
 
       var soc = pivot(kpi, 'meta_social'); var sd = lastDates(soc, 28); var sl = lastTwo(soc);
       var igNow = sl.last.ig_followers||0, igPrev = sl.prev.ig_followers;
@@ -561,6 +621,10 @@
         $('social-chart').innerHTML = lineChart(sd, [
           { values: vals(soc, sd, 'ig_followers'), color: CLR.green, fill: true }
         ], 230);
+        hookHover($('social-chart'), sd, [
+          { label: 'IG volgers', values: vals(soc, sd, 'ig_followers'), color: CLR.green },
+          { label: 'FB volgers', values: vals(soc, sd, 'fb_followers'), color: CLR.blue }
+        ]);
       } else {
         $('social-chart').innerHTML = '<p style="color:var(--muted);font-size:12px;margin:30px 0">'
           + 'Groeigrafiek verschijnt zodra er meerdere dagen historie is &mdash; volger-aantallen zijn '
@@ -587,10 +651,20 @@
         $('ads-chart-spend').innerHTML = barChart(ad28, [
           { values: vals(pad, ad28, 'spend'), color: CLR.blue }
         ], null, 210);
+        hookHover($('ads-chart-spend'), ad28, [
+          { label: 'Spend', values: vals(pad, ad28, 'spend'), color: CLR.blue, format: eur2 },
+          { label: 'CPC', values: vals(pad, ad28, 'cpc'), color: CLR.muted, format: eur2 },
+          { label: 'CTR', values: vals(pad, ad28, 'ctr'), color: CLR.muted, format: pct1 }
+        ], true);
         $('ads-chart-reach').innerHTML = lineChart(ad28, [
           { values: vals(pad, ad28, 'impressions'), color: CLR.cyan, fill: true },
           { values: vals(pad, ad28, 'link_clicks'), color: CLR.yellow }
         ], 210);
+        hookHover($('ads-chart-reach'), ad28, [
+          { label: 'Impressies', values: vals(pad, ad28, 'impressions'), color: CLR.cyan },
+          { label: 'Link clicks', values: vals(pad, ad28, 'link_clicks'), color: CLR.yellow },
+          { label: 'Page likes', values: vals(pad, ad28, 'page_likes'), color: CLR.green }
+        ]);
       } else {
         $('ads-chart-spend').innerHTML = '<p style="color:var(--muted);font-size:12px;margin:20px 0">Geen delivery in de laatste 28 dagen.</p>';
         $('ads-chart-reach').innerHTML = '';
