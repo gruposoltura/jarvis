@@ -490,7 +490,8 @@ const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idl
    van de indeling; deze array is het ingebouwde vangnet als de registry
    onbereikbaar is of de sanity-check niet haalt. Nieuwe agents voeg je toe in
    de 'agents' tabel (bridge_dept/cluster_id/grp/...), NIET meer hier.
-   Deze fallback alleen bijwerken bij een bewuste her-baseline. */
+   Deze fallback alleen bijwerken bij een bewuste her-baseline.
+   Laatste her-baseline: 2026-07-11 (registry-stand, 70 agents). */
 const FALLBACK_DEPTS = [
   { id:"mgmt", name:"MANAGEMENT", color:C.gold, icon:"🧭",
     agents:[
@@ -504,6 +505,7 @@ const FALLBACK_DEPTS = [
       {id:"cont-sync",name:"Contacts Sync",sched:"hourly"},{id:"cont-recon",name:"Contacts Reconcile",sched:"03:30"},
       {id:"prop-sync",name:"Properties Sync",sched:"05:00"},{id:"prop-recon",name:"Properties Reconcile",sched:"03:45"},
       {id:"req-sync",name:"Requests Sync",sched:"incremental"},{id:"seo-enrich",name:"Agent SEO",sched:"09:15 Daily"},
+      {id:"gsc-sync",name:"GSC Sync",sched:"Mon 07:00 weekly"},
       {id:"view-batch",name:"Property View Processor",sched:"hourly"},{id:"viewing",name:"Viewing Logger",sched:"06:00"}],
     clusters:[
       {id:"data-sync",label:"Data Sync",members:["cont-sync","prop-sync","req-sync","cont-recon","prop-recon"]}]},
@@ -522,8 +524,12 @@ const FALLBACK_DEPTS = [
   { id:"intel", name:"OFFICE", color:C.violet, icon:"🧠",
     agents:[
       {id:"gmail",name:"Gmail Triage",sched:"30 min"},{id:"briefing",name:"Morning Briefing",sched:"08:00"},
-      {id:"ga4",name:"GA4 Stats",sched:"07:50"}],
-    clusters:[]},
+      {id:"ga4",name:"GA4 Stats",sched:"07:50"},
+      {id:"kpi-brevo",name:"KPI Sync Brevo",sched:"06:40 Daily"},{id:"kpi-ga4",name:"KPI Sync GA4",sched:"06:45 Daily"},
+      {id:"kpi-social",name:"KPI Sync Social",sched:"06:50 Daily"},{id:"kpi-metaads",name:"KPI Sync Meta Ads",sched:"06:55 Daily"},
+      {id:"brevo-events",name:"Brevo Events",sched:"webhook"}],
+    clusters:[
+      {id:"kpi-sync",label:"KPI SYNC",members:["kpi-brevo","kpi-ga4","kpi-social","kpi-metaads","brevo-events"]}]},
   { id:"mktg", name:"MARKETING", color:C.red, icon:"📣",
     agents:[
       {id:"top10",name:"Weekly Top10",sched:"Mon 09:00",paused:true},{id:"price-red",name:"Price Reduced",sched:"Wed 10:00"},
@@ -531,9 +537,11 @@ const FALLBACK_DEPTS = [
       {id:"review",name:"Google Review Invite",sched:"daily 10:00"},{id:"review_viewing",name:"Review Invite Viewing",sched:"daily 11:00"},
       {id:"research",name:"Competitor Research",sched:"monthly · day 1 · 06:00"},{id:"improve",name:"Improvement Planner",sched:"monthly · day 3 · 07:00"},
       {id:"news",name:"News Curation",sched:"Mon/Thu/Sun 09:00",grp:"news",step:1},{id:"news-mailing",name:"Weekly News",sched:"Fri 10:00",grp:"news",step:2},
-      {id:"new-listing",name:"New Listing",sched:"event"},{id:"seller-update",name:"Seller Weekly Update",sched:"Fri 16:00"},{id:"suspect-matches",name:"Suspect Matches",sched:"Mon 09:00"}],
+      {id:"new-listing",name:"New Listing",sched:"event"},{id:"new-listing-pub",name:"New Listing Publisher",sched:"on approve"},
+      {id:"seller-update",name:"Seller Weekly Update",sched:"Fri 16:00"},{id:"suspect-matches",name:"Suspect Matches",sched:"Mon 09:00"},
+      {id:"photo-enhance",name:"Photo Enhancer",sched:"3x daags 12/15/18h"}],
     clusters:[
-      {id:"mailings",label:"Mailings",members:["top10","price-red","welcome","toolate","news-mailing","new-listing","seller-update","suspect-matches"]},
+      {id:"mailings",label:"Mailings",members:["top10","price-red","welcome","toolate","news-mailing","new-listing","new-listing-pub","seller-update","suspect-matches"]},
       {id:"reviews",label:"Reviews",members:["review","review_viewing"]},
       {id:"research-grp",label:"Research",members:["research","improve"]}]},
   { id:"advertising", name:"ADVERTISING", color:C.advert, icon:"🎯",
@@ -544,6 +552,8 @@ const FALLBACK_DEPTS = [
       {id:"metaads-builder",name:"MetaAds Builder",sched:"Sun 12:00",grp:"metaads",step:1},
       {id:"metaads-executer",name:"MetaAds Executer",sched:"on approve",grp:"metaads",step:2},
       {id:"metaads-manager",name:"MetaAds Manager",sched:"daily 09:00",grp:"metaads",step:3},
+      {id:"sellerleads-builder",name:"MetaAds SellerLeads",sched:"manual · one-off",paused:true},
+      {id:"competitor-scan",name:"Competitor Scan",sched:"Sat 08:00 weekly"},
       {id:"ad-playbook",name:"Ad Viral Playbook",sched:"Mon 06:00"},
       {id:"meta-ads-proposer",name:"Meta Ads Proposer",sched:"manual",paused:true},
       {id:"meta-ads-video",name:"Meta Ads Video",sched:"manual",paused:true}],
@@ -553,13 +563,18 @@ const FALLBACK_DEPTS = [
       {id:"meta-prop",label:"Ad Proposers",members:["meta-ads-proposer","meta-ads-video"]}]},
   { id:"infra", name:"INFRA", color:C.grey, icon:"⚙",
     agents:[
-      {id:"dash-updater",name:"Dashboard Updater",sched:"30 min"},{id:"command-sync",name:"Command Center Sync",sched:"10 min · 06-23h"},{id:"sb-heartbeat",name:"Heartbeat",sched:"00:00 Daily"},
-      {id:"run-purge",name:"Run Log Purge",sched:"04:00 Daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
+      {id:"dash-updater",name:"Dashboard Updater",sched:"07:30 Daily"},{id:"command-sync",name:"Command Center Sync",sched:"10 min · 06-23h"},
+      {id:"prop-dispatch",name:"Proposal Dispatcher",sched:"webhook"},
+      {id:"sb-heartbeat",name:"Heartbeat",sched:"00:00 Daily"},{id:"run-purge",name:"Run Log Purge",sched:"04:00 Daily"},
+      {id:"prop-expiry",name:"Proposal Expiry",sched:"04:15 Daily"},{id:"silence-check",name:"Silence Check",sched:"07:20 Daily"},
+      {id:"memo-alert",name:"Memo Alert",sched:"07:10 Daily"},{id:"session-notes",name:"Session Notes",sched:"event"},
+      {id:"agent-notes",name:"Agent Notes Sync",sched:"Zo 06:00 weekly"},{id:"bounce-cleanup",name:"Bounce Cleanup",sched:"Zo 06:30 weekly"},
+      {id:"error-alert",name:"Error Alert",sched:"on error"},{id:"error-enforcer",name:"Error Enforcer",sched:"daily"},
       {id:"active-sync",name:"Active Props Sync",sched:"05:00"},{id:"new-sync",name:"New Props Sync",sched:"08:45"},
       {id:"workflow-backup",name:"Workflow Backup",sched:"Daily 02:30"}],
     clusters:[
       {id:"props-sync",label:"Props Sync",members:["active-sync","new-sync"]},
-      {id:"housekeep",label:"Housekeeping",members:["sb-heartbeat","run-purge","session-notes"]}]},
+      {id:"housekeep",label:"Housekeeping",members:["sb-heartbeat","run-purge","prop-expiry","silence-check","memo-alert","session-notes","agent-notes","bounce-cleanup","error-alert","error-enforcer"]}]},
 ];
 let DEPTS = FALLBACK_DEPTS;
 
