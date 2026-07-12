@@ -105,13 +105,13 @@
   <nav>
     <a href="/">Overzicht</a>
     <a href="agents.html" class="active">Agents</a>
-    <a href="competitie.html">Concurrentie</a>
+    <a href="competition.html">Concurrentie</a>
   </nav>
 </header>
 
 <div class="layout">
   <section class="panel">
-    <h2>Agents</h2>
+    <h2 id="agents-h2">Agents</h2>
     <div id="agent-list"><div class="loading">Laden&hellip;</div></div>
   </section>
 
@@ -172,6 +172,7 @@
   listEl.innerHTML = "";
   let currentDept = null;
   const staleCut = Date.now() - 48*3600*1000;
+  const cnt = { ok:0, error:0, stale:0, paused:0, idle:0 };
   agents.forEach(a => {
     const dept = a.bridge_dept || a.department || "overig";
     if(dept !== currentDept){
@@ -188,10 +189,22 @@
       else if(a.last_run && new Date(a.last_run).getTime() < staleCut) dotCls = "stale";
       else if(a.last_status) dotCls = "ok";
     }
+    if(a.paused) cnt.paused++;
+    else if(dotCls === "paused") cnt.idle++;
+    else cnt[dotCls]++;
     btn.innerHTML = "<span class='dot "+dotCls+"'></span><span>"+esc(a.agent_name)+"</span><small>"+esc(a.schedule_human||"")+"</small>";
     btn.addEventListener("click", () => selectAgent(a, btn));
     listEl.appendChild(btn);
   });
+  (function(){
+    const bits = [agents.length + " totaal", cnt.ok + " ok"];
+    if(cnt.error) bits.push(cnt.error + " fout");
+    if(cnt.stale) bits.push(cnt.stale + " verouderd");
+    if(cnt.idle)  bits.push(cnt.idle + " zonder status");
+    if(cnt.paused)bits.push(cnt.paused + " gepauzeerd");
+    const h = document.getElementById("agents-h2");
+    if(h) h.textContent = "Agents \u2014 " + bits.join(" \u00b7 ");
+  })();
 
   // --- detail ---
   const dBody = document.getElementById("detail-body");
