@@ -428,6 +428,7 @@
     <div class="metric"><div class="v" id="mNodes">0</div><div class="l" id="mNodesL">NODES ZICHTBAAR</div></div>
     <div class="metric"><div class="v" id="mAgents">0</div><div class="l">AGENTS TOT.</div></div>
     <div class="metric"><div class="v" id="mOnline" style="color:var(--green)">0</div><div class="l">ONLINE</div></div>
+    <div class="metric"><div class="v" id="mStale" style="color:var(--dim)">0</div><div class="l">VEROUDERD</div></div>
     <div class="metric"><div class="v" id="mErr" style="color:var(--dim)">0</div><div class="l">ERRORS</div></div>
     <div class="clock"><span id="clk">--:--:--</span><span class="sub">CET</span></div>
   </header>
@@ -475,6 +476,7 @@
 </div>
 <div id="propPill"><span class="ic">✉</span><span>VOORSTELLEN</span><span class="badge zero" id="propBadge">0</span></div>
 
+<script src="bridge-agents.js"></script>
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /* === CONFIG ============================================================ */
@@ -931,10 +933,39 @@ function pushEvent(a,err){ events.unshift({t:new Date(),agent:a.name,dept:a.dept
 }
 
 /* === SHARED METRICS ==================================================== */
+/* Headertelling (AGENTS TOT./ONLINE/VEROUDERD/ERRORS) komt uit de gedeelde
+   module bridge-agents.js (bron: view 'bridge_agent_index') zodat dit getal
+   ALTIJD gelijk is aan agents.html en kpi.html. Zolang de gedeelde bron nog
+   niet geladen is, valt renderMetrics terug op de lokale telling zodat het
+   scherm nooit leeg blijft - maar zodra de bron er is bepaalt de fallback
+   het getal niet meer.
+   NB: NODES/AGENTS ZICHTBAAR (links) blijft bewust uit de layout komen; dat
+   is letterlijk "wat er in dit diagram getekend is", geen totaaltelling. */
+let sharedCounts=null, _cntT=null;
+async function refreshAgentCounts(){
+  if(!window.BRIDGE_AGENTS) return;
+  try{
+    const r=await window.BRIDGE_AGENTS.load(SB);
+    sharedCounts=r.counts;
+    /* drift-detectie: layout (bridge_layout/fallback) vs canonieke telling */
+    if(AGENTS && AGENTS.length!==sharedCounts.total)
+      console.warn("Agent-drift: layout toont "+AGENTS.length+" agents, bridge_agent_index telt "+sharedCounts.total);
+    renderMetrics();
+  }catch(e){ console.warn("bridge-agents telling:",e.message||e); }
+}
+function refreshAgentCountsDebounced(){ clearTimeout(_cntT); _cntT=setTimeout(refreshAgentCounts,800); }
 function renderMetrics(){
-  const c={ok:0,running:0,idle:0,error:0,paused:0}; AGENTS.forEach(a=>c[statusOf(a.id)]++);
   if(currentView==="radial"){ $("mNodes").textContent=UNITS.length; $("mNodesL").textContent="NODES ZICHTBAAR"; }
   else { $("mNodes").textContent=AGENTS.length; $("mNodesL").textContent="AGENTS ZICHTBAAR"; }
+  if(sharedCounts){
+    $("mAgents").textContent=sharedCounts.total;
+    $("mOnline").textContent=sharedCounts.ok+sharedCounts.running;
+    $("mStale").textContent=sharedCounts.stale; $("mStale").style.color=sharedCounts.stale?C.amber:C.dim;
+    $("mErr").textContent=sharedCounts.error; $("mErr").style.color=sharedCounts.error?C.red:C.dim;
+    return;
+  }
+  /* fallback: lokale telling zolang de gedeelde bron nog niet geladen is */
+  const c={ok:0,running:0,idle:0,error:0,paused:0}; AGENTS.forEach(a=>c[statusOf(a.id)]++);
   $("mAgents").textContent=AGENTS.length;
   $("mOnline").textContent=c.ok+c.running;
   $("mErr").textContent=c.error; $("mErr").style.color=c.error?C.red:C.dim;
@@ -1290,6 +1321,7 @@ function applyRow(r){ if(!r||!r.agent_id)return;
   rows[r.agent_id]={status:r.status,last_run:r.last_run,run_count:r.run_count,last_error:r.last_error,run_token:r.run_token};
   const a=BY_ID[r.agent_id];
   renderMetrics(); updateOrgStatus();
+  refreshAgentCountsDebounced();   // header live mee laten bewegen met de canonieke bron
   if(currentView==="radial"){ paintNodes(); if(selected===r.agent_id)renderPanel(); }
   if(a&&(r.status==="running"||r.status==="error")){ pushEvent(a,r.status==="error"); if(r.status==="running")spawn(r.agent_id,a.color); }
 }
@@ -1352,12 +1384,13 @@ async function start(){
   buildOrgOnce();                  // herbouw organigram in gesorteerde volgorde
   if(currentView==="radial") renderRadial();
   updateOrgStatus(); renderMetrics(); fillRuns24();
+  refreshAgentCounts();            // headertelling direct uit de canonieke bron
   setConn(true,"live · gruposoltura-crm");
   loadReadiness();
   loadSuspectLoop();
   loadProposals();
   sb.channel("agent_status_live").on("postgres_changes",{event:"*",schema:"public",table:"agent_status"},p=>{ applyRow(p.new); refreshReadiness(); }).subscribe(s=>{ if(s==="SUBSCRIBED")setConn(true,"live · gruposoltura-crm"); });
-  setInterval(async()=>{ await load24h(); fillRuns24(); loadSuspectLoop(); loadProposals(); }, 5*60*1000);   // ververs 24u-tellers (zonder herordening)
+  setInterval(async()=>{ await load24h(); fillRuns24(); loadSuspectLoop(); loadProposals(); refreshAgentCounts(); }, 5*60*1000);   // ververs 24u-tellers (zonder herordening)
   const {data:hb}=await sb.from("heartbeat").select("last_ping").order("last_ping",{ascending:false}).limit(1);
   if(hb&&hb[0]&&$("hb"))$("hb").innerHTML=`Heartbeat online · last ping <b style="color:${C.green}">${ago(hb[0].last_ping)}</b>`;
 }
