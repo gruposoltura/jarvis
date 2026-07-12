@@ -491,7 +491,7 @@ const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idl
    onbereikbaar is of de sanity-check niet haalt. Nieuwe agents voeg je toe in
    de 'agents' tabel (bridge_dept/cluster_id/grp/...), NIET meer hier.
    Deze fallback alleen bijwerken bij een bewuste her-baseline.
-   Laatste her-baseline: 2026-07-11 (registry-stand, 70 agents). */
+   Laatste her-baseline: 2026-07-12 (registry-stand, 73 agents; + hot-lead-scout, hot-lead-publisher, match-feedback). */
 const FALLBACK_DEPTS = [
   { id:"mgmt", name:"MANAGEMENT", color:C.gold, icon:"🧭",
     agents:[
@@ -513,9 +513,12 @@ const FALLBACK_DEPTS = [
     agents:[
       {id:"lead-proc",name:"Lead Processor",sched:"webhook"},{id:"appointment",name:"Appointment Agent",sched:"email"},
       {id:"idealista",name:"Idealista Leads",sched:"email"},{id:"idealista-feed",name:"Idealista Feed",sched:"daily 18:00"},
-      {id:"purchase-info",name:"Purchase Info",sched:"webhook"},{id:"contract",name:"Contract Generator",sched:"sheet"}],
+      {id:"purchase-info",name:"Purchase Info",sched:"webhook"},{id:"contract",name:"Contract Generator",sched:"sheet"},
+      {id:"hot-lead-scout",name:"Hot Lead Scout",sched:"daily 10:00",grp:"hotlead",step:1},
+      {id:"hot-lead-publisher",name:"Hot Lead Publisher",sched:"on approve",grp:"hotlead",step:2}],
     clusters:[
-      {id:"idealista-grp",label:"Idealista",members:["idealista","idealista-feed"]}]},
+      {id:"idealista-grp",label:"Idealista",members:["idealista","idealista-feed"]},
+      {id:"hotlead",label:"Hot Leads",members:["hot-lead-scout","hot-lead-publisher"]}]},
   { id:"admin", name:"ADMIN & FIN.", color:C.amber, icon:"⚖",
     agents:[
       {id:"modelo",name:"Modelo Reminder",sched:"07:00"},
@@ -539,9 +542,10 @@ const FALLBACK_DEPTS = [
       {id:"news",name:"News Curation",sched:"Mon/Thu/Sun 09:00",grp:"news",step:1},{id:"news-mailing",name:"Weekly News",sched:"Fri 10:00",grp:"news",step:2},
       {id:"new-listing",name:"New Listing",sched:"event"},{id:"new-listing-pub",name:"New Listing Publisher",sched:"on approve"},
       {id:"seller-update",name:"Seller Weekly Update",sched:"Fri 16:00"},{id:"suspect-matches",name:"Suspect Matches",sched:"Mon 09:00"},
-      {id:"photo-enhance",name:"Photo Enhancer",sched:"3x daags 12/15/18h"}],
+      {id:"photo-enhance",name:"Photo Enhancer",sched:"3x daags 12/15/18h"},
+      {id:"match-feedback",name:"Match Feedback",sched:"event"}],
     clusters:[
-      {id:"mailings",label:"Mailings",members:["top10","price-red","welcome","toolate","news-mailing","new-listing","new-listing-pub","seller-update","suspect-matches"]},
+      {id:"mailings",label:"Mailings",members:["top10","price-red","welcome","toolate","news-mailing","new-listing","new-listing-pub","seller-update","suspect-matches","match-feedback"]},
       {id:"reviews",label:"Reviews",members:["review","review_viewing"]},
       {id:"research-grp",label:"Research",members:["research","improve"]}]},
   { id:"advertising", name:"ADVERTISING", color:C.advert, icon:"🎯",
@@ -1442,7 +1446,7 @@ async function loadProposals(){
     const rows=data||[];
     if(badge){ badge.textContent=String(rows.length); badge.classList.toggle("zero",rows.length===0); }
     if(!rows.length){ body.innerHTML='<div class="sml-msg">geen openstaande voorstellen \u2705</div>'; return; }
-    const KIND={social:{l:"SOCIAL"},meta_ads:{l:"META ADS"},new_listing:{l:"MAILING"}};
+    const KIND={social:{l:"SOCIAL"},meta_ads:{l:"META ADS"},new_listing:{l:"MAILING"},hot_lead:{l:"HOT LEAD"}};
     const escp=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     body.innerHTML=rows.map(r=>{
       const k=KIND[r.kind]||{l:String(r.kind||'').toUpperCase()};
@@ -1450,7 +1454,7 @@ async function loadProposals(){
       const days=Math.floor(ageMs/86400000);
       const age=days>0?days+"d":Math.max(1,Math.floor(ageMs/3600000))+"u";
       const thumb=r.image_url?'<img class="prop-thumb" src="'+escp(r.image_url)+'" loading="lazy" alt="">':'<div class="prop-thumb ph">\u2709</div>';
-      const okLbl=(r.kind==='meta_ads')?'\u2713 ACTIVEER':(r.kind==='new_listing')?'\u2713 VERSTUUR':'\u2713 PUBLICEER';
+      const okLbl=(r.kind==='meta_ads')?'\u2713 ACTIVEER':(r.kind==='new_listing')?'\u2713 VERSTUUR':(r.kind==='hot_lead')?'\u2713 BEKIJK & VERSTUUR':'\u2713 PUBLICEER';
       return '<div class="prop-item">'+thumb+'<div class="prop-main">'
         +'<div class="prop-h"><span class="prop-tag '+escp(r.kind)+'">'+k.l+'</span>'
         +'<span class="prop-title">'+escp(r.title)+(r.subtitle?' \u00B7 '+escp(r.subtitle):'')+'</span></div>'
