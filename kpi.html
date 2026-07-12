@@ -95,6 +95,19 @@
     border-bottom:1px solid var(--line);font-size:13px}
   .kv:last-child{border-bottom:none}
 
+  #props .prop{padding:9px 0;border-bottom:1px solid var(--line)}
+  #props .prop:last-child{border-bottom:none}
+  #props .t{font-weight:600}
+  #props .n{font-size:12px;color:var(--muted);margin-top:2px}
+  #props .btns{display:flex;gap:8px;margin-top:8px}
+  #props .btns button{flex:1;font:700 11px/1 "Segoe UI",system-ui,sans-serif;letter-spacing:.05em;
+    padding:8px 0;border-radius:6px;cursor:pointer;background:none}
+  #props .btns .ok{border:1px solid rgba(79,209,161,.5);color:var(--green)}
+  #props .btns .ok:hover{background:var(--green);color:#04070d}
+  #props .btns .no{border:1px solid rgba(255,93,93,.5);color:var(--red)}
+  #props .btns .no:hover{background:var(--red);color:#fff}
+  #props .pinlink{font-size:11px;color:var(--muted);cursor:pointer;text-decoration:underline}
+
   #login{max-width:420px;margin:80px auto;text-align:center;background:var(--panel);
     border:1px solid var(--line);border-radius:12px;padding:30px}
   .hidden{display:none}
@@ -178,6 +191,11 @@
         <h2><span class="dot" style="background:var(--orange)"></span>Memo's
           <span class="when" id="memo-count"></span></h2>
         <div id="memos"></div>
+      </div>
+      <div class="card">
+        <h2><span class="dot" style="background:var(--yellow)"></span>Voorstellen
+          <span class="when" id="prop-count"></span></h2>
+        <div id="props"></div>
       </div>
       <div class="card">
         <h2><span class="dot" style="background:var(--red)"></span>Systeem &mdash; stilte-detectie</h2>
@@ -549,6 +567,66 @@
              last: byDate[ds[ds.length-1]] || {}, prev: byDate[ds[ds.length-2]] || {} };
   }
 
+  /* ================= voorstellen (proposals_pending) ================= */
+  var PROP_DISPATCH_URL = 'https://gruposoltura.app.n8n.cloud/webhook/proposal-dispatch';
+  var PROP_KIND = { social:'SOCIAL', meta_ads:'META ADS', new_listing:'MAILING', hot_lead:'HOT LEAD' };
+  var PROP_OK = { meta_ads:'\u2713 ACTIVEER', new_listing:'\u2713 VERSTUUR', hot_lead:'\u2713 BEKIJK & VERSTUUR' };
+  var PROP_CONFIRM = {
+    'new_listing:approve':'LET OP: dit verstuurt de mailing DIRECT naar alle ontvangers. Doorgaan?',
+    'meta_ads:skip':'Advertentievoorstel afwijzen? De klaargezette (PAUSED) campagne wordt dan verwijderd.',
+    'social:skip':'Social post afwijzen?',
+    'new_listing:skip':'Mailing-voorstel afwijzen?',
+    'hot_lead:skip':'Hot-lead voorstel afwijzen?'
+  };
+  var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+  function propPin(force){
+    var pin = localStorage.getItem('jarvis_prop_pin') || '';
+    if(force || !pin){
+      pin = (window.prompt('JARVIS goedkeurings-PIN:','') || '').trim();
+      if(pin) localStorage.setItem('jarvis_prop_pin', pin);
+      else localStorage.removeItem('jarvis_prop_pin');
+    }
+    return pin;
+  }
+  function propDispatch(kind, id, action){
+    var pin = propPin(false);
+    if(!pin) return;
+    var msg = PROP_CONFIRM[kind + ':' + action];
+    if(msg && !window.confirm(msg)) return;
+    window.open(PROP_DISPATCH_URL + '?pin=' + encodeURIComponent(pin) + '&kind=' + encodeURIComponent(kind)
+      + '&id=' + encodeURIComponent(id) + '&action=' + encodeURIComponent(action), '_blank', 'noopener');
+    setTimeout(loadProps, 4000); setTimeout(loadProps, 12000);
+  }
+  async function loadProps(){
+    var el = $('props'); if(!el) return;
+    try{
+      var r = await sb.from('proposals_pending').select('*').order('created_at', {ascending:true});
+      if(r.error){ el.innerHTML = '<p style="color:var(--muted)">Kon voorstellen niet laden.</p>'; return; }
+      var rows = r.data || [];
+      $('prop-count').textContent = '(' + rows.length + ' open)';
+      if(!rows.length){ el.innerHTML = '<p style="color:var(--muted)">Geen openstaande voorstellen \u2705</p>'; return; }
+      el.innerHTML = rows.map(function(p){
+        var kindLbl = PROP_KIND[p.kind] || String(p.kind || '').toUpperCase();
+        var okLbl = PROP_OK[p.kind] || '\u2713 PUBLICEER';
+        var ageMs = Date.now() - new Date(p.created_at);
+        var days = Math.floor(ageMs / 86400000);
+        var age = days > 0 ? days + 'd' : Math.max(1, Math.floor(ageMs / 3600000)) + 'u';
+        var link = p.link ? ' &middot; <a href="' + esc(p.link) + '" target="_blank" rel="noopener">bekijk \u203A</a>' : '';
+        return '<div class="prop"><div class="t"><span class="pill grey">' + esc(kindLbl) + '</span> '
+          + esc(p.title) + (p.subtitle ? ' \u00B7 ' + esc(p.subtitle) : '') + '</div>'
+          + '<div class="n">' + esc(p.variant || '') + ' &middot; <span class="'
+          + (days >= 3 ? 'badval' : 'warnval') + '">wacht ' + age + '</span>' + link + '</div>'
+          + (p.preview ? '<div class="n">' + esc(p.preview) + '</div>' : '')
+          + '<div class="btns">'
+          + '<button class="ok" data-kind="' + esc(p.kind) + '" data-id="' + esc(p.id) + '" data-action="approve">' + okLbl + '</button>'
+          + '<button class="no" data-kind="' + esc(p.kind) + '" data-id="' + esc(p.id) + '" data-action="skip">\u2715 AFWIJZEN</button>'
+          + '</div></div>';
+      }).join('')
+      + '<p style="margin:9px 0 0;font-size:11px;color:var(--muted)">social &amp; ads &amp; hot leads tonen eerst een bevestigingspagina &middot; <span class="pinlink" id="prop-pin-reset">PIN wijzigen</span></p>';
+    }catch(e){ el.innerHTML = '<p style="color:var(--muted)">Fout bij laden voorstellen.</p>'; }
+  }
+
   /* ================= data laden ================= */
   async function load(){
     var errEl = $('err'); errEl.textContent = '';
@@ -713,6 +791,8 @@
       });
       $('system').innerHTML = sysHtml;
 
+      loadProps();
+
       $('stamp').textContent = 'bijgewerkt ' + new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
     }catch(e){
       errEl.textContent = 'Fout bij laden: ' + (e.message || e);
@@ -725,6 +805,12 @@
     $('top').classList.remove('hidden');
     $('work').classList.remove('hidden');
     buildPanes();
+    var propsEl = $('props');
+    if(propsEl) propsEl.addEventListener('click', function(ev){
+      var btn = ev.target.closest('button[data-kind]');
+      if(btn){ propDispatch(btn.dataset.kind, btn.dataset.id, btn.dataset.action); return; }
+      if(ev.target.id === 'prop-pin-reset') propPin(true);
+    });
     load();
     setInterval(load, 5 * 60 * 1000);
     document.addEventListener('visibilitychange', function(){
