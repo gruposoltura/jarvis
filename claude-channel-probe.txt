@@ -1,2 +1,0 @@
-<!-- probe: emoji 🧭👥 · unicode \u2713 ✓ · quotes "dubbel" 'enkel' `backtick` · backslash \n \\ · <tag attr='x'> · €285.000 · niet-breekbare spatie: [ ] -->
-regel2: einde zonder newline-test
