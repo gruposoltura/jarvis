@@ -596,6 +596,7 @@ function buildDerived(){
 buildDerived();
 /* geordende pijplijn-groepen (org view): agents met a.grp blijven samen + in a.step-volgorde */
 const GRP = {
+  KPI:    {label:"KPI",            flow:"BREVO \u2192 GA4 \u2192 SOCIAL \u2192 ADS \u2192 EVENTS"},
   metaads:{label:"META ADS",       flow:"BOUW \u2192 PUBLICEER \u2192 BEHEER"},
   social: {label:"SOCIAL",         flow:"VOORSTEL \u2192 PUBLICEER"},
   morning:{label:"MORNING REPORT", flow:"CHECK \u2192 ROLL-CALL \u2192 SUPERVISOR"},
