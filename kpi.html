@@ -557,7 +557,8 @@
         sb.from('bridge_kpi_daily').select('*'),
         sb.from('bridge_memos').select('*'),
         sb.from('bridge_agent_silence').select('*'),
-        sb.from('bridge_ads_summary').select('*')
+        sb.from('bridge_ads_summary').select('*'),
+        sb.from('bridge_layout').select('agent_id,paused')
       ]);
       if(res[0].error) throw res[0].error;
       var kpi = res[0].data || [], memos = res[1].data || [],
@@ -691,8 +692,19 @@
       }).join('') : '<p style="color:var(--muted)">Geen open memo\'s.</p>';
 
       var silent = sil.filter(function(a){ return a.silent; });
-      var sysHtml = '<div class="kv"><span>Bewaakte agents</span><b>'+sil.length+'</b></div>'
-        + '<div class="kv"><span>Stille agents</span>'
+      var sysHtml = '';
+      var layout = (res[4] && !res[4].error && res[4].data) || null;
+      if(layout && layout.length){
+        var pausedN = layout.filter(function(x){ return x.paused; }).length;
+        var eventN = layout.length - pausedN - sil.length;
+        sysHtml += '<div class="kv"><span>Actieve agents totaal</span><b>'+layout.length+'</b></div>'
+          + '<div class="kv"><span>Bewaakt (verwachte frequentie)</span><b>'+sil.length+'</b></div>'
+          + '<div class="kv"><span>Niet bewaakt &mdash; event/webhook/handmatig</span><span style="color:var(--muted)">'+eventN+'</span></div>'
+          + '<div class="kv"><span>Gepauzeerd</span><span style="color:var(--muted)">'+pausedN+'</span></div>';
+      } else {
+        sysHtml += '<div class="kv"><span>Bewaakte agents</span><b>'+sil.length+'</b></div>';
+      }
+      sysHtml += '<div class="kv"><span>Stille agents</span>'
         + (silent.length ? '<span class="pill red">'+silent.length+' STIL</span>'
                          : '<span class="pill green">0 &mdash; alles draait</span>') + '</div>';
       silent.forEach(function(a){
