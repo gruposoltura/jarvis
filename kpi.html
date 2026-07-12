@@ -6,6 +6,7 @@
 <title>The Bridge - KPI</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="bridge-config.js"></script>
+<script src="bridge-agents.js"></script>
 <style>
   :root{
     --bg:#04070d; --panel:#0d1420; --line:#1c2940;
@@ -198,7 +199,7 @@
         <div id="props"></div>
       </div>
       <div class="card">
-        <h2><span class="dot" style="background:var(--red)"></span>Systeem &mdash; stilte-detectie</h2>
+        <h2><span class="dot" style="background:var(--red)"></span>Systeem &mdash; agents &amp; stilte-detectie</h2>
         <div id="system"></div>
       </div>
     </div>
@@ -636,7 +637,10 @@
         sb.from('bridge_memos').select('*'),
         sb.from('bridge_agent_silence').select('*'),
         sb.from('bridge_ads_summary').select('*'),
-        sb.from('bridge_layout').select('agent_id,paused')
+        sb.from('bridge_layout').select('agent_id,paused'),
+        // gedeelde agent-telling (1 bron, 1 formule) - een storing hierin
+        // mag nooit de hele KPI-pagina blokkeren, vandaar de .catch
+        window.BRIDGE_AGENTS.load(sb).catch(function(e){ return { agents:[], counts:null, error:e }; })
       ]);
       if(res[0].error) throw res[0].error;
       var kpi = res[0].data || [], memos = res[1].data || [],
@@ -771,12 +775,23 @@
 
       var silent = sil.filter(function(a){ return a.silent; });
       var sysHtml = '';
+      /* Bovenaan: de GEDEELDE agent-telling (zelfde bron + formule als
+         agents.html en organisation.html). Daaronder, gescheiden door een
+         lijntje, de stilte-detectie als aanvullende invalshoek - dat is
+         bewakingsinformatie, geen alternatieve telling. */
+      var shared = res[5] || {};
+      var counts = shared.counts || null;
+      if(counts){
+        sysHtml += '<div style="padding:2px 0 9px;border-bottom:1px solid var(--line);margin-bottom:6px;font-size:13px">'
+          + window.BRIDGE_AGENTS.summaryHTML(counts) + '</div>';
+      }
       var layout = (res[4] && !res[4].error && res[4].data) || null;
-      if(layout && layout.length){
-        var pausedN = layout.filter(function(x){ return x.paused; }).length;
-        var eventN = layout.length - pausedN - sil.length;
-        sysHtml += '<div class="kv"><span>Actieve agents totaal</span><b>'+layout.length+'</b></div>'
-          + '<div class="kv"><span>Bewaakt (verwachte frequentie)</span><b>'+sil.length+'</b></div>'
+      var totalN = counts ? counts.total : (layout ? layout.length : null);
+      var pausedN = counts ? counts.paused
+        : (layout ? layout.filter(function(x){ return x.paused; }).length : null);
+      if(totalN !== null){
+        var eventN = totalN - pausedN - sil.length;
+        sysHtml += '<div class="kv"><span>Bewaakt (verwachte frequentie)</span><b>'+sil.length+'</b></div>'
           + '<div class="kv"><span>Niet bewaakt &mdash; event/webhook/handmatig</span><span style="color:var(--muted)">'+eventN+'</span></div>'
           + '<div class="kv"><span>Gepauzeerd</span><span style="color:var(--muted)">'+pausedN+'</span></div>';
       } else {
