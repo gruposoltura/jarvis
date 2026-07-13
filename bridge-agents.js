@@ -121,3 +121,90 @@
     summaryHTML: summaryHTML
   };
 })();
+
+/* --- Health-pill (Systems Roll Call) --------------------------------
+   Zelfstandig blok, los van BRIDGE_AGENTS hierboven. Injecteert
+   rechtsboven in de cockpit-balk (#top, naast #stamp) een status-pill
+   die public.bridge_health leest (anon SELECT toegestaan, geen auth
+   nodig). Doet niets op pagina's zonder de cockpit-balk en kan de
+   cockpit nooit blokkeren (alles in try/catch/stil). Bron van de
+   data: workflow JARVIS-Infra-HealthCheck (dagelijks 07:35). */
+(function(){
+  "use strict";
+  var CFG = (window.BRIDGE_CONFIG || {});
+  var SB_URL = CFG.SUPABASE_URL || window.SUPABASE_URL || "https://wuvpbwowdycsdlrqkaoq.supabase.co";
+  var SB_KEY = CFG.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY || "";
+  if(!SB_KEY) return;
+
+  var MAP = {
+    green: { c:"#4fd1a1", bg:"rgba(79,209,161,.15)", t:"ALLES OK" },
+    amber: { c:"#e67e22", bg:"rgba(230,126,34,.15)", t:"LET OP" },
+    red:   { c:"#ff5d5d", bg:"rgba(255,93,93,.15)",  t:"ACTIE NODIG" }
+  };
+
+  function injectStyle(){
+    if(document.getElementById("jarvisHealthPillCss")) return;
+    var st = document.createElement("style");
+    st.id = "jarvisHealthPillCss";
+    st.textContent =
+      "#jarvisHealthPill{display:inline-flex;align-items:center;gap:7px;margin-left:12px;" +
+      "font-size:11px;font-weight:800;letter-spacing:.04em;padding:4px 11px;border-radius:99px;" +
+      "white-space:nowrap;cursor:default}" +
+      "#jarvisHealthPill .hb-dot{width:8px;height:8px;border-radius:50%;flex:none}";
+    document.head.appendChild(st);
+  }
+
+  function render(d){
+    var pill = document.getElementById("jarvisHealthPill");
+    if(!pill) return;
+    var m = MAP[d && d.overall] || MAP.green;
+    pill.style.color = m.c;
+    pill.style.background = m.bg;
+    pill.innerHTML = '<span class="hb-dot" style="background:' + m.c + '"></span>' +
+      ((d && d.headline) ? String(d.headline) : m.t);
+    var when = (d && d.checked_at)
+      ? new Date(d.checked_at).toLocaleString("nl-NL", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})
+      : "";
+    pill.title = "Systems Roll Call" + (when ? (" \u00b7 " + when) : "") +
+      (d ? ("\n" + (d.silent_count||0) + " stil \u00b7 " + (d.error_count||0) + " fouten \u00b7 " +
+        (d.warn_count||0) + " warn \u00b7 " + (d.stale_count||0) + " stale \u00b7 " +
+        (d.memo_count||0) + " memo") : "");
+  }
+
+  function refresh(){
+    try{
+      fetch(SB_URL + "/rest/v1/bridge_health?id=eq.1&select=*",
+        { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } })
+        .then(function(r){ return r.ok ? r.json() : []; })
+        .then(function(rows){ if(rows && rows[0]) render(rows[0]); })
+        .catch(function(){});
+    }catch(e){}
+  }
+
+  function mount(){
+    var stamp = document.querySelector("#top #stamp");
+    if(!stamp) return false;
+    if(!document.getElementById("jarvisHealthPill")){
+      injectStyle();
+      var pill = document.createElement("span");
+      pill.id = "jarvisHealthPill";
+      stamp.parentNode.insertBefore(pill, stamp.nextSibling);
+      render(null);
+      refresh();
+      setInterval(refresh, 60000);
+      document.addEventListener("visibilitychange", function(){
+        if(document.visibilityState === "visible") refresh();
+      });
+    }
+    return true;
+  }
+
+  // De cockpit onthult #top pas na login; poll de balk tot 60s.
+  if(!mount()){
+    var tries = 0;
+    var iv = setInterval(function(){
+      tries++;
+      if(mount() || tries > 120) clearInterval(iv);
+    }, 500);
+  }
+})();
