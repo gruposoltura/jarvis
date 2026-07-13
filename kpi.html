@@ -785,7 +785,9 @@
           + ' \u00B7 per-campaign results via de Leerloop (ad_learnings)')
         : '';
 
-      // ---- ACTIEVE ADVERTENTIES (actieve campagnes, lead-gen metrics uit bridge_active_ads) ----
+      // ---- ACTIEVE ADVERTENTIES (volledige Meta-account via bridge_active_ads) ----
+      function resLabel(t){ return t === 'follows_or_likes' ? 'volgers/likes'
+        : t === 'leads' ? 'leads' : t === 'purchases' ? 'aankopen' : 'clicks'; }
       var live = (res[6] && res[6].data) || [];
       var liveErr = res[6] && res[6].error;
       live = live.slice().sort(function(a,b){ return Number(b.spend||0) - Number(a.spend||0); });
@@ -794,9 +796,9 @@
         var tImp   = live.reduce(function(a,r){ return a + Number(r.impressions||0); }, 0);
         var tReach = live.reduce(function(a,r){ return a + Number(r.reach||0); }, 0);
         var tClk   = live.reduce(function(a,r){ return a + Number(r.clicks||0); }, 0);
+        var tLnk   = live.reduce(function(a,r){ return a + Number(r.link_clicks||0); }, 0);
         var tLeads = live.reduce(function(a,r){ return a + Number(r.leads||0); }, 0);
         var tCtr   = tImp ? (tClk / tImp * 100) : 0;
-        var tCpl   = tLeads ? (tSpend / tLeads) : 0;
         var cap    = live[0].captured_at ? String(live[0].captured_at).slice(0,10) : '';
 
         $('live-when').textContent = '\u2014 ' + live.length + ' actief \u00b7 lifetime'
@@ -806,11 +808,11 @@
           num('impressies', fmt(tImp), '') +
           num('bereik', fmt(tReach), '') +
           num('CTR', tCtr.toFixed(2) + '%', '') +
-          num('leads', fmt(tLeads), '') +
-          num('CPL', tLeads ? eur2(tCpl) : '\u2014', '', tLeads ? 'goodval' : '');
+          num('link clicks', fmt(tLnk), '') +
+          num('leads', fmt(tLeads), '', tLeads ? 'goodval' : '');
 
         var liveRows = live.slice(0, 12).map(function(r){
-          var leads = Number(r.leads||0);
+          var resv = Number(r.results||0);
           return '<tr>'
             + '<td>' + esc(r.ad_name || '\u2014') + '<span class="camp">' + esc(r.campaign_name || '') + '</span></td>'
             + '<td>' + eur2(r.spend) + '</td>'
@@ -820,18 +822,19 @@
             + '<td>' + eur2(r.cpm) + '</td>'
             + '<td>' + Number(r.ctr||0).toFixed(2) + '%</td>'
             + '<td>' + fmt(r.link_clicks) + '</td>'
-            + '<td class="' + (leads > 0 ? 'win' : 'flat') + '">' + fmt(leads) + '</td>'
-            + '<td>' + (r.cost_per_lead != null ? eur2(r.cost_per_lead) : '\u2014') + '</td>'
+            + '<td class="' + (resv > 0 ? 'win' : 'flat') + '">' + fmt(resv)
+              + '<span class="camp">' + resLabel(r.result_type) + '</span></td>'
+            + '<td>' + (r.cost_per_result != null ? eur2(r.cost_per_result) : '\u2014') + '</td>'
             + '</tr>';
         }).join('');
         $('live-table').innerHTML = '<table class="adt"><thead><tr>'
           + '<th>Advertentie</th><th>Spend</th><th>Impressies</th><th>Bereik</th><th>Freq.</th>'
-          + '<th>CPM</th><th>CTR</th><th>Link clicks</th><th>Leads</th><th>CPL</th>'
+          + '<th>CPM</th><th>CTR</th><th>Link clicks</th><th>Resultaat</th><th>Kosten/res</th>'
           + '</tr></thead><tbody>' + liveRows + '</tbody></table>';
 
-        $('live-foot').textContent = 'Actieve campagnes \u00b7 lifetime-cijfers uit bridge_active_ads'
+        $('live-foot').textContent = 'Actieve advertenties \u00b7 lifetime uit bridge_active_ads (volledige Meta-account)'
           + (live.length > 12 ? ' \u00b7 top 12 van ' + live.length : '')
-          + ' \u00b7 leads-campagnes sturen op CPL, engagement-campagnes op CTR/CPM';
+          + ' \u00b7 Resultaat = het objective-doel per ad (volgers/likes, clicks of leads)';
       } else {
         $('live-table').innerHTML = liveErr
           ? '<p style="color:var(--muted)">Bron <code>bridge_active_ads</code> niet leesbaar: ' + esc(liveErr.message || liveErr) + '</p>'
