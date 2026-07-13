@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Bridge - KPI</title>
+<title>DEWI - KPI</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="bridge-config.js"></script>
-<script src="bridge-agents.js"></script>
+<script src="dewi-config.js"></script>
+<script src="dewi-agents.js"></script><!-- één bron van waarheid voor agent-tellingen -->
 <style>
   :root{
     --bg:#04070d; --panel:#0d1420; --line:#1c2940;
@@ -87,6 +87,37 @@
   #memos .t{font-weight:600}
   #memos .n{font-size:12px;color:var(--muted);margin-top:2px}
   .pill{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;white-space:nowrap}
+  .fun{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+  .fun-row{display:flex;align-items:center;gap:10px}
+  .fun-lab{width:120px;flex:none;font-size:12px;color:var(--muted)}
+  .fun-track{flex:1;height:22px;background:rgba(255,255,255,.04);border-radius:5px;overflow:hidden}
+  .fun-fill{height:100%;border-radius:5px;display:flex;align-items:center;padding-left:9px;
+    font-size:11px;font-weight:600;color:#06121c;font-variant-numeric:tabular-nums;min-width:44px}
+  .fun-drop{width:88px;flex:none;text-align:right;font-size:11px;color:var(--muted);
+    font-variant-numeric:tabular-nums}
+  .fun-drop b{color:var(--red);font-weight:600}
+  .split-bar{height:7px;border-radius:4px;background:var(--orange);overflow:hidden;margin:12px 0 8px}
+  .split-bar i{display:block;height:100%;background:var(--cyan)}
+  .split-legend{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px}
+  .split-legend span:first-child b{color:var(--cyan)}
+  .split-legend span:last-child b{color:var(--orange)}
+  .split-note{color:var(--muted);font-size:11px;margin:8px 0 0}
+  .adt{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  .adt th{text-align:right;padding:6px 8px;color:var(--muted);font-weight:500;font-size:10px;
+    letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--line);white-space:nowrap}
+  .adt th:first-child{text-align:left}
+  .adt td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .adt td:first-child{text-align:left;white-space:normal;max-width:230px}
+  .adt tr:last-child td{border-bottom:none}
+  .adt .camp{display:block;color:var(--muted);font-size:10.5px;margin-top:2px}
+  .adt .win{color:var(--green);font-weight:600}
+  .adt .lose{color:var(--red);font-weight:600}
+  .adt .flat{color:var(--muted)}
+  .sys-sep{margin:12px 0 6px;padding-top:9px;border-top:1px dashed var(--line);
+    font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .sys-muted{opacity:.62}
+  .sys-muted i{font-style:normal;color:var(--muted);font-size:11px}
   .pill.red{background:rgba(255,93,93,.15);color:var(--red)}
   .pill.orange{background:rgba(230,126,34,.15);color:var(--orange)}
   .pill.grey{background:rgba(125,140,163,.12);color:var(--muted)}
@@ -96,18 +127,38 @@
     border-bottom:1px solid var(--line);font-size:13px}
   .kv:last-child{border-bottom:none}
 
-  #props .prop{padding:9px 0;border-bottom:1px solid var(--line)}
-  #props .prop:last-child{border-bottom:none}
-  #props .t{font-weight:600}
-  #props .n{font-size:12px;color:var(--muted);margin-top:2px}
-  #props .btns{display:flex;gap:8px;margin-top:8px}
-  #props .btns button{flex:1;font:700 11px/1 "Segoe UI",system-ui,sans-serif;letter-spacing:.05em;
-    padding:8px 0;border-radius:6px;cursor:pointer;background:none}
-  #props .btns .ok{border:1px solid rgba(79,209,161,.5);color:var(--green)}
-  #props .btns .ok:hover{background:var(--green);color:#04070d}
-  #props .btns .no{border:1px solid rgba(255,93,93,.5);color:var(--red)}
-  #props .btns .no:hover{background:var(--red);color:#fff}
-  #props .pinlink{font-size:11px;color:var(--muted);cursor:pointer;text-decoration:underline}
+  /* ---- Voorstellen (goedkeuren/afwijzen, verplaatst uit organisation.html) ---- */
+  .prop-badge{margin-left:auto;min-width:16px;text-align:center;font:800 10px/1 system-ui;color:#06121c;
+    background:var(--yellow);border-radius:999px;padding:3px 6px;letter-spacing:0;text-transform:none}
+  .prop-badge.zero{background:var(--muted)}
+  .sml-foot{font:500 9px/1.3 system-ui;color:var(--muted);text-align:center;margin-top:4px}
+  .sml-msg{font:500 11px/1.4 system-ui;color:var(--muted);padding:10px;text-align:center}
+  #propBody{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}
+  .prop-item{display:flex;gap:9px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:rgba(255,255,255,.012)}
+  .prop-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;background:rgba(255,255,255,.04);flex:none}
+  .prop-thumb.ph{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px}
+  .prop-main{min-width:0;flex:1}
+  .prop-h{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+  .prop-tag{font:700 8px/1 system-ui;letter-spacing:.08em;padding:3px 6px;border-radius:5px;color:#0a1018;flex:none}
+  .prop-tag.social{background:#ff5fa2}
+  .prop-tag.meta_ads{background:var(--cyan)}
+  .prop-tag.newsletter{background:var(--green)}
+  .prop-title{font:700 11px/1.2 system-ui;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prop-sub{font:500 9px/1.3 system-ui;color:var(--muted)}
+  .prop-prev{font:500 10px/1.35 system-ui;color:var(--text);opacity:.8;margin-top:3px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .prop-foot{display:flex;justify-content:space-between;align-items:center;margin-top:5px}
+  .prop-age{font:600 9px/1 system-ui;color:var(--orange)}
+  .prop-age.old{color:var(--red)}
+  .prop-link{font:600 9px/1 system-ui;color:var(--cyan);text-decoration:none}
+  .prop-btns{display:flex;gap:6px;margin-top:7px}
+  .prop-btn{flex:1;font:700 9px/1 system-ui;letter-spacing:.06em;padding:7px 0;border-radius:6px;
+    border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--text);cursor:pointer;text-align:center}
+  .prop-btn.ok{border-color:rgba(79,209,161,.4);color:var(--green)}
+  .prop-btn.ok:hover{background:var(--green);color:#06121c}
+  .prop-btn.no{border-color:rgba(255,93,93,.4);color:var(--red)}
+  .prop-btn.no:hover{background:var(--red);color:#fff}
+  .prop-pin{font:600 9px/1 system-ui;color:var(--muted);cursor:pointer;text-decoration:underline}
 
   #login{max-width:420px;margin:80px auto;text-align:center;background:var(--panel);
     border:1px solid var(--line);border-radius:12px;padding:30px}
@@ -126,13 +177,13 @@
 <body>
 
 <div id="login" class="hidden">
-  <div style="color:var(--cyan);font-weight:900;letter-spacing:.28em">THE BRIDGE</div>
+  <div style="color:var(--cyan);font-weight:900;letter-spacing:.28em">DEWI</div>
   <p style="color:var(--muted)">Geen actieve sessie. Log eerst in via het hoofdscherm.</p>
-  <p><a href="/organisation.html">Naar login</a></p>
+  <p><a href="organisation.html">Naar login</a></p>
 </div>
 
 <div id="top" class="hidden">
-  <span class="brand"><span class="live"></span>THE BRIDGE<span class="byrick">by Rick</span></span>
+  <span class="brand"><span class="live"></span>DEWI<span class="byrick">by Rick</span></span>
   <span class="grp"><span class="lbl">Panels</span></span>
   <span id="stamp"></span>
 </div>
@@ -150,13 +201,13 @@
 
     <div class="row2">
       <div class="card">
-        <h2><span class="dot" style="background:var(--yellow)"></span>Mail (Brevo)
-          <span class="when" id="mail-when"></span></h2>
-        <div class="nums" id="mail-nums"></div>
-        <div class="chart" id="mail-chart"></div>
-        <div class="legend"><span><i style="background:var(--yellow)"></i>Verzonden</span>
-          <span><i style="background:var(--green)"></i>Delivered</span>
-          <span><i style="background:var(--red)"></i>Bounces</span></div>
+        <h2><span class="dot" style="background:var(--yellow)"></span>Shop (Shopify)
+          <span class="when" id="shop-when"></span></h2>
+        <div class="nums" id="shop-nums"></div>
+        <div class="chart" id="shop-chart"></div>
+        <div class="legend"><span><i style="background:var(--yellow)"></i>Orders</span>
+          <span><i style="background:var(--green)"></i>Omzet (&euro;)</span></div>
+        <div id="shop-split"></div>
       </div>
       <div class="card">
         <h2><span class="dot" style="background:var(--green)"></span>Social (Meta)
@@ -165,6 +216,24 @@
         <div class="chart" id="social-chart"></div>
         <div class="legend"><span><i style="background:var(--green)"></i>IG volgers</span></div>
       </div>
+    </div>
+    <div style="height:14px"></div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:var(--yellow)"></span>Recente bestellingen (Shopify)
+        <span class="when" id="ro-when"></span></h2>
+      <div class="nums" id="ro-nums"></div>
+      <div id="ro-table"></div>
+      <p id="ro-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
+    </div>
+    <div style="height:14px"></div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:var(--orange)"></span>Openstaande orders (Shopify)
+        <span class="when" id="oo-when"></span></h2>
+      <div class="nums" id="oo-nums"></div>
+      <div id="oo-table"></div>
+      <p id="oo-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
     </div>
     <div style="height:14px"></div>
 
@@ -185,21 +254,49 @@
       </div>
       <p id="ads-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
     </div>
+    <div style="height:14px"></div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:var(--green)"></span>Funnel &amp; rendement
+        <span class="when" id="fun-when"></span></h2>
+      <div class="nums" id="fun-nums"></div>
+      <div id="fun-steps"></div>
+      <p id="fun-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
+    </div>
+    <div style="height:14px"></div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:var(--cyan)"></span>Actieve advertenties
+        <span class="when" id="live-when"></span></h2>
+      <div class="nums" id="live-nums"></div>
+      <div id="live-table"></div>
+      <p id="live-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
+    </div>
+    <div style="height:14px"></div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:var(--orange)"></span>Soltura &mdash; actieve advertenties (Meta)
+        <span class="when" id="sol-when"></span></h2>
+      <div class="nums" id="sol-nums"></div>
+      <div id="sol-table"></div>
+      <p id="sol-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
+    </div>
     <div style="height:0"></div>
 
     <div class="row3">
       <div class="card">
-        <h2><span class="dot" style="background:var(--orange)"></span>Memo's
+        <h2><span class="dot" style="background:var(--orange)"></span>To-do's (DEWI)
           <span class="when" id="memo-count"></span></h2>
         <div id="memos"></div>
       </div>
       <div class="card">
         <h2><span class="dot" style="background:var(--yellow)"></span>Voorstellen
-          <span class="when" id="prop-count"></span></h2>
-        <div id="props"></div>
+          <span class="when">wachten op goedkeuring</span>
+          <span class="prop-badge zero" id="propBadge">0</span></h2>
+        <div id="propBody"><div class="sml-msg">laden&hellip;</div></div>
       </div>
       <div class="card">
-        <h2><span class="dot" style="background:var(--red)"></span>Systeem &mdash; agents &amp; stilte-detectie</h2>
+        <h2><span class="dot" style="background:var(--red)"></span>Systeem &mdash; stilte-detectie</h2>
         <div id="system"></div>
       </div>
     </div>
@@ -209,15 +306,15 @@
 
 <script>
 (function(){
-  var CFG = (typeof BRIDGE_CONFIG !== 'undefined' && BRIDGE_CONFIG) || window.BRIDGE_CONFIG || {};
+  var CFG = window.DEWI_CONFIG || (typeof BRIDGE_CONFIG !== 'undefined' && BRIDGE_CONFIG) || window.BRIDGE_CONFIG || {};
   var SB_URL = CFG.SUPABASE_URL
     || (typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : null)
-    || window.SUPABASE_URL || 'https://wuvpbwowdycsdlrqkaoq.supabase.co';
+    || window.SUPABASE_URL || 'https://jucubuoftjehwancegma.supabase.co';
   var SB_KEY = CFG.SUPABASE_ANON_KEY
     || (typeof SUPABASE_ANON_KEY !== 'undefined' ? SUPABASE_ANON_KEY : null)
     || window.SUPABASE_ANON_KEY || '';
   if(!SB_KEY){ document.body.innerHTML =
-    '<div id="login"><p style="color:#ff5d5d">bridge-config.js niet gevonden of anon key ontbreekt.</p></div>'; return; }
+    '<div id="login"><p style="color:#ff5d5d">dewi-config.js niet gevonden of anon key ontbreekt.</p></div>'; return; }
 
   var sb = supabase.createClient(SB_URL, SB_KEY);
   var $ = function(id){ return document.getElementById(id); };
@@ -227,19 +324,19 @@
 
   /* ================= secundaire panelen (volgorde = knopvolgorde) ================= */
   var PANELS = [
-    { id:'org',           label:'ORGANISATION',  url:'/organisation.html', title:'ORGANISATION',  clickView:'organigram' },
-    { id:'agents',        label:'AGENTS',        url:'/agents.html',      title:'AGENTS' },
-    { id:'creds',         label:'CREDENTIALS',   url:'/credentials.html', title:'CREDENTIALS' },
-    { id:'constellation', label:'CONSTELLATION', url:'/organisation.html', title:'CONSTELLATION', clickView:'constellation' },
-    { id:'comp',          label:'COMPETITION',   url:'/competition.html',  title:'COMPETITION' }
+    { id:'org',           label:'ORGANISATION',  url:'organisation.html', title:'ORGANISATION',  clickView:'organigram' },
+    { id:'agents',        label:'AGENTS',        url:'agents.html',      title:'AGENTS' },
+    { id:'creds',         label:'CREDENTIALS',   url:'credentials.html', title:'CREDENTIALS' },
+    { id:'constellation', label:'CONSTELLATION', url:'organisation.html', title:'CONSTELLATION', clickView:'constellation' },
+    { id:'comp',          label:'COMPETITION',   url:'competition.html',  title:'COMPETITION' }
   ];
   var state = { open:{}, widths:{} };   // widths in % van het werkvlak
   try{
-    var s = JSON.parse(localStorage.getItem('bridge_kpi_panels')||'{}');
+    var s = JSON.parse(localStorage.getItem('dewi_kpi_panels')||'{}');
     if(s && typeof s === 'object'){ state.open = s.open||{}; state.widths = s.widths||{}; }
   }catch(e){}
   function saveState(){
-    try{ localStorage.setItem('bridge_kpi_panels', JSON.stringify(state)); }catch(e){}
+    try{ localStorage.setItem('dewi_kpi_panels', JSON.stringify(state)); }catch(e){}
   }
 
   var work = $('work'), grp = document.querySelector('#top .grp');
@@ -306,7 +403,7 @@
     var best = null, bestLen = Infinity;
     for(var i = 0; i < all.length; i++){
       var n = norm(all[i].textContent);
-      if(n.indexOf('THEBRIDGE') === 0 && n.length < 25 && n.length < bestLen){
+      if(n.indexOf('DEWI') === 0 && n.length < 25 && n.length < bestLen){
         best = all[i]; bestLen = n.length;
       }
     }
@@ -341,12 +438,15 @@
   // (die 'CONSTELLATION' kan heten) blijft staan.
   function hideExtras(doc, titleEl){
     var all = doc.body.getElementsByTagName('*');
-    var target = null, tLen = Infinity;
-    for(var i = 0; i < all.length; i++){
-      var n = norm(all[i].textContent);
-      if(n === 'LIVEGRUPOSOLTURACRM' && n.length < tLen){ target = all[i]; tLen = n.length; }
+    var liveKill = ['LIVEHOMEDECOBALI', 'VERBINDEN', 'VERBINDINGMISLUKT'];
+    for(var k2 = 0; k2 < liveKill.length; k2++){
+      var target = null, tLen = Infinity;
+      for(var i = 0; i < all.length; i++){
+        var n = norm(all[i].textContent);
+        if(n === liveKill[k2] && n.length < tLen){ target = all[i]; tLen = n.length; }
+      }
+      if(target) target.style.display = 'none';
     }
-    if(target) target.style.display = 'none';
     var kill = ['CONSTELLATION', 'ORGANIGRAM', 'DEPS', 'EXIT'];
     var clickables = doc.body.querySelectorAll('button, [role="button"], a');
     for(var c = 0; c < clickables.length; c++){
@@ -549,6 +649,8 @@
   }
   var eur2 = function(v){ return '\u20AC' + Number(v || 0).toFixed(2); };
   var pct1 = function(v){ return Number(v || 0).toFixed(1) + '%'; };
+  var esc  = function(v){ return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
 
   function pivot(rows, source){
     var out = {};
@@ -568,83 +670,33 @@
              last: byDate[ds[ds.length-1]] || {}, prev: byDate[ds[ds.length-2]] || {} };
   }
 
-  /* ================= voorstellen (proposals_pending) ================= */
-  var PROP_DISPATCH_URL = 'https://gruposoltura.app.n8n.cloud/webhook/proposal-dispatch';
-  var PROP_KIND = { social:'SOCIAL', meta_ads:'META ADS', new_listing:'MAILING', hot_lead:'HOT LEAD' };
-  var PROP_OK = { meta_ads:'\u2713 ACTIVEER', new_listing:'\u2713 VERSTUUR', hot_lead:'\u2713 BEKIJK & VERSTUUR' };
-  var PROP_CONFIRM = {
-    'new_listing:approve':'LET OP: dit verstuurt de mailing DIRECT naar alle ontvangers. Doorgaan?',
-    'meta_ads:skip':'Advertentievoorstel afwijzen? De klaargezette (PAUSED) campagne wordt dan verwijderd.',
-    'social:skip':'Social post afwijzen?',
-    'new_listing:skip':'Mailing-voorstel afwijzen?',
-    'hot_lead:skip':'Hot-lead voorstel afwijzen?'
-  };
-  var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
-  function propPin(force){
-    var pin = localStorage.getItem('jarvis_prop_pin') || '';
-    if(force || !pin){
-      pin = (window.prompt('JARVIS goedkeurings-PIN:','') || '').trim();
-      if(pin) localStorage.setItem('jarvis_prop_pin', pin);
-      else localStorage.removeItem('jarvis_prop_pin');
-    }
-    return pin;
-  }
-  function propDispatch(kind, id, action){
-    var pin = propPin(false);
-    if(!pin) return;
-    var msg = PROP_CONFIRM[kind + ':' + action];
-    if(msg && !window.confirm(msg)) return;
-    window.open(PROP_DISPATCH_URL + '?pin=' + encodeURIComponent(pin) + '&kind=' + encodeURIComponent(kind)
-      + '&id=' + encodeURIComponent(id) + '&action=' + encodeURIComponent(action), '_blank', 'noopener');
-    setTimeout(loadProps, 4000); setTimeout(loadProps, 12000);
-  }
-  async function loadProps(){
-    var el = $('props'); if(!el) return;
-    try{
-      var r = await sb.from('proposals_pending').select('*').order('created_at', {ascending:true});
-      if(r.error){ el.innerHTML = '<p style="color:var(--muted)">Kon voorstellen niet laden.</p>'; return; }
-      var rows = r.data || [];
-      $('prop-count').textContent = '(' + rows.length + ' open)';
-      if(!rows.length){ el.innerHTML = '<p style="color:var(--muted)">Geen openstaande voorstellen \u2705</p>'; return; }
-      el.innerHTML = rows.map(function(p){
-        var kindLbl = PROP_KIND[p.kind] || String(p.kind || '').toUpperCase();
-        var okLbl = PROP_OK[p.kind] || '\u2713 PUBLICEER';
-        var ageMs = Date.now() - new Date(p.created_at);
-        var days = Math.floor(ageMs / 86400000);
-        var age = days > 0 ? days + 'd' : Math.max(1, Math.floor(ageMs / 3600000)) + 'u';
-        var link = p.link ? ' &middot; <a href="' + esc(p.link) + '" target="_blank" rel="noopener">bekijk \u203A</a>' : '';
-        return '<div class="prop"><div class="t"><span class="pill grey">' + esc(kindLbl) + '</span> '
-          + esc(p.title) + (p.subtitle ? ' \u00B7 ' + esc(p.subtitle) : '') + '</div>'
-          + '<div class="n">' + esc(p.variant || '') + ' &middot; <span class="'
-          + (days >= 3 ? 'badval' : 'warnval') + '">wacht ' + age + '</span>' + link + '</div>'
-          + (p.preview ? '<div class="n">' + esc(p.preview) + '</div>' : '')
-          + '<div class="btns">'
-          + '<button class="ok" data-kind="' + esc(p.kind) + '" data-id="' + esc(p.id) + '" data-action="approve">' + okLbl + '</button>'
-          + '<button class="no" data-kind="' + esc(p.kind) + '" data-id="' + esc(p.id) + '" data-action="skip">\u2715 AFWIJZEN</button>'
-          + '</div></div>';
-      }).join('')
-      + '<p style="margin:9px 0 0;font-size:11px;color:var(--muted)">social &amp; ads &amp; hot leads tonen eerst een bevestigingspagina &middot; <span class="pinlink" id="prop-pin-reset">PIN wijzigen</span></p>';
-    }catch(e){ el.innerHTML = '<p style="color:var(--muted)">Fout bij laden voorstellen.</p>'; }
-  }
-
   /* ================= data laden ================= */
   async function load(){
     var errEl = $('err'); errEl.textContent = '';
+    loadProposals();   // voorstellen-blok (eigen foutafhandeling, blokkeert de rest niet)
     try{
       var res = await Promise.all([
         sb.from('bridge_kpi_daily').select('*'),
         sb.from('bridge_memos').select('*'),
         sb.from('bridge_agent_silence').select('*'),
         sb.from('bridge_ads_summary').select('*'),
-        sb.from('bridge_layout').select('agent_id,paused'),
-        // gedeelde agent-telling (1 bron, 1 formule) - een storing hierin
-        // mag nooit de hele KPI-pagina blokkeren, vandaar de .catch
-        window.BRIDGE_AGENTS.load(sb).catch(function(e){ return { agents:[], counts:null, error:e }; })
+        sb.from('bridge_active_ads').select('*'),
+        sb.from('bridge_open_orders').select('*'),
+        // agent-telling uit de gedeelde bron (dewi-agents.js -> bridge_agent_index),
+        // identiek aan agents.html en organisation.html; mag falen zonder de rest te blokkeren
+        DEWI_AGENTS.load(sb).catch(function(e){ return { agents: [], counts: null, error: e }; }),
+        // recente orders (alle kanalen & statussen) — gevuld door de hourly Open Orders Sync
+        sb.from('bridge_recent_orders').select('*'),
+        // Soltura (Grupo Soltura) actieve Meta-ads — apart gespiegeld naar deze DEWI-database;
+        // mag falen zonder de rest te blokkeren (res[8])
+        sb.from('bridge_soltura_active_ads').select('*')
       ]);
       if(res[0].error) throw res[0].error;
       var kpi = res[0].data || [], memos = res[1].data || [],
-          sil = res[2].data || [], adsArr = res[3].data || [];
+          sil = res[2].data || [], adsArr = res[3].data || [],
+          live = res[4].data || [];
+      var oo = res[5].data || [], ooErr = res[5].error;
+      var ro = res[7].data || [], roErr = res[7].error;
       var ads = adsArr[0] || null;
 
       var web = pivot(kpi, 'ga4'); var wd = lastDates(web, 28); var wl = lastTwo(web);
@@ -665,30 +717,148 @@
         { label: 'Weergaven', values: vals(web, wd, 'pageviews'), color: CLR.muted }
       ]);
 
-      var mail = pivot(kpi, 'brevo'); var md = lastDates(mail, 14); var ml = lastTwo(mail);
-      var sent = ml.last.sent||0;
-      var bounces = (ml.last.hard_bounces||0)+(ml.last.soft_bounces||0);
-      var bPct = sent ? bounces/sent*100 : 0;
-      $('mail-when').textContent = ml.lastDate ? '\u2014 14 dagen, t/m ' + ml.lastDate : '';
-      $('mail-nums').innerHTML =
-        num('verzonden', fmt(sent), delta(sent, ml.prev.sent)) +
-        num('delivered', fmt(ml.last.delivered||0), '') +
-        num('bounces', fmt(bounces) + '<span style="font-size:14px"> ('+bPct.toFixed(0)+'%)</span>', '',
-            bPct >= 10 ? 'badval' : (bPct >= 5 ? 'warnval' : 'goodval')) +
-        num('opens uniek', fmt(ml.last.opens_unique||0), '');
-      var bounceVals = md.map(function(d){
-        var r = mail[d] || {}; return (r.hard_bounces||0) + (r.soft_bounces||0);
-      });
-      $('mail-chart').innerHTML = barChart(md, [
-        { values: vals(mail, md, 'sent'), color: CLR.yellow },
-        { values: vals(mail, md, 'delivered'), color: CLR.green }
-      ], { values: bounceVals, color: CLR.red }, 230);
-      hookHover($('mail-chart'), md, [
-        { label: 'Verzonden', values: vals(mail, md, 'sent'), color: CLR.yellow },
-        { label: 'Delivered', values: vals(mail, md, 'delivered'), color: CLR.green },
-        { label: 'Bounces', values: bounceVals, color: CLR.red },
-        { label: 'Opens uniek', values: vals(mail, md, 'opens_unique'), color: CLR.muted }
+      var shop = pivot(kpi, 'shopify'); var shd = lastDates(shop, 14); var shl = lastTwo(shop);
+      $('shop-when').textContent = shl.lastDate ? '\u2014 14 dagen, t/m ' + shl.lastDate : '';
+      $('shop-nums').innerHTML =
+        num('omzet gisteren', eur2(shl.last.revenue||0), delta(shl.last.revenue, shl.prev.revenue)) +
+        num('orders', fmt(shl.last.orders||0), delta(shl.last.orders, shl.prev.orders)) +
+        num('AOV', eur2(shl.last.aov||0), '') +
+        num('nieuwe klanten', fmt(shl.last.new_customers||0), '');
+
+      // Kanaal-splitsing over dezelfde 14 dagen: online (webshop) vs winkel (draft/POS).
+      // Zonder deze splitsing vervuilt winkelomzet je webshop-conversie en je ads-ROAS.
+      var sum14 = function(metric){
+        return shd.reduce(function(a, d){ return a + Number((shop[d] || {})[metric] || 0); }, 0);
+      };
+      var onR = sum14('online_revenue'), onO = sum14('online_orders');
+      var stR = sum14('store_revenue'),  stO = sum14('store_orders');
+      var totR = onR + stR;
+      if(totR > 0){
+        var onPct = Math.round(onR / totR * 100);
+        $('shop-split').innerHTML =
+          '<div class="split-bar"><i style="width:' + onPct + '%"></i></div>'
+        + '<div class="split-legend">'
+        +   '<span><b>Online</b> ' + eur2(onR) + ' &middot; ' + onO + ' orders &middot; AOV ' + eur2(onO ? onR/onO : 0) + '</span>'
+        +   '<span><b>Winkel</b> ' + eur2(stR) + ' &middot; ' + stO + ' orders &middot; AOV ' + eur2(stO ? stR/stO : 0) + '</span>'
+        + '</div>'
+        + '<p class="split-note">14 dagen &middot; ' + onPct + '% van de omzet komt uit de webshop. '
+        + 'Winkelverkoop = handmatige/draft-orders; alleen de online-cijfers zijn relevant voor ads &amp; conversie.</p>';
+      }
+      $('shop-chart').innerHTML = barChart(shd, [
+        { values: vals(shop, shd, 'orders'), color: CLR.yellow }
+      ], { values: vals(shop, shd, 'revenue'), color: CLR.green }, 230);
+      hookHover($('shop-chart'), shd, [
+        { label: 'Orders', values: vals(shop, shd, 'orders'), color: CLR.yellow },
+        { label: 'Omzet', values: vals(shop, shd, 'revenue'), color: CLR.green, format: eur2 },
+        { label: 'AOV', values: vals(shop, shd, 'aov'), color: CLR.muted, format: eur2 }
       ], true);
+
+      // --- Recente bestellingen (alle kanalen & statussen, via bridge_recent_orders) ---
+      if(roErr){
+        $('ro-when').textContent = '';
+        $('ro-nums').innerHTML = '';
+        $('ro-table').innerHTML = '<p style="color:var(--muted)">bridge_recent_orders niet leesbaar: '
+          + esc(roErr.message || roErr) + '</p>';
+      } else {
+        ro.sort(function(a,b){ return new Date(b.order_created_at) - new Date(a.order_created_at); });
+        var roSync = ro.reduce(function(a,r){ return (r.synced_at||'') > a ? r.synced_at : a; }, '');
+        var isToday = function(r){
+          var d = new Date(r.order_created_at), n2 = new Date();
+          return d.getFullYear() === n2.getFullYear() && d.getMonth() === n2.getMonth() && d.getDate() === n2.getDate();
+        };
+        var roToday = ro.filter(isToday);
+        var roRev = roToday.reduce(function(a,r){ return a + Number(r.total_price || 0); }, 0);
+        var roOn = roToday.filter(function(r){ return r.source_name === 'web'; });
+        $('ro-when').textContent = '\u2014 laatste ' + ro.length + ' orders, alle kanalen'
+          + (roSync ? ' \u00b7 sync ' + roSync.slice(0,16).replace('T',' ') : '');
+        $('ro-nums').innerHTML =
+          num('orders vandaag', fmt(roToday.length), '') +
+          num('omzet vandaag', eur2(roRev), '') +
+          num('online vandaag', fmt(roOn.length), '') +
+          num('winkel/handmatig', fmt(roToday.length - roOn.length), '');
+        var chanNL = function(s){
+          return s === 'web' ? 'Online Store'
+               : s === 'shopify_draft_order' ? 'Concept/handmatig'
+               : s === 'pos' ? 'POS' : (s || '\u2014');
+        };
+        var fulNL = { FULFILLED:'verzonden', UNFULFILLED:'onverzonden', PARTIALLY_FULFILLED:'deels verzonden',
+                      ON_HOLD:'on hold', SCHEDULED:'gepland', IN_PROGRESS:'bezig' };
+        var finNLr = { PAID:'betaald', PENDING:'in afwachting', AUTHORIZED:'geautoriseerd',
+                       PARTIALLY_PAID:'deels betaald', PARTIALLY_REFUNDED:'deels terugbetaald',
+                       REFUNDED:'terugbetaald' };
+        var roRows = ro.slice(0, 12).map(function(r){
+          var d2 = new Date(r.order_created_at);
+          var when = String(r.order_created_at).slice(0,10) + ' '
+            + ('0' + d2.getHours()).slice(-2) + ':' + ('0' + d2.getMinutes()).slice(-2);
+          var ful = fulNL[r.fulfillment_status] || String(r.fulfillment_status || '\u2014').toLowerCase();
+          var fin = finNLr[r.financial_status] || String(r.financial_status || '\u2014').toLowerCase();
+          return '<tr>'
+            + '<td><b>' + esc(r.order_name) + '</b><span class="camp">' + esc(r.customer_name || '\u2014') + '</span></td>'
+            + '<td>' + when + '</td>'
+            + '<td>' + esc(chanNL(r.source_name)) + '</td>'
+            + '<td>' + fmt(r.line_item_count || 0) + '</td>'
+            + '<td>' + eur2(r.total_price) + '</td>'
+            + '<td><span class="pill ' + (r.financial_status === 'PAID' ? 'green' : 'orange') + '">' + esc(fin) + '</span></td>'
+            + '<td><span class="pill ' + (r.fulfillment_status === 'FULFILLED' ? 'green' : 'orange') + '">' + esc(ful) + '</span></td>'
+            + '</tr>';
+        }).join('');
+        $('ro-table').innerHTML = ro.length
+          ? '<table class="adt"><thead><tr>'
+            + '<th>Order / klant</th><th>Datum</th><th>Kanaal</th><th>Items</th><th>Bedrag</th><th>Betaling</th><th>Verzending</th>'
+            + '</tr></thead><tbody>' + roRows + '</tbody></table>'
+          : '<p style="color:var(--muted)">Nog geen recente orders gesynct \u2014 de sync draait elk uur.</p>';
+        $('ro-foot').textContent = 'Nieuwste eerst \u00b7 elk uur ververst \u00b7 bron: bridge_recent_orders (Shopify-sync)'
+          + ' \u00b7 het paneel hieronder toont alleen betaald & onverzonden';
+      }
+
+      // --- Openstaande orders (betaald & onverzonden, via bridge_open_orders) ---
+      if(ooErr){
+        $('oo-when').textContent = '';
+        $('oo-nums').innerHTML = '';
+        $('oo-table').innerHTML = '<p style="color:var(--muted)">bridge_open_orders niet leesbaar: '
+          + esc(ooErr.message || ooErr) + '</p>';
+      } else {
+        oo.sort(function(a,b){ return new Date(b.order_created_at) - new Date(a.order_created_at); });
+        var ooTot  = oo.reduce(function(a,r){ return a + Number(r.total_price || 0); }, 0);
+        var ageOf  = function(r){
+          return Math.max(0, Math.floor((Date.now() - new Date(r.order_created_at)) / 86400000));
+        };
+        var ooAges = oo.map(ageOf);
+        var ooOld  = ooAges.length ? Math.max.apply(null, ooAges) : 0;
+        var ooUrg  = ooAges.filter(function(d){ return d > 5; }).length;
+        var ooSync = oo.reduce(function(a,r){ return (r.synced_at||'') > a ? r.synced_at : a; }, '');
+        $('oo-when').textContent = '\u2014 betaald & onverzonden'
+          + (ooSync ? ' \u00b7 sync ' + ooSync.slice(0,16).replace('T',' ') : '');
+        $('oo-nums').innerHTML =
+          num('openstaand', fmt(oo.length), '', ooUrg ? 'warnval' : '') +
+          num('waarde', eur2(ooTot), '') +
+          num('gem. order', eur2(oo.length ? ooTot / oo.length : 0), '') +
+          num('oudste', ooOld + ' dg', '', ooOld > 5 ? 'badval' : (ooOld > 2 ? 'warnval' : 'goodval')) +
+          num('> 5 dagen', fmt(ooUrg), '', ooUrg ? 'badval' : 'goodval');
+        var finNL = { PAID:'betaald', PENDING:'in afwachting', AUTHORIZED:'geautoriseerd',
+                      PARTIALLY_PAID:'deels betaald', PARTIALLY_REFUNDED:'deels terugbetaald',
+                      REFUNDED:'terugbetaald' };
+        var ooRows = oo.map(function(r){
+          var d   = ageOf(r);
+          var cls = d > 5 ? 'red' : (d > 2 ? 'orange' : 'green');
+          var fin = finNL[r.financial_status] || String(r.financial_status || '\u2014').toLowerCase();
+          return '<tr>'
+            + '<td><b>' + esc(r.order_name) + '</b><span class="camp">' + esc(r.customer_name || '\u2014') + '</span></td>'
+            + '<td>' + String(r.order_created_at).slice(0,10) + '</td>'
+            + '<td><span class="pill ' + cls + '">' + d + ' dg</span></td>'
+            + '<td>' + fmt(r.line_item_count || 0) + '</td>'
+            + '<td>' + eur2(r.total_price) + '</td>'
+            + '<td><span class="pill ' + (r.financial_status === 'PAID' ? 'green' : 'orange') + '">' + esc(fin) + '</span></td>'
+            + '</tr>';
+        }).join('');
+        $('oo-table').innerHTML = oo.length
+          ? '<table class="adt"><thead><tr>'
+            + '<th>Order / klant</th><th>Datum</th><th>Wachttijd</th><th>Items</th><th>Bedrag</th><th>Betaling</th>'
+            + '</tr></thead><tbody>' + ooRows + '</tbody></table>'
+          : '<p style="color:var(--muted)">Geen openstaande orders \u2014 alles is verzonden.</p>';
+        $('oo-foot').textContent = 'Oudste eerst \u00b7 wachttijd: groen \u22642 dg, oranje 3\u20135 dg, rood >5 dg'
+          + ' \u00b7 bron: bridge_open_orders (Shopify-sync)';
+      }
 
       var soc = pivot(kpi, 'meta_social'); var sd = lastDates(soc, 28); var sl = lastTwo(soc);
       var igNow = sl.last.ig_followers||0, igPrev = sl.prev.ig_followers;
@@ -757,7 +927,7 @@
           + ' pending \u00B7 \u20AC' + Number(ads.active_daily_budget_eur).toFixed(2) + '/day budget \u00B7 '
           + fmt(ads.activated_30d) + ' activated (30d) \u00B7 last activation '
           + (ads.last_activation ? ads.last_activation.slice(0,10) : '\u2014')
-          + ' \u00B7 per-campaign results via de Leerloop (ad_learnings)')
+          + ' \u00B7 per-campagne resultaten via ads_weekly_metrics')
         : '';
 
       var open = memos.slice().sort(function(a,b){ return (a.days_left||0) - (b.days_left||0); });
@@ -771,42 +941,217 @@
           + '<div class="n">'+(mm.note||'')+link+'</div></div>'
           + '<div style="text-align:right"><span class="pill '+cls+'">'+lbl+'</span>'
           + '<div class="n">'+mm.due_date+'</div></div></div>';
-      }).join('') : '<p style="color:var(--muted)">Geen open memo\'s.</p>';
+      }).join('') : '<p style="color:var(--muted)">Geen open to-do\'s.</p>';
 
-      var silent = sil.filter(function(a){ return a.silent; });
-      var sysHtml = '';
-      /* Bovenaan: de GEDEELDE agent-telling (zelfde bron + formule als
-         agents.html en organisation.html). Daaronder, gescheiden door een
-         lijntje, de stilte-detectie als aanvullende invalshoek - dat is
-         bewakingsinformatie, geen alternatieve telling. */
-      var shared = res[5] || {};
-      var counts = shared.counts || null;
-      if(counts){
-        sysHtml += '<div style="padding:2px 0 9px;border-bottom:1px solid var(--line);margin-bottom:6px;font-size:13px">'
-          + window.BRIDGE_AGENTS.summaryHTML(counts) + '</div>';
-      }
-      var layout = (res[4] && !res[4].error && res[4].data) || null;
-      var totalN = counts ? counts.total : (layout ? layout.length : null);
-      var pausedN = counts ? counts.paused
-        : (layout ? layout.filter(function(x){ return x.paused; }).length : null);
-      if(totalN !== null){
-        var eventN = totalN - pausedN - sil.length;
-        sysHtml += '<div class="kv"><span>Bewaakt (verwachte frequentie)</span><b>'+sil.length+'</b></div>'
-          + '<div class="kv"><span>Niet bewaakt &mdash; event/webhook/handmatig</span><span style="color:var(--muted)">'+eventN+'</span></div>'
-          + '<div class="kv"><span>Gepauzeerd</span><span style="color:var(--muted)">'+pausedN+'</span></div>';
+      // --- Funnel & rendement (28 dagen; koppelt GA4 + Shopify + Meta) ---
+      // MER (Marketing Efficiency Ratio) = TOTALE online omzet / TOTALE ads-spend.
+      // Anders dan Meta-ROAS, die alleen de omzet telt die Meta zichzelf toerekent.
+      var fd = lastDates(web, 28);                      // GA4-dagen
+      var gaSum = function(m){ return fd.reduce(function(a,d){ return a + Number((web[d]||{})[m]||0); }, 0); };
+      var shSum = function(m){ return fd.reduce(function(a,d){ return a + Number((shop[d]||{})[m]||0); }, 0); };
+      var adSum = function(m){ return fd.reduce(function(a,d){ return a + Number((pad[d]||{})[m]||0); }, 0); };
+
+      var fSess  = gaSum('sessions');
+      var fCart  = gaSum('add_to_carts');
+      var fChk   = gaSum('checkouts');
+      var fOrd   = shSum('online_orders');              // Shopify is de waarheid, niet GA4
+      var fRev   = shSum('online_revenue');
+      var fSpend = adSum('spend');
+      var fMetaRev = adSum('revenue');
+
+      var cvr  = fSess ? (fOrd / fSess * 100) : 0;
+      var mer  = fSpend ? (fRev / fSpend) : 0;
+      var cac  = fOrd ? (fSpend / fOrd) : 0;
+      var aov  = fOrd ? (fRev / fOrd) : 0;
+
+      $('fun-when').textContent = '\u2014 laatste 28 dagen \u00b7 webshop only';
+      $('fun-nums').innerHTML =
+        num('blended MER', (mer ? mer.toFixed(2) + 'x' : '\u2014'), '',
+            mer >= 3 ? 'goodval' : (mer >= 1.5 ? 'warnval' : 'badval')) +
+        num('conversie', cvr.toFixed(2) + '%', '',
+            cvr >= 1 ? 'goodval' : (cvr >= 0.5 ? 'warnval' : 'badval')) +
+        num('CAC', fOrd ? eur2(cac) : '\u2014', '',
+            (cac && aov && cac < aov) ? 'goodval' : 'badval') +
+        num('online AOV', eur2(aov), '') +
+        num('ads-spend', eur2(fSpend), '') +
+        num('online omzet', eur2(fRev), '');
+
+      var steps = [
+        { l:'Sessies',      v:fSess, c:'var(--cyan)'   },
+        { l:'In winkelwagen',v:fCart, c:'var(--blue)'   },
+        { l:'Checkout',     v:fChk,  c:'var(--yellow)' },
+        { l:'Aankoop',      v:fOrd,  c:'var(--green)'  }
+      ];
+      $('fun-steps').innerHTML = '<div class="fun">' + steps.map(function(st, i){
+        var w    = fSess ? Math.max(st.v / fSess * 100, 1.5) : 0;
+        var prev = i ? steps[i-1].v : 0;
+        var drop = (i && prev) ? (1 - st.v / prev) * 100 : null;
+        return '<div class="fun-row">'
+          + '<span class="fun-lab">' + st.l + '</span>'
+          + '<span class="fun-track"><span class="fun-fill" style="width:' + w + '%;background:' + st.c + '">'
+          +   fmt(st.v) + '</span></span>'
+          + '<span class="fun-drop">' + (drop === null ? '\u2014'
+              : '<b>-' + drop.toFixed(0) + '%</b> uitval') + '</span>'
+          + '</div>';
+      }).join('') + '</div>';
+
+      var gap = fMetaRev && fRev ? (fMetaRev / fRev) : 0;
+      $('fun-foot').textContent =
+        'Aankopen komen uit Shopify (online only), verkeer uit GA4, spend uit Meta. '
+        + (gap > 1.2
+            ? 'Let op: Meta claimt ' + eur2(fMetaRev) + ' omzet (' + gap.toFixed(1) + 'x je hele webshop-omzet) \u2014 dat is dubbeltelling; stuur op MER, niet op Meta-ROAS.'
+            : 'MER = online omzet \u00f7 ads-spend.');
+
+      // --- Actieve advertenties (laatste 30 dagen, per ad) ---
+      if(live.length){
+        var tSpend = live.reduce(function(a,r){ return a + Number(r.spend||0); }, 0);
+        var tRev   = live.reduce(function(a,r){ return a + Number(r.revenue||0); }, 0);
+        var tPur   = live.reduce(function(a,r){ return a + Number(r.purchases||0); }, 0);
+        var tImp   = live.reduce(function(a,r){ return a + Number(r.impressions||0); }, 0);
+        var tClk   = live.reduce(function(a,r){ return a + Number(r.clicks||0); }, 0);
+        var tRoas  = tSpend ? tRev / tSpend : 0;
+        var tCpa   = tPur ? tSpend / tPur : 0;
+        var tCtr   = tImp ? (tClk / tImp * 100) : 0;
+
+        $('live-when').textContent = '\u2014 laatste 30 dagen \u00b7 ' + live.length + ' ads live';
+        $('live-nums').innerHTML =
+          num('spend', eur2(tSpend), '') +
+          num('omzet', eur2(tRev), '') +
+          num('ROAS', tRoas.toFixed(2) + 'x', '', tRoas >= 2 ? 'goodval' : (tRoas >= 1 ? 'warnval' : 'badval')) +
+          num('aankopen', fmt(tPur), '') +
+          num('CPA', tPur ? eur2(tCpa) : '\u2014', '') +
+          num('CTR', tCtr.toFixed(2) + '%', '');
+
+        var rows = live.slice(0, 12).map(function(r){
+          var roas = Number(r.roas||0);
+          var cls  = roas >= 2 ? 'win' : (roas > 0 ? 'flat' : (Number(r.spend||0) >= 25 ? 'lose' : 'flat'));
+          return '<tr>'
+            + '<td>' + esc(r.ad_name || '\u2014') + '<span class="camp">' + esc(r.campaign_name || '') + '</span></td>'
+            + '<td>' + eur2(r.spend) + '</td>'
+            + '<td>' + fmt(r.impressions) + '</td>'
+            + '<td>' + fmt(r.reach) + '</td>'
+            + '<td>' + Number(r.frequency||0).toFixed(2) + '</td>'
+            + '<td>' + eur2(r.cpm) + '</td>'
+            + '<td>' + Number(r.ctr||0).toFixed(2) + '%</td>'
+            + '<td>' + fmt(r.purchases) + '</td>'
+            + '<td class="' + cls + '">' + (roas ? roas.toFixed(2) + 'x' : '\u2014') + '</td>'
+            + '<td>' + (r.cpa != null ? eur2(r.cpa) : '\u2014') + '</td>'
+            + '</tr>';
+        }).join('');
+        $('live-table').innerHTML = '<table class="adt"><thead><tr>'
+          + '<th>Advertentie</th><th>Spend</th><th>Impressies</th><th>Bereik</th><th>Freq.</th>'
+          + '<th>CPM</th><th>CTR</th><th>Aankopen</th><th>ROAS</th><th>CPA</th>'
+          + '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+        var noSale = live.filter(function(r){ return !Number(r.purchases) && Number(r.spend||0) >= 25; });
+        $('live-foot').textContent = 'Gesorteerd op spend'
+          + (live.length > 12 ? ' \u00b7 top 12 van ' + live.length : '')
+          + (noSale.length ? ' \u00b7 ' + noSale.length + ' ads met \u226525 EUR spend en 0 aankopen' : '');
       } else {
-        sysHtml += '<div class="kv"><span>Bewaakte agents</span><b>'+sil.length+'</b></div>';
+        $('live-table').innerHTML = '<p style="color:var(--muted)">Nog geen data \u2014 Active Ads Pull draait dagelijks 07:30.</p>';
       }
-      sysHtml += '<div class="kv"><span>Stille agents</span>'
+
+      // --- Soltura: actieve advertenties (zelfde vorm, aparte database-bron res[8]) ---
+      var solLive = (res[8] && res[8].data) || [];
+      var solErr  = res[8] && res[8].error;
+      solLive = solLive.slice().sort(function(a,b){ return Number(b.spend||0) - Number(a.spend||0); });
+      if(solLive.length){
+        var sSpend = solLive.reduce(function(a,r){ return a + Number(r.spend||0); }, 0);
+        var sRev   = solLive.reduce(function(a,r){ return a + Number(r.revenue||0); }, 0);
+        var sPur   = solLive.reduce(function(a,r){ return a + Number(r.purchases||0); }, 0);
+        var sImp   = solLive.reduce(function(a,r){ return a + Number(r.impressions||0); }, 0);
+        var sClk   = solLive.reduce(function(a,r){ return a + Number(r.clicks||0); }, 0);
+        var sRoas  = sSpend ? sRev / sSpend : 0;
+        var sCpa   = sPur ? sSpend / sPur : 0;
+        var sCtr   = sImp ? (sClk / sImp * 100) : 0;
+
+        $('sol-when').textContent = '\u2014 laatste 30 dagen \u00b7 ' + solLive.length + ' ads live';
+        $('sol-nums').innerHTML =
+          num('spend', eur2(sSpend), '') +
+          num('omzet', eur2(sRev), '') +
+          num('ROAS', sRoas.toFixed(2) + 'x', '', sRoas >= 2 ? 'goodval' : (sRoas >= 1 ? 'warnval' : 'badval')) +
+          num('aankopen', fmt(sPur), '') +
+          num('CPA', sPur ? eur2(sCpa) : '\u2014', '') +
+          num('CTR', sCtr.toFixed(2) + '%', '');
+
+        var solRows = solLive.slice(0, 12).map(function(r){
+          var roas = Number(r.roas||0);
+          var cls  = roas >= 2 ? 'win' : (roas > 0 ? 'flat' : (Number(r.spend||0) >= 25 ? 'lose' : 'flat'));
+          return '<tr>'
+            + '<td>' + esc(r.ad_name || '\u2014') + '<span class="camp">' + esc(r.campaign_name || '') + '</span></td>'
+            + '<td>' + eur2(r.spend) + '</td>'
+            + '<td>' + fmt(r.impressions) + '</td>'
+            + '<td>' + fmt(r.reach) + '</td>'
+            + '<td>' + Number(r.frequency||0).toFixed(2) + '</td>'
+            + '<td>' + eur2(r.cpm) + '</td>'
+            + '<td>' + Number(r.ctr||0).toFixed(2) + '%</td>'
+            + '<td>' + fmt(r.purchases) + '</td>'
+            + '<td class="' + cls + '">' + (roas ? roas.toFixed(2) + 'x' : '\u2014') + '</td>'
+            + '<td>' + (r.cpa != null ? eur2(r.cpa) : '\u2014') + '</td>'
+            + '</tr>';
+        }).join('');
+        $('sol-table').innerHTML = '<table class="adt"><thead><tr>'
+          + '<th>Advertentie</th><th>Spend</th><th>Impressies</th><th>Bereik</th><th>Freq.</th>'
+          + '<th>CPM</th><th>CTR</th><th>Aankopen</th><th>ROAS</th><th>CPA</th>'
+          + '</tr></thead><tbody>' + solRows + '</tbody></table>';
+
+        var solNoSale = solLive.filter(function(r){ return !Number(r.purchases) && Number(r.spend||0) >= 25; });
+        $('sol-foot').textContent = 'Gesorteerd op spend'
+          + (solLive.length > 12 ? ' \u00b7 top 12 van ' + solLive.length : '')
+          + (solNoSale.length ? ' \u00b7 ' + solNoSale.length + ' ads met \u226525 EUR spend en 0 aankopen' : '');
+      } else {
+        $('sol-table').innerHTML = solErr
+          ? '<p style="color:var(--muted)">Bron <code>bridge_soltura_active_ads</code> nog niet beschikbaar \u2014 de Soltura-ads moeten nog naar deze database gespiegeld worden.</p>'
+          : '<p style="color:var(--muted)">Nog geen data \u2014 Soltura-ads-mirror draait nog niet.</p>';
+      }
+
+      // bewaakt = agent met vast schema; event-driven (webhook/on approve) is niet te bewaken
+      var mon    = sil.filter(function(a){ return a.monitored; });
+      var events = sil.filter(function(a){ return !a.monitored; });
+      var silent = mon.filter(function(a){ return a.silent; });
+      var failed = sil.filter(function(a){ return a.last_run_failed; });
+
+      // Kopregel: de gedeelde agent-telling (zelfde bron + formule als agents.html
+      // en de header van organisation.html). De stilte-detectie eronder is een
+      // aanvullende, andere invalshoek (bewaakt vs. event-driven) en telt NIET anders.
+      var agIdx = res[6];
+      var sysHtml = '';
+      if(agIdx && agIdx.counts){
+        sysHtml += '<div class="kv" style="border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:7px">'
+          + '<span>Agents</span><b>' + DEWI_AGENTS.summaryHTML(agIdx.counts) + '</b></div>';
+      } else {
+        sysHtml += '<div class="kv"><span>Agents</span><span style="color:var(--muted)">telling niet beschikbaar'
+          + (agIdx && agIdx.error ? ': ' + esc(agIdx.error.message || agIdx.error) : '') + '</span></div>';
+      }
+      sysHtml += '<div class="kv"><span>Bewaakte agents</span><b>'+mon.length+'</b></div>'
+        + '<div class="kv"><span>Event-driven (niet bewaakt)</span><b>'+events.length+'</b></div>'
+        + '<div class="kv"><span>Stille agents</span>'
         + (silent.length ? '<span class="pill red">'+silent.length+' STIL</span>'
-                         : '<span class="pill green">0 &mdash; alles draait</span>') + '</div>';
+                         : '<span class="pill green">0 &mdash; alles op schema</span>') + '</div>';
+      if(failed.length){
+        sysHtml += '<div class="kv"><span>Laatste run mislukt</span><span class="pill red">'+failed.length+'</span></div>';
+      }
       silent.forEach(function(a){
-        var since = (a.hours_since_last_run === null) ? 'nooit gedraaid' : a.hours_since_last_run + 'u geleden';
+        var since = (a.hours_since_last_run === null) ? 'nooit gedraaid'
+                  : a.hours_since_last_run + 'u geleden (verwacht elke ' + a.expected_interval_hours + 'u)';
         sysHtml += '<div class="kv"><span style="color:var(--red)">'+a.agent_name+'</span><span>'+since+'</span></div>';
       });
-      $('system').innerHTML = sysHtml;
+      failed.forEach(function(a){
+        sysHtml += '<div class="kv"><span style="color:var(--red)">'+a.agent_name+'</span><span>laatste run mislukt</span></div>';
+      });
 
-      loadProps();
+      // Event-driven agents: gedempt onder een streep. Geen alarm (een webhook die
+      // niemand aanroept is niet kapot), maar wel zichtbaar zodat er geen blinde vlek ontstaat.
+      if(events.length){
+        sysHtml += '<div class="sys-sep">Niet bewaakt &mdash; vuren op een gebeurtenis, niet op een klok</div>';
+        events.forEach(function(a){
+          var last = (a.hours_since_last_run === null) ? 'nog nooit gedraaid'
+                   : a.hours_since_last_run + 'u geleden';
+          sysHtml += '<div class="kv sys-muted"><span>'+a.agent_name
+                  + ' <i>&middot; '+(a.schedule_human||'')+'</i></span><span>'+last+'</span></div>';
+        });
+      }
+      $('system').innerHTML = sysHtml;
 
       $('stamp').textContent = 'bijgewerkt ' + new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
     }catch(e){
@@ -814,18 +1159,87 @@
     }
   }
 
+  /* ================= Voorstellen (goedkeuren/afwijzen, verplaatst uit organisation.html)
+     Bron: Supabase view 'proposals_pending' (token-vrij).
+     Acties lopen via DEWI-ProposalDispatcher: een PIN-beveiligde n8n-webhook
+     die het approve-token SERVER-SIDE opzoekt en doorstuurt (302) naar de
+     bestaande publisher-webhook. Social en Meta Ads tonen daarna hun eigen
+     bevestigingspagina (met preview/budget); de nieuwsbrief-flow verstuurt
+     direct, daarom vraagt de knop daar expliciet om bevestiging. ================= */
+  var PROP_DISPATCH_URL = "https://homedecobali.app.n8n.cloud/webhook/proposal-dispatch";
+  function propGetPin(force){
+    var pin = localStorage.getItem("dewi_prop_pin") || "";
+    if(force || !pin){
+      pin = (window.prompt("DEWI goedkeurings-PIN:","") || "").trim();
+      if(pin) localStorage.setItem("dewi_prop_pin", pin);
+      else localStorage.removeItem("dewi_prop_pin");
+    }
+    return pin;
+  }
+  function propDispatch(kind, id, action){
+    var pin = propGetPin(false);
+    if(!pin) return;
+    var CONFIRM = {
+      "newsletter:approve":"LET OP: dit verstuurt de nieuwsbrief DIRECT naar alle ontvangers. Doorgaan?",
+      "meta_ads:skip":"Advertentievoorstel afwijzen? De klaargezette (PAUSED) campagne wordt dan verwijderd.",
+      "social:skip":"Social post afwijzen?",
+      "newsletter:skip":"Nieuwsbrief-voorstel afwijzen?"
+    };
+    var msg = CONFIRM[kind + ":" + action];
+    if(msg && !window.confirm(msg)) return;
+    window.open(PROP_DISPATCH_URL + "?pin=" + encodeURIComponent(pin) + "&kind=" + encodeURIComponent(kind)
+      + "&id=" + encodeURIComponent(id) + "&action=" + encodeURIComponent(action), "_blank", "noopener");
+    setTimeout(loadProposals, 4000); setTimeout(loadProposals, 12000);
+  }
+  async function loadProposals(){
+    var body = $("propBody"), badge = $("propBadge");
+    if(!body) return;
+    try{
+      var r = await sb.from("proposals_pending").select("*").order("created_at",{ascending:true});
+      if(r.error){ console.warn("proposals_pending:", r.error.message); body.innerHTML = '<div class="sml-msg">kon voorstellen niet laden</div>'; return; }
+      var rows = r.data || [];
+      if(badge){ badge.textContent = String(rows.length); badge.classList.toggle("zero", rows.length === 0); }
+      if(!rows.length){ body.innerHTML = '<div class="sml-msg">geen openstaande voorstellen \u2705</div>'; return; }
+      var KIND = { social:{l:"SOCIAL"}, meta_ads:{l:"META ADS"}, newsletter:{l:"NIEUWSBRIEF"} };
+      var escp = function(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+      body.innerHTML = rows.map(function(r){
+        var k = KIND[r.kind] || { l:String(r.kind||'').toUpperCase() };
+        var ageMs = Date.now() - new Date(r.created_at);
+        var days = Math.floor(ageMs/86400000);
+        var age = days > 0 ? days + "d" : Math.max(1, Math.floor(ageMs/3600000)) + "u";
+        var thumb = r.image_url ? '<img class="prop-thumb" src="' + escp(r.image_url) + '" loading="lazy" alt="">' : '<div class="prop-thumb ph">\u2709</div>';
+        var okLbl = (r.kind === 'meta_ads') ? '\u2713 ACTIVEER' : (r.kind === 'newsletter') ? '\u2713 VERSTUUR' : '\u2713 PUBLICEER';
+        return '<div class="prop-item">' + thumb + '<div class="prop-main">'
+          + '<div class="prop-h"><span class="prop-tag ' + escp(r.kind) + '">' + k.l + '</span>'
+          + '<span class="prop-title">' + escp(r.title) + (r.subtitle ? ' \u00B7 ' + escp(r.subtitle) : '') + '</span></div>'
+          + '<div class="prop-sub">' + escp(r.variant||'') + '</div>'
+          + (r.preview ? '<div class="prop-prev">' + escp(r.preview) + '</div>' : '')
+          + '<div class="prop-foot"><span class="prop-age' + (days >= 3 ? ' old' : '') + '">wacht ' + age + '</span>'
+          + (r.link ? '<a class="prop-link" href="' + escp(r.link) + '" target="_blank" rel="noopener">bekijk object \u203A</a>' : '')
+          + '</div>'
+          + '<div class="prop-btns">'
+          + '<button class="prop-btn ok" data-kind="' + escp(r.kind) + '" data-id="' + escp(r.id) + '" data-action="approve">' + okLbl + '</button>'
+          + '<button class="prop-btn no" data-kind="' + escp(r.kind) + '" data-id="' + escp(r.id) + '" data-action="skip">\u2715 AFWIJZEN</button>'
+          + '</div></div></div>';
+      }).join('')
+      + '<div class="sml-foot">social &amp; ads: eerst een bevestigingspagina \u00B7 <span class="prop-pin" id="propPinReset">PIN wijzigen</span></div>';
+    }catch(e){ console.warn("proposals:", e); body.innerHTML = '<div class="sml-msg">fout bij laden</div>'; }
+  }
+  (function(){
+    var b = $("propBody");
+    if(b) b.addEventListener("click", function(ev){
+      var btn = ev.target.closest(".prop-btn");
+      if(btn){ propDispatch(btn.dataset.kind, btn.dataset.id, btn.dataset.action); return; }
+      if(ev.target.id === "propPinReset"){ propGetPin(true); }
+    });
+  })();
+
   async function init(){
     var sess = await sb.auth.getSession();
     if(!sess.data.session){ $('login').classList.remove('hidden'); return; }
     $('top').classList.remove('hidden');
     $('work').classList.remove('hidden');
     buildPanes();
-    var propsEl = $('props');
-    if(propsEl) propsEl.addEventListener('click', function(ev){
-      var btn = ev.target.closest('button[data-kind]');
-      if(btn){ propDispatch(btn.dataset.kind, btn.dataset.id, btn.dataset.action); return; }
-      if(ev.target.id === 'prop-pin-reset') propPin(true);
-    });
     load();
     setInterval(load, 5 * 60 * 1000);
     document.addEventListener('visibilitychange', function(){
