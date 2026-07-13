@@ -663,7 +663,7 @@
         // gedeelde agent-telling (1 bron, 1 formule) - een storing hierin
         // mag nooit de hele KPI-pagina blokkeren, vandaar de .catch
         window.BRIDGE_AGENTS.load(sb).catch(function(e){ return { agents:[], counts:null, error:e }; }),
-        // actieve advertenties per ad (laatste 30 dagen) - gevuld door Active Ads Pull (07:30);
+        // actieve campagnes met lead-gen metrics (lifetime) - gevuld door de Meta-ads pull;
         // mag falen zonder de rest te blokkeren (res[6])
         sb.from('bridge_active_ads').select('*')
       ]);
@@ -785,32 +785,32 @@
           + ' \u00B7 per-campaign results via de Leerloop (ad_learnings)')
         : '';
 
-      // ---- ACTIEVE ADVERTENTIES (per ad, laatste 30 dagen) ----
+      // ---- ACTIEVE ADVERTENTIES (actieve campagnes, lead-gen metrics uit bridge_active_ads) ----
       var live = (res[6] && res[6].data) || [];
       var liveErr = res[6] && res[6].error;
       live = live.slice().sort(function(a,b){ return Number(b.spend||0) - Number(a.spend||0); });
       if(live.length){
         var tSpend = live.reduce(function(a,r){ return a + Number(r.spend||0); }, 0);
-        var tRev   = live.reduce(function(a,r){ return a + Number(r.revenue||0); }, 0);
-        var tPur   = live.reduce(function(a,r){ return a + Number(r.purchases||0); }, 0);
         var tImp   = live.reduce(function(a,r){ return a + Number(r.impressions||0); }, 0);
+        var tReach = live.reduce(function(a,r){ return a + Number(r.reach||0); }, 0);
         var tClk   = live.reduce(function(a,r){ return a + Number(r.clicks||0); }, 0);
-        var tRoas  = tSpend ? tRev / tSpend : 0;
-        var tCpa   = tPur ? tSpend / tPur : 0;
+        var tLeads = live.reduce(function(a,r){ return a + Number(r.leads||0); }, 0);
         var tCtr   = tImp ? (tClk / tImp * 100) : 0;
+        var tCpl   = tLeads ? (tSpend / tLeads) : 0;
+        var cap    = live[0].captured_at ? String(live[0].captured_at).slice(0,10) : '';
 
-        $('live-when').textContent = '\u2014 laatste 30 dagen \u00b7 ' + live.length + ' ads live';
+        $('live-when').textContent = '\u2014 ' + live.length + ' actief \u00b7 lifetime'
+          + (cap ? ' \u00b7 bijgewerkt ' + cap : '');
         $('live-nums').innerHTML =
           num('spend', eur2(tSpend), '') +
-          num('omzet', eur2(tRev), '') +
-          num('ROAS', tRoas.toFixed(2) + 'x', '', tRoas >= 2 ? 'goodval' : (tRoas >= 1 ? 'warnval' : 'badval')) +
-          num('aankopen', fmt(tPur), '') +
-          num('CPA', tPur ? eur2(tCpa) : '\u2014', '') +
-          num('CTR', tCtr.toFixed(2) + '%', '');
+          num('impressies', fmt(tImp), '') +
+          num('bereik', fmt(tReach), '') +
+          num('CTR', tCtr.toFixed(2) + '%', '') +
+          num('leads', fmt(tLeads), '') +
+          num('CPL', tLeads ? eur2(tCpl) : '\u2014', '', tLeads ? 'goodval' : '');
 
         var liveRows = live.slice(0, 12).map(function(r){
-          var roas = Number(r.roas||0);
-          var cls  = roas >= 2 ? 'win' : (roas > 0 ? 'flat' : (Number(r.spend||0) >= 25 ? 'lose' : 'flat'));
+          var leads = Number(r.leads||0);
           return '<tr>'
             + '<td>' + esc(r.ad_name || '\u2014') + '<span class="camp">' + esc(r.campaign_name || '') + '</span></td>'
             + '<td>' + eur2(r.spend) + '</td>'
@@ -819,24 +819,23 @@
             + '<td>' + Number(r.frequency||0).toFixed(2) + '</td>'
             + '<td>' + eur2(r.cpm) + '</td>'
             + '<td>' + Number(r.ctr||0).toFixed(2) + '%</td>'
-            + '<td>' + fmt(r.purchases) + '</td>'
-            + '<td class="' + cls + '">' + (roas ? roas.toFixed(2) + 'x' : '\u2014') + '</td>'
-            + '<td>' + (r.cpa != null ? eur2(r.cpa) : '\u2014') + '</td>'
+            + '<td>' + fmt(r.link_clicks) + '</td>'
+            + '<td class="' + (leads > 0 ? 'win' : 'flat') + '">' + fmt(leads) + '</td>'
+            + '<td>' + (r.cost_per_lead != null ? eur2(r.cost_per_lead) : '\u2014') + '</td>'
             + '</tr>';
         }).join('');
         $('live-table').innerHTML = '<table class="adt"><thead><tr>'
           + '<th>Advertentie</th><th>Spend</th><th>Impressies</th><th>Bereik</th><th>Freq.</th>'
-          + '<th>CPM</th><th>CTR</th><th>Aankopen</th><th>ROAS</th><th>CPA</th>'
+          + '<th>CPM</th><th>CTR</th><th>Link clicks</th><th>Leads</th><th>CPL</th>'
           + '</tr></thead><tbody>' + liveRows + '</tbody></table>';
 
-        var noSale = live.filter(function(r){ return !Number(r.purchases) && Number(r.spend||0) >= 25; });
-        $('live-foot').textContent = 'Gesorteerd op spend'
+        $('live-foot').textContent = 'Actieve campagnes \u00b7 lifetime-cijfers uit bridge_active_ads'
           + (live.length > 12 ? ' \u00b7 top 12 van ' + live.length : '')
-          + (noSale.length ? ' \u00b7 ' + noSale.length + ' ads met \u226525 EUR spend en 0 aankopen' : '');
+          + ' \u00b7 leads-campagnes sturen op CPL, engagement-campagnes op CTR/CPM';
       } else {
         $('live-table').innerHTML = liveErr
           ? '<p style="color:var(--muted)">Bron <code>bridge_active_ads</code> niet leesbaar: ' + esc(liveErr.message || liveErr) + '</p>'
-          : '<p style="color:var(--muted)">Nog geen data \u2014 Active Ads Pull draait dagelijks 07:30.</p>';
+          : '<p style="color:var(--muted)">Geen actieve campagnes op dit moment.</p>';
       }
 
       var open = memos.slice().sort(function(a,b){ return (a.days_left||0) - (b.days_left||0); });
