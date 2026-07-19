@@ -244,8 +244,16 @@
   }
 
   // --- executies + pipeline (via /api/agent-run) ---
+  // Het access-token wordt VERS per aanroep opgehaald. De sessie die bij het
+  // laden werd opgehaald bevat een token dat na ~1 uur verloopt; de client
+  // ververst zichzelf op de achtergrond (tabel-reads blijven werken), maar een
+  // vastgehouden token verouderde stil -> /api/agent-run gaf 401. getSession()
+  // levert het actuele (auto-ververste) token.
   async function apiGet(qs){
-    const r = await fetch("/api/agent-run?"+qs, { headers: { authorization: "Bearer "+session.access_token }});
+    const { data:{ session: live } } = await sb.auth.getSession();
+    const token = live && live.access_token;
+    if(!token){ location.href = "/"; throw new Error("sessie verlopen"); }
+    const r = await fetch("/api/agent-run?"+qs, { headers: { authorization: "Bearer "+token }});
     if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || ("API "+r.status));
     return r.json();
   }
