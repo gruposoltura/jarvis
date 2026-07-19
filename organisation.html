@@ -163,6 +163,15 @@
   .ac-run.run-go  .rk{color:var(--cyan);animation:jc-blink .9s infinite}
   .ac-run.run-go  .rt{color:#8fd6e8}
 
+  /* n8n-workflow deep-link op de kaart */
+  .ac-wf{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+    width:23px;height:23px;border-radius:7px;margin-left:5px;color:var(--dim);
+    border:1px solid transparent;text-decoration:none;cursor:pointer;
+    transition:color .13s,background .13s,border-color .13s}
+  .ac-wf svg{width:14px;height:14px;display:block}
+  .ac-wf:hover{color:var(--a);background:color-mix(in srgb,var(--a) 15%, transparent);
+    border-color:color-mix(in srgb,var(--a) 42%, transparent)}
+
   /* expand-caret + uitgeklapte kaart-highlight */
   .ac-caret{flex:0 0 auto;margin-left:2px;font-size:10px;color:var(--dim);
     transition:transform .25s ease,color .15s}
@@ -580,6 +589,14 @@ const fmtRun=ts=>{ if(!ts)return"—"; const d=new Date(ts); if(isNaN(d))return"
   return `${p(d.getDate())}/${p(d.getMonth()+1)} ${p(d.getHours())}:${p(d.getMinutes())}`; };
 const RUNGLYPH={ ok:{ch:"✓",cls:"run-ok"}, running:{ch:"⟳",cls:"run-go"},
   error:{ch:"✕",cls:"run-err"}, idle:{ch:"·",cls:""} };
+/* ---- n8n workflow deep-link (per agent) ---- */
+const N8N_BASE="https://gruposoltura.app.n8n.cloud";
+const wfUrl=id=>`${N8N_BASE}/workflow/${id}`;
+const WF_ICON='<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'+
+  '<path d="M7 12 L17 6.5 M7 12 L17 17.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'+
+  '<circle cx="5" cy="12" r="2.5" fill="currentColor"/>'+
+  '<circle cx="19" cy="6" r="2.5" fill="currentColor"/>'+
+  '<circle cx="19" cy="18" r="2.5" fill="currentColor"/></svg>';
 
 /* ---- dependencies / readiness ---- */
 const readiness = {};        // agent_id -> { agent_id, readiness, deps:[{upstream,name,kind,severity,health,upstream_last_run}] }
@@ -1044,6 +1061,7 @@ function agentCardHTML(a){
           <div class="ac-sched"><span class="schedtxt">${a.sched}</span><span class="ac24" data-24="${a.id}"></span></div>
         </div>
         <div class="ac-run" data-run="${a.id}" title="laatst gedraaid"><span class="rk">·</span><span class="rt">—</span></div>
+        ${a.wf?`<a class="ac-wf" href="${wfUrl(a.wf)}" target="_blank" rel="noopener" title="Open workflow in n8n" data-wf="${a.id}">${WF_ICON}</a>`:''}
         <span class="ac-caret">⌄</span>
       </div>
       <div class="ac-exec" data-exec="${a.id}"><div class="inner"></div></div>
@@ -1081,6 +1099,8 @@ function wireAgentCards(scope){
     orgAgentDots[id]=card.querySelector(".sd");
     orgAgentRun[id]=card.querySelector(".ac-run");
     orgAgentDep[id]=card.querySelector(".ac-dep");
+    const wf=card.querySelector(".ac-wf");
+    if(wf) wf.addEventListener("click",e=>e.stopPropagation());   // link opent n8n, niet de accordeon
     card.addEventListener("click",()=>toggleExec(id,unit));   // klik = laatste 10 executies uit/in klappen
   });
 }
@@ -1306,6 +1326,7 @@ async function loadRegistryLayout(sb){
       if(!dm[r.bridge_dept]) dm[r.bridge_dept]={id:r.bridge_dept,name:r.dept_name,color:r.dept_color,icon:r.dept_icon,_s:r.dept_sort||100,agents:[],_cl:{}};
       const d=dm[r.bridge_dept];
       const a={id:r.agent_id,name:r.agent_name,sched:r.schedule_human||"\u2014",_s:r.agent_sort||100};
+      if(r.n8n_workflow_id) a.wf=r.n8n_workflow_id;
       if(r.grp){ a.grp=r.grp; a.step=r.grp_step||0; }
       if(r.paused) a.paused=true;
       d.agents.push(a);
