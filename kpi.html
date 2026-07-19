@@ -236,7 +236,7 @@
       <div class="nums" id="web-nums"></div>
       <div class="chart" id="web-chart"></div>
       <div class="legend"><span><i style="background:var(--cyan)"></i>Sessies</span>
-        <span><i style="background:var(--blue)"></i>Gebruikers</span></div>
+        <span><i style="background:var(--orange)"></i>Gebruikers</span></div>
     </div>
 
     <div class="row2">
@@ -360,7 +360,7 @@
   var $ = function(id){ return document.getElementById(id); };
   var fmt = function(n){ return Number(n).toLocaleString('nl-NL'); };
   var CLR = { cyan:'#00d4ff', blue:'#3da5ff', green:'#4fd1a1', red:'#ff5d5d',
-              yellow:'#ffd400', muted:'#7d8ca3', grid:'#1c2940' };
+              yellow:'#ffd400', orange:'#e67e22', muted:'#7d8ca3', grid:'#1c2940' };
 
   /* ================= secundaire panelen (volgorde = knopvolgorde) ================= */
   var PANELS = [
@@ -821,11 +821,11 @@
         num('nieuwe gebruikers', fmt(wl.last.new_users||0), '');
       $('web-chart').innerHTML = lineChart(wd, [
         { values: vals(web, wd, 'sessions'), color: CLR.cyan, fill: true },
-        { values: vals(web, wd, 'users'), color: CLR.blue }
+        { values: vals(web, wd, 'users'), color: CLR.orange }
       ], 250);
       hookHover($('web-chart'), wd, [
         { label: 'Sessies', values: vals(web, wd, 'sessions'), color: CLR.cyan },
-        { label: 'Gebruikers', values: vals(web, wd, 'users'), color: CLR.blue },
+        { label: 'Gebruikers', values: vals(web, wd, 'users'), color: CLR.orange },
         { label: 'Weergaven', values: vals(web, wd, 'pageviews'), color: CLR.muted }
       ]);
 
