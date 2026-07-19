@@ -12,6 +12,8 @@
     --bg:#04070d; --panel:#0d1420; --line:#1c2940;
     --cyan:#00d4ff; --blue:#3da5ff; --green:#4fd1a1; --orange:#e67e22;
     --red:#ff5d5d; --yellow:#ffd400; --muted:#7d8ca3; --text:#dfe8f5;
+    /* zonekleuren: ver uit elkaar op de kleurcirkel, zodat elke groep direct herkenbaar is */
+    --z-stats:#00c8ff; --z-ads:#ff3f9a; --z-jarvis:#a37bff;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -127,9 +129,65 @@
   .hidden{display:none}
   #err{color:var(--red);font-size:12px;margin-top:14px;white-space:pre-wrap}
 
+  /* ---- zones: gekleurd vlak onder een groep panelen (Stats / Advertising / JARVIS) ----
+     De kaarten zelf zijn ongewijzigd; alleen het vlak eronder en de kop zijn nieuw. ---- */
+  .zone{
+    --acc:var(--cyan);
+    position:relative;
+    border:1px solid color-mix(in srgb, var(--acc) 34%, transparent);
+    border-left:5px solid var(--acc);
+    border-radius:14px;
+    box-shadow:0 0 0 1px rgba(0,0,0,.4), 0 10px 34px -22px var(--acc);
+    background:linear-gradient(180deg,
+        color-mix(in srgb, var(--acc) 13%, transparent) 0%,
+        color-mix(in srgb, var(--acc) 6%, transparent) 220px,
+        color-mix(in srgb, var(--acc) 3%, transparent) 100%);
+    padding:0 14px 14px;
+    margin-bottom:22px;
+  }
+  .zone-head{
+    position:sticky;top:0;z-index:20;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    margin:0 -14px 12px;padding:10px 16px;
+    background:color-mix(in srgb, var(--acc) 20%, #060b13 80%);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid color-mix(in srgb, var(--acc) 45%, transparent);
+    border-radius:11px 11px 0 0;
+  }
+  .zone-head .zi{width:24px;height:24px;border-radius:7px;flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;
+    color:#06121c;background:var(--acc);box-shadow:0 0 12px -2px var(--acc)}
+  .zone-head .zt{font-size:12.5px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--acc)}
+  .zone-head .zs{font-size:11px;color:color-mix(in srgb, var(--acc) 55%, var(--muted))}
+  .zone-head .zkpi{margin-left:auto;display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}
+  .zone-head .zkpi div{font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:color-mix(in srgb, var(--acc) 45%, var(--muted))}
+  .zone-head .zkpi b{display:block;font-size:15px;color:var(--text);letter-spacing:0;
+    font-variant-numeric:tabular-nums;text-transform:none}
+  .zone-head .zkpi b.good{color:var(--green)}
+  .zone-head .zkpi b.warn{color:var(--orange)}
+  .zone-head .zkpi b.bad{color:var(--red)}
+  .zone-head .fold{border:1px solid color-mix(in srgb, var(--acc) 35%, transparent);
+    background:none;color:var(--acc);border-radius:6px;padding:3px 9px;cursor:pointer;
+    font:inherit;font-size:11px;line-height:1.2}
+  .zone.folded .zone-body{display:none}
+  .zone .card{background:#0b1119;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+  .zone .zone-body > .card:last-child{margin-bottom:0}
+  #top .zgrp{display:flex;gap:6px;align-items:center}
+  #top .zgrp a{border:1px solid var(--line);border-radius:6px;padding:4px 11px;
+    font-size:12px;font-weight:700;letter-spacing:.05em;text-decoration:none}
+  #top .zgrp a.zstats{border-color:var(--z-stats);color:var(--z-stats);background:rgba(0,200,255,.10)}
+  #top .zgrp a.zads{border-color:var(--z-ads);color:var(--z-ads);background:rgba(255,63,154,.10)}
+  #top .zgrp a.zjarvis{border-color:var(--z-jarvis);color:var(--z-jarvis);background:rgba(163,123,255,.10)}
+
   /* mobiel: alleen KPI, paneelknoppen verbergen (naast elkaar is zinloos op telefoon) */
   @media (max-width:820px){
-    #top .grp{display:none}
+    #top .grp,#top .zgrp{display:none}
+    .zone{padding:0 8px 10px;border-left-width:4px}
+    .zone-head{margin:0 -8px 10px;padding:9px 10px}
+    .zone-head .zkpi{gap:12px;width:100%;margin-left:0;order:5}
+    .zone-head .zkpi b{font-size:13px}
     .sidepane,.divider{display:none !important}
     #kpiScroll{min-width:0;padding:10px}
     .nums{gap:18px} .num .v{font-size:22px}
@@ -147,11 +205,31 @@
 <div id="top" class="hidden">
   <span class="brand"><span class="live"></span>THE BRIDGE<span class="byrick">by Rick</span></span>
   <span class="grp"><span class="lbl">Panels</span></span>
+  <span class="zgrp"><span class="lbl">Ga naar</span>
+    <a class="zstats"  href="#z-stats">STATS</a>
+    <a class="zads"    href="#z-ads">ADS</a>
+    <a class="zjarvis" href="#z-jarvis">JARVIS</a></span>
   <span id="stamp"></span>
 </div>
 
 <div id="work" class="hidden">
   <div id="kpiScroll">
+
+    <!-- ==================== ZONE 1 - STATS & MARKETING ==================== -->
+    <section class="zone" id="z-stats" style="--acc:var(--z-stats)">
+      <div class="zone-head">
+        <span class="zi">&#9679;</span>
+        <span class="zt">Stats &amp; Marketing</span>
+        <span class="zs">verkeer &middot; mail &middot; social</span>
+        <span class="zkpi">
+          <div>Sessies gisteren<b id="zs-stats-sess">&mdash;</b></div>
+          <div>Mail bounce<b id="zs-stats-bounce">&mdash;</b></div>
+          <div>IG volgers<b id="zs-stats-ig">&mdash;</b></div>
+        </span>
+        <button class="fold" data-zone="stats">&minus;</button>
+      </div>
+      <div class="zone-body">
+
     <div class="card">
       <h2><span class="dot" style="background:var(--cyan)"></span>Website (GA4)
         <span class="when" id="web-when"></span></h2>
@@ -179,7 +257,24 @@
         <div class="legend"><span><i style="background:var(--green)"></i>IG volgers</span></div>
       </div>
     </div>
-    <div style="height:14px"></div>
+
+      </div>
+    </section>
+
+    <!-- ==================== ZONE 2 - ADVERTISING (META) ==================== -->
+    <section class="zone" id="z-ads" style="--acc:var(--z-ads)">
+      <div class="zone-head">
+        <span class="zi">A</span>
+        <span class="zt">Advertising</span>
+        <span class="zs">Meta ads &middot; spend &middot; bereik</span>
+        <span class="zkpi">
+          <div>Spend 30d<b id="zs-ads-spend">&mdash;</b></div>
+          <div>Ads live<b id="zs-ads-live">&mdash;</b></div>
+          <div>Leads<b id="zs-ads-leads">&mdash;</b></div>
+        </span>
+        <button class="fold" data-zone="ads">&minus;</button>
+      </div>
+      <div class="zone-body">
 
     <div class="card">
       <h2><span class="dot" style="background:var(--blue)"></span>Paid Ads (Meta)
@@ -198,7 +293,6 @@
       </div>
       <p id="ads-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
     </div>
-    <div style="height:14px"></div>
 
     <div class="card">
       <h2><span class="dot" style="background:var(--cyan)"></span>Actieve advertenties
@@ -207,7 +301,24 @@
       <div id="live-table"></div>
       <p id="live-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
     </div>
-    <div style="height:0"></div>
+
+      </div>
+    </section>
+
+    <!-- ==================== ZONE 3 - JARVIS ==================== -->
+    <section class="zone" id="z-jarvis" style="--acc:var(--z-jarvis)">
+      <div class="zone-head">
+        <span class="zi">J</span>
+        <span class="zt">JARVIS</span>
+        <span class="zs">memo&rsquo;s &middot; voorstellen &middot; systeem</span>
+        <span class="zkpi">
+          <div>Open memo&rsquo;s<b id="zs-jarvis-memo">&mdash;</b></div>
+          <div>Voorstellen<b id="zs-jarvis-prop">&mdash;</b></div>
+          <div>Stille agents<b id="zs-jarvis-silent">&mdash;</b></div>
+        </span>
+        <button class="fold" data-zone="jarvis">&minus;</button>
+      </div>
+      <div class="zone-body">
 
     <div class="row3">
       <div class="card">
@@ -225,6 +336,10 @@
         <div id="system"></div>
       </div>
     </div>
+
+      </div>
+    </section>
+
     <div id="err"></div>
   </div>
 </div>
@@ -572,6 +687,28 @@
   var eur2 = function(v){ return '\u20AC' + Number(v || 0).toFixed(2); };
   var pct1 = function(v){ return Number(v || 0).toFixed(1) + '%'; };
 
+  /* ================= zones: kopcijfers + in-/uitklappen ================= */
+  // zet een cijfer in de gekleurde zonekop; cls = '', 'good', 'warn' of 'bad'
+  function zset(id, txt, cls){
+    var el = $(id); if(!el) return;
+    el.textContent = txt;
+    el.className = cls || '';
+  }
+  (function initZones(){
+    var open = {};
+    try{ open = JSON.parse(localStorage.getItem('bridge_kpi_zones') || '{}') || {}; }catch(e){}
+    Array.prototype.forEach.call(document.querySelectorAll('.zone .fold'), function(b){
+      var zone = b.closest('.zone'), key = b.dataset.zone;
+      if(open[key] === false){ zone.classList.add('folded'); b.textContent = '+'; }
+      b.addEventListener('click', function(){
+        var folded = zone.classList.toggle('folded');
+        b.textContent = folded ? '+' : '\u2212';
+        open[key] = !folded;
+        try{ localStorage.setItem('bridge_kpi_zones', JSON.stringify(open)); }catch(e){}
+      });
+    });
+  })();
+
   function pivot(rows, source){
     var out = {};
     rows.forEach(function(r){
@@ -627,6 +764,7 @@
       var r = await sb.from('proposals_pending').select('*').order('created_at', {ascending:true});
       if(r.error){ el.innerHTML = '<p style="color:var(--muted)">Kon voorstellen niet laden.</p>'; return; }
       var rows = r.data || [];
+      zset('zs-jarvis-prop', String(rows.length), rows.length ? 'warn' : 'good');
       $('prop-count').textContent = '(' + rows.length + ' open)';
       if(!rows.length){ el.innerHTML = '<p style="color:var(--muted)">Geen openstaande voorstellen \u2705</p>'; return; }
       el.innerHTML = rows.map(function(p){
@@ -673,6 +811,7 @@
       var ads = adsArr[0] || null;
 
       var web = pivot(kpi, 'ga4'); var wd = lastDates(web, 28); var wl = lastTwo(web);
+      zset('zs-stats-sess', fmt(wl.last.sessions||0), '');
       $('web-when').textContent = wl.lastDate ? '\u2014 laatste 28 dagen, t/m ' + wl.lastDate : '';
       $('web-nums').innerHTML =
         num('sessies gisteren', fmt(wl.last.sessions||0), delta(wl.last.sessions, wl.prev.sessions)) +
@@ -694,6 +833,8 @@
       var sent = ml.last.sent||0;
       var bounces = (ml.last.hard_bounces||0)+(ml.last.soft_bounces||0);
       var bPct = sent ? bounces/sent*100 : 0;
+      zset('zs-stats-bounce', sent ? bPct.toFixed(0) + '%' : '\u2014',
+           bPct >= 10 ? 'bad' : (bPct >= 5 ? 'warn' : 'good'));
       $('mail-when').textContent = ml.lastDate ? '\u2014 14 dagen, t/m ' + ml.lastDate : '';
       $('mail-nums').innerHTML =
         num('verzonden', fmt(sent), delta(sent, ml.prev.sent)) +
@@ -718,6 +859,8 @@
       var soc = pivot(kpi, 'meta_social'); var sd = lastDates(soc, 28); var sl = lastTwo(soc);
       var igNow = sl.last.ig_followers||0, igPrev = sl.prev.ig_followers;
       var igD = (igPrev !== undefined) ? igNow - igPrev : null;
+      zset('zs-stats-ig', fmt(igNow) + (igD ? (igD > 0 ? ' \u25B2' : ' \u25BC') + Math.abs(igD) : ''),
+           igD > 0 ? 'good' : (igD < 0 ? 'bad' : ''));
       $('social-when').textContent = sl.lastDate ? '\u2014 stand ' + sl.lastDate : '';
       $('social-nums').innerHTML =
         num('IG volgers', fmt(igNow), igD === null ? '' :
@@ -746,6 +889,7 @@
       Object.keys(pad).forEach(function(d){
         spend30 += (pad[d].spend || 0); likes30 += (pad[d].page_likes || 0);
       });
+      zset('zs-ads-spend', eur2(spend30), '');
       $('ads-nums').innerHTML =
         num('spend (' + (pl.lastDate ? pl.lastDate.slice(5) : 'last day') + ')',
             '\u20AC' + (pl.last.spend || 0).toFixed(2), delta(pl.last.spend, pl.prev.spend)) +
@@ -791,6 +935,7 @@
       var live = (res[6] && res[6].data) || [];
       var liveErr = res[6] && res[6].error;
       live = live.slice().sort(function(a,b){ return Number(b.spend||0) - Number(a.spend||0); });
+      zset('zs-ads-live', fmt(live.length), live.length ? '' : 'warn');
       if(live.length){
         var tSpend = live.reduce(function(a,r){ return a + Number(r.spend||0); }, 0);
         var tImp   = live.reduce(function(a,r){ return a + Number(r.impressions||0); }, 0);
@@ -800,6 +945,7 @@
         var tLeads = live.reduce(function(a,r){ return a + Number(r.leads||0); }, 0);
         var tCtr   = tImp ? (tClk / tImp * 100) : 0;
         var cap    = live[0].captured_at ? String(live[0].captured_at).slice(0,10) : '';
+        zset('zs-ads-leads', fmt(tLeads), tLeads ? 'good' : '');
 
         $('live-when').textContent = '\u2014 ' + live.length + ' actief \u00b7 lifetime'
           + (cap ? ' \u00b7 bijgewerkt ' + cap : '');
@@ -836,12 +982,17 @@
           + (live.length > 12 ? ' \u00b7 top 12 van ' + live.length : '')
           + ' \u00b7 Resultaat = het objective-doel per ad (volgers/likes, clicks of leads)';
       } else {
+        zset('zs-ads-leads', '0', '');
         $('live-table').innerHTML = liveErr
           ? '<p style="color:var(--muted)">Bron <code>bridge_active_ads</code> niet leesbaar: ' + esc(liveErr.message || liveErr) + '</p>'
           : '<p style="color:var(--muted)">Geen actieve campagnes op dit moment.</p>';
       }
 
       var open = memos.slice().sort(function(a,b){ return (a.days_left||0) - (b.days_left||0); });
+      var memoOverdue = open.filter(function(m){ return m.overdue; }).length;
+      var memoWarn = open.filter(function(m){ return m.in_warning_window; }).length;
+      zset('zs-jarvis-memo', String(open.length),
+           memoOverdue ? 'bad' : (memoWarn ? 'warn' : 'good'));
       $('memo-count').textContent = '('+open.length+' open)';
       $('memos').innerHTML = open.length ? open.map(function(mm){
         var cls = mm.overdue ? 'red' : (mm.in_warning_window ? 'orange' : 'grey');
@@ -855,6 +1006,7 @@
       }).join('') : '<p style="color:var(--muted)">Geen open memo\'s.</p>';
 
       var silent = sil.filter(function(a){ return a.silent; });
+      zset('zs-jarvis-silent', String(silent.length), silent.length ? 'bad' : 'good');
       var sysHtml = '';
       /* Bovenaan: de GEDEELDE agent-telling (zelfde bron + formule als
          agents.html en organisation.html). Daaronder, gescheiden door een
