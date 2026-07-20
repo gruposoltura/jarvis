@@ -258,6 +258,12 @@
       </div>
     </div>
 
+    <div class="card" style="margin-top:14px">
+      <h2><span class="dot" style="background:var(--yellow)"></span>Mailings per type (Brevo Campaigns)
+        <span class="when" id="mailbd-when"></span></h2>
+      <div id="mailbd-body"></div>
+    </div>
+
       </div>
     </section>
 
@@ -803,7 +809,10 @@
         window.BRIDGE_AGENTS.load(sb).catch(function(e){ return { agents:[], counts:null, error:e }; }),
         // actieve campagnes met lead-gen metrics (lifetime) - gevuld door de Meta-ads pull;
         // mag falen zonder de rest te blokkeren (res[6])
-        sb.from('bridge_active_ads').select('*')
+        sb.from('bridge_active_ads').select('*'),
+        // Brevo bulk-mailings per type (nieuwsbrief, prijsverlagingen, suspect matches, ...);
+        // apart van de transactionele 'brevo' bron. Mag falen zonder de rest te blokkeren (res[7])
+        sb.from('bridge_brevo_campaign_daily').select('*')
       ]);
       if(res[0].error) throw res[0].error;
       var kpi = res[0].data || [], memos = res[1].data || [],
@@ -830,31 +839,97 @@
       ]);
 
       var mail = pivot(kpi, 'brevo'); var md = lastDates(mail, 14); var ml = lastTwo(mail);
-      var sent = ml.last.sent||0;
-      var bounces = (ml.last.hard_bounces||0)+(ml.last.soft_bounces||0);
+      // Brevo bulk-mailings (Campaigns) per dag+type - apart van de transactionele 'brevo' bron.
+      // Deze volumes waren voorheen onzichtbaar in de Mail-kaart; hier tellen we ze mee.
+      var camp = (res[7] && !res[7].error) ? (res[7].data || []) : [];
+      var campByDate = {};
+      camp.forEach(function(r){
+        var o = campByDate[r.kpi_date] = campByDate[r.kpi_date] ||
+          { sent:0, delivered:0, opens_unique:0, clicks_unique:0, hard_bounces:0, soft_bounces:0, unsubscribed:0 };
+        o.sent += Number(r.sent||0); o.delivered += Number(r.delivered||0);
+        o.opens_unique += Number(r.opens_unique||0); o.clicks_unique += Number(r.clicks_unique||0);
+        o.hard_bounces += Number(r.hard_bounces||0); o.soft_bounces += Number(r.soft_bounces||0);
+        o.unsubscribed += Number(r.unsubscribed||0);
+      });
+      // gecombineerde reeks (transactioneel + campagnes) per datum, voor headline + grafiek
+      function mtot(d, m){ return Number((mail[d]||{})[m]||0) + Number((campByDate[d]||{})[m]||0); }
+      var cLast = campByDate[ml.lastDate] || {};
+      var mailDatesSorted = Object.keys(mail).sort();
+      var prevDate = ml.lastDate ? mailDatesSorted[mailDatesSorted.indexOf(ml.lastDate)-1] : null;
+      var sent = (ml.last.sent||0) + (cLast.sent||0);
+      var sentPrev = (ml.prev.sent||0) + ((campByDate[prevDate]||{}).sent||0);
+      var delivered = (ml.last.delivered||0) + (cLast.delivered||0);
+      var bounces = (ml.last.hard_bounces||0)+(ml.last.soft_bounces||0)+(cLast.hard_bounces||0)+(cLast.soft_bounces||0);
+      var opensU = (ml.last.opens_unique||0) + (cLast.opens_unique||0);
       var bPct = sent ? bounces/sent*100 : 0;
       zset('zs-stats-bounce', sent ? bPct.toFixed(0) + '%' : '\u2014',
            bPct >= 10 ? 'bad' : (bPct >= 5 ? 'warn' : 'good'));
-      $('mail-when').textContent = ml.lastDate ? '\u2014 14 dagen, t/m ' + ml.lastDate : '';
+      $('mail-when').textContent = ml.lastDate ? '\u2014 14 dagen, t/m ' + ml.lastDate + ' (incl. campagnes)' : '';
       $('mail-nums').innerHTML =
-        num('verzonden', fmt(sent), delta(sent, ml.prev.sent)) +
-        num('delivered', fmt(ml.last.delivered||0), '') +
+        num('verzonden', fmt(sent), delta(sent, sentPrev)) +
+        num('delivered', fmt(delivered), '') +
         num('bounces', fmt(bounces) + '<span style="font-size:14px"> ('+bPct.toFixed(0)+'%)</span>', '',
             bPct >= 10 ? 'badval' : (bPct >= 5 ? 'warnval' : 'goodval')) +
-        num('opens uniek', fmt(ml.last.opens_unique||0), '');
-      var bounceVals = md.map(function(d){
-        var r = mail[d] || {}; return (r.hard_bounces||0) + (r.soft_bounces||0);
-      });
+        num('opens uniek', fmt(opensU), '');
+      var sentVals = md.map(function(d){ return mtot(d,'sent'); });
+      var delivVals = md.map(function(d){ return mtot(d,'delivered'); });
+      var opensVals = md.map(function(d){ return mtot(d,'opens_unique'); });
+      var bounceVals = md.map(function(d){ return mtot(d,'hard_bounces') + mtot(d,'soft_bounces'); });
       $('mail-chart').innerHTML = barChart(md, [
-        { values: vals(mail, md, 'sent'), color: CLR.yellow },
-        { values: vals(mail, md, 'delivered'), color: CLR.green }
+        { values: sentVals, color: CLR.yellow },
+        { values: delivVals, color: CLR.green }
       ], { values: bounceVals, color: CLR.red }, 230);
       hookHover($('mail-chart'), md, [
-        { label: 'Verzonden', values: vals(mail, md, 'sent'), color: CLR.yellow },
-        { label: 'Delivered', values: vals(mail, md, 'delivered'), color: CLR.green },
+        { label: 'Verzonden', values: sentVals, color: CLR.yellow },
+        { label: 'Delivered', values: delivVals, color: CLR.green },
         { label: 'Bounces', values: bounceVals, color: CLR.red },
-        { label: 'Opens uniek', values: vals(mail, md, 'opens_unique'), color: CLR.muted }
+        { label: 'Opens uniek', values: opensVals, color: CLR.muted }
       ], true);
+
+      // ---- breakdown per mailing-type (laatste verzending per type) ----
+      var TYPE_LABELS = {
+        weekly_news:'Nieuwsbrief', price_reduced:'Prijsverlagingen', monthly_matches:'Suspect matches',
+        new_listing:'Nieuw aanbod', weekly_top10:'Top 10', reserved:'Gereserveerd / te laat',
+        welcome_seller:'Welkom verkoper', review_invite:'Review-uitnodiging', other:'Overig'
+      };
+      var TYPE_CLR = {
+        weekly_news:CLR.cyan, price_reduced:CLR.orange, monthly_matches:CLR.blue, new_listing:CLR.green,
+        weekly_top10:CLR.yellow, reserved:CLR.muted, welcome_seller:CLR.muted,
+        review_invite:CLR.muted, other:CLR.muted
+      };
+      var latestByType = {};
+      camp.forEach(function(r){
+        var cur = latestByType[r.mailing_type];
+        if(!cur || r.kpi_date > cur.kpi_date) latestByType[r.mailing_type] = r;
+      });
+      var bdKeys = Object.keys(latestByType).sort(function(a,b){
+        return (latestByType[b].kpi_date||'').localeCompare(latestByType[a].kpi_date||'');
+      });
+      if(bdKeys.length){
+        var newest = bdKeys.map(function(k){ return latestByType[k].kpi_date; }).sort().slice(-1)[0];
+        $('mailbd-when').textContent = '\u2014 laatste verzending per type, t/m ' + newest;
+        var rows = bdKeys.map(function(k){
+          var r = latestByType[k];
+          var s = Number(r.sent||0), dv = Number(r.delivered||0), ou = Number(r.opens_unique||0);
+          var dPct = s ? (dv/s*100) : 0, oPct = dv ? (ou/dv*100) : 0;
+          var lbl = TYPE_LABELS[k] || k, clr = TYPE_CLR[k] || CLR.muted;
+          return '<tr>'
+            + '<td><span class="dot" style="background:'+clr+';display:inline-block;width:8px;height:8px;'
+            +   'border-radius:50%;margin-right:7px"></span>'+lbl
+            + '<span class="camp">'+r.kpi_date+' \u00b7 '+fmt(r.campaigns||0)+' campagne(s)</span></td>'
+            + '<td>'+fmt(s)+'</td>'
+            + '<td>'+fmt(dv)+' <span style="color:var(--muted);font-size:10.5px">('+dPct.toFixed(0)+'%)</span></td>'
+            + '<td>'+fmt(ou)+' <span style="color:var(--muted);font-size:10.5px">('+oPct.toFixed(0)+'%)</span></td>'
+            + '</tr>';
+        }).join('');
+        $('mailbd-body').innerHTML =
+          '<table class="adt"><thead><tr><th>Type</th><th>Verzonden</th>'
+          + '<th>Delivered</th><th>Opens uniek</th></tr></thead><tbody>'+rows+'</tbody></table>';
+      } else {
+        $('mailbd-when').textContent = '';
+        $('mailbd-body').innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">'
+          + 'Nog geen campagne-data beschikbaar.</div>';
+      }
 
       var soc = pivot(kpi, 'meta_social'); var sd = lastDates(soc, 28); var sl = lastTwo(soc);
       var igNow = sl.last.ig_followers||0, igPrev = sl.prev.ig_followers;
