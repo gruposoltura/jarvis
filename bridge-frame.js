@@ -1,167 +1,146 @@
-/* ============================================================================
-   THE BRIDGE — bridge-frame.js
-   Zet bovenin elk paneel twee bedieningen:
+/* =====================================================================
+   THE BRIDGE · bridge-frame.js — UNIFORME PANEEL-TOGGLE
+   =====================================================================
+   Elk venster dat naast kpi.html in de cockpit gezet kan worden
+   (agents.html, credentials.html, organisation.html, constellation.html,
+   competition.html) krijgt bovenaan exact EEN knop, met twee toestanden:
 
-     ⤢  VOLLEDIG SCHERM  — springt uit de cockpit-iframe naar een eigen tab.
-                            Staat de pagina al standalone, dan schakelt hij
-                            echte browser-fullscreen aan/uit (Fullscreen API).
-     ↩  COCKPIT          — terug naar de cockpit-view (breekt ook uit de iframe).
+     |>  VOLLEDIG SCHERM    — je zit in de cockpit (paneel/iframe).
+                             Klik = dit venster neemt het hele scherm over.
+     <|  TERUG NAAR COCKPIT — je zit op volledig scherm.
+                             Klik = terug naar de KPI-cockpit.
 
-   Gebruik: één regel in de <head> van elke pagina, ná bridge-config.js:
+   Op de cockpit zelf (kpi.html) verschijnt er niets: daar ben je al.
+
+   Gebruik: een regel in elke pagina, na bridge-config.js:
        <script src="bridge-frame.js"></script>
 
-   De bedieningen worden ingehaakt in de bestaande header als die er is:
-     • agents.html / competition.html : als pill-knoppen achter de <nav>
-     • organisation.html              : naast de EXIT-knop, zelfde .depbtn-stijl
-     • credentials.html (geen header) : zwevende pill-balk rechtsboven
-
    Config (optioneel, in bridge-config.js):
-       window.BRIDGE_CONFIG.COCKPIT_URL = "/";   // default "/"
-   ============================================================================ */
-(function () {
+       COCKPIT_URL : "kpi.html"     // waar <| heen gaat
+   ===================================================================== */
+(function (global) {
   "use strict";
 
-  var CFG      = window.BRIDGE_CONFIG || {};
-  var COCKPIT  = CFG.COCKPIT_URL || "/";
-  var inFrame  = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
+  var CFG     = global.BRIDGE_CONFIG || global.DEWI_CONFIG || {};
+  var COCKPIT = CFG.COCKPIT_URL || "kpi.html";
 
-  var LBL_FULL = inFrame ? "Volledig scherm" : "Volledig scherm";
-  var TIP_FULL = inFrame ? "Open dit paneel buiten de cockpit, in een eigen tab"
-                         : "Browser-fullscreen aan/uit";
-
-  /* ---------- acties ---------- */
-  function goFullscreen(ev) {
-    ev.preventDefault();
-    if (inFrame) {
-      window.open(location.href, "_blank", "noopener");
-      return;
-    }
-    var el = document.documentElement;
-    var fs = document.fullscreenElement || document.webkitFullscreenElement;
-    try {
-      if (fs) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-      else    (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
-    } catch (e) { /* stil falen: sommige browsers blokkeren dit in een iframe */ }
+  function base(u) {
+    return String(u).split("?")[0].split("#")[0].split("/").pop().toLowerCase();
   }
 
-  function goCockpit(ev) {
-    ev.preventDefault();
-    try {
-      if (inFrame) window.top.location.href = COCKPIT;
-      else location.href = COCKPIT;
-    } catch (e) { location.href = COCKPIT; }
+  var inFrame = (function () {
+    try { return global.self !== global.top; } catch (e) { return true; }
+  })();
+
+  var isCockpit = base(location.pathname) === base(COCKPIT) ||
+                  document.documentElement.hasAttribute("data-bridge-cockpit");
+
+  /* Op de cockpit zelf geen toggle. */
+  if (isCockpit) {
+    global.BRIDGE_FRAME = { mode: "cockpit", cockpitUrl: COCKPIT, inFrame: inFrame };
+    return;
   }
 
-  /* ---------- fullscreen-staat weerspiegelen op de fullscreen-pill ---------- */
-  function syncFsState() {
-    var on = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    var el = document.querySelector("a.bf-full[data-bridge-frame]");
-    if (!el) return;
-    el.classList.toggle("on", on);
-    el.title = (!inFrame && on) ? "Volledig scherm sluiten (Esc)" : TIP_FULL;
-  }
+  var MODE    = inFrame ? "panel" : "full";   // panel = in cockpit, full = volledig scherm
+  var IC_FULL = "\u2922";                     // |>
+  var IC_BACK = "\u21a9";                     // <|
 
-  /* ---------- nav-variant (agents.html / competition.html): pills i.p.v. tekstlinks ---------- */
-  function navCSS() {
-    if (document.getElementById("bridge-frame-nav-css")) return;
-    var s = document.createElement("style");
-    s.id = "bridge-frame-nav-css";
-    s.textContent = [
-      "header nav a[data-bridge-frame]{display:inline-flex;align-items:center;gap:6px;margin-left:6px;",
-      "  padding:6px 13px;border:1px solid var(--line,#1c2940);border-radius:999px;",
-      "  background:var(--panel2,#111a29);color:var(--muted,#7d8da8);text-decoration:none;",
-      "  font-size:11px;font-weight:500;letter-spacing:.10em;text-transform:uppercase;",
-      "  transition:border-color .15s,color .15s}",
-      "header nav a[data-bridge-frame]:hover{border-color:var(--cyan,#00d4ff);color:var(--text,#dfe8f5);text-decoration:none}",
-      "header nav a[data-bridge-frame]:focus-visible{outline:2px solid var(--cyan,#00d4ff);outline-offset:2px}",
-      "header nav a[data-bridge-frame] .ic{font-size:13px;line-height:1;letter-spacing:0}",
-      "header nav a.bf-full[data-bridge-frame].on{border-color:var(--cyan,#00d4ff);color:var(--cyan,#00d4ff)}",
-      "@media(max-width:760px){header nav a[data-bridge-frame] .tx{display:none}header nav a[data-bridge-frame]{padding:6px 10px}}",
-      "@media print{header nav a[data-bridge-frame]{display:none}}"
-    ].join("");
-    (document.head || document.documentElement).appendChild(s);
-  }
-
-  /* ---------- zwevende variant (pagina's zonder header) ---------- */
-  function floatCSS() {
+  /* ------------------------------------------------------------------ stijl */
+  function css() {
     if (document.getElementById("bridge-frame-css")) return;
     var s = document.createElement("style");
     s.id = "bridge-frame-css";
     s.textContent = [
-      "body.bridge-frame-float{padding-top:46px}",
-      "#bridge-frame{position:fixed;top:9px;right:14px;z-index:2147483000;display:flex;gap:6px;",
-      "  font:500 11px/1 'Segoe UI',system-ui,-apple-system,sans-serif;letter-spacing:.10em;text-transform:uppercase}",
-      "#bridge-frame a{display:flex;align-items:center;gap:6px;text-decoration:none;cursor:pointer;",
-      "  padding:8px 13px;border-radius:999px;color:#7d8da8;background:rgba(11,15,20,.85);",
-      "  border:1px solid rgba(30,41,55,.95);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:.15s}",
-      "#bridge-frame a:hover{color:#e6edf3;border-color:#5eb0ff;text-decoration:none}",
-      "#bridge-frame a:focus-visible{outline:2px solid #5eb0ff;outline-offset:2px}",
-      "#bridge-frame .ic{font-size:13px;line-height:1;letter-spacing:0}",
-      "#bridge-frame.hidden{display:none}",
-      "@media(max-width:760px){#bridge-frame .tx{display:none}#bridge-frame a{padding:8px 10px}}",
-      "@media print{#bridge-frame{display:none}}"
+      "#bridge-frame{position:fixed;top:10px;left:50%;transform:translateX(-50%);",
+      "  z-index:2147483000;display:flex}",
+      "#bridge-frame.bridge-hidden{display:none}",
+      "@media print{#bridge-frame{display:none}}",
+      ".bridge-toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;",
+      "  font:700 11px/1 'Segoe UI',system-ui,-apple-system,sans-serif;letter-spacing:.14em;",
+      "  text-transform:uppercase;padding:9px 15px;border-radius:999px;white-space:nowrap;",
+      "  color:#00d4ff;background:rgba(7,11,18,.92);border:1px solid rgba(0,212,255,.45);",
+      "  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);",
+      "  transition:color .15s,background .15s,border-color .15s,box-shadow .15s}",
+      ".bridge-toggle:hover{color:#06131a;background:#00d4ff;border-color:#00d4ff;",
+      "  box-shadow:0 0 14px rgba(0,212,255,.5)}",
+      ".bridge-toggle:focus-visible{outline:2px solid #00d4ff;outline-offset:2px}",
+      ".bridge-toggle .ic{font-size:14px;letter-spacing:0;line-height:1}",
+      ".bridge-toggle.in-header{margin-left:10px}",
+      ".bridge-toggle.bridge-hidden{display:none}"
     ].join("");
     (document.head || document.documentElement).appendChild(s);
   }
 
-  function mk(tag, html, title, handler, cls) {
-    var a = document.createElement(tag);
-    if (cls) a.className = cls;
-    if (tag === "a") { a.href = handler === goCockpit ? COCKPIT : location.href; }
-    a.title = title;
-    a.innerHTML = html;
-    a.addEventListener("click", handler);
-    return a;
+  /* ------------------------------------------------------------------ acties */
+  function toFullscreen() {
+    /* uit de cockpit springen: dit venster als heel scherm openen */
+    try { global.top.location.href = location.href; }
+    catch (e) { global.open(location.href, "_blank", "noopener"); }
   }
+  function toCockpit() { location.href = COCKPIT; }
 
-  var HTML_FULL = "<span class='ic'>\u2922</span><span class='tx'>" + LBL_FULL + "</span>";
-  var HTML_BACK = "<span class='ic'>\u21a9</span><span class='tx'>Cockpit</span>";
-
-  /* ---------- plaatsing ---------- */
+  /* ------------------------------------------------------------------ opbouw */
   function build() {
-    if (document.getElementById("bridge-frame") || document.querySelector("[data-bridge-frame]")) return;
+    if (document.getElementById("bridge-toggle")) return;
+    css();
 
-    var nav = document.querySelector("header nav");
-    var org = document.getElementById("logoutBtn");
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "bridge-toggle";
+    btn.className = "bridge-toggle";
 
-    if (nav) {
-      // agents.html / competition.html — als pill-knoppen achter de nav-links
-      navCSS();
-      var a1 = mk("a", HTML_FULL, TIP_FULL, goFullscreen, "bf-full");
-      var a2 = mk("a", HTML_BACK, "Terug naar de cockpit-view", goCockpit, "bf-back");
-      a1.setAttribute("data-bridge-frame", "1");
-      a2.setAttribute("data-bridge-frame", "1");
-      nav.appendChild(a1);
-      nav.appendChild(a2);
-      syncFsState();
-      return;
+    if (MODE === "panel") {
+      btn.innerHTML = "<span class='ic'>" + IC_FULL + "</span><span class='tx'>Volledig scherm</span>";
+      btn.title = "Dit venster als volledig scherm openen";
+      btn.setAttribute("aria-label", "Dit venster als volledig scherm openen");
+      btn.addEventListener("click", toFullscreen);
+    } else {
+      btn.innerHTML = "<span class='ic'>" + IC_BACK + "</span><span class='tx'>Terug naar cockpit</span>";
+      btn.title = "Terug naar de KPI-cockpit";
+      btn.setAttribute("aria-label", "Terug naar de KPI-cockpit");
+      btn.addEventListener("click", toCockpit);
     }
 
-    if (org) {
-      // organisation.html — naast de EXIT-knop, zelfde .depbtn-stijl
-      var b1 = mk("button", "<span class='ic'>\u2922</span>FULLSCREEN", TIP_FULL, goFullscreen, "depbtn");
-      var b2 = mk("button", "<span class='ic'>\u21a9</span>COCKPIT", "Terug naar de cockpit-view", goCockpit, "depbtn");
-      b1.setAttribute("data-bridge-frame", "1");
-      b2.setAttribute("data-bridge-frame", "1");
-      org.parentNode.insertBefore(b1, org);
-      org.parentNode.insertBefore(b2, org);
-      return;
+    /* plaatsing: in de bestaande header (voor .spacer), anders zwevend bovenaan */
+    var wrap = btn;
+    var head = document.querySelector("header");
+    if (head) {
+      btn.classList.add("in-header");
+      var sp = head.querySelector(".spacer");
+      if (sp) head.insertBefore(btn, sp); else head.appendChild(btn);
+    } else {
+      var bar = document.createElement("div");
+      bar.id = "bridge-frame";
+      bar.appendChild(btn);
+      document.body.appendChild(bar);
+      wrap = bar;
     }
 
-    // credentials.html — zwevende balk rechtsboven
-    floatCSS();
-    document.body.classList.add("bridge-frame-float");
-    var bar = document.createElement("div");
-    bar.id = "bridge-frame";
-    bar.appendChild(mk("a", HTML_FULL, TIP_FULL, goFullscreen));
-    bar.appendChild(mk("a", HTML_BACK, "Terug naar de cockpit-view", goCockpit));
-    document.body.appendChild(bar);
+    /* eventuele oude COCKPIT-knop uitzetten */
+    var old = document.getElementById("cockpitBtn");
+    if (old) old.style.display = "none";
+
+    /* Knop verbergen zolang een loginscherm openstaat (#authGate / #login). */
+    var gates = ["authGate", "login"]
+      .map(function (id) { return document.getElementById(id); })
+      .filter(Boolean);
+    if (gates.length) {
+      var sync = function () {
+        var open = gates.some(function (g) {
+          return g.offsetParent !== null && getComputedStyle(g).display !== "none";
+        });
+        wrap.classList.toggle("bridge-hidden", open);
+      };
+      sync();
+      gates.forEach(function (g) {
+        new MutationObserver(sync).observe(g, { attributes: true, attributeFilter: ["class", "style"] });
+      });
+      setTimeout(sync, 1500);
+    }
   }
-
-  ["fullscreenchange", "webkitfullscreenchange"].forEach(function (ev) {
-    document.addEventListener(ev, syncFsState);
-  });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", build);
   else build();
-})();
+
+  global.BRIDGE_FRAME = { mode: MODE, cockpitUrl: COCKPIT, inFrame: inFrame, isCockpit: isCockpit };
+})(window);
