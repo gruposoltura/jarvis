@@ -12,6 +12,7 @@
     --bg:#04070d; --panel:#0d1420; --line:#1c2940;
     --cyan:#00d4ff; --blue:#3da5ff; --green:#4fd1a1; --orange:#e67e22;
     --red:#ff5d5d; --yellow:#ffd400; --muted:#7d8ca3; --text:#dfe8f5;
+    --trans:#b18cff;
     /* zonekleuren: ver uit elkaar op de kleurcirkel, zodat elke groep direct herkenbaar is */
     --z-stats:#00c8ff; --z-ads:#ff3f9a; --z-jarvis:#a37bff;
   }
@@ -245,9 +246,10 @@
           <span class="when" id="mail-when"></span></h2>
         <div class="nums" id="mail-nums"></div>
         <div class="chart" id="mail-chart"></div>
-        <div class="legend"><span><i style="background:var(--yellow)"></i>Verzonden</span>
-          <span><i style="background:var(--green)"></i>Delivered</span>
-          <span><i style="background:var(--red)"></i>Bounces</span></div>
+        <div class="legend"><span><i style="background:var(--yellow)"></i>Campagnes verzonden</span>
+          <span><i style="background:var(--green)"></i>Campagnes delivered</span>
+          <span><i style="background:var(--red)"></i>Bounces</span>
+          <span><i style="background:var(--trans)"></i>Transactioneel &mdash; rechteras</span></div>
         <div class="legend" id="mail-typekey"></div>
       </div>
       <div class="card">
@@ -367,7 +369,8 @@
   var $ = function(id){ return document.getElementById(id); };
   var fmt = function(n){ return Number(n).toLocaleString('nl-NL'); };
   var CLR = { cyan:'#00d4ff', blue:'#3da5ff', green:'#4fd1a1', red:'#ff5d5d',
-              yellow:'#ffd400', orange:'#e67e22', muted:'#7d8ca3', grid:'#1c2940' };
+              yellow:'#ffd400', orange:'#e67e22', muted:'#7d8ca3', grid:'#1c2940',
+              trans:'#b18cff' };
 
   /* ================= secundaire panelen (volgorde = knopvolgorde) ================= */
   var PANELS = [
@@ -608,16 +611,24 @@
 
   // topLabels (optioneel): per datum-index {text, color} - wordt boven de hoogste
   // balk van die dag getekend, zodat het mailing-type ook zonder hover leesbaar is.
-  function barChart(dates, groups, lineSeries, height, topLabels){
-    var w = 900, h = height || 240, padL = 46, padR = 10,
+  // right (optioneel): {values, color} - tweede reeks op een EIGEN rechteras, voor
+  // series die qua orde van grootte niet in de linkeras passen (transactionele
+  // dagmail ~40 naast campagnes ~2.400). De rechteras krijgt bewust factor 2
+  // kopruimte, zodat die lijn in de onderste helft blijft en de pieken niet kruist.
+  function barChart(dates, groups, lineSeries, height, topLabels, right){
+    var w = 900, h = height || 240, padL = 46, padR = right ? 46 : 10,
         padT = topLabels ? 26 : 12, padB = 26;
     var iW = w - padL - padR, iH = h - padT - padB;
     var max = 1;
     groups.forEach(function(s){ s.values.forEach(function(v){ if(v > max) max = v; }); });
     if(lineSeries) lineSeries.values.forEach(function(v){ if(v > max) max = v; });
     max = niceMax(max);
+    var rMax = 1;
+    if(right) right.values.forEach(function(v){ if(v > rMax) rMax = v; });
+    rMax = niceMax(rMax * 2);
     var n = dates.length, slot = iW / n, bw = (slot * 0.66) / groups.length;
     var Y = function(v){ return padT + iH - (v / max) * iH; };
+    var RY = function(v){ return padT + iH - (v / rMax) * iH; };
     var svg = '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet">';
     for(var g = 0; g <= 4; g++){
       var gv = max * g / 4, gy = Y(gv);
@@ -625,6 +636,10 @@
         + '" stroke="'+CLR.grid+'" stroke-width="1"/>'
         + '<text x="'+(padL-8)+'" y="'+(gy+4).toFixed(1)+'" text-anchor="end" font-size="11" fill="'+CLR.muted+'">'
         + fmt(Math.round(gv)) + '</text>';
+      if(right){
+        svg += '<text x="'+(w-padR+8)+'" y="'+(gy+4).toFixed(1)+'" text-anchor="start" font-size="11" fill="'
+          + right.color + '" opacity="0.8">' + fmt(Math.round(rMax * g / 4)) + '</text>';
+      }
     }
     var step = Math.max(1, Math.ceil(n / 8));
     for(var i = 0; i < n; i += step){
@@ -652,6 +667,19 @@
         if(v <= 0) return;
         var x = padL + i*slot + slot/2;
         svg += '<circle cx="'+x.toFixed(1)+'" cy="'+Y(v).toFixed(1)+'" r="3" fill="'+lineSeries.color+'"/>';
+      });
+    }
+    if(right){
+      var rd = '';
+      right.values.forEach(function(v, i){
+        var x = padL + i*slot + slot/2;
+        rd += (i ? ' L' : 'M') + x.toFixed(1) + ' ' + RY(v).toFixed(1);
+      });
+      svg += '<path d="'+rd+'" fill="none" stroke="'+right.color
+        + '" stroke-width="2.2" stroke-linejoin="round"/>';
+      right.values.forEach(function(v, i){
+        var x = padL + i*slot + slot/2;
+        svg += '<circle cx="'+x.toFixed(1)+'" cy="'+RY(v).toFixed(1)+'" r="2.6" fill="'+right.color+'"/>';
       });
     }
     if(topLabels){
@@ -891,13 +919,14 @@
         { label: 'Weergaven', values: vals(web, wd, 'pageviews'), color: CLR.muted }
       ]);
 
-      /* ---- MAIL (Brevo): transactioneel + bulk-campagnes in EEN reeks ----
-         De gele/groene balken zijn de SOM van beide bronnen, dus een piek is
-         altijd een bulk-campagne PLUS de gewone dagmail van die dag; een dag
-         zonder code boven de balk is alleen transactionele mail (~30-60). De
-         tabel eronder toont per type de LAATSTE verzending; die kan buiten deze
-         14-daagse periode vallen. Daarom staat onder de tabel een expliciete
-         afstemregel: 14d campagne + 14d transactioneel = som van de balken. */
+      /* ---- MAIL (Brevo): campagnes op de linkeras, transactioneel op de rechteras ----
+         De twee bronnen verschillen een factor 50 in volume (campagnes ~2.400 per
+         verzending, dagmail ~40), dus samen in een as wordt de dagmail een lijn van
+         een pixel. Daarom: balken = bulk-campagnes (linkeras), paarse lijn =
+         transactionele dagmail (rechteras, eigen schaal). Het totaal per dag staat
+         in de tooltip en in de kopcijfers. De tabel eronder toont per type de
+         LAATSTE verzending; die kan buiten deze 14-daagse periode vallen, en de
+         afstemregel eronder benoemt beide bronnen apart. */
       var mail = pivot(kpi, 'brevo');
       var camp = (res[7] && !res[7].error) ? (res[7].data || []) : [];
       var campByDate = {}, campTypesByDate = {};
@@ -929,7 +958,8 @@
       zset('zs-stats-bounce', sent ? bPct.toFixed(0) + '%' : '\u2014',
            bPct >= 10 ? 'bad' : (bPct >= 5 ? 'warn' : 'good'));
       $('mail-when').textContent = mLastDate
-        ? '\u2014 14 dagen, t/m ' + mLastDate + ' (transactioneel + campagnes samen)' : '';
+        ? '\u2014 14 dagen, t/m ' + mLastDate
+          + ' \u00b7 balken = campagnes (links), lijn = dagmail (rechts)' : '';
       $('mail-nums').innerHTML =
         num('verzonden', fmt(sent), delta(sent, sentPrev)) +
         num('waarvan campagnes', fmt(sentCamp), '') +
@@ -937,8 +967,11 @@
         num('bounces', fmt(bounces) + '<span style="font-size:14px"> ('+bPct.toFixed(0)+'%)</span>', '',
             bPct >= 10 ? 'badval' : (bPct >= 5 ? 'warnval' : 'goodval')) +
         num('opens uniek', fmt(opensU), '');
-      var sentVals = md.map(function(d){ return mtot(d,'sent'); });
-      var delivVals = md.map(function(d){ return mtot(d,'delivered'); });
+      // linkeras: alleen de bulk-campagnes. rechteras: alleen de transactionele mail.
+      var campSent = md.map(function(d){ return Number((campByDate[d]||{}).sent||0); });
+      var campDeliv = md.map(function(d){ return Number((campByDate[d]||{}).delivered||0); });
+      var transSent = md.map(function(d){ return Number((mail[d]||{}).sent||0); });
+      var totalSent = md.map(function(d, i){ return campSent[i] + transSent[i]; });
       var opensVals = md.map(function(d){ return mtot(d,'opens_unique'); });
       var bounceVals = md.map(function(d){ return mtot(d,'hard_bounces') + mtot(d,'soft_bounces'); });
       // 1 regel per dag: welke mailing(en) veroorzaken de piek van die dag
@@ -959,14 +992,17 @@
                  color: TYPE_CLR[list[0].mailing_type] || CLR.yellow };
       });
       $('mail-chart').innerHTML = barChart(md, [
-        { values: sentVals, color: CLR.yellow },
-        { values: delivVals, color: CLR.green }
-      ], { values: bounceVals, color: CLR.red }, 230, mailTop);
+        { values: campSent, color: CLR.yellow },
+        { values: campDeliv, color: CLR.green }
+      ], { values: bounceVals, color: CLR.red }, 230, mailTop,
+         { values: transSent, color: CLR.trans });
       hookHover($('mail-chart'), md, [
-        { label: 'Verzonden', values: sentVals, color: CLR.yellow },
-        { label: 'Delivered', values: delivVals, color: CLR.green },
-        { label: 'Bounces', values: bounceVals, color: CLR.red },
-        { label: 'Opens uniek', values: opensVals, color: CLR.muted }
+        { label: 'Campagnes verzonden', values: campSent, color: CLR.yellow },
+        { label: 'Campagnes delivered', values: campDeliv, color: CLR.green },
+        { label: 'Bounces (totaal)', values: bounceVals, color: CLR.red },
+        { label: 'Transactioneel (rechteras)', values: transSent, color: CLR.trans },
+        { label: 'Totaal verzonden', values: totalSent, color: CLR.muted },
+        { label: 'Opens uniek (totaal)', values: opensVals, color: CLR.muted }
       ], true, mailNotes);
       // codelegenda: alleen de types die in deze 14 dagen echt zijn verzonden
       var keyEl = $('mail-typekey');
@@ -984,7 +1020,7 @@
                 + '</b>&nbsp;' + (TYPE_LABELS[k] || k) + '</span>';
             }).join('')
           : '<span>geen bulk-campagnes in deze periode</span>')
-          + '<span>dag zonder code = alleen transactionele mail</span>';
+          + '<span>dag zonder balk = alleen transactionele mail</span>';
       }
 
       // ---- breakdown per mailing-type ----
@@ -1032,9 +1068,10 @@
           '<table class="adt"><thead><tr><th>Type</th><th>Verzonden</th>'
           + '<th>Delivered</th><th>Opens uniek</th><th>Verzonden 14d</th></tr></thead><tbody>'+rows+'</tbody></table>'
           + '<p style="color:var(--muted);font-size:11px;margin:10px 0 0">Afstemming met de grafiek ('
-          + (md[0]||'') + ' t/m ' + (md[md.length-1]||'') + '): ' + fmt(camp14Total) + ' campagne + '
-          + fmt(trans14) + ' transactioneel = ' + fmt(camp14Total + trans14)
-          + ' verzonden \u00b7 de gele balken zijn de som van beide bronnen.</p>';
+          + (md[0]||'') + ' t/m ' + (md[md.length-1]||'') + '): ' + fmt(camp14Total)
+          + ' campagne (de balken, linkeras) + ' + fmt(trans14)
+          + ' transactioneel (de paarse lijn, rechteras) = ' + fmt(camp14Total + trans14)
+          + ' verzonden totaal.</p>';
       } else {
         $('mailbd-when').textContent = '';
         $('mailbd-body').innerHTML = '<div style="color:var(--muted);font-size:12px;padding:6px 0">'
