@@ -520,9 +520,9 @@ const FALLBACK_DEPTS = [
       {id:"research-grp",label:"Research",members:["research","improve"]}]},
   { id:"advertising", name:"ADVERTISING", color:C.advert, icon:"🎯",
     agents:[
-      {id:"social-proposer",name:"Social Proposer",sched:"Sun+Mon 08:00",grp:"social",step:1},
-      {id:"social-lifestyle",name:"Lifestyle Proposer",sched:"Thu 08:00",grp:"social",step:2},
-      {id:"social-publisher",name:"Social Publisher",sched:"on approve",grp:"social",step:3},
+      {id:"social-proposer",name:"Social Proposer",sched:"Sun+Mon 08:00",grp:"social-profile",step:1},
+      {id:"social-lifestyle",name:"Lifestyle Proposer",sched:"Thu 08:00",grp:"social-profile",step:2},
+      {id:"social-publisher",name:"Social Publisher",sched:"on approve",grp:"social-profile",step:3},
       {id:"metaads-builder",name:"MetaAds Builder",sched:"Sun 12:00",grp:"metaads",step:1},
       {id:"metaads-executer",name:"MetaAds Executer",sched:"on approve",grp:"metaads",step:2},
       {id:"metaads-manager",name:"MetaAds Manager",sched:"daily 09:00",grp:"metaads",step:3},
@@ -568,7 +568,8 @@ buildDerived();
 const GRP = {
   KPI:    {label:"KPI",            flow:"BREVO \u2192 GA4 \u2192 SOCIAL \u2192 ADS \u2192 EVENTS"},
   metaads:{label:"META ADS",       flow:"BOUW \u2192 PUBLICEER \u2192 BEHEER"},
-  social: {label:"SOCIAL",         flow:"VOORSTEL \u2192 PUBLICEER"},
+  "social-profile":{label:"SOCIAL-PROFILE", flow:"SCOUT \u2192 BUILD \u2192 PUBLICEER \u2192 REVIEW"},
+  "social-stories":{label:"SOCIAL-STORIES", flow:"SCOUT \u2192 BUILD \u2192 PUBLICEER \u2192 REVIEW"},
   morning:{label:"MORNING REPORT", flow:"CHECK \u2192 ROLL-CALL \u2192 SUPERVISOR"},
   news:   {label:"NIEUWS",         flow:"CURATIE \u2192 MAILING"}
 };
@@ -1100,8 +1101,7 @@ function managerVisualHTML(mgr,color,i){
         <div class="gloss"></div>
       </div>
     </div>
-    <div class="mgr-name"><span class="sd"></span>${mgr.persona}</div>
-    <div class="mgr-role">${mgr.role}</div>`;
+    <div class="mgr-name"><span class="sd"></span>${mgr.persona}</div>`;
 }
 function wireAgentCards(scope){
   scope.querySelectorAll(".agent-unit").forEach(unit=>{
