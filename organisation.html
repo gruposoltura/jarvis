@@ -339,6 +339,9 @@
   .agent-card.paused .mini-av .sd{filter:grayscale(1)}
   .ac-paused{margin-left:6px;font:800 8px/1 system-ui;letter-spacing:.1em;color:#ffb547;
     border:1px solid rgba(255,181,71,.45);border-radius:5px;padding:2px 5px;vertical-align:middle}
+  .ac-sub{margin-top:3px;display:inline-flex;align-items:center;font:700 8px/1 system-ui;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);
+    border:1px solid color-mix(in srgb,var(--cyan) 40%, transparent);border-radius:5px;padding:2px 5px}
 
   /* === AUTH GATE (Supabase login) ================================== */
   #authGate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
@@ -1051,6 +1054,10 @@ const orgAgentRun={};  // agentId -> .ac-run element (laatst-gedraaid badge)
 const orgAgentDep={};  // agentId -> .ac-dep element (readiness badge)
 
 /* ---- gedeelde org-builders ---- */
+/* agent-ids met een sub-workflow (bron: view bridge_agent_index, kolom has_subworkflow).
+   Zelfde canonieke bron als bridge-agents.js; dit is een per-agent label, geen telling
+   (BD-004 blijft: agentAANTALLEN alleen via bridge-agents.js). */
+const SUBWF=new Set();
 function agentCardHTML(a){
   const step=a.step, av = step ? `<span class="pl-num">${step}</span>` : initials(a.name);
   const nm = a.grp ? a.name.replace(/^MetaAds\s*/,"") : a.name;   // in de pijplijn tonen we alleen de functiewoord (Builder/Executer/Manager)
@@ -1061,6 +1068,7 @@ function agentCardHTML(a){
         <div class="mini-av${step?' pl-av':''}">${av}<span class="sd"></span></div>
         <div class="ac-meta">
           <div class="ac-name">${nm}${a.paused?'<span class="ac-paused">PAUSED</span>':''}</div>
+          ${(a.has_subworkflow||SUBWF.has(a.id))?'<div class="ac-sub" title="bevat een Execute-Sub-workflow-node">subworkflow</div>':''}
           <div class="ac-sched"><span class="schedtxt">${a.sched}</span><span class="ac24" data-24="${a.id}"></span></div>
         </div>
         <div class="ac-run" data-run="${a.id}" title="laatst gedraaid"><span class="rk">·</span><span class="rt">—</span></div>
@@ -1349,9 +1357,20 @@ async function loadRegistryLayout(sb){
     return true;
   }catch(e){ console.warn("bridge_layout exception -> fallback:",e); return false; }
 }
+/* haal de subworkflow-vlag op uit de canonieke view en vul SUBWF; los van de layout
+   zodat een storing hier het organigram niet blank trekt. */
+async function loadSubworkflows(sb){
+  try{
+    const {data,error}=await sb.from("bridge_agent_index").select("agent_id,has_subworkflow");
+    if(error){ console.warn("bridge_agent_index has_subworkflow:",error.message); return; }
+    SUBWF.clear();
+    (data||[]).forEach(r=>{ if(r.has_subworkflow) SUBWF.add(r.agent_id); });
+  }catch(e){ console.warn("has_subworkflow:",e.message||e); }
+}
 async function start(){
   const sb=SB; sbClient=sb;
   const fromRegistry=await loadRegistryLayout(sb);
+  await loadSubworkflows(sb);       // subworkflow-labels vullen voor de gesorteerde render
   if(!fromRegistry) console.log("Bridge-indeling: fallback (ingebouwde DEPTS)");
   const {data,error}=await sb.from("agent_status").select("*");
   if(error){ setConn(false,"verbinding mislukt"); console.error(error); return; }
