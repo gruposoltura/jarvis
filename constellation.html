@@ -1164,7 +1164,9 @@ function sortDepts(){
     const keyOf=e=>{ if(e.loose)return actKey(e.loose); let br=0,bc=0;
       e.members.forEach(m=>{ const k=actKey(m); if(k[0]>br)br=k[0]; if(k[1]>bc)bc=k[1]; }); return [br,bc]; };
     const pausedRank=e=> e.loose ? (e.loose.paused?1:0) : (e.members.every(m=>m.paused)?1:0);   // gepauzeerd -> onderaan
-    order.sort((x,y)=>{ const px=pausedRank(x),py=pausedRank(y); if(px!==py)return px-py;   // actieve agents boven gepauzeerde
+    const pinRank=e=> (e.loose && e.loose.cluster==='social-playbook') ? 0 : 1;   // Playbook-kolom altijd bovenaan de afdeling
+    order.sort((x,y)=>{ const pnx=pinRank(x),pny=pinRank(y); if(pnx!==pny)return pnx-pny;   // Playbook + CompetitorScan boven de swarm-rijen
+      const px=pausedRank(x),py=pausedRank(y); if(px!==py)return px-py;   // actieve agents boven gepauzeerde
       const kx=keyOf(x),ky=keyOf(y); if(ky[0]!==kx[0])return ky[0]-kx[0];   // groep telt als 1 blok, gesorteerd op drukste lid
       if(ky[1]!==kx[1])return ky[1]-kx[1];
       const nx=x.loose?x.loose.name:x.grp, ny=y.loose?y.loose.name:y.grp; return nx.localeCompare(ny); });
@@ -1337,6 +1339,7 @@ async function loadRegistryLayout(sb){
       if(!dm[r.bridge_dept]) dm[r.bridge_dept]={id:r.bridge_dept,name:r.dept_name,color:r.dept_color,icon:r.dept_icon,_s:r.dept_sort||100,agents:[],_cl:{}};
       const d=dm[r.bridge_dept];
       const a={id:r.agent_id,name:r.agent_name,sched:r.schedule_human||"\u2014",_s:r.agent_sort||100};
+      a.cluster=r.cluster_id||null;
       if(r.n8n_workflow_id) a.wf=r.n8n_workflow_id;
       if(r.grp){ a.grp=r.grp; a.step=r.grp_step||0; }
       if(r.paused) a.paused=true;
