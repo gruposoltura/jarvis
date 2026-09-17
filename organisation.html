@@ -353,6 +353,18 @@
   .ac-sub{margin-top:3px;display:inline-flex;align-items:center;font:700 8px/1 system-ui;
     letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);
     border:1px solid color-mix(in srgb,var(--cyan) 40%, transparent);border-radius:5px;padding:2px 5px}
+  /* resultaat van de laatste run (jarvis_runs.summary via bridge_agent_index.last_summary) */
+  .ac-sum{margin-top:2px;font-size:9.5px;line-height:1.25;color:var(--text);opacity:.78;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ac-sum:empty{display:none}
+  /* vraaggestuurde agent (expected_frequency_hours NULL): geen 0/24u-teller maar een label */
+  .ac-od{font:700 8px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);
+    border:1px solid var(--hair);border-radius:5px;padding:2px 5px;white-space:nowrap}
+  /* kop-filter: klik VEROUDERD / ERRORS -> alleen die kaarten oplichten */
+  .metric.clickable{cursor:pointer;border-radius:8px;padding:3px 6px;margin:-3px -6px;transition:background .15s}
+  .metric.clickable:hover{background:rgba(255,255,255,.06)}
+  .metric.flt-on{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+  .agent-unit.flt-dim{opacity:.16;filter:grayscale(1);transition:opacity .2s}
 
   /* === AUTH GATE (Supabase login) ================================== */
   #authGate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
@@ -443,7 +455,7 @@
         <div class="org-connect"><span class="org-trunk"></span></div>
         <div class="org-board" id="orgBoard"></div>
       </div>
-      <div class="org-foot">Organigram · live · <b>gruposoltura-crm</b> · klik een agent voor de <b>laatste 10 executies</b> · agents gesorteerd op <b>runs/24u</b> (meeste eerst) · <b style="color:#ffd166">MANAGEMENT</b> overziet alle afdelingen</div>
+      <div class="org-foot">Organigram · live · <b>gruposoltura-crm</b> · klik een agent voor de <b>laatste 10 executies</b> · klik <b>VEROUDERD</b> of <b>ERRORS</b> in de kop om te filteren · agents gesorteerd op <b>runs/24u</b> (meeste eerst) · <b style="color:#ffd166">MANAGEMENT</b> overziet alle afdelingen</div>
     </div>
   </div>
 </div>
@@ -605,6 +617,15 @@ const statusOf=id=>(BY_ID[id]&&BY_ID[id].paused)?"paused":((rows[id]&&rows[id].s
 const fmtRun=ts=>{ if(!ts)return"—"; const d=new Date(ts); if(isNaN(d))return"—";
   const p=n=>String(n).padStart(2,"0");
   return `${p(d.getDate())}/${p(d.getMonth()+1)} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+/* relatieve tijd op de kaart (NL, kort); de volledige tijd staat in de tooltip */
+const agoNL=ts=>{ if(!ts)return"—"; const d=new Date(ts); if(isNaN(d))return"—";
+  const s=Math.floor((Date.now()-d)/1000);
+  if(s<60)return"nu"; if(s<3600)return Math.floor(s/60)+" min"; if(s<86400)return Math.floor(s/3600)+" u";
+  if(s<7*86400)return Math.floor(s/86400)+" d"; return fmtRun(ts); };
+const LASTSUM={};                  // agent_id -> summary van de laatste run (bridge_agent_index.last_summary)
+const EXPH={};                     // agent_id -> expected_frequency_hours (NULL = vraaggestuurd)
+let agentClass={};                 // agent_id -> BRIDGE_AGENTS.classify() (voor het kop-filter)
+let orgFilter=null;                // "stale" | "error" | null
 const RUNGLYPH={ ok:{ch:"✓",cls:"run-ok"}, running:{ch:"⟳",cls:"run-go"},
   error:{ch:"✕",cls:"run-err"}, idle:{ch:"·",cls:""} };
 /* ---- n8n workflow deep-link (per agent) ---- */
@@ -935,6 +956,11 @@ async function refreshAgentCounts(){
   try{
     const r=await window.BRIDGE_AGENTS.load(SB);
     sharedCounts=r.counts;
+    /* per-agent gegevens uit dezelfde canonieke bron: klasse (filter), laatste summary, verwachte frequentie */
+    agentClass={};
+    (r.agents||[]).forEach(a=>{ agentClass[a.agent_id]=window.BRIDGE_AGENTS.classify(a);
+      LASTSUM[a.agent_id]=a.last_summary||""; EXPH[a.agent_id]=a.expected_frequency_hours; });
+    updateOrgStatus(); fillRuns24(); applyOrgFilter();
     /* drift-detectie: layout (bridge_layout/fallback) vs canonieke telling */
     if(AGENTS && AGENTS.length!==sharedCounts.total)
       console.warn("Agent-drift: layout toont "+AGENTS.length+" agents, bridge_agent_index telt "+sharedCounts.total);
@@ -943,8 +969,8 @@ async function refreshAgentCounts(){
 }
 function refreshAgentCountsDebounced(){ clearTimeout(_cntT); _cntT=setTimeout(refreshAgentCounts,800); }
 function renderMetrics(){
-  if(currentView==="radial"){ $("mNodes").textContent=UNITS.length; $("mNodesL").textContent="NODES ZICHTBAAR"; }
-  else { $("mNodes").textContent=AGENTS.length; $("mNodesL").textContent="AGENTS ZICHTBAAR"; }
+  if(currentView==="radial"){ $("mNodes").parentElement.style.display=""; $("mNodes").textContent=UNITS.length; $("mNodesL").textContent="NODES ZICHTBAAR"; }
+  else { $("mNodes").parentElement.style.display="none"; }   // in het organigram altijd gelijk aan AGENTS TOT. -> weglaten
   if(sharedCounts){
     $("mAgents").textContent=sharedCounts.total;
     $("mOnline").textContent=sharedCounts.ok+sharedCounts.running;
@@ -1064,6 +1090,7 @@ const orgRefs=[];  // {av,pupils,gloss,stage,hovered,mgrDot,deptId}
 const orgAgentDots={}; // agentId -> dot element
 const orgAgentRun={};  // agentId -> .ac-run element (laatst-gedraaid badge)
 const orgAgentDep={};  // agentId -> .ac-dep element (readiness badge)
+const orgAgentSum={};  // agentId -> .ac-sum element (resultaat laatste run)
 
 /* ---- gedeelde org-builders ---- */
 /* agent-ids met een sub-workflow (bron: view bridge_agent_index, kolom has_subworkflow).
@@ -1084,6 +1111,7 @@ function agentCardHTML(a,dn){
           <div class="ac-name" title="${esc(a.name)}${dn?' · '+esc(dn):''}">${nm}${a.paused?'<span class="ac-paused">PAUSED</span>':''}</div>
           ${(a.has_subworkflow||SUBWF.has(a.id))?'<div class="ac-sub" title="bevat een Execute-Sub-workflow-node">subworkflow</div>':''}
           <div class="ac-sched"><span class="schedtxt">${a.sched}</span><span class="ac24" data-24="${a.id}"></span></div>
+          <div class="ac-sum" data-sum="${a.id}"></div>
         </div>
         <div class="ac-run" data-run="${a.id}" title="laatst gedraaid"><span class="rk">·</span><span class="rt">—</span></div>
         ${a.wf?`<a class="ac-wf" href="${wfUrl(a.wf)}" target="_blank" rel="noopener" title="Open workflow in n8n" data-wf="${a.id}">${WF_ICON}</a>`:''}
@@ -1123,6 +1151,7 @@ function wireAgentCards(scope){
     orgAgentDots[id]=card.querySelector(".sd");
     orgAgentRun[id]=card.querySelector(".ac-run");
     orgAgentDep[id]=card.querySelector(".ac-dep");
+    orgAgentSum[id]=card.querySelector(".ac-sum");
     const wf=card.querySelector(".ac-wf");
     if(wf) wf.addEventListener("click",e=>e.stopPropagation());   // link opent n8n, niet de accordeon
     card.addEventListener("click",()=>toggleExec(id,unit));   // klik = laatste 10 executies uit/in klappen
@@ -1191,7 +1220,8 @@ function sortDepts(){
 }
 function fillRuns24(){ document.querySelectorAll("[data-24]").forEach(el=>{
     const id=el.getAttribute("data-24"), n=runs24[id]||0;
-    el.innerHTML = n>0 ? `<b>${n}</b>/24u` : `<b style="color:var(--dim)">0</b>/24u`; }); }
+    const onDemand = (id in EXPH) && (EXPH[id]===null || EXPH[id]===undefined);   // geen verwachting = webhook/mail/on approve
+    el.innerHTML = n>0 ? `<b>${n}</b>/24u` : (onDemand ? `<span class="ac-od" title="vraaggestuurd: draait als er invoer is">wacht op invoer</span>` : `<b style="color:var(--dim)">0</b>/24u`); }); }
 async function toggleExec(id,unit){
   const panel=unit.querySelector(".ac-exec"), card=unit.querySelector(".agent-card");
   if(panel.classList.contains("open")){ panel.classList.remove("open"); card.classList.remove("exp"); execOpen.delete(id); return; }
@@ -1223,6 +1253,7 @@ function buildOrgOnce(){
   for(const k in orgAgentDots)delete orgAgentDots[k];
   for(const k in orgAgentRun)delete orgAgentRun[k];
   for(const k in orgAgentDep)delete orgAgentDep[k];
+  for(const k in orgAgentSum)delete orgAgentSum[k];
   DEPTS.forEach((d,i)=>{
     const mgr=ORG_MGR[d.id]||{persona:"Bot",role:d.name+" Lead",skin:"#e8b48c",hair:"#3a2c25",style:"buzz",acc:"none",expr:"calm"};
     if(d.id==="mgmt"){
@@ -1247,7 +1278,6 @@ function buildOrgOnce(){
         <div class="lane-head">
           <div class="lane-ic">${d.icon}</div>
           <div><div class="lane-name" title="${esc(d.name)}">${d.name}</div><div class="lane-sub">${d.agents.length} agents</div></div>
-          <span class="lane-count" title="${esc(d.name)} · ${d.agents.length} agents">${d.agents.length}</span>
         </div>
         <div class="mgr-card">
           <span class="mgr-eyebrow">Manager</span>
@@ -1284,8 +1314,11 @@ function updateOrgStatus(){
     const r=rows[id]||{}, st=r.status||"idle", g=RUNGLYPH[st]||RUNGLYPH.idle, lr=r.last_run;
     el.className="ac-run "+g.cls;
     el.querySelector(".rk").textContent=g.ch;
-    el.querySelector(".rt").textContent=lr?fmtRun(lr):"—";
-    el.title=lr?("laatst gedraaid · "+ago(lr)):"nog niet gedraaid"; }
+    el.querySelector(".rt").textContent=lr?agoNL(lr):"—";
+    el.title=lr?("laatst gedraaid · "+fmtRunFull(lr)):"nog niet gedraaid"; }
+  for(const id in orgAgentSum){ const el=orgAgentSum[id]; if(!el)continue;
+    const s=(LASTSUM[id]||"").replace(/\s+/g," ").trim();
+    el.textContent=s; el.title=s?("laatste run: "+s):""; }
   for(const id in orgAgentDep){ const el=orgAgentDep[id]; if(!el)continue;
     const rk=rdyOf(id), rc=rk&&RDYC[rk];
     if(rc){ el.classList.add("on"); el.style.background=rc; el.style.boxShadow=`0 0 7px ${rc}`;
@@ -1318,6 +1351,22 @@ function setView(v){
   deferHeavy(()=>{ if(currentView==="radial"){ renderRadial(); } else { updateOrgStatus(); renderMetrics(); } });
 }
 $("viewToggle").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) setView(b.dataset.view); });
+/* kop-filter: VEROUDERD / ERRORS aanklikken laat alleen die kaarten oplichten en scrolt naar de eerste */
+function applyOrgFilter(){
+  const on=!!orgFilter; let first=null;
+  document.querySelectorAll(".agent-unit[data-unit]").forEach(u=>{
+    const id=u.getAttribute("data-unit"), hit=on && agentClass[id]===orgFilter;
+    u.classList.toggle("flt-dim", on && !hit);
+    if(hit && !first) first=u; });
+  [["mStale","stale"],["mErr","error"]].forEach(([el,k])=>{ const m=$(el)&&$(el).parentElement; if(m) m.classList.toggle("flt-on",orgFilter===k); });
+  if(on && first && currentView==="org") first.scrollIntoView({block:"center",inline:"center",behavior:"smooth"});
+}
+[["mStale","stale"],["mErr","error"]].forEach(([el,k])=>{ const m=$(el)&&$(el).parentElement; if(!m)return;
+  m.classList.add("clickable"); m.title="klik: alleen deze agents tonen (nogmaals = uit)";
+  m.addEventListener("click",()=>{ if(!sharedCounts||!(sharedCounts[k]>0)){ orgFilter=null; }
+    else orgFilter = orgFilter===k ? null : k;
+    if(orgFilter && currentView!=="org") setView("org");
+    applyOrgFilter(); }); });
 $("depsBtn").addEventListener("click",()=>{ showDeps=!showDeps;
   $("depsBtn").classList.toggle("active",showDeps);
   // Defer heavy SVG work off the interaction so the button paints immediately (fixes INP long-task warning)
@@ -1393,10 +1442,11 @@ async function loadRegistryLayout(sb){
    zodat een storing hier het organigram niet blank trekt. */
 async function loadSubworkflows(sb){
   try{
-    const {data,error}=await sb.from("bridge_agent_index").select("agent_id,has_subworkflow");
+    const {data,error}=await sb.from("bridge_agent_index").select("agent_id,has_subworkflow,expected_frequency_hours,last_summary");
     if(error){ console.warn("bridge_agent_index has_subworkflow:",error.message); return; }
     SUBWF.clear();
-    (data||[]).forEach(r=>{ if(r.has_subworkflow) SUBWF.add(r.agent_id); });
+    (data||[]).forEach(r=>{ if(r.has_subworkflow) SUBWF.add(r.agent_id);
+      EXPH[r.agent_id]=r.expected_frequency_hours; LASTSUM[r.agent_id]=r.last_summary||""; });
   }catch(e){ console.warn("has_subworkflow:",e.message||e); }
 }
 async function start(){
