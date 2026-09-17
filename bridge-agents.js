@@ -22,7 +22,8 @@
   "use strict";
 
   var VIEW = "bridge_agent_index";   // canonieke Supabase-view
-  var STALE_HOURS = 48;              // vangnet-drempel (uur)
+  var STALE_HOURS = 48;              // vangnet-drempel (uur) als de view geen expected_frequency_hours levert
+  var STALE_FACTOR = 1.5;            // vangnet = expected_frequency_hours * STALE_FACTOR (marge voor een gemiste slag)
 
   /* Kleuren voor summaryHTML - bewust hardcoded zodat het bestand
      op elke pagina identiek rendert, ongeacht de lokale CSS-vars. */
@@ -49,7 +50,10 @@
      3. last_status === "stale"        -> stale   (per-agent schema, backend)
      4. last_status === "running"      -> running (telt als ok in samenvatting)
      5. last_status === "idle" of geen last_run -> idle
-     6. last_run ouder dan STALE_HOURS -> stale   (vangnet)
+     6. vangnet op expected_frequency_hours (registry):
+        - NULL  -> vraaggestuurd (webhook/mail/on approve): nooit stale
+        - getal -> stale als last_run ouder is dan getal * STALE_FACTOR
+        - kolom ontbreekt (oude view) -> STALE_HOURS
      7. anders                          -> ok      */
   function classify(a){
     if(!a) return "idle";
@@ -58,7 +62,12 @@
     if(a.last_status === "stale") return "stale";
     if(a.last_status === "running") return "running";
     if(a.last_status === "idle" || !a.last_run) return "idle";
-    if(new Date(a.last_run).getTime() < Date.now() - STALE_HOURS*3600*1000) return "stale";
+    var exp = a.expected_frequency_hours;
+    var limitHours;
+    if(exp === undefined) limitHours = STALE_HOURS;            // oude view zonder kolom
+    else if(exp === null || !(Number(exp) > 0)) return "ok";  // vraaggestuurd: geen verwachting, geen vangnet
+    else limitHours = Number(exp) * STALE_FACTOR;
+    if(new Date(a.last_run).getTime() < Date.now() - limitHours*3600*1000) return "stale";
     return "ok";
   }
 
@@ -114,6 +123,7 @@
   window.BRIDGE_AGENTS = {
     VIEW: VIEW,
     STALE_HOURS: STALE_HOURS,
+    STALE_FACTOR: STALE_FACTOR,
     classify: classify,
     count: count,
     load: load,
