@@ -107,16 +107,22 @@
   .org-board{position:relative;display:flex;gap:18px;align-items:flex-start;min-width:min-content;padding:18px 0 8px}
   .org-board::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;
     background:linear-gradient(90deg,transparent,color-mix(in srgb,#ffd166 55%,transparent) 7%,color-mix(in srgb,#ffd166 55%,transparent) 93%,transparent)}
-  .org-lane{--a:var(--cyan);position:relative;flex:0 0 222px;display:flex;flex-direction:column;gap:13px}
+  .org-lane{--a:var(--cyan);position:relative;flex:0 0 var(--laneW,236px);width:var(--laneW,236px);max-width:var(--laneW,236px);min-width:0;
+    display:flex;flex-direction:column;gap:13px}
+  .org-lane>*{min-width:0}
   .org-lane::before{content:"";position:absolute;left:50%;top:-18px;width:2px;height:18px;transform:translateX(-50%);
     background:color-mix(in srgb,#ffd166 55%,transparent)}
-  .lane-head{display:flex;align-items:center;gap:10px;padding:2px 2px 9px;
+  .lane-head{display:flex;align-items:center;gap:10px;padding:2px 2px 9px;min-width:0;
     border-bottom:1px solid color-mix(in srgb,var(--a) 30%, transparent)}
   .lane-ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:15px;
     background:color-mix(in srgb,var(--a) 16%, var(--panelSolid));
     border:1px solid color-mix(in srgb,var(--a) 40%, transparent);
     box-shadow:0 0 16px color-mix(in srgb,var(--a) 22%, transparent)}
-  .lane-name{font-weight:700;font-size:16px;letter-spacing:1.4px;color:var(--a);line-height:1.1}
+  .lane-head>div:not(.lane-ic){min-width:0;flex:1 1 auto}
+  .lane-name{font-weight:700;font-size:15px;letter-spacing:1.2px;color:var(--a);line-height:1.1;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
+  .lane-ic{flex:0 0 30px}
+  .lane-count{flex:0 0 auto}
   .lane-sub{font-size:9.5px;color:var(--dim);letter-spacing:.5px}
   .lane-count{margin-left:auto;font-size:11px;color:var(--text);background:var(--panelSolid);
     border:1px solid var(--hair);border-radius:6px;padding:3px 7px;font-variant-numeric:tabular-nums}
@@ -128,7 +134,9 @@
   .mgr-eyebrow{position:absolute;top:-7px;left:12px;font-size:8.5px;letter-spacing:1.8px;text-transform:uppercase;
     color:var(--a);background:var(--bg);padding:1px 7px;border-radius:5px;
     border:1px solid color-mix(in srgb,var(--a) 35%, var(--hair))}
-  .mgr-name{font-weight:700;font-size:19px;margin-top:11px;display:flex;align-items:center;gap:7px}
+  .mgr-name{font-weight:700;font-size:19px;margin-top:11px;display:flex;align-items:center;gap:7px;max-width:100%}
+  .mgr-name>span:not(.sd){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mgr-card{min-width:0;max-width:100%}
   .mgr-name .sd{width:8px;height:8px;border-radius:50%}
   .mgr-role{font-size:13px;color:var(--dim);margin-top:1px}
 
@@ -148,7 +156,8 @@
     background:radial-gradient(120% 120% at 30% 25%, color-mix(in srgb,var(--a) 92%, #fff), color-mix(in srgb,var(--a) 66%,#0b0f17) 72%)}
   .mini-av .sd{position:absolute;left:-2px;top:-2px;width:9px;height:9px;border-radius:50%;border:2px solid var(--panelSolid)}
   .ac-meta{min-width:0;flex:1}
-  .ac-name{font-weight:600;font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ac-name{font-weight:600;font-size:12px;line-height:1.2;overflow:hidden;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;word-break:break-word}
   .ac-sched{display:flex;align-items:center;gap:5px;font-size:9.5px;color:var(--dim)}
   .ac-sched .schedtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .ac-sched .ac24{flex:0 0 auto;font-size:9px;letter-spacing:.2px}
@@ -202,7 +211,8 @@
     padding:8px 0 9px 10px;border-left:2px solid color-mix(in srgb,var(--a) 55%,transparent);
     border-radius:0 10px 10px 0;
     background:linear-gradient(90deg,color-mix(in srgb,var(--a) 8%,transparent),transparent 60%)}
-  .pl-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:0 2px 1px}
+  .pl-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:0 2px 1px;min-width:0}
+  .pipeline,.pl-body,.agent-unit,.ac-exec>.inner{min-width:0}
   .pl-badge{font:800 8px/1 system-ui;letter-spacing:.1em;color:#06131a;background:var(--a);
     border-radius:5px;padding:3px 5px}
   .pl-title{font:800 11px/1 system-ui;letter-spacing:.14em;color:var(--a)}
@@ -1059,16 +1069,18 @@ const orgAgentDep={};  // agentId -> .ac-dep element (readiness badge)
    Zelfde canonieke bron als bridge-agents.js; dit is een per-agent label, geen telling
    (BD-004 blijft: agentAANTALLEN alleen via bridge-agents.js). */
 const SUBWF=new Set();
-function agentCardHTML(a){
+function esc(v){ return String(v==null?"":v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+function agentCardHTML(a,dn){
+  dn = dn || a.deptName || "";
   const step=a.step, av = step ? `<span class="pl-num">${step}</span>` : initials(a.name);
   const nm = a.grp ? a.name.replace(/^MetaAds\s*/,"") : a.name;   // in de pijplijn tonen we alleen de functiewoord (Builder/Executer/Manager)
   return `
     <div class="agent-unit${a.grp?' pl-unit':''}" data-unit="${a.id}">
-      <div class="agent-card${a.paused?' paused':''}" data-agent="${a.id}">
+      <div class="agent-card${a.paused?' paused':''}" data-agent="${a.id}" title="${esc(a.name)}${dn?' · '+esc(dn):''}">
         <span class="ac-dep" data-dep="${a.id}" title="afhankelijkheden"></span>
         <div class="mini-av${step?' pl-av':''}">${av}<span class="sd"></span></div>
         <div class="ac-meta">
-          <div class="ac-name" title="${(a.name||"").replace(/"/g,"&quot;")}">${nm}${a.paused?'<span class="ac-paused">PAUSED</span>':''}</div>
+          <div class="ac-name" title="${esc(a.name)}${dn?' · '+esc(dn):''}">${nm}${a.paused?'<span class="ac-paused">PAUSED</span>':''}</div>
           ${(a.has_subworkflow||SUBWF.has(a.id))?'<div class="ac-sub" title="bevat een Execute-Sub-workflow-node">subworkflow</div>':''}
           <div class="ac-sched"><span class="schedtxt">${a.sched}</span><span class="ac24" data-24="${a.id}"></span></div>
         </div>
@@ -1087,8 +1099,8 @@ function agentCardsHTML(d){
       const g=a.grp, mem=[];
       while(i<ags.length && ags[i].grp===g){ mem.push(ags[i]); i++; }   // pak alle opeenvolgende leden van dezelfde groep
       const meta=GRP[g]||{label:g,flow:""};
-      html+=`<div class="pipeline" data-pl="${g}"><div class="pl-head"><span class="pl-badge">${mem.length}-STAP</span><span class="pl-title">${meta.label}</span><span class="pl-flow">${meta.flow}</span></div><div class="pl-body">${mem.map(agentCardHTML).join("")}</div></div>`;
-    } else { html+=agentCardHTML(a); i++; }
+      html+=`<div class="pipeline" data-pl="${g}"><div class="pl-head"><span class="pl-badge">${mem.length}-STAP</span><span class="pl-title">${meta.label}</span><span class="pl-flow">${meta.flow}</span></div><div class="pl-body">${mem.map(m=>agentCardHTML(m,d.name)).join("")}</div></div>`;
+    } else { html+=agentCardHTML(a,d.name); i++; }
   }
   return html;
 }
@@ -1101,7 +1113,7 @@ function managerVisualHTML(mgr,color,i){
         <div class="gloss"></div>
       </div>
     </div>
-    <div class="mgr-name"><span class="sd"></span>${mgr.persona}</div>`;
+    <div class="mgr-name" title="${esc(mgr.persona)} · ${esc(mgr.role||"")}"><span class="sd"></span><span>${mgr.persona}</span></div>`;
 }
 function wireAgentCards(scope){
   scope.querySelectorAll(".agent-unit").forEach(unit=>{
@@ -1233,8 +1245,8 @@ function buildOrgOnce(){
       lane.innerHTML=`
         <div class="lane-head">
           <div class="lane-ic">${d.icon}</div>
-          <div><div class="lane-name">${d.name}</div><div class="lane-sub">${d.agents.length} agents</div></div>
-          <span class="lane-count">${d.agents.length}</span>
+          <div><div class="lane-name" title="${esc(d.name)}">${d.name}</div><div class="lane-sub">${d.agents.length} agents</div></div>
+          <span class="lane-count" title="${esc(d.name)} · ${d.agents.length} agents">${d.agents.length}</span>
         </div>
         <div class="mgr-card">
           <span class="mgr-eyebrow">Manager</span>
