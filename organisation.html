@@ -156,8 +156,9 @@
     background:radial-gradient(120% 120% at 30% 25%, color-mix(in srgb,var(--a) 92%, #fff), color-mix(in srgb,var(--a) 66%,#0b0f17) 72%)}
   .mini-av .sd{position:absolute;left:-2px;top:-2px;width:9px;height:9px;border-radius:50%;border:2px solid var(--panelSolid)}
   .ac-meta{min-width:0;flex:1}
-  .ac-name{font-weight:600;font-size:12px;line-height:1.2;overflow:hidden;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;word-break:break-word}
+  .ac-name{font-weight:600;font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* lanebreedte wordt na de build gemeten op de langste workflownaam (fitLanes) */
+  .org-board{--laneW:236px}
   .ac-sched{display:flex;align-items:center;gap:5px;font-size:9.5px;color:var(--dim)}
   .ac-sched .schedtxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .ac-sched .ac24{flex:0 0 auto;font-size:9px;letter-spacing:.2px}
@@ -1258,6 +1259,22 @@ function buildOrgOnce(){
       wireManager(lane,d);
     }
   });
+  fitLanes();
+}
+/* Alle lanes even breed, gemeten op de langste workflow-/agentnaam: de basisbreedte (236px)
+   plus de grootste overloop van een .ac-name. Zo staat elke naam op één regel zonder ellipsis. */
+const LANE_BASE=236, LANE_MAX=520;
+let laneW=LANE_BASE;
+function fitLanes(){
+  const board=$("orgBoard"), view=$("view-org"); if(!board) return;
+  const wasHidden=view.style.display==="none";
+  if(wasHidden){ view.style.visibility="hidden"; view.style.display="block"; }   // onzichtbaar meten
+  board.style.setProperty("--laneW",LANE_BASE+"px");
+  let extra=0;
+  board.querySelectorAll(".org-lane .ac-name").forEach(el=>{ extra=Math.max(extra, el.scrollWidth-el.clientWidth); });
+  laneW=Math.min(LANE_MAX, LANE_BASE+Math.ceil(extra)+(extra>0?4:0));
+  board.style.setProperty("--laneW",laneW+"px");
+  if(wasHidden){ view.style.display="none"; view.style.visibility=""; }
 }
 function updateOrgStatus(){
   for(const id in orgAgentDots){ const st=statusOf(id), sc=STATUS[st].c, dot=orgAgentDots[id];
