@@ -585,6 +585,9 @@ const GRP = {
   morning:{label:"MORNING REPORT", flow:"CHECK \u2192 ROLL-CALL \u2192 SUPERVISOR"},
   news:   {label:"NIEUWS",         flow:"CURATIE \u2192 MAILING"}
 };
+/* BD-070: rolblokken (grp = <dept>-scouts|bible|builders|publishers|reviewers) */
+const ROLE_META={scouts:{label:"SCOUTS & HARVESTERS",flow:"ONDERZOEKEN \u2192 VERZAMELEN \u2192 THE BIBLE"},bible:{label:"THE BIBLE",flow:"KENNIS \u2192 WEGEN & FILTEREN \u2192 BUILDERS"},builders:{label:"BUILDERS",flow:"BOUWEN \u2192 PUBLISHERS"},publishers:{label:"PUBLISHERS",flow:"PUBLICEREN \u2192 REVIEWERS"},reviewers:{label:"REVIEWERS",flow:"EVALUEREN \u2192 THE BIBLE"}};
+function ROLE_GRP(g){ const m=String(g||"").match(/-(scouts|bible|builders|publishers|reviewers)$/); return m?{...ROLE_META[m[1]],role:m[1]}:null; }
 
 /* gedeelde state */
 const rows = {};
@@ -1114,8 +1117,8 @@ function agentCardsHTML(d){
     if(a.grp){
       const g=a.grp, mem=[];
       while(i<ags.length && ags[i].grp===g){ mem.push(ags[i]); i++; }   // pak alle opeenvolgende leden van dezelfde groep
-      const meta=GRP[g]||{label:g,flow:""};
-      html+=`<div class="pipeline" data-pl="${g}"><div class="pl-head"><span class="pl-badge">${mem.length}-STAP</span><span class="pl-title">${meta.label}</span><span class="pl-flow">${meta.flow}</span></div><div class="pl-body">${mem.map(agentCardHTML).join("")}</div></div>`;
+      const meta=GRP[g]||ROLE_GRP(g)||{label:g,flow:""};
+      html+=`<div class="pipeline" data-pl="${g}"><div class="pl-head"><span class="pl-badge">${meta.role?(mem.length+(mem.length===1?" AGENT":" AGENTS")):(mem.length+"-STAP")}</span><span class="pl-title">${meta.label}</span><span class="pl-flow">${meta.flow}</span></div><div class="pl-body">${mem.map(agentCardHTML).join("")}</div></div>`;
     } else { html+=agentCardHTML(a); i++; }
   }
   return html;
@@ -1193,7 +1196,9 @@ function sortDepts(){
     const keyOf=e=>{ if(e.loose)return actKey(e.loose); let br=0,bc=0;
       e.members.forEach(m=>{ const k=actKey(m); if(k[0]>br)br=k[0]; if(k[1]>bc)bc=k[1]; }); return [br,bc]; };
     const pausedRank=e=> e.loose ? (e.loose.paused?1:0) : (e.members.every(m=>m.paused)?1:0);   // gepauzeerd -> onderaan
-    const pinRank=e=> (e.loose && e.loose.cluster==='social-playbook') ? 0 : 1;   // Playbook-kolom altijd bovenaan de afdeling
+    const ROLE_RANK={scouts:0,bible:1,builders:2,publishers:3,reviewers:4};
+    const roleOf=a=>{ const c=String((a&&(a.grp||a.cluster))||""); const m=c.match(/-(scouts|bible|builders|publishers|reviewers)$/); return m?ROLE_RANK[m[1]]:(c==='social-playbook'?-1:9); };
+    const pinRank=e=> e.loose ? roleOf(e.loose) : Math.min(...e.members.map(roleOf));   // BD-070: vaste rolvolgorde Scouts -> Bible -> Builders -> Publishers -> Reviewers   // Playbook-kolom altijd bovenaan de afdeling
     order.sort((x,y)=>{ const pnx=pinRank(x),pny=pinRank(y); if(pnx!==pny)return pnx-pny;   // Playbook + CompetitorScan boven de swarm-rijen
       const px=pausedRank(x),py=pausedRank(y); if(px!==py)return px-py;   // actieve agents boven gepauzeerde
       const kx=keyOf(x),ky=keyOf(y); if(ky[0]!==kx[0])return ky[0]-kx[0];   // groep telt als 1 blok, gesorteerd op drukste lid
