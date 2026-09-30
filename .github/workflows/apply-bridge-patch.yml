@@ -1,0 +1,24 @@
+name: apply-bridge-patch-bd070
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'bridge-patch-bd070.mjs'
+      - '.github/workflows/apply-bridge-patch.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch organisation.html + constellation.html + agents.html
+        run: node bridge-patch-bd070.mjs
+      - name: Commit als Rick (anders blokkeert Vercel de deploy)
+        run: |
+          git config user.email "rick@gruposoltura.com"
+          git config user.name "gruposoltura"
+          git add organisation.html constellation.html agents.html
+          git rm bridge-patch-bd070.mjs .github/workflows/apply-bridge-patch.yml
+          git commit -m "BD-070: rolstructuur Scouts -> Bible -> Builders -> Publishers -> Reviewers (org + constellation)"
+          git push
