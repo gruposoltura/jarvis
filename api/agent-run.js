@@ -9,7 +9,7 @@
 // Vereiste Vercel environment variables (Project Settings -> Environment Variables):
 //   N8N_API_KEY        - n8n Cloud API key (Settings -> n8n API -> Create key)
 //   SUPABASE_URL       - https://wuvpbwowdycsdlrqkaoq.supabase.co
-//   SUPABASE_ANON_KEY  - dezelfde anon key als in index.html
+//   SUPABASE_PUBLISHABLE_KEY - optioneel; default de publishable key 'bridge-dashboard'
 //   N8N_API_URL        - optioneel; default https://gruposoltura.app.n8n.cloud/api/v1
 //
 // Endpoints:
@@ -18,17 +18,17 @@
 
 const N8N_API_URL = process.env.N8N_API_URL || "https://gruposoltura.app.n8n.cloud/api/v1";
 
-// Supabase URL + anon key zijn publieke waarden (staan ook client-side in
-// bridge-config.js). Fallback-volgorde: nieuwe env var -> oude VITE_-variant
-// (nog aanwezig uit het Vite-tijdperk) -> vaste waarde.
+// Supabase URL + publishable key zijn publieke waarden (staan ook client-side in
+// bridge-config.js). Sinds 2026-10-03 de nieuwe publishable key (sb_publishable_,
+// naam 'bridge-dashboard'); de legacy anon JWT en de oude env vars
+// SUPABASE_ANON_KEY / VITE_SUPABASE_ANON_KEY worden bewust niet meer gelezen.
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   process.env.VITE_SUPABASE_URL ||
   "https://wuvpbwowdycsdlrqkaoq.supabase.co";
 const SUPABASE_ANON_KEY =
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ";
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
+  "sb_publishable_4FzuR1v2uE0VAAH75XgHIQ_o2qEH6n3";
 
 async function verifySupabaseUser(req) {
   const auth = req.headers["authorization"] || "";

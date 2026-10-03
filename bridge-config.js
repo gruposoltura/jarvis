@@ -1,7 +1,8 @@
-// The Bridge - gedeelde configuratie voor agents.html en competitie.html
-// De SUPABASE_ANON_KEY staat al in index.html (de Bridge zelf) - kopieer
-// exact dezelfde waarde hierheen. Dit is de publishable/anon key, geen geheim.
+// The Bridge - gedeelde configuratie voor kpi, agents, competition, credentials en floor.
+// Supabase publishable key 'bridge-dashboard' (sinds 2026-10-03, vervangt de legacy anon JWT).
+// Publiek by design: RLS + RPC-gates zijn de echte bescherming. organisation.html,
+// constellation.html en bridge-credentials-screen.html hebben dezelfde key inline.
 window.BRIDGE_CONFIG = {
   SUPABASE_URL: "https://wuvpbwowdycsdlrqkaoq.supabase.co",
-  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ"
+  SUPABASE_ANON_KEY: "sb_publishable_4FzuR1v2uE0VAAH75XgHIQ_o2qEH6n3"
 };
