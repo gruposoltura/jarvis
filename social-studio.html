@@ -57,8 +57,19 @@
   .cap .t{font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .cap .d{font-size:11px;color:var(--dim);margin-top:2px}
 
-  .queue{border:1px solid rgba(255,181,71,.35);background:linear-gradient(180deg,rgba(255,181,71,.08),rgba(255,181,71,.02));
-    border-radius:14px;padding:12px 12px 2px;margin-bottom:26px}
+  .chan{border:1px solid color-mix(in srgb, var(--acc) 40%, var(--line));border-left:4px solid var(--acc);border-radius:14px;
+    background:linear-gradient(180deg,color-mix(in srgb, var(--acc) 9%, transparent),transparent 260px);padding:0 12px 4px;margin-bottom:22px}
+  .chan-head{display:flex;align-items:center;gap:10px;padding:10px 4px;margin-bottom:6px;
+    border-bottom:1px solid color-mix(in srgb, var(--acc) 30%, transparent)}
+  .chan-head .zt{font-size:12.5px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--acc)}
+  .chan-head .zs{font-size:11px;color:var(--muted)}
+  .chan-head .zk{margin-left:auto;font-size:11px;color:var(--dim);white-space:nowrap}
+  .chan-head .zk b{color:var(--text);font-weight:700}
+  .csub{display:flex;align-items:center;gap:8px;margin:8px 2px 6px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .csub .cd{width:7px;height:7px;border-radius:50%}
+  .pipe{border:1px dashed rgba(255,181,71,.35);background:rgba(255,181,71,.04);border-radius:12px;padding:6px 8px 0}
+  .pipe .card{width:132px}
+  .pipe .empty{padding:12px 4px}
 
   .outs{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media(max-width:900px){.outs{grid-template-columns:1fr}}
@@ -200,28 +211,34 @@
       (a.objective?"<div class='chip'>"+esc(a.objective)+"</div>":'')+
       "</div><div class='cap'><div class='t'>"+esc(a.headline||a.reference||'Advertentie')+"</div><div class='d'>"+esc(dateTxt(a.proposed_at))+"</div></div></div>";
   }
-  function row(label, color, items, fmt, html, extraCls){
-    return "<div class='row'><div class='rowhead'><span class='cd' style='background:"+color+";color:"+color+"'></span>"+
-      "<span class='lbl' style='color:"+color+"'>"+label+"</span><span class='n'>"+items+"</span><span class='fmt'>"+fmt+"</span></div>"+
-      "<div class='strip'>"+(html||"<div class='empty'>Nog niets in deze categorie.</div>")+"</div></div>";
-  }
-
   var html = '';
-  if(queued.length){
-    html += "<div class='queue'>"+row('In de pijplijn','var(--amber)',queued.length,'opt-out \u00b7 tegenhouden via Telegram',
-      queued.map(function(p){return card(p,{queue:true});}).join(''))+"</div>";
+  function chanPanel(key, title, sub, color, pipeHtml, pipeN, pipeLbl, postHtml, postN, postLbl){
+    return "<section class='chan' id='ch-"+key+"' style='--acc:"+color+"'><div class='chan-head'>"+
+      "<span class='zt'>"+title+"</span><span class='zs'>"+sub+"</span>"+
+      "<span class='zk'><b>"+pipeN+"</b> in de pijplijn \u00b7 <b>"+postN+"</b> "+postLbl+"</span></div>"+
+      "<div class='csub'><span class='cd' style='background:var(--amber)'></span>Pijplijn<span style='margin-left:auto;letter-spacing:0;text-transform:none'>"+pipeLbl+"</span></div>"+
+      "<div class='pipe'><div class='strip'>"+(pipeHtml||"<div class='empty'>Niets in de pijplijn.</div>")+"</div></div>"+
+      "<div class='csub'><span class='cd' style='background:"+color+"'></span>"+(key==='meta'?'Gelopen en lopend':'Gepost \u00b7 120 dagen')+"</div>"+
+      "<div class='strip'>"+(postHtml||"<div class='empty'>Nog niets in dit kanaal.</div>")+"</div></section>";
   }
-  var SLOTS = [
-    ['listing','Woning-stills','var(--listing)','feed \u00b7 bereik'],
-    ['lifestyle','Lifestyle, plaats &amp; educatie','var(--lifestyle)','feed \u00b7 bereik'],
-    ['reels','Reels','var(--reels)','9:16 \u00b7 plays'],
-    ['stories','Stories','var(--stories)','9:16 \u00b7 views']
+  var CHANNELS = [
+    ['stories','Stories','9:16 \u00b7 views','var(--stories)'],
+    ['reels','Reels','9:16 \u00b7 plays','var(--reels)'],
+    ['listing','Profiel-still woning','feed \u00b7 bereik','var(--listing)'],
+    ['lifestyle','Profiel-still lifestyle','plaats, lifestyle &amp; educatie \u00b7 bereik','var(--lifestyle)']
   ];
-  SLOTS.forEach(function(s){
-    var it = posted.filter(function(p){return p.slot===s[0];});
-    html += row(s[1], s[2], it.length, s[3], it.map(function(p){return card(p);}).join(''));
+  CHANNELS.forEach(function(c){
+    var q = queued.filter(function(p){return p.slot===c[0];});
+    var it = posted.filter(function(p){return p.slot===c[0];});
+    html += chanPanel(c[0], c[1], c[2], c[3],
+      q.map(function(p){return card(p,{queue:true});}).join(''), q.length, 'opt-out \u00b7 tegenhouden via Telegram',
+      it.map(function(p){return card(p);}).join(''), it.length, 'gepost');
   });
-  html += row('Meta-ads','var(--pink)',ads.length,'120 dagen \u00b7 goedkeuren alleen in de cockpit', ads.map(adCard).join(''));
+  var adQ = ads.filter(function(a){return a.status==='paused';});
+  var adP = ads.filter(function(a){return a.status!=='paused';});
+  html += chanPanel('meta','Meta-ads','advertenties \u00b7 120 dagen','var(--pink)',
+    adQ.map(adCard).join(''), adQ.length, 'gepauzeerd / wacht op akkoord \u00b7 goedkeuren alleen in de cockpit',
+    adP.map(adCard).join(''), adP.length, 'gelopen');
 
   // ---- mail: laatste per type + verzonden (gegroepeerd per type en dag, talen samen) ----
   var MT = { weekly_news:['\u{1F4F0}','Weekly News'], price_reduced:['\u{1F3F7}','Price Reduced'],
