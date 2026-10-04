@@ -112,22 +112,38 @@
   .mt th{color:var(--dim);font-weight:500;text-align:right;padding:5px 8px;border-bottom:1px solid var(--line);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
   .mt td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
   .mt th:first-child,.mt td:first-child{text-align:left}
-  .sched{margin-top:26px}
-  .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
-  @media(max-width:900px){.wk{grid-template-columns:repeat(2,minmax(0,1fr))}}
-  .wd{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;min-height:92px}
-  .wd.today{border-color:var(--cyan)}
-  .wd h4{margin:0 0 6px;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
-  .sm{border-left:3px solid var(--mail);background:var(--panel2);border-radius:7px;padding:5px 7px;margin-bottom:6px;font-size:11.5px;line-height:1.3}
-  .sm.tr{border-left-color:var(--lifestyle)}
-  .sm b{display:block;font-size:10.5px;color:var(--muted);font-weight:600}
-  .sm i{display:block;font-style:normal;font-size:10px;color:var(--dim)}
-  .slist{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
-  .slist .k{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-right:4px;min-width:110px}
-  .slist .sm{margin:0}
-  .legend{display:flex;gap:14px;font-size:11px;color:var(--dim);margin-left:auto}
-  .legend span::before{content:'';display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--mail)}
-  .legend span.tr::before{background:var(--lifestyle)}
+  /* ---- weekschema's (lanes x dagen, patroon DEWI social-studio) ---- */
+  .ws{margin-top:28px}
+  .ws-head{display:flex;align-items:center;gap:9px;margin:0 2px 4px}
+  .ws-head .cd{width:9px;height:9px;border-radius:50%}
+  .ws-head .lbl{font-size:13px;font-weight:700;color:var(--text)}
+  .ws-head .rt{margin-left:auto;font-size:11px;color:var(--dim)}
+  .ws-sub{font-size:11px;color:var(--dim);margin:0 2px 12px}
+  .ws-scroll{overflow-x:auto;padding-bottom:4px}
+  .ws-grid{display:grid;grid-template-columns:108px repeat(7,minmax(112px,1fr));gap:8px;align-items:stretch;min-width:940px}
+  .ws-dh{text-align:center;font-size:10.5px;font-weight:700;letter-spacing:.14em;color:var(--dim);padding:2px 0}
+  .ws-dh.today{color:var(--text)}
+  .ws-ln{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text)}
+  .ws-ln .cd{width:7px;height:7px;border-radius:50%;flex:none}
+  .ws-ln small{display:block;font-size:10px;font-weight:400;color:var(--dim)}
+  .ws-cell{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:6px;min-height:46px;
+    display:flex;flex-direction:column;gap:4px;justify-content:center}
+  .ws-cell.today{border-color:#3d7bff;box-shadow:inset 0 0 0 1px rgba(61,123,255,.35)}
+  .ws-cell.empty{background:transparent;border-style:dashed;align-items:center;color:var(--dim);font-size:13px}
+  .ws-pill{display:flex;align-items:center;gap:6px;border-radius:6px;padding:3px 7px;font-size:11px;font-weight:600;
+    color:#0b1220;background:var(--c);line-height:1.3}
+  .ws-pill .nm{min-width:0;white-space:normal;overflow-wrap:anywhere}
+  .ws-pill .tm{margin-left:auto;font-variant-numeric:tabular-nums;flex:none}
+  .ws-note{font-size:10px;color:var(--muted);text-align:center;background:rgba(255,255,255,.03);border-radius:5px;padding:2px 4px}
+  .ws-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--dim);margin:10px 2px 0}
+  .ws-legend span::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--c)}
+  .ws-k{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:16px 2px 8px}
+  .ws-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .ws-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);border-radius:999px;
+    padding:6px 13px;font-size:11.5px;color:var(--muted)}
+  .ws-chip b{color:var(--text);font-weight:700}
+  .ws-chip .cd{width:7px;height:7px;border-radius:50%;flex:none;background:var(--c)}
+  .ws-foot{font-size:11px;color:var(--dim);margin:10px 2px 0}
   @media(max-width:620px){.card{width:132px}}
 </style>
 </head>
@@ -177,10 +193,11 @@
     sb.from('bridge_studio_feed').select('*'),
     sb.from('bridge_studio_ads').select('*').order('proposed_at',{ascending:false}),
     sb.from('bridge_studio_mailings').select('*').order('sent_at',{ascending:false}),
-    sb.from('bridge_studio_mail_schedule').select('*')
+    sb.from('bridge_studio_mail_schedule').select('*'),
+    sb.from('bridge_studio_social_schedule').select('*')
   ]);
   if(res[0].error){ stage.innerHTML = "<div class='state'><h2>Kon Studio niet laden</h2>"+esc(res[0].error.message)+"</div>"; return; }
-  var feed = res[0].data||[], ads = res[1].data||[], mails = res[2].data||[], sched = res[3].data||[];
+  var feed = res[0].data||[], ads = res[1].data||[], mails = res[2].data||[], sched = res[3].data||[], ssched = (res[4]&&res[4].data)||[];
   var ITEMS = [];   // alles wat klikbaar is, op index
 
   var posted = feed.filter(function(x){return x.stage==='posted';}).sort(function(a,b){return new Date(b.posted_at)-new Date(a.posted_at);});
@@ -267,15 +284,56 @@
     "</div><div class='opanel'><h3><span class='cd' style='width:9px;height:9px;border-radius:50%;background:var(--mail)'></span>Verzonden mailings &middot; 180 dagen</h3>"+
     "<div style='max-height:430px;overflow-y:auto'>"+(order.map(function(k){return sendRow(sends[k]);}).join('') || "<div class='empty'>Geen data.</div>")+"</div></div></div>";
 
-  html += renderSchedule(sched);
-  stage.innerHTML = html;
-  stage.addEventListener('click', function(ev){
-    var el = ev.target.closest('[data-i]'); if(!el) return;
-    var it = ITEMS[+el.dataset.i]; if(!it) return;
-    if(it.type==='post') openPost(it.p, it.opt); else if(it.type==='ad') openAd(it.a); else openMail(it.s);
-  });
+  // ---- weekschema's: lanes x dagen (patroon DEWI social-studio, zie vault 'Werkwijze - weekschema in de Studio') ----
+  var DAYN = ['MA','DI','WO','DO','VR','ZA','ZO'];
+  var TODAY = (new Date().getDay()+6)%7;          // 0 = ma
+  function pill(color, name, time, title){
+    return "<div class='ws-pill' style='--c:"+color+"' title='"+esc(title||'')+"'><span class='nm'>"+esc(name)+"</span>"+
+      (time?"<span class='tm'>"+esc(time)+"</span>":'')+"</div>";
+  }
+  function weekGrid(lanes){       // lanes: [{key,name,sub,color,cells:[[html,...] x7]}]
+    var h = "<div class='ws-scroll'><div class='ws-grid'><div></div>"+
+      DAYN.map(function(d,i){ return "<div class='ws-dh"+(i===TODAY?' today':'')+"'>"+d+"</div>"; }).join('');
+    lanes.forEach(function(l){
+      h += "<div class='ws-ln'><span class='cd' style='background:"+l.color+"'></span><span>"+esc(l.name)+(l.sub?"<small>"+esc(l.sub)+"</small>":'')+"</span></div>";
+      l.cells.forEach(function(c,i){
+        h += c.length ? "<div class='ws-cell"+(i===TODAY?' today':'')+"'>"+c.join('')+"</div>"
+                      : "<div class='ws-cell empty"+(i===TODAY?' today':'')+"'>&middot;</div>";
+      });
+    });
+    return h+"</div></div>";
+  }
+  function wsHead(color, title, right, sub){
+    return "<div class='ws-head'><span class='cd' style='background:"+color+"'></span><span class='lbl'>"+title+"</span>"+
+      "<span class='rt'>"+right+"</span></div><div class='ws-sub'>"+sub+"</div>";
+  }
+  var empty7 = function(){ return [[],[],[],[],[],[],[]]; };
+  var byTime = function(a,b){ return String(a.time_hm||a.t||'').localeCompare(String(b.time_hm||b.t||'')); };
 
-  // ---- weekschema mailings (bron: agent-registry via bridge_studio_mail_schedule) ----
+  // social: bron content_calendar via bridge_studio_social_schedule
+  var VIDEO_STORY = {reel_teaser:1, office_clip:1};
+  var SC = {profiel:'#3d7bff', stories:'var(--lifestyle)', storyvid:'var(--amber)', reels:'var(--reels)'};
+  function renderSocialWeek(rows){
+    if(!rows.length) return '';
+    var lanes = [
+      {key:'profiel', name:'Profiel', color:SC.profiel, cells:empty7()},
+      {key:'stories', name:'Stories', color:SC.stories, cells:empty7()},
+      {key:'reels',   name:'Reels',   color:SC.reels,   cells:empty7()}
+    ];
+    var L = {}; lanes.forEach(function(l){ L[l.key]=l; });
+    rows.slice().sort(byTime).forEach(function(r){
+      var l = L[r.lane]; if(!l || !(r.dow_iso>=1 && r.dow_iso<=7)) return;
+      var col = r.lane==='stories' ? (VIDEO_STORY[r.pillar_hint]?SC.storyvid:SC.stories) : SC[r.lane];
+      l.cells[r.dow_iso-1].push(pill(col, r.label, r.time_hm, r.notes));
+    });
+    return "<section class='ws'>"+wsHead(SC.profiel,'Weekschema &middot; social','vaste cadans &middot; Europe/Madrid',
+        'Wat er automatisch op welke dag gepost wordt op FB + Instagram. Profiel strikt om en om reel/still (BD-063). Bron: content_calendar; wijzig het schema daar, niet hier.')+
+      weekGrid(lanes)+
+      "<div class='ws-legend'><span style='--c:"+SC.profiel+"'>Profiel (still / collage)</span><span style='--c:"+SC.stories+"'>Story (kaart)</span>"+
+      "<span style='--c:"+SC.storyvid+"'>Story (video)</span><span style='--c:"+SC.reels+"'>Reels</span></div></section>";
+  }
+
+  // mail: bron agent-registry via bridge_studio_mail_schedule
   function parseSched(txt){
     var t = String(txt||''), lo = t.toLowerCase();
     var times = (t.match(/\b\d{1,2}:\d{2}\b/g)||[]).map(function(x){return x.length===4?'0'+x:x;});
@@ -286,34 +344,45 @@
     if(days.length && times.length) return {kind:'weekly', days:days, times:times};
     return {kind:'event', times:times};
   }
-  function chip(r, time){
-    var tr = r.kind!=='campagne';
-    return "<div class='sm"+(tr?' tr':'')+"' title='"+esc(r.n8n_workflow_name||'')+" \u00b7 "+esc(r.schedule_human||'')+"'>"+
-      (time?"<b>"+esc(time)+"</b>":'')+esc(r.label)+(r.sent_typical?"<i>verzonden \u00b1"+esc(r.sent_typical)+"</i>":'')+(r.note?"<i>"+esc(r.note)+"</i>":'')+"</div>";
-  }
-  function renderSchedule(rows){
+  var MC = {campagne:'var(--mail)', transactioneel:'var(--lifestyle)'};
+  var MICON = {market_report:'\u{1F4C8}', price_reduced:'\u{1F3F7}', monthly_matches:'\u{1F3E0}', weekly_news:'\u{1F4F0}', new_listing:'\u2728'};
+  function renderMailWeek(rows){
     if(!rows.length) return '';
-    var NAMES = ['Ma','Di','Wo','Do','Vr','Za','Zo'], week = [[],[],[],[],[],[],[]], daily = [], event = [];
+    var lanes = [
+      {key:'campagne', name:'Campagne', sub:'Brevo, bulk', color:MC.campagne, cells:empty7()},
+      {key:'transactioneel', name:'Transactioneel', sub:'alleen bij aanleiding', color:MC.transactioneel, cells:empty7()}
+    ];
+    var daily = [], event = [];
     rows.forEach(function(r){
-      var p = parseSched(r.schedule_human);
-      if(p.kind==='weekly') p.days.forEach(function(d){ p.times.forEach(function(tm){ week[d].push({r:r,t:tm}); }); });
-      else if(p.kind==='daily') daily.push({r:r,t:p.times.join(' \u00b7 ')});
-      else event.push({r:r,t:''});
+      var p = parseSched(r.schedule_human), lane = r.kind==='campagne' ? lanes[0] : lanes[1];
+      var tip = (r.n8n_workflow_name||'')+' \u00b7 '+(r.schedule_human||'')+(r.note?' \u00b7 '+r.note:'');
+      if(p.kind==='weekly') p.days.forEach(function(d){ p.times.forEach(function(tm){
+        lane.cells[d].push({t:tm, h:pill(MC[r.kind]||MC.transactioneel, (MICON[r.mailing_type]?MICON[r.mailing_type]+' ':'')+r.label, tm, tip)+
+          (r.sent_typical?"<div class='ws-note'>verzonden \u00b1"+esc(r.sent_typical)+"</div>":'')});
+      }); });
+      else if(p.kind==='daily') daily.push({r:r, t:p.times.join(' \u00b7 '), tip:tip});
+      else event.push({r:r, tip:tip});
     });
-    var byT = function(a,b){ return a.t.localeCompare(b.t) || (a.r.kind<b.r.kind?-1:1); };
-    var today = (new Date().getDay()+6)%7;
-    var grid = week.map(function(list,d){ list.sort(byT);
-      return "<div class='wd"+(d===today?' today':'')+"'><h4>"+NAMES[d]+"</h4>"+(list.map(function(x){return chip(x.r,x.t);}).join('')||"<div class='odet'>&mdash;</div>")+"</div>"; }).join('');
-    daily.sort(byT);
-    var evLbl = function(r){ var s=String(r.schedule_human||''); return /approve/i.test(s)?'na akkoord':/webhook/i.test(s)?'formulier':'gebeurtenis'; };
-    return "<div class='row sched'><div class='rowhead'><span class='cd' style='background:var(--mail);color:var(--mail)'></span>"+
-      "<span class='lbl' style='color:var(--mail)'>Postschema mailings</span><span class='n'>"+rows.length+"</span>"+
-      "<span class='legend'><span>campagne (Brevo)</span><span class='tr'>transactioneel</span></span></div>"+
-      "<div class='wk'>"+grid+"</div>"+
-      (daily.length?"<div class='slist'><span class='k'>Dagelijks</span>"+daily.map(function(x){return chip(x.r,x.t);}).join('')+"</div>":'')+
-      (event.length?"<div class='slist'><span class='k'>Op gebeurtenis</span>"+event.map(function(x){return chip(x.r,evLbl(x.r));}).join('')+"</div>":'')+
-      "<div class='odet' style='margin-top:8px'>Tijd = start van de workflow (n8n-trigger, Europe/Madrid), bron agent-registry; bij campagnes ook de mediane verzendtijd uit Brevo (60 dagen). Transactionele mails gaan alleen uit als er iets te mailen is. Wijzig het schema in de registry, niet hier.</div></div>";
+    lanes.forEach(function(l){ l.cells = l.cells.map(function(c){ return c.sort(byTime).map(function(x){return x.h;}); }); });
+    var chipH = function(x, right){ return "<span class='ws-chip' style='--c:"+(MC[x.r.kind]||MC.transactioneel)+"' title='"+esc(x.tip)+"'><span class='cd'></span><b>"+
+      esc(x.r.label)+"</b>"+(right?' \u00b7 '+esc(right):'')+"</span>"; };
+    var evLbl = function(r){ var s=String(r.schedule_human||''); return /approve/i.test(s)?'na akkoord':/webhook/i.test(s)?'formulier / webhook':'gebeurtenis'; };
+    daily.sort(byTime);
+    return "<section class='ws'>"+wsHead('var(--amber)','Weekschema &middot; outbound mail','start workflow &middot; Europe/Madrid',
+        'Tijd = start van de n8n-trigger; bij campagnes ook de mediane verzendtijd uit Brevo (60 dagen). Bron: agent-registry; wijzig het schema daar, niet hier.')+
+      weekGrid(lanes)+
+      (daily.length?"<div class='ws-k'>Dagelijks &middot; mailt alleen als er iets te mailen is</div><div class='ws-chips'>"+daily.map(function(x){return chipH(x, x.t);}).join('')+"</div>":'')+
+      (event.length?"<div class='ws-k'>Event-gestuurd &middot; geen vaste dag</div><div class='ws-chips'>"+event.map(function(x){return chipH(x, evLbl(x.r));}).join('')+"</div>":'')+
+      "<div class='ws-legend'><span style='--c:"+MC.campagne+"'>Campagne (Brevo)</span><span style='--c:"+MC.transactioneel+"'>Transactioneel</span></div></section>";
   }
+
+  html += renderSocialWeek(ssched) + renderMailWeek(sched);
+  stage.innerHTML = html;
+  stage.addEventListener('click', function(ev){
+    var el = ev.target.closest('[data-i]'); if(!el) return;
+    var it = ITEMS[+el.dataset.i]; if(!it) return;
+    if(it.type==='post') openPost(it.p, it.opt); else if(it.type==='ad') openAd(it.a); else openMail(it.s);
+  });
 
   // ---- lightbox ----
   var lb = document.getElementById('lb'), lbInner = document.getElementById('lbInner');
