@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Bridge - Social Studio</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="bridge-config.js"></script>
+<script src="bridge-frame.js"></script>
+<style>
+  :root{
+    --bg:#070b12; --panel:#0d1420; --panel2:#111a29; --line:#1c2940;
+    --cyan:#00d4ff; --text:#dfe8f5; --muted:#7d8ca3; --dim:#5b6a80;
+    --green:#3ee08f; --red:#ff5f6b; --amber:#ffb547; --pink:#ff3f9a;
+    --listing:#e8231a; --lifestyle:#3fb6a8; --reels:#c96dd8; --stories:#ffb547; --mail:#3da5ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif}
+  a{color:var(--cyan);text-decoration:none}
+  header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line);
+    background:var(--panel);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+  header .brand{font-weight:900;letter-spacing:.28em;color:var(--cyan);font-size:15px}
+  header .sub{font-size:11px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+  header .count{margin-left:auto;font-size:12px;color:var(--muted);border:1px solid var(--line);
+    padding:5px 12px;border-radius:999px;white-space:nowrap}
+  .wrap{max-width:1500px;margin:0 auto;padding:16px 22px 60px}
+
+  .row{margin-bottom:24px}
+  .rowhead{display:flex;align-items:center;gap:9px;margin:0 2px 10px}
+  .rowhead .cd{width:9px;height:9px;border-radius:50%;box-shadow:0 0 8px currentColor}
+  .rowhead .lbl{font-size:11.5px;font-weight:800;letter-spacing:.2em;text-transform:uppercase}
+  .rowhead .n{font-size:12px;color:var(--dim)}
+  .rowhead .fmt{font-size:11px;color:var(--dim);margin-left:auto}
+  .strip{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x proximity}
+  .strip::-webkit-scrollbar{height:8px}
+  .strip::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+  .empty{color:var(--dim);font-size:12.5px;padding:22px 6px}
+
+  .card{flex:0 0 auto;width:158px;scroll-snap-align:start;cursor:zoom-in}
+  .card .frame{position:relative;background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .card .frame img{width:100%;display:block;object-fit:cover;background:#000;aspect-ratio:4/5}
+  .card.tall .frame img{aspect-ratio:9/16}
+  .noimg{display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:26px;aspect-ratio:4/5}
+  .card.tall .noimg{aspect-ratio:9/16}
+  .play{position:absolute;left:8px;bottom:8px;width:26px;height:26px;border-radius:50%;
+    background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
+  .chip{position:absolute;top:7px;right:7px;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;
+    background:rgba(0,0,0,.65);color:#fff;letter-spacing:.03em}
+  .chip.l{right:auto;left:7px}
+  .chip.amber{background:rgba(255,181,71,.92);color:#1a1204}
+  .chip.green{background:rgba(62,224,143,.92);color:#04140b}
+  .chip.pink{background:rgba(255,63,154,.92);color:#fff}
+  .chip.grey{background:rgba(125,140,163,.85);color:#06121c}
+  .vbadge{position:absolute;right:7px;bottom:8px;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;
+    background:rgba(0,0,0,.65);color:#fff}
+  .cap{padding:7px 2px 0}
+  .cap .t{font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .cap .d{font-size:11px;color:var(--dim);margin-top:2px}
+
+  .queue{border:1px solid rgba(255,181,71,.35);background:linear-gradient(180deg,rgba(255,181,71,.08),rgba(255,181,71,.02));
+    border-radius:14px;padding:12px 12px 2px;margin-bottom:26px}
+
+  .outs{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:900px){.outs{grid-template-columns:1fr}}
+  .opanel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+  .opanel h3{margin:0 0 6px;font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--muted);display:flex;align-items:center;gap:8px}
+  .orow{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .orow:last-child{border-bottom:none}
+  .orow.clk{cursor:zoom-in} .orow.clk:hover{background:var(--panel2)}
+  .oic{width:32px;height:32px;flex:none;border-radius:9px;background:var(--panel2);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:15px}
+  .om{min-width:0;flex:1}
+  .oname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .odet{font-size:11px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .oright{text-align:right;flex:none}
+  .owhen{font-size:12.5px;font-weight:600}
+  .odate{font-size:10.5px;color:var(--dim)}
+
+  .state{text-align:center;padding:70px 20px;color:var(--muted)}
+  .spinner{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--cyan);border-radius:50%;
+    animation:spin .8s linear infinite;margin:0 auto 14px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .lb{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;
+    z-index:80;cursor:zoom-out;padding:24px}
+  .lb.open{display:flex}
+  .lb-inner{max-width:min(92vw,480px);max-height:92vh;overflow-y:auto;display:flex;flex-direction:column;gap:10px;cursor:default}
+  .lb img,.lb video{max-width:100%;max-height:70vh;border-radius:12px;display:block;margin:0 auto;background:#000}
+  .lb-cap{color:#cfd8e3;font-size:13px;line-height:1.5;white-space:pre-wrap}
+  .lb-meta{color:var(--muted);font-size:12px}
+  .lb-links{display:flex;gap:8px;flex-wrap:wrap}
+  .lb-links a{font-size:12px;color:#bcd3ff;border:1px solid var(--line);padding:6px 11px;border-radius:999px}
+  .lb-links a:hover{border-color:var(--cyan)}
+  .lb-close{position:absolute;top:16px;right:20px;color:#fff;font-size:24px;cursor:pointer;width:40px;height:40px;
+    display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.1)}
+  .facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12.5px;color:#cfd8e3;
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 13px}
+  .facts .k{color:var(--dim)}
+  .mt{width:100%;border-collapse:collapse;font-size:12px}
+  .mt th{color:var(--dim);font-weight:500;text-align:right;padding:5px 8px;border-bottom:1px solid var(--line);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+  .mt td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+  .mt th:first-child,.mt td:first-child{text-align:left}
+  @media(max-width:620px){.card{width:132px}}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">THE&nbsp;BRIDGE</span>
+  <span class="sub">Social Studio &middot; naslagwerk</span>
+  <span class="count" id="count">&mdash;</span>
+</header>
+<div class="wrap"><div id="stage"><div class="state"><div class="spinner"></div>Laden&hellip;</div></div></div>
+<div class="lb" id="lb"><div class="lb-close" id="lbClose">&#10005;</div><div class="lb-inner" id="lbInner"></div></div>
+
+<script>
+(async function(){
+  var cfg = window.BRIDGE_CONFIG || {};
+  var stage = document.getElementById('stage'), countEl = document.getElementById('count');
+  if(!cfg.SUPABASE_ANON_KEY){ stage.innerHTML = "<div class='state' style='color:var(--red)'>bridge-config.js ontbreekt.</div>"; return; }
+  var sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+  var sess = (await sb.auth.getSession()).data.session;
+  if(!sess){ location.href = '/organisation.html'; return; }
+
+  var esc = function(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); };
+  var dateTxt = function(iso){ return iso ? new Date(iso).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) : ''; };
+  var whenTxt = function(iso){ if(!iso) return ''; var d=new Date(iso);
+    return d.toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'})+' '+d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); };
+  var relTxt = function(iso){ if(!iso) return 'nog niet'; var days=Math.floor((Date.now()-new Date(iso))/86400000);
+    if(days<=0) return 'vandaag'; if(days===1) return 'gisteren'; if(days<7) return days+' dgn geleden'; return dateTxt(iso); };
+  var fmtK = function(n){ n=Number(n)||0; return n>=1000 ? (n/1000).toFixed(n>=10000?0:1).replace('.',',')+'k' : String(n); };
+  var fmtN = function(n){ return n==null ? '-' : Number(n).toLocaleString('nl-NL'); };
+  var pct = function(a,b){ return b ? (100*a/b).toFixed(1).replace('.',',')+'%' : '-'; };
+  var human = function(s){ s=String(s||'').replace(/_/g,' '); return s.charAt(0).toUpperCase()+s.slice(1); };
+  function poster(p){
+    if(p.media_type!=='video') return p.media_url;
+    if(p.poster_url) return p.poster_url;
+    var u=p.media_url||''; return u.indexOf('/video/upload/')>=0 ? u.replace('/video/upload/','/video/upload/so_0,f_jpg,w_420/') : null;
+  }
+  function titleOf(p){
+    if(p.slot==='listing') return [p.reference,p.town].filter(Boolean).join(' \u00b7 ') || 'Woning';
+    var ref = (p.reference && p.reference!==p.theme && p.reference!==p.lane) ? ' \u00b7 '+p.reference : '';
+    if(p.slot==='stories') return human(p.lane||p.theme||'story') + ref;
+    return human(p.theme||p.post_type) + ref;
+  }
+  function views(p){ var m=p.metrics||{}; if(p.slot==='reels') return m.plays; if(p.slot==='stories') return m.views; return m.reach; }
+  var STATUS = { v2_qa_passed:'QA ok', reel_built:'gebouwd', story_qa_passed:'QA ok', story_video_ready:'video klaar' };
+
+  var res = await Promise.all([
+    sb.from('bridge_studio_feed').select('*'),
+    sb.from('bridge_studio_ads').select('*').order('proposed_at',{ascending:false}),
+    sb.from('bridge_studio_mailings').select('*').order('sent_at',{ascending:false})
+  ]);
+  if(res[0].error){ stage.innerHTML = "<div class='state'><h2>Kon Studio niet laden</h2>"+esc(res[0].error.message)+"</div>"; return; }
+  var feed = res[0].data||[], ads = res[1].data||[], mails = res[2].data||[];
+  var ITEMS = [];   // alles wat klikbaar is, op index
+
+  var posted = feed.filter(function(x){return x.stage==='posted';}).sort(function(a,b){return new Date(b.posted_at)-new Date(a.posted_at);});
+  var queued = feed.filter(function(x){return x.stage==='queued';}).sort(function(a,b){return new Date(a.publish_at||'2999')-new Date(b.publish_at||'2999');});
+  countEl.textContent = (queued.length? queued.length+' in de pijplijn \u00b7 ':'') + posted.length + ' posts \u00b7 120 dagen';
+
+  function card(p, opt){
+    var i = ITEMS.push({type:'post', p:p, opt:opt||{}})-1;
+    var tall = p.slot==='reels' || p.slot==='stories';
+    var src = poster(p), v = views(p);
+    var media = src ? "<img loading='lazy' src='"+esc(src)+"' alt='' onerror=\"this.outerHTML='<div class=noimg>\u{1F5BC}</div>'\">" : "<div class='noimg'>\u{1F5BC}</div>";
+    var ch = p.fb_post_id && p.ig_post_id ? 'FB\u00b7IG' : p.fb_post_id ? 'FB' : p.ig_post_id ? 'IG' : '';
+    var top = opt && opt.queue ? "<div class='chip l amber'>"+esc(STATUS[p.status]||p.status)+"</div>" : (ch?"<div class='chip'>"+ch+"</div>":'');
+    var sub = opt && opt.queue ? (p.publish_at ? whenTxt(p.publish_at) : 'slot volgt') : dateTxt(p.posted_at);
+    return "<div class='card"+(tall?' tall':'')+"' data-i='"+i+"'><div class='frame'>"+media+
+      (p.media_type==='video'?"<div class='play'>\u25B6</div>":'')+top+
+      (v!=null&&!opt?"<div class='vbadge'>\u{1F441} "+fmtK(v)+"</div>":'')+
+      "</div><div class='cap'><div class='t'>"+esc(titleOf(p))+"</div><div class='d'>"+esc(sub)+"</div></div></div>";
+  }
+  function adCard(a){
+    var i = ITEMS.push({type:'ad', a:a})-1;
+    var cls = {active:'green',paused:'amber',completed:'grey',skipped:'grey'}[a.status]||'grey';
+    var lbl = {active:'actief',paused:'gepauzeerd',completed:'afgerond',skipped:'afgewezen'}[a.status]||a.status;
+    var src = a.poster_url || a.media_url;
+    var media = src ? "<img loading='lazy' src='"+esc(src)+"' alt=''>" : "<div class='noimg'>\u{1F5BC}</div>";
+    return "<div class='card"+(a.media_type==='video'?' tall':'')+"' data-i='"+i+"'><div class='frame'>"+media+
+      (a.media_type==='video'?"<div class='play'>\u25B6</div>":'')+"<div class='chip l "+cls+"'>"+esc(lbl)+"</div>"+
+      (a.objective?"<div class='chip'>"+esc(a.objective)+"</div>":'')+
+      "</div><div class='cap'><div class='t'>"+esc(a.headline||a.reference||'Advertentie')+"</div><div class='d'>"+esc(dateTxt(a.proposed_at))+"</div></div></div>";
+  }
+  function row(label, color, items, fmt, html, extraCls){
+    return "<div class='row'><div class='rowhead'><span class='cd' style='background:"+color+";color:"+color+"'></span>"+
+      "<span class='lbl' style='color:"+color+"'>"+label+"</span><span class='n'>"+items+"</span><span class='fmt'>"+fmt+"</span></div>"+
+      "<div class='strip'>"+(html||"<div class='empty'>Nog niets in deze categorie.</div>")+"</div></div>";
+  }
+
+  var html = '';
+  if(queued.length){
+    html += "<div class='queue'>"+row('In de pijplijn','var(--amber)',queued.length,'opt-out \u00b7 tegenhouden via Telegram',
+      queued.map(function(p){return card(p,{queue:true});}).join(''))+"</div>";
+  }
+  var SLOTS = [
+    ['listing','Woning-stills','var(--listing)','feed \u00b7 bereik'],
+    ['lifestyle','Lifestyle, plaats &amp; educatie','var(--lifestyle)','feed \u00b7 bereik'],
+    ['reels','Reels','var(--reels)','9:16 \u00b7 plays'],
+    ['stories','Stories','var(--stories)','9:16 \u00b7 views']
+  ];
+  SLOTS.forEach(function(s){
+    var it = posted.filter(function(p){return p.slot===s[0];});
+    html += row(s[1], s[2], it.length, s[3], it.map(function(p){return card(p);}).join(''));
+  });
+  html += row('Meta-ads','var(--pink)',ads.length,'120 dagen \u00b7 goedkeuren alleen in de cockpit', ads.map(adCard).join(''));
+
+  // ---- mail: laatste per type + verzonden (gegroepeerd per type en dag, talen samen) ----
+  var MT = { weekly_news:['\u{1F4F0}','Weekly News'], price_reduced:['\u{1F3F7}','Price Reduced'],
+             monthly_matches:['\u{1F3E0}','Suspect Matches'], market_report:['\u{1F4C8}','Marktbericht'], new_listing:['\u2728','New Listing'] };
+  var sends = {}, order = [];
+  mails.forEach(function(m){
+    var k = (m.mailing_type||'overig')+'|'+String(m.sent_at||'').slice(0,10);
+    if(!sends[k]){ sends[k] = {type:m.mailing_type, sent_at:m.sent_at, rows:[]}; order.push(k); }
+    sends[k].rows.push(m);
+  });
+  var latest = {};
+  order.forEach(function(k){ var s=sends[k]; if(!latest[s.type]) latest[s.type]=s; });
+  function sendRow(s){
+    var i = ITEMS.push({type:'mail', s:s})-1;
+    var t = MT[s.type] || ['\u2709', human(s.type)];
+    var first = s.rows.find(function(r){return /^nl/i.test(r.lang||'');}) || s.rows[0];
+    var langs = s.rows.map(function(r){return (r.lang||'?').toUpperCase();}).filter(function(v,j,a){return a.indexOf(v)===j;}).join(' \u00b7 ');
+    var sent = s.rows.reduce(function(a,r){return a+(Number(r.sent)||0);},0);
+    return "<div class='orow clk' data-i='"+i+"'><div class='oic'>"+t[0]+"</div><div class='om'>"+
+      "<div class='oname'>"+esc(first.subject||first.name||t[1])+"</div><div class='odet'>"+esc(t[1]+' \u00b7 '+langs+' \u00b7 '+fmtN(sent)+' verzonden')+"</div></div>"+
+      "<div class='oright'><div class='owhen'>"+esc(relTxt(s.sent_at))+"</div><div class='odate'>"+esc(dateTxt(s.sent_at))+"</div></div></div>";
+  }
+  var typesKnown = Object.keys(MT).filter(function(k){return latest[k];}).concat(Object.keys(latest).filter(function(k){return !MT[k];}));
+  html += "<div class='outs'><div class='opanel'><h3><span class='cd' style='width:9px;height:9px;border-radius:50%;background:var(--mail)'></span>Laatste per mailing</h3>"+
+    (typesKnown.map(function(k){return sendRow(latest[k]);}).join('') || "<div class='empty'>Geen verzonden mailings.</div>")+
+    "</div><div class='opanel'><h3><span class='cd' style='width:9px;height:9px;border-radius:50%;background:var(--mail)'></span>Verzonden mailings &middot; 180 dagen</h3>"+
+    "<div style='max-height:430px;overflow-y:auto'>"+(order.map(function(k){return sendRow(sends[k]);}).join('') || "<div class='empty'>Geen data.</div>")+"</div></div></div>";
+
+  stage.innerHTML = html;
+  stage.addEventListener('click', function(ev){
+    var el = ev.target.closest('[data-i]'); if(!el) return;
+    var it = ITEMS[+el.dataset.i]; if(!it) return;
+    if(it.type==='post') openPost(it.p, it.opt); else if(it.type==='ad') openAd(it.a); else openMail(it.s);
+  });
+
+  // ---- lightbox ----
+  var lb = document.getElementById('lb'), lbInner = document.getElementById('lbInner');
+  function showLb(h){ lbInner.innerHTML = h; lb.classList.add('open'); }
+  function closeLb(){ lb.classList.remove('open'); lbInner.innerHTML=''; }
+  lb.onclick = closeLb; lbInner.onclick = function(e){ e.stopPropagation(); };
+  document.getElementById('lbClose').onclick = function(e){ e.stopPropagation(); closeLb(); };
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeLb(); });
+  function mediaHtml(type, url){
+    if(!url) return "<div class='lb-cap'>Geen media.</div>";
+    return type==='video' ? "<video src='"+esc(url)+"' controls autoplay playsinline></video>" : "<img src='"+esc(url)+"' alt=''>";
+  }
+  function openPost(p, opt){
+    var m = p.metrics||{}, keys = Object.keys(m).filter(function(k){return typeof m[k]==='number';});
+    var links = [];
+    if(p.fb_post_id) links.push("<a href='https://www.facebook.com/"+esc(p.fb_post_id)+"' target='_blank' rel='noopener'>Facebook \u2197</a>");
+    if(p.property_url) links.push("<a href='"+esc(p.property_url)+"' target='_blank' rel='noopener'>Woning \u2197</a>");
+    showLb(mediaHtml(p.media_type, p.media_url)+
+      "<div class='lb-meta'>"+esc(human(p.post_type))+(p.theme?' \u00b7 '+esc(human(p.theme)):'')+' \u00b7 '+
+        (opt&&opt.queue ? esc((STATUS[p.status]||p.status)+' \u00b7 '+(p.publish_at?whenTxt(p.publish_at):'slot volgt')) : esc(whenTxt(p.posted_at)))+"</div>"+
+      (keys.length ? "<div class='facts'>"+keys.map(function(k){return "<span class='k'>"+esc(human(k))+"</span><span>"+fmtN(m[k])+"</span>";}).join('')+"</div>" : '')+
+      "<div class='lb-cap' style='font-weight:600'>"+esc(titleOf(p))+"</div>"+
+      (p.caption?"<div class='lb-cap'>"+esc(p.caption)+"</div>":'')+
+      (links.length?"<div class='lb-links'>"+links.join('')+"</div>":''));
+  }
+  function openAd(a){
+    var budget = a.daily_budget_cents!=null ? '\u20AC '+(a.daily_budget_cents/100).toLocaleString('nl-NL')+' p/d'+(a.campaign_days?' \u00b7 '+a.campaign_days+' dagen':'') : '-';
+    showLb(mediaHtml(a.media_type, a.media_url)+
+      "<div class='facts'><span class='k'>Status</span><span>"+esc(a.status)+"</span>"+
+      "<span class='k'>Doel</span><span>"+esc(a.objective||'-')+"</span>"+
+      "<span class='k'>Budget</span><span>"+esc(budget)+"</span>"+
+      "<span class='k'>Voorgesteld</span><span>"+esc(whenTxt(a.proposed_at))+"</span>"+
+      (a.activated_at?"<span class='k'>Actief sinds</span><span>"+esc(whenTxt(a.activated_at))+"</span>":'')+"</div>"+
+      (a.headline?"<div class='lb-cap' style='font-weight:600'>"+esc(a.headline)+"</div>":'')+
+      (a.primary_text?"<div class='lb-cap'>"+esc(a.primary_text)+"</div>":'')+
+      (a.status==='paused'?"<div class='lb-meta'>Goedkeuren of afwijzen gebeurt in het proposals-paneel van de cockpit.</div>":''));
+  }
+  function openMail(s){
+    var t = MT[s.type] || ['\u2709', human(s.type)];
+    var rows = s.rows.slice().sort(function(a,b){return String(a.lang).localeCompare(String(b.lang));});
+    showLb("<div class='lb-cap' style='font-weight:600'>"+esc(t[1])+" \u00b7 "+esc(whenTxt(s.sent_at))+"</div>"+
+      rows.map(function(r){ return "<div class='facts'><span class='k'>"+esc((r.lang||'?').toUpperCase())+"</span><span><b>"+esc(r.subject||r.name||'')+"</b>"+
+        (r.preview_text?"<br><span style='color:var(--muted)'>"+esc(r.preview_text)+"</span>":'')+"</span></div>"; }).join('')+
+      "<table class='mt'><thead><tr><th>Taal</th><th>Verzonden</th><th>Open</th><th>Klik</th><th>Afmeld</th></tr></thead><tbody>"+
+      rows.map(function(r){ return "<tr><td>"+esc((r.lang||'?').toUpperCase())+"</td><td>"+fmtN(r.sent)+"</td><td>"+pct(r.opens_unique,r.delivered)+"</td><td>"+pct(r.clicks_unique,r.delivered)+"</td><td>"+fmtN(r.unsubscribed)+"</td></tr>"; }).join('')+
+      "</tbody></table><div class='lb-meta'>Brevo-campagne "+rows.map(function(r){return esc(r.campaign_id);}).join(' \u00b7 ')+"</div>");
+  }
+})();
+</script>
+</body>
+</html>
