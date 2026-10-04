@@ -289,7 +289,7 @@
   function chip(r, time){
     var tr = r.kind!=='campagne';
     return "<div class='sm"+(tr?' tr':'')+"' title='"+esc(r.n8n_workflow_name||'')+" \u00b7 "+esc(r.schedule_human||'')+"'>"+
-      (time?"<b>"+esc(time)+"</b>":'')+esc(r.label)+(r.note?"<i>"+esc(r.note)+"</i>":'')+"</div>";
+      (time?"<b>"+esc(time)+"</b>":'')+esc(r.label)+(r.sent_typical?"<i>verzonden \u00b1"+esc(r.sent_typical)+"</i>":'')+(r.note?"<i>"+esc(r.note)+"</i>":'')+"</div>";
   }
   function renderSchedule(rows){
     if(!rows.length) return '';
@@ -297,7 +297,7 @@
     rows.forEach(function(r){
       var p = parseSched(r.schedule_human);
       if(p.kind==='weekly') p.days.forEach(function(d){ p.times.forEach(function(tm){ week[d].push({r:r,t:tm}); }); });
-      else if(p.kind==='daily') (p.times.length?p.times:['']).forEach(function(tm){ daily.push({r:r,t:tm}); });
+      else if(p.kind==='daily') daily.push({r:r,t:p.times.join(' \u00b7 ')});
       else event.push({r:r,t:''});
     });
     var byT = function(a,b){ return a.t.localeCompare(b.t) || (a.r.kind<b.r.kind?-1:1); };
@@ -312,7 +312,7 @@
       "<div class='wk'>"+grid+"</div>"+
       (daily.length?"<div class='slist'><span class='k'>Dagelijks</span>"+daily.map(function(x){return chip(x.r,x.t);}).join('')+"</div>":'')+
       (event.length?"<div class='slist'><span class='k'>Op gebeurtenis</span>"+event.map(function(x){return chip(x.r,evLbl(x.r));}).join('')+"</div>":'')+
-      "<div class='odet' style='margin-top:8px'>Bron: agent-registry (schedule_human), tijden Europe/Madrid. Wijzig het schema in de registry, niet hier.</div></div>";
+      "<div class='odet' style='margin-top:8px'>Tijd = start van de workflow (n8n-trigger, Europe/Madrid), bron agent-registry; bij campagnes ook de mediane verzendtijd uit Brevo (60 dagen). Transactionele mails gaan alleen uit als er iets te mailen is. Wijzig het schema in de registry, niet hier.</div></div>";
   }
 
   // ---- lightbox ----
