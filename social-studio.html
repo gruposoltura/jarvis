@@ -219,8 +219,8 @@
   }
   function adCard(a){
     var i = ITEMS.push({type:'ad', a:a})-1;
-    var cls = {active:'green',paused:'amber',completed:'grey',skipped:'grey'}[a.status]||'grey';
-    var lbl = {active:'actief',paused:'gepauzeerd',completed:'afgerond',skipped:'afgewezen'}[a.status]||a.status;
+    var cls = {pending:'amber',active:'green',paused:'grey',completed:'grey',skipped:'grey'}[a.status]||'grey';
+    var lbl = {pending:'wacht op akkoord',active:'actief',paused:'gepauzeerd',completed:'afgerond',skipped:'afgewezen'}[a.status]||a.status;
     var src = a.poster_url || a.media_url;
     var media = src ? "<img loading='lazy' src='"+esc(src)+"' alt=''>" : "<div class='noimg'>\u{1F5BC}</div>";
     return "<div class='card"+(a.media_type==='video'?' tall':'')+"' data-i='"+i+"'><div class='frame'>"+media+
@@ -251,10 +251,11 @@
       q.map(function(p){return card(p,{queue:true});}).join(''), q.length, 'opt-out \u00b7 tegenhouden via Telegram',
       it.map(function(p){return card(p);}).join(''), it.length, 'gepost');
   });
-  var adQ = ads.filter(function(a){return a.status==='paused';});
-  var adP = ads.filter(function(a){return a.status!=='paused';});
+  // pijplijn = voorstel van de MetaAds-Builder (status pending, bij Meta PAUSED aangemaakt); 'paused' = gestopte campagne, hoort bij gelopen
+  var adQ = ads.filter(function(a){return a.status==='pending';});
+  var adP = ads.filter(function(a){return a.status!=='pending';});
   html += chanPanel('meta','Meta-ads','advertenties \u00b7 120 dagen','var(--pink)',
-    adQ.map(adCard).join(''), adQ.length, 'gepauzeerd / wacht op akkoord \u00b7 goedkeuren alleen in de cockpit',
+    adQ.map(adCard).join(''), adQ.length, 'voorstel staat PAUSED bij Meta \u00b7 gaat pas live na akkoord (mail of cockpit)',
     adP.map(adCard).join(''), adP.length, 'gelopen');
 
   // ---- mail: laatste per type + verzonden (gegroepeerd per type en dag, talen samen) ----
@@ -418,7 +419,7 @@
       (a.activated_at?"<span class='k'>Actief sinds</span><span>"+esc(whenTxt(a.activated_at))+"</span>":'')+"</div>"+
       (a.headline?"<div class='lb-cap' style='font-weight:600'>"+esc(a.headline)+"</div>":'')+
       (a.primary_text?"<div class='lb-cap'>"+esc(a.primary_text)+"</div>":'')+
-      (a.status==='paused'?"<div class='lb-meta'>Goedkeuren of afwijzen gebeurt in het proposals-paneel van de cockpit.</div>":''));
+      (a.status==='pending'?"<div class='lb-meta'>Voorstel van de MetaAds-Builder. Goedkeuren of annuleren via de mail of het proposals-paneel van de cockpit; bij goedkeuren pauzeert de Executer elke andere lopende campagne.</div>":''));
   }
   function openMail(s){
     var t = MT[s.type] || ['\u2709', human(s.type)];
