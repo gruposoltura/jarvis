@@ -1,8 +1,12 @@
 # JARVIS secret-scan config
-# De Supabase anon key is publiek by design (RLS + RPC-gates zijn de echte bescherming).
+# Supabase anon key en publishable keys zijn publiek by design (RLS + RPC-gates zijn de echte bescherming).
+# Alleen sb_publishable_ is vrijgesteld; sb_secret_ en service_role blijven gevonden worden.
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Supabase anon key (publiek by design, anon heeft nul privileges)"
-regexes = ['''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ''']
+description = "Supabase publiek by design: legacy anon JWT en sb_publishable_ keys"
+regexes = [
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1dnBid293ZHljc2RscnFrYW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTQ5MTYsImV4cCI6MjA5NjU3MDkxNn0.S5S0KcYHOrMjLl9ApRmvRKPOd_EjgJ5gYnzgqL-c8hQ''',
+  '''^sb_publishable_[A-Za-z0-9_-]+$''',
+]
