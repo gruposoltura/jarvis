@@ -134,6 +134,11 @@
     color:#0b1220;background:var(--c);line-height:1.3}
   .ws-pill .nm{min-width:0;white-space:normal;overflow-wrap:anywhere}
   .ws-pill .tm{margin-left:auto;font-variant-numeric:tabular-nums;flex:none}
+  .ws-pill .ic{flex:none;font-size:9px;line-height:1}
+  .ws-pill.pl{background:transparent;color:var(--c);border:1px dashed var(--c);flex-wrap:wrap;row-gap:1px}
+  .ws-pill.pl .ic{font-size:11px}
+  .ws-pill .to{flex-basis:100%;font-size:10px;font-weight:500;opacity:.9}
+  .ws-legend span.pl::before{background:transparent;border:1px dashed var(--c);box-sizing:border-box}
   .ws-note{font-size:10px;color:var(--muted);text-align:center;background:rgba(255,255,255,.03);border-radius:5px;padding:2px 4px}
   .ws-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:var(--dim);margin:10px 2px 0}
   .ws-legend span::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--c)}
@@ -314,6 +319,14 @@
   // social: bron content_calendar via bridge_studio_social_schedule
   var VIDEO_STORY = {reel_teaser:1, office_clip:1};
   var SC = {profiel:'#3d7bff', stories:'var(--lifestyle)', storyvid:'var(--amber)', reels:'var(--reels)'};
+  function livePill(color, name, time, title){
+    return "<div class='ws-pill lv' style='--c:"+color+"' title='"+esc(title||'')+"'><span class='ic'>\u25CF</span><span class='nm'>"+esc(name)+"</span>"+
+      (time?"<span class='tm'>"+esc(time)+"</span>":'')+"</div>";
+  }
+  function pipePill(color, name, time, to, title){
+    return "<div class='ws-pill pl' style='--c:"+color+"' title='"+esc(title||'')+"'><span class='ic'>\u2699</span><span class='nm'>"+esc(name)+"</span>"+
+      (time?"<span class='tm'>"+esc(time)+"</span>":'')+"<span class='to'>"+esc(to)+"</span></div>";
+  }
   function renderSocialWeek(rows){
     if(!rows.length) return '';
     var lanes = [
@@ -322,15 +335,42 @@
       {key:'reels',   name:'Reels',   color:SC.reels,   cells:empty7()}
     ];
     var L = {}; lanes.forEach(function(l){ L[l.key]=l; });
-    rows.slice().sort(byTime).forEach(function(r){
-      var l = L[r.lane]; if(!l || !(r.dow_iso>=1 && r.dow_iso<=7)) return;
-      var col = r.lane==='stories' ? (VIDEO_STORY[r.pillar_hint]?SC.storyvid:SC.stories) : SC[r.lane];
-      l.cells[r.dow_iso-1].push(pill(col, r.label, r.time_hm, r.notes));
+    var colOf = function(r){ return r.lane==='stories' ? (VIDEO_STORY[r.pillar_hint]?SC.storyvid:SC.stories) : SC[r.lane]; };
+    var dayT = function(d, t){ return DAYN[d-1].toLowerCase()+' '+t; };
+    var okDay = function(d){ return d>=1 && d<=7; };
+    var items = [];
+    // live = vaste publicatietijd op FB + Instagram
+    rows.forEach(function(r){
+      if(!L[r.lane] || !okDay(r.dow_iso)) return;
+      var tip = r.label+' gaat live '+dayT(r.dow_iso, r.time_hm)+' op FB + Instagram'+
+        (okDay(r.build_dow_iso) ? ' \u00b7 in de pijplijn sinds '+dayT(r.build_dow_iso, r.build_time_hm)+' ('+(r.build_by||'?')+')' : '')+
+        (r.notes ? ' \u00b7 '+r.notes : '');
+      items.push({lane:r.lane, d:r.dow_iso, t:r.time_hm, h:livePill(colOf(r), r.label, r.time_hm, tip)});
     });
-    return "<section class='ws'>"+wsHead(SC.profiel,'Weekschema &middot; social','vaste cadans &middot; Europe/Madrid',
-        'Wat er automatisch op welke dag gepost wordt op FB + Instagram. Profiel strikt om en om reel/still (BD-063). Bron: content_calendar; wijzig het schema daar, niet hier.')+
+    // pijplijn = moment dat de rij wordt aangemaakt (scout/builder); een bouwrun kan meerdere slots vullen
+    var runs = {}, rk = [];
+    rows.forEach(function(r){
+      if(!L[r.lane] || !okDay(r.dow_iso) || !okDay(r.build_dow_iso) || !r.build_time_hm) return;
+      var k = r.lane+'|'+r.build_dow_iso+'|'+r.build_time_hm+'|'+(r.build_by||'');
+      if(!runs[k]){ runs[k] = {lane:r.lane, d:r.build_dow_iso, t:r.build_time_hm, by:r.build_by||'?', note:r.build_note, color:colOf(r), labels:[], to:[]}; rk.push(k); }
+      if(runs[k].labels.indexOf(r.label)<0) runs[k].labels.push(r.label);
+      runs[k].to.push({d:r.dow_iso, t:r.time_hm});
+    });
+    rk.forEach(function(k){
+      var x = runs[k];
+      x.to.sort(function(a,b){ return ((a.d-x.d+7)%7)-((b.d-x.d+7)%7) || String(a.t).localeCompare(String(b.t)); });
+      var to = x.to.map(function(o){ return dayT(o.d, o.t); }).join(' \u00b7 ');
+      var tip = x.by+' zet '+x.labels.join(' + ')+' '+dayT(x.d, x.t)+' in de pijplijn (gebouwd, wacht op QA en slot) \u00b7 live: '+to+(x.note ? ' \u00b7 '+x.note : '');
+      items.push({lane:x.lane, d:x.d, t:x.t, h:pipePill(x.color, x.labels.join(' + '), x.t, '\u2192 live '+to, tip)});
+    });
+    items.sort(function(a,b){ return String(a.t).localeCompare(String(b.t)); });
+    items.forEach(function(it){ L[it.lane].cells[it.d-1].push(it.h); });
+    return "<section class='ws'>"+wsHead(SC.profiel,'Postschema &middot; social','vaste cadans &middot; Europe/Madrid',
+        'Gevulde pil \u25CF = het moment dat het live gaat op FB + Instagram. Gestippelde pil \u2699 = het moment dat het gebouwd wordt en in de pijplijn komt; de regel \u2192 live zegt wanneer dat stuk gepost wordt. Profiel strikt om en om reel/still (BD-063). Bron: content_calendar (live- en bouwmoment); wijzig het schema daar, niet hier.')+
       weekGrid(lanes)+
-      "<div class='ws-legend'><span style='--c:"+SC.profiel+"'>Profiel (still / collage)</span><span style='--c:"+SC.stories+"'>Story (kaart)</span>"+
+      "<div class='ws-legend'><span class='lv' style='--c:var(--text)'>gevuld = live op FB + Instagram</span>"+
+      "<span class='pl' style='--c:var(--text)'>gestippeld \u2699 = in de pijplijn (gebouwd, wacht op QA en slot)</span>"+
+      "<span style='--c:"+SC.profiel+"'>Profiel (still / collage)</span><span style='--c:"+SC.stories+"'>Story (kaart)</span>"+
       "<span style='--c:"+SC.storyvid+"'>Story (video)</span><span style='--c:"+SC.reels+"'>Reels</span></div></section>";
   }
 
