@@ -215,7 +215,7 @@
     var src = poster(p), v = views(p);
     var media = src ? "<img loading='lazy' src='"+esc(src)+"' alt='' onerror=\"this.outerHTML='<div class=noimg>\u{1F5BC}</div>'\">" : "<div class='noimg'>\u{1F5BC}</div>";
     var ch = p.fb_post_id && p.ig_post_id ? 'FB\u00b7IG' : p.fb_post_id ? 'FB' : p.ig_post_id ? 'IG' : '';
-    var top = opt && opt.queue ? "<div class='chip l amber'>"+esc(STATUS[p.status]||p.status)+"</div>" : (ch?"<div class='chip'>"+ch+"</div>":'');
+    var top = opt && opt.queue ? "<div class='chip l amber' title='"+esc(STATUS[p.status]||p.status)+"'>Ingepland</div>" : (ch?"<div class='chip'>"+ch+"</div>":'');
     var sub = opt && opt.queue ? (p.publish_at ? whenTxt(p.publish_at) : 'slot volgt') : dateTxt(p.posted_at);
     return "<div class='card"+(tall?' tall':'')+"' data-i='"+i+"'><div class='frame'>"+media+
       (p.media_type==='video'?"<div class='play'>\u25B6</div>":'')+top+
