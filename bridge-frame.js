@@ -144,3 +144,6 @@
 
   global.BRIDGE_FRAME = { mode: MODE, cockpitUrl: COCKPIT, inFrame: inFrame, isCockpit: isCockpit };
 })(window);
+
+/* Favicon: rode Bridge-tegel in het browsertabblad (favicon.svg). Idempotent. */
+(function(){try{var d=document;if(d.querySelector('link[rel~="icon"]'))return;var l=d.createElement("link");l.rel="icon";l.type="image/svg+xml";l.href="/favicon.svg?v=1";(d.head||d.documentElement).appendChild(l);}catch(e){}})();
