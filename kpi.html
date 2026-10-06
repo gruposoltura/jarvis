@@ -23,7 +23,7 @@
     display:flex;flex-direction:column;overflow:hidden}
   a{color:var(--cyan);text-decoration:none}
 
-  /* ---- cockpit-balk: alleen hier worden panelen aan/uit gezet ---- */
+  /* ---- cockpit-balk: alleen merk + stempel; navigatie zit in de drawer (hamburger linksonder) ---- */
   #top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
     padding:9px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex:none}
   #top .brand{font-weight:900;letter-spacing:.28em;color:var(--cyan);font-size:14px;
@@ -32,19 +32,12 @@
     box-shadow:0 0 8px var(--green);animation:pulse 1.6s ease-in-out infinite}
   #top .brand .byrick{color:var(--yellow);font-size:10px;letter-spacing:.08em;font-weight:800}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
-  #top .grp{display:flex;gap:6px;align-items:center}
-  #top .lbl{color:var(--muted);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
-  #top button{background:none;border:1px solid var(--line);color:var(--muted);
-    border-radius:6px;padding:4px 11px;cursor:pointer;font:inherit;font-size:12px;
-    letter-spacing:.05em}
-  #top button:hover{color:var(--text)}
-  #top button.on{border-color:var(--cyan);color:var(--cyan)}
   #top #stamp{margin-left:auto;color:var(--muted);font-size:12px;
     font-family:ui-monospace,Consolas,monospace}
 
   /* ---- werkvlak: KPI links (vast), panelen rechts ---- */
   #work{flex:1;display:flex;min-height:0}
-  #kpiScroll{flex:1 1 0;min-width:380px;overflow-y:auto;padding:16px}
+  #kpiScroll{flex:1 1 0;min-width:380px;overflow-y:auto;padding:16px 16px 70px}
   .sidepane{position:relative;min-width:280px;display:flex}
   .sidepane iframe{flex:1;width:100%;border:none;background:var(--bg)}
   .divider{width:6px;cursor:col-resize;background:var(--line);flex:none;transition:background .15s}
@@ -175,16 +168,76 @@
   .zone.folded .zone-body{display:none}
   .zone .card{background:#0b1119;box-shadow:0 2px 10px rgba(0,0,0,.35)}
   .zone .zone-body > .card:last-child{margin-bottom:0}
-  #top .zgrp{display:flex;gap:6px;align-items:center}
-  #top .zgrp a{border:1px solid var(--line);border-radius:6px;padding:4px 11px;
-    font-size:12px;font-weight:700;letter-spacing:.05em;text-decoration:none}
-  #top .zgrp a.zstats{border-color:var(--z-stats);color:var(--z-stats);background:rgba(0,200,255,.10)}
-  #top .zgrp a.zads{border-color:var(--z-ads);color:var(--z-ads);background:rgba(255,63,154,.10)}
-  #top .zgrp a.zjarvis{border-color:var(--z-jarvis);color:var(--z-jarvis);background:rgba(163,123,255,.10)}
 
-  /* mobiel: alleen KPI, paneelknoppen verbergen (naast elkaar is zinloos op telefoon) */
+  /* ---- navigatie-drawer (patroon DEWI/HDB, BD-006): hamburger linksonder schuift
+     het menu van links naar rechts open, over de cockpit heen. Zo blijft het hele
+     scherm voor de cijfers; panelen en zones openen vanuit hier. ---- */
+  #navBtn{position:fixed;left:14px;bottom:14px;z-index:130;width:42px;height:42px;
+    border-radius:50%;border:1px solid var(--cyan);background:rgba(13,20,32,.94);
+    color:var(--cyan);cursor:pointer;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 16px -5px var(--cyan),0 4px 14px rgba(0,0,0,.55);padding:0}
+  #navBtn.hidden{display:none}
+  #navBtn:hover{background:#12304a}
+  #navBtn:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+  #navBtn svg{width:20px;height:20px;display:block}
+  #navBtn .x{display:none}
+  body.nav-open #navBtn .bars{display:none}
+  body.nav-open #navBtn .x{display:block}
+  #navBtn .cnt{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;padding:0 4px;
+    border-radius:9px;background:var(--cyan);color:#06121c;font-size:10px;font-weight:800;
+    display:none;align-items:center;justify-content:center;line-height:1}
+  #navBtn .cnt.on{display:flex}
+  #navShade{position:fixed;inset:0;z-index:110;background:rgba(2,5,10,.55);
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  body.nav-open #navShade{opacity:1;pointer-events:auto}
+  #nav{position:fixed;top:0;left:0;bottom:0;z-index:120;width:252px;max-width:86vw;
+    background:#060b13;border-right:1px solid var(--line);
+    box-shadow:14px 0 40px -18px rgba(0,0,0,.95);
+    transform:translateX(-104%);transition:transform .22s ease;
+    display:flex;flex-direction:column;visibility:hidden}
+  body.nav-open #nav{transform:none;visibility:visible}
+  @media (prefers-reduced-motion:reduce){ #nav,#navShade{transition:none} }
+  #nav .nhead{display:flex;align-items:center;gap:8px;padding:14px 16px 10px;
+    font-weight:900;letter-spacing:.28em;color:var(--cyan);font-size:13px}
+  #nav .nhead .live{width:8px;height:8px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 8px var(--green);animation:pulse 1.6s ease-in-out infinite}
+  #nav .nhead .byrick{color:var(--yellow);font-size:10px;letter-spacing:.08em;font-weight:800}
+  #nav .nfind{display:flex;align-items:center;gap:6px;margin:0 12px 6px;padding:5px 8px;
+    border:1px solid var(--line);border-radius:8px;background:#0b1119}
+  #nav .nfind:focus-within{border-color:var(--cyan)}
+  #nav .nfind input{flex:1;min-width:0;background:none;border:none;outline:none;
+    color:var(--text);font:inherit;font-size:12.5px}
+  #nav .nfind kbd{font:10px ui-monospace,Consolas,monospace;color:var(--muted);
+    border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  #nav .nlist{flex:1;overflow-y:auto;padding:2px 0 8px}
+  #nav .ns{padding:11px 18px 4px;font-size:10.5px;font-weight:700;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted)}
+  #nav .ni{display:flex;align-items:center;gap:10px;margin:1px 8px;padding:6px 8px;
+    border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;user-select:none}
+  #nav .ni:hover,#nav .ni.kbd{background:rgba(255,255,255,.055)}
+  #nav .ni.cur{background:rgba(0,212,255,.11);color:var(--cyan)}
+  #nav .ni:focus-visible{outline:1px solid var(--cyan)}
+  #nav .ni .ic{width:22px;height:22px;border-radius:6px;flex:none;display:flex;align-items:center;
+    justify-content:center;font-size:11px;font-weight:900;color:var(--ic);
+    background:color-mix(in srgb, var(--ic) 15%, transparent);
+    border:1px solid color-mix(in srgb, var(--ic) 55%, transparent)}
+  #nav .ni.on .ic{background:var(--ic);color:#06121c;box-shadow:0 0 10px -2px var(--ic)}
+  #nav .ni .sp{flex:1}
+  #nav .ni .st{font-size:10px;font-weight:700;color:var(--green);letter-spacing:.06em}
+  #nav .ni .ext{color:var(--muted);font-size:13px;padding:0 3px;border-radius:4px;opacity:0}
+  #nav .ni:hover .ext{opacity:1}
+  #nav .ni .ext:hover{color:var(--cyan);background:rgba(0,212,255,.12)}
+  #nav .nfoot{border-top:1px solid var(--line);padding:9px 12px 66px;display:flex;
+    flex-direction:column;gap:6px}
+  #nav .nfoot button{background:none;border:1px solid var(--line);color:var(--muted);
+    border-radius:6px;padding:5px 9px;cursor:pointer;font:inherit;font-size:11.5px;text-align:left}
+  #nav .nfoot button:hover{color:var(--text);border-color:var(--muted)}
+  #nav .nfoot button:disabled{opacity:.4;cursor:default}
+  #nav .nfoot .hint{font-size:10.5px;color:var(--muted)}
+
+  /* mobiel: alleen KPI; panelen openen vanuit de drawer als eigen pagina (naast elkaar is zinloos op telefoon) */
   @media (max-width:820px){
-    #top .grp,#top .zgrp{display:none}
+    #nav .ni .ext{display:none}
     .zone{padding:0 8px 10px;border-left-width:4px}
     .zone-head{margin:0 -8px 10px;padding:9px 10px}
     .zone-head .zkpi{gap:12px;width:100%;margin-left:0;order:5}
@@ -205,13 +258,26 @@
 
 <div id="top" class="hidden">
   <span class="brand"><span class="live"></span>THE BRIDGE<span class="byrick">by Rick</span></span>
-  <span class="grp"><span class="lbl">Panels</span></span>
-  <span class="zgrp"><span class="lbl">Ga naar</span>
-    <a class="zstats"  href="#z-stats">STATS</a>
-    <a class="zads"    href="#z-ads">ADS</a>
-    <a class="zjarvis" href="#z-jarvis">JARVIS</a></span>
   <span id="stamp"></span>
 </div>
+
+<!-- navigatie: hamburger linksonder + drawer (gevuld door NAV in het script) -->
+<div id="navShade"></div>
+<nav id="nav" aria-label="Navigatie The Bridge" aria-hidden="true">
+  <div class="nhead"><span class="live"></span>THE BRIDGE<span class="byrick">by Rick</span></div>
+  <label class="nfind"><input id="navFind" type="text" placeholder="Zoeken" autocomplete="off"
+    spellcheck="false"><kbd>Ctrl K</kbd></label>
+  <div class="nlist" id="navList"></div>
+  <div class="nfoot">
+    <button type="button" id="navCloseAll">Alle panelen sluiten</button>
+    <span class="hint">Klik = paneel naast de cockpit &middot; &#8599; = volledig scherm</span>
+  </div>
+</nav>
+<button id="navBtn" class="hidden" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav">
+  <svg class="bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  <svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  <span class="cnt" id="navCnt"></span>
+</button>
 
 <div id="work" class="hidden">
   <div id="kpiScroll">
@@ -372,15 +438,18 @@
               yellow:'#ffd400', orange:'#e67e22', muted:'#7d8ca3', grid:'#1c2940',
               trans:'#b18cff' };
 
-  /* ================= secundaire panelen (volgorde = knopvolgorde) ================= */
+  /* ================= secundaire panelen (volgorde = volgorde van de panelen rechts) ================= */
   var PANELS = [
     { id:'org',           label:'ORGANISATION',  url:'/organisation.html', title:'ORGANISATION',  clickView:'organigram' },
     { id:'agents',        label:'AGENTS',        url:'/agents.html',      title:'AGENTS' },
     { id:'creds',         label:'CREDENTIALS',   url:'/credentials.html', title:'CREDENTIALS' },
     { id:'constellation', label:'CONSTELLATION', url:'/constellation.html', title:'CONSTELLATION', clickView:'constellation' },
     { id:'comp',          label:'COMPETITION',   url:'/competition.html',  title:'COMPETITION' },
-    { id:'studio',        label:'STUDIO',        url:'/social-studio.html', title:'SOCIAL STUDIO' }
+    { id:'studio',        label:'STUDIO',        url:'/social-studio.html', title:'SOCIAL STUDIO' },
+    { id:'floor',         label:'FLOOR',         url:'/floor.html',         title:'FLOOR' }
   ];
+  var PANEL_BY_ID = {};
+  PANELS.forEach(function(p){ PANEL_BY_ID[p.id] = p; });
   var state = { open:{}, widths:{} };   // widths in % van het werkvlak
   try{
     var s = JSON.parse(localStorage.getItem('bridge_kpi_panels')||'{}');
@@ -390,22 +459,146 @@
     try{ localStorage.setItem('bridge_kpi_panels', JSON.stringify(state)); }catch(e){}
   }
 
-  var work = $('work'), grp = document.querySelector('#top .grp');
-  var btns = {};
+  var work = $('work');
 
-  PANELS.forEach(function(p){
-    var b = document.createElement('button');
-    b.textContent = p.label;
-    b.addEventListener('click', function(){ togglePanel(p.id); });
-    grp.appendChild(b);
-    btns[p.id] = b;
+  /* ================= navigatie-drawer ================= */
+  // Indeling naar het DEWI-patroon (BD-006), met Soltura-inhoud. zone = scroll in
+  // de cockpit; panel = id uit PANELS (paneel rechts naast de cockpit aan/uit).
+  var NAV = [
+    { sec:'Cockpit', items:[
+      { label:'KPI-cockpit',       icon:'K', color:'#00d4ff', zone:'top', cur:true },
+      { label:'Stats & Marketing', icon:'\u25CF', color:'#00c8ff', zone:'z-stats' },
+      { label:'Advertising',       icon:'A', color:'#ff3f9a', zone:'z-ads' },
+      { label:'JARVIS',            icon:'J', color:'#a37bff', zone:'z-jarvis' } ]},
+    { sec:'Afdelingen', items:[
+      { label:'Floor (3D)',        icon:'F', color:'#ff9f43', panel:'floor' } ]},
+    { sec:'Studio\u2019s', items:[
+      { label:'Social Studio',     icon:'S', color:'#e8231a', panel:'studio' } ]},
+    { sec:'Markt', items:[
+      { label:'Concurrentie',      icon:'C', color:'#ffd400', panel:'comp' } ]},
+    { sec:'Systeem', items:[
+      { label:'Organisatie',       icon:'O', color:'#4fd1a1', panel:'org' },
+      { label:'Agents',            icon:'A', color:'#3da5ff', panel:'agents' },
+      { label:'Constellation',     icon:'\u2726', color:'#b18cff', panel:'constellation' },
+      { label:'Credentials',       icon:'Cr', color:'#7d8ca3', panel:'creds' } ]}
+  ];
+  var navItems = [];   // {el, item, sec}
+  var isNarrow = function(){ return window.matchMedia('(max-width:820px)').matches; };
+
+  function buildNav(){
+    var list = $('navList'); list.innerHTML = '';
+    NAV.forEach(function(g){
+      var h = document.createElement('div'); h.className = 'ns'; h.textContent = g.sec;
+      list.appendChild(h);
+      g.items.forEach(function(it){
+        if(it.panel && !PANEL_BY_ID[it.panel]) return;
+        var a = document.createElement('div');
+        a.className = 'ni' + (it.cur ? ' cur' : '');
+        a.tabIndex = 0; a.setAttribute('role', 'button');
+        a.style.setProperty('--ic', it.color);
+        a.innerHTML = '<span class="ic">' + it.icon + '</span><span class="nl"></span><span class="sp"></span>'
+          + (it.panel ? '<span class="st"></span><span class="ext" title="Volledig scherm">\u2197</span>' : '');
+        a.querySelector('.nl').textContent = it.label;
+        a.addEventListener('click', function(ev){
+          if(ev.target.classList.contains('ext')){ location.href = PANEL_BY_ID[it.panel].url; return; }
+          activate(it);
+        });
+        a.addEventListener('keydown', function(ev){
+          if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); activate(it); }
+        });
+        list.appendChild(a);
+        navItems.push({ el:a, item:it, sec:h });
+      });
+    });
+  }
+
+  function activate(it){
+    if(it.panel){
+      // telefoon: geen panelen naast elkaar, dus de pagina zelf openen
+      if(isNarrow()){ location.href = PANEL_BY_ID[it.panel].url; return; }
+      togglePanel(it.panel);
+    } else if(it.zone){
+      var sc = $('kpiScroll');
+      if(it.zone === 'top'){ sc.scrollTo({ top:0, behavior:'smooth' }); }
+      else {
+        var z = $(it.zone);
+        if(z){
+          // ingeklapte zone eerst openklappen, anders spring je naar een lege kop
+          if(z.classList.contains('folded')){ var fb = z.querySelector('.fold'); if(fb) fb.click(); }
+          sc.scrollTo({ top: z.offsetTop - sc.offsetTop, behavior:'smooth' });
+        }
+      }
+    }
+    closeNav();
+  }
+
+  function updateNav(){
+    var n = 0;
+    navItems.forEach(function(x){
+      if(!x.item.panel) return;
+      var on = !!state.open[x.item.panel];
+      if(on) n++;
+      x.el.classList.toggle('on', on);
+      x.el.querySelector('.st').textContent = on ? 'OPEN' : '';
+    });
+    var c = $('navCnt'); c.textContent = n; c.classList.toggle('on', n > 0);
+    $('navCloseAll').disabled = n === 0;
+  }
+
+  function filterNav(q){
+    q = (q || '').trim().toLowerCase();
+    var secs = [];
+    navItems.forEach(function(x){
+      var hit = !q || x.item.label.toLowerCase().indexOf(q) !== -1
+        || (x.item.panel && PANEL_BY_ID[x.item.panel].label.toLowerCase().indexOf(q) !== -1);
+      x.el.style.display = hit ? '' : 'none';
+      x.el.classList.remove('kbd');
+      if(hit && secs.indexOf(x.sec) === -1) secs.push(x.sec);
+    });
+    navItems.forEach(function(x){ x.sec.style.display = secs.indexOf(x.sec) !== -1 ? '' : 'none'; });
+    var first = navItems.filter(function(x){ return x.el.style.display !== 'none'; })[0];
+    if(q && first) first.el.classList.add('kbd');
+    return first;
+  }
+
+  function openNav(focusFind){
+    document.body.classList.add('nav-open');
+    $('nav').setAttribute('aria-hidden', 'false');
+    $('navBtn').setAttribute('aria-expanded', 'true');
+    if(focusFind) setTimeout(function(){ $('navFind').focus(); }, 60);
+  }
+  function closeNav(){
+    document.body.classList.remove('nav-open');
+    $('nav').setAttribute('aria-hidden', 'true');
+    $('navBtn').setAttribute('aria-expanded', 'false');
+    $('navFind').value = ''; filterNav('');
+  }
+  function navIsOpen(){ return document.body.classList.contains('nav-open'); }
+
+  buildNav();
+  $('navBtn').addEventListener('click', function(){ navIsOpen() ? closeNav() : openNav(false); });
+  $('navShade').addEventListener('click', closeNav);
+  $('navFind').addEventListener('input', function(){ filterNav(this.value); });
+  $('navFind').addEventListener('keydown', function(ev){
+    if(ev.key === 'Enter'){ var f = filterNav(this.value); if(f) activate(f.item); }
+  });
+  $('navCloseAll').addEventListener('click', function(){
+    PANELS.forEach(function(p){ state.open[p.id] = false; });
+    saveState(); buildPanes(); closeNav();
+  });
+  document.addEventListener('keydown', function(ev){
+    if((ev.ctrlKey || ev.metaKey) && (ev.key === 'k' || ev.key === 'K')){
+      if($('navBtn').classList.contains('hidden')) return;
+      ev.preventDefault();
+      if(navIsOpen()) closeNav(); else openNav(true);
+    } else if(ev.key === 'Escape' && navIsOpen()){ closeNav(); $('navBtn').focus(); }
   });
 
   function buildPanes(){
     // verwijder bestaande sidepanes + dividers
     [].slice.call(work.querySelectorAll('.sidepane,.divider')).forEach(function(el){ el.remove(); });
+    updateNav();
     PANELS.forEach(function(p){
-      btns[p.id].classList.toggle('on', !!state.open[p.id]);
       if(!state.open[p.id]) return;
       var div = document.createElement('div');
       div.className = 'divider';
@@ -1275,6 +1468,7 @@
     if(!sess.data.session){ $('login').classList.remove('hidden'); return; }
     $('top').classList.remove('hidden');
     $('work').classList.remove('hidden');
+    $('navBtn').classList.remove('hidden');
     buildPanes();
     var propsEl = $('props');
     if(propsEl) propsEl.addEventListener('click', function(ev){
