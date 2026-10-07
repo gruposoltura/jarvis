@@ -446,7 +446,8 @@
     { id:'constellation', label:'CONSTELLATION', url:'/constellation.html', title:'CONSTELLATION', clickView:'constellation' },
     { id:'comp',          label:'COMPETITION',   url:'/competition.html',  title:'COMPETITION' },
     { id:'studio',        label:'STUDIO',        url:'/social-studio.html', title:'SOCIAL STUDIO' },
-    { id:'floor',         label:'FLOOR',         url:'/floor.html',         title:'FLOOR' }
+    { id:'floor',         label:'FLOOR',         url:'/floor.html',         title:'FLOOR' },
+    { id:'usage',         label:'USAGE',         url:'/usage.html',         title:'VERBRUIK TOOLS' }
   ];
   var PANEL_BY_ID = {};
   PANELS.forEach(function(p){ PANEL_BY_ID[p.id] = p; });
@@ -480,7 +481,9 @@
       { label:'Organisatie',       icon:'O', color:'#4fd1a1', panel:'org' },
       { label:'Agents',            icon:'A', color:'#3da5ff', panel:'agents' },
       { label:'Constellation',     icon:'\u2726', color:'#b18cff', panel:'constellation' },
-      { label:'Credentials',       icon:'Cr', color:'#7d8ca3', panel:'creds' } ]}
+      { label:'Credentials',       icon:'Cr', color:'#7d8ca3', panel:'creds' } ]},
+    { sec:'Setup', items:[
+      { label:'Verbruik tools',    icon:'%', color:'#3ecf8e', panel:'usage' } ]}
   ];
   var navItems = [];   // {el, item, sec}
   var isNarrow = function(){ return window.matchMedia('(max-width:820px)').matches; };
