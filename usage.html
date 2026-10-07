@@ -67,6 +67,12 @@
   .facts div span{display:block;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px}
   .facts div b{font-weight:600;font-family:'JetBrains Mono',monospace;font-size:13px}
   .spark{height:36px;width:100%}
+  .brk{display:flex;flex-direction:column;gap:4px;font-size:12px}
+  .brk-h{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px}
+  .brk-r{display:grid;grid-template-columns:minmax(0,1.4fr) 1fr auto;align-items:center;gap:8px}
+  .brk-r span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:11.5px}
+  .brk-r i{display:block;height:6px;border-radius:3px;background:var(--accent);opacity:.7}
+  .brk-r b{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:12px}
   .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted);font-size:11.5px;
     border-top:1px solid var(--line);padding-top:10px}
   .hint{background:var(--panel-2);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--muted)}
@@ -87,7 +93,7 @@ const app = document.getElementById("app");
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const STATUS_LABEL = { ok:"op koers", warn:"loopt voor", critical:"bijna op", nolimit:"limiet onbekend", stale:"meting oud", nodata:"nog geen meting" };
-const UNIT = { USD:{pre:"$",dec:2,word:""}, executions:{dec:0,word:"executies"}, credits:{dec:0,word:"credits"}, emails:{dec:0,word:"e-mails"} };
+const UNIT = { USD:{pre:"$",dec:2,word:""}, EUR:{pre:"€ ",dec:2,word:""}, executions:{dec:0,word:"executies"}, credits:{dec:0,word:"credits"}, emails:{dec:0,word:"e-mails"}, minutes:{dec:0,word:"minuten"} };
 
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function fmt(v, unit){
@@ -152,6 +158,13 @@ function spark(rows, unit){
     <title>${pts.map(r=>r.day+": "+fmt(r.used,unit)).join("\n")}</title></svg>`;
 }
 
+function breakdown(t){
+  const top = t.raw && Array.isArray(t.raw.top) ? t.raw.top.filter(x=>x.usd>0) : [];
+  if(!top.length) return "";
+  const tot = top.reduce((a,x)=>a+x.usd,0) || 1;
+  return `<div class="brk"><span class="brk-h">Grootste posten (USD)</span>${top.map(x=>`<div class="brk-r"><span>${esc(x.model)}</span><i style="width:${Math.max(2,Math.round(100*x.usd/tot))}%"></i><b>$${x.usd.toLocaleString("nl-NL",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></div>`).join("")}</div>`;
+}
+
 function card(t, hist){
   const st = t.status||"nodata";
   const pct = t.pct_used!==null ? Number(t.pct_used) : null;
@@ -188,7 +201,7 @@ function card(t, hist){
       <div><div class="name">${esc(t.label)}</div><div class="plan">${esc(t.plan_name||"plan onbekend")} · ${esc(unitWord(t.unit)||t.unit)}</div></div>
       <span class="pill ${st}">${esc(STATUS_LABEL[st]||st)}</span>
     </div>
-    ${big}${barHTML}${hint}${facts}
+    ${big}${barHTML}${hint}${facts}${breakdown(t)}
     ${spark(hist, t.unit)}
     <div class="foot"><span>Gemeten ${esc(ago(t.ok_at||t.captured_at))}</span>${t.manage_url?`<a href="${esc(t.manage_url)}" target="_blank" rel="noopener">Beheer ↗</a>`:""}</div>
   </div>`;
@@ -209,7 +222,7 @@ function render(rows, hist){
     </div>
     <div class="grid">${rows.map(r=>card(r, byTool[r.tool]||[])).join("") || `<div class="hint">Geen tools geconfigureerd.</div>`}</div>
     <div class="note">Witte streep = hoeveel van de periode verstreken is; ligt de balk ervoor, dan gaat het verbruik sneller dan de klok. Gearceerd = prognose tot einde periode (vanaf 15% van de periode).
-      Gratis tools en vaste abonnementen zonder verbruiksplafond (Google, Supabase, WordPress, Meta) staan hier bewust niet.</div>
+      Ook gratis plannen met een plafond staan erbij (Cloudinary, GitHub Actions). Diensten zonder verbruiksplafond (Google, Supabase, WordPress, Meta) en het Claude-chatabonnement (geen API voor het verbruik) staan hier niet.</div>
   </div>`;
 }
 
