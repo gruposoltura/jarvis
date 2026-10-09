@@ -9,3 +9,6 @@ window.BRIDGE_CONFIG = {
 
 /* Favicon: rode Bridge-tegel in het browsertabblad (favicon.svg). Idempotent. */
 (function(){try{var d=document;if(d.querySelector('link[rel~="icon"]'))return;var l=d.createElement("link");l.rel="icon";l.type="image/svg+xml";l.href="/favicon.svg?v=1";(d.head||d.documentElement).appendChild(l);}catch(e){}})();
+
+/* Actielijst (BD-124): alleen op de cockpit (kpi.html) de module bridge-actions.js laden. Idempotent. */
+(function(){try{var p=location.pathname;if(!/\/kpi\.html$/.test(p))return;var d=document;if(d.getElementById("bridge-actions-js"))return;var s=d.createElement("script");s.id="bridge-actions-js";s.src="/bridge-actions.js?v=1";s.defer=true;(d.head||d.documentElement).appendChild(s);}catch(e){}})();
