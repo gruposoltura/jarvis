@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<!--
+  THE BRIDGE - office.html
+  Isometrische kantoorvloer (DEWI-patroon, BD-006, met Soltura-data): elke afdeling is een platform,
+  elke agent een figuur op een kruk met zijn live status (menu > Afdelingen > Office).
+  Conventie zoals usage.html: bridge-config.js (publishable key), bridge-frame.js (paneel-toggle),
+  supabase-js met de gedeelde Bridge-login (views zijn alleen leesbaar voor authenticated).
+  Leest alleen bestaande views/tabellen, geen eigen datalaag:
+      bridge_layout        indeling: afdeling, kleur, icoon, rolcluster (= rij), grp_step/agent_sort (BD-001)
+      bridge_agent_index   status via BRIDGE_AGENTS.load/classify (bridge-agents.js, BD-004)
+      jarvis_runs_24h      runs per run_token in 24 uur
+      agent_dependencies   wie levert aan wie (agent_id hangt af van depends_on_agent_id)
+      jarvis_runs_public   runs van agents met een afhankelijkheid, laatste 7 dagen (voor de lopers)
+      bridge_agent_runs    laatste 8 runs met samenvatting van een gekozen agent
+  Toestand: classify() uit bridge-agents.js; 'bezig' = running of ok-run jonger dan 15 min (zoals floor.html).
+  Lopen: had de leverancier een run en draaide de afnemer daarna binnen het venster (trigger 2 u, data
+  freshness_hours of max 30 u), dan loopt de afnemer naar de leverancier, overlegt en loopt terug.
+  - Gebeurt er nu iets (nieuwe overdracht, of bij openen een van de laatste 15 minuten): alleen dat ("Nu").
+  - Anders wordt de laatste overdracht herhaald ("Herhaling <dag tijd>"), met een pauze ertussen.
+  Looproutes over de vloer en de gangpaden van een platform (raster van een kwart cel, A*).
+  Geen bibliotheken behalve supabase-js; de scene is SVG, 2:1 isometrisch (zie iso()).
+  Deeplink: office.html?agent=<agent_id>.
+-->
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Office · The Bridge</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="bridge-config.js"></script>
+<script src="bridge-agents.js"></script>
+<script src="bridge-frame.js"></script><!-- uniforme paneel-toggle -->
+<style>
+  :root{
+    --bg:#070b12; --ground:#0a101a; --slab:#111a28; --line:#1c2636; --panel:#0e1421; --panel2:#121a29;
+    --text:#cfe2ec; --dim:#7590a3; --cyan:#00d4ff; --green:#3ee08f; --amber:#ffb547; --red:#ff5d5d;
+    --grey:#8aa0b5; --violet:#b58cff;
+    --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--text);font:13px/1.45 var(--font);overflow:hidden;-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit}
+  a{color:var(--cyan);text-decoration:none}
+  a:hover{text-decoration:underline}
+  :focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:4px}
+  #app{display:flex;flex-direction:column;height:100%}
+
+  /* kop — zelfde opbouw als organisation.html zodat bridge-frame.js zijn knop voor .spacer zet */
+  header{display:flex;align-items:center;gap:16px;padding:11px 20px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(0,212,255,.05),transparent)}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 9px var(--green);align-self:center}
+  .brand .ttl{font-weight:700;letter-spacing:3px;font-size:16px}
+  .brand .sub{color:var(--dim);font-size:13px}
+  .spacer{flex:1}
+  .metrics{display:flex;gap:18px}
+  .metric{text-align:right;line-height:1.1}
+  .metric b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+  .metric span{font-size:11px;color:var(--dim)}
+  .metric.m-error b{color:var(--red)} .metric.m-silent b{color:var(--amber)} .metric.m-working b{color:var(--cyan)}
+  .metric.zero b{color:var(--dim)}
+  .upd{color:var(--dim);font-size:11.5px;font-variant-numeric:tabular-nums;min-width:112px;text-align:right}
+
+  main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 348px}
+  .stage{position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+
+  /* statusbalk (chips = statusfilter) */
+  .tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 16px 8px;min-height:46px;border-bottom:1px solid var(--line)}
+  .tools .lbl{color:var(--dim);font-size:12px;margin-right:4px}
+  .tools .note{color:var(--dim);font-size:11.5px;margin-left:6px}
+  .tool{appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:4px 10px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(0,0,0,.3);font-size:12px;font-weight:600;color:var(--text);
+    transition:border-color .12s,background .12s,color .12s}
+  .tool i{font-style:normal;font-weight:700;font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .tool:hover,.tool.pre{border-color:var(--cyan)}
+  .tool.has{border-color:var(--cyan);color:var(--cyan)}
+  .tool.on{background:var(--cyan);border-color:var(--cyan);color:#04101a}
+  .tool.on i{color:#04101a}
+  .tool .sdot{width:8px;height:8px}
+
+  .scene{flex:1;min-height:0;overflow:auto;position:relative;background:var(--ground);padding-bottom:52px}
+  #floor{display:block;width:100%;height:100%;font-family:var(--font)}
+  #wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
+  #wires path{fill:none;stroke:var(--cyan);stroke-width:1.1;stroke-opacity:.5;stroke-dasharray:1;stroke-dashoffset:1;animation:draw .32s ease-out forwards}
+  #wires circle{fill:var(--cyan)}
+  @keyframes draw{to{stroke-dashoffset:0}}
+
+  /* vloer */
+  .ground{fill:var(--ground)}
+  .grid{stroke:#111a27;stroke-width:1}
+  .dept{--c:#8aa0b5}
+  #floor.intro .dept{animation:rise .5s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i)*45ms)}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}}
+  .slab{cursor:pointer;outline:none;transition:opacity .2s}
+  .slab-top{fill:var(--slab);stroke:color-mix(in srgb,var(--c) 55%,transparent);stroke-width:1;stroke-linejoin:round}
+  .slab-l{fill:color-mix(in srgb,var(--c) 30%,#0a0f18)}
+  .slab-r{fill:color-mix(in srgb,var(--c) 15%,#0a0f18)}
+  .slab:hover .slab-top,.slab:focus-visible .slab-top,.dept.cur .slab-top{stroke:var(--c);stroke-width:1.6}
+  .band{fill:#162031}
+  .plate{font-weight:700;font-size:10.5px;letter-spacing:.07em;fill:color-mix(in srgb,var(--c) 48%,#fff)}
+  .count{font-weight:600;font-size:8.5px;fill:color-mix(in srgb,var(--c) 40%,#cfe2ec)}
+  .lane{font-weight:700;font-size:7.6px;letter-spacing:.09em;fill:color-mix(in srgb,var(--c) 50%,#b9cbd8)}
+
+  /* agents: vaste plek (ring + kruk) met een zittende figuur; lopers worden op diepte tussen de anderen gezet.
+     Geen doorzichtigheid op figuren: gedempte toestanden zijn vaste, donkerdere kleuren; elke vorm heeft een
+     donkere contour zodat hij op klein formaat scherp blijft. */
+  .ag{cursor:pointer;outline:none;--s:var(--green)}
+  .ag .hit{fill:transparent}
+  .ag .ring{fill:color-mix(in srgb,var(--s) 16%,var(--slab));stroke:var(--s);stroke-width:1.6}
+  .stool-t{fill:#3a4e69;stroke:#0a0f18;stroke-width:.6;stroke-linejoin:round}
+  .stool-l{fill:#243247;stroke:#0a0f18;stroke-width:.6;stroke-linejoin:round}
+  .stool-r{fill:#1a2536;stroke:#0a0f18;stroke-width:.6;stroke-linejoin:round}
+  .fig path,.fig line{fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .fig .ol{stroke:#0a0f18}
+  .fig .leg .ol{stroke-width:4.4} .fig .leg .ln{stroke-width:2.9;stroke:#c3cfdc}
+  .fig .leg.far .ln{stroke:#9aabbd}
+  .fig .arm .ol{stroke-width:4} .fig .arm .ln{stroke-width:2.5;stroke:color-mix(in srgb,var(--c) 70%,#000)}
+  .fig .torso{fill:var(--c);stroke:#0a0f18;stroke-width:.8}
+  .fig .head{fill:var(--skin,#e0ac84);stroke:#0a0f18;stroke-width:.8}
+  .fig path.hair{fill:var(--hair,#2a211b);stroke:none}
+  .ag .loop{fill:var(--violet);stroke:#0a0f18;stroke-width:.8}
+  .ag.s-working,.walker.s-working{--s:var(--cyan)} .ag.s-error,.walker.s-error{--s:var(--red)}
+  .ag.s-silent,.walker.s-silent{--s:var(--amber)} .ag.s-paused,.walker.s-paused{--s:var(--grey)} .ag.s-idle,.walker.s-idle{--s:var(--dim)}
+  .ag.s-silent .ring,.ag.s-idle .ring{stroke-dasharray:3 2.4}
+  /* stil: zelfde figuur, vaal */
+  .s-silent .fig .torso{fill:color-mix(in srgb,var(--c) 42%,#1b2431)}
+  .s-silent .fig .arm .ln{stroke:color-mix(in srgb,var(--c) 28%,#1b2431)}
+  .s-silent .fig .head{fill:color-mix(in srgb,var(--skin,#e0ac84) 55%,#1b2431)}
+  .s-silent .fig path.hair{fill:color-mix(in srgb,var(--hair,#2a211b) 60%,#1b2431)}
+  .s-silent .fig .leg .ln{stroke:#66758a}
+  /* gepauzeerd: grijs */
+  .s-paused .fig .torso{fill:#5b6b7f} .s-paused .fig .head{fill:#93a2b3} .s-paused .fig path.hair{fill:#4a586a}
+  .s-paused .fig .arm .ln{stroke:#445264} .s-paused .fig .leg .ln{stroke:#7d8da0}
+  /* nog nooit gedraaid, en alles wat niet bij de huidige selectie hoort: donker silhouet */
+  .s-idle .fig .torso,#floor.has-hl .ag:not(.hl) .fig .torso,#floor.has-hl .walker:not(.hl) .fig .torso{fill:#283342}
+  .s-idle .fig .head,#floor.has-hl .ag:not(.hl) .fig .head,#floor.has-hl .walker:not(.hl) .fig .head{fill:#364355}
+  .s-idle .fig path.hair,#floor.has-hl .ag:not(.hl) .fig path.hair,#floor.has-hl .walker:not(.hl) .fig path.hair{fill:#202a37}
+  .s-idle .fig .arm .ln,#floor.has-hl .ag:not(.hl) .fig .arm .ln,#floor.has-hl .walker:not(.hl) .fig .arm .ln{stroke:#202a37}
+  .s-idle .fig .leg .ln,#floor.has-hl .ag:not(.hl) .fig .leg .ln,#floor.has-hl .walker:not(.hl) .fig .leg .ln{stroke:#313d4e}
+  #floor.has-hl .ag:not(.hl) .ring{stroke:#283342;fill:var(--slab);animation:none}
+  #floor.has-hl .ag:not(.hl) .badge,#floor.has-hl .ag:not(.hl) .pulse,#floor.has-hl .ag:not(.hl) .loop{display:none}
+  #floor.has-hl .ag:not(.hl) .stool-t{fill:#222d3d} #floor.has-hl .ag:not(.hl) .stool-l{fill:#1a2331} #floor.has-hl .ag:not(.hl) .stool-r{fill:#151d29}
+  #floor.has-hl .dept:not(.hl-d) .slab{opacity:.4}
+  .ag .badge circle{fill:var(--s);stroke:#0a0f18;stroke-width:1}
+  .ag .badge text{font-weight:800;font-size:8.5px;fill:#06101a}
+  .ag .pulse{fill:none;stroke:var(--cyan);stroke-width:1.4;transform-box:fill-box;transform-origin:center;animation:pulse 1.9s ease-out infinite}
+  @keyframes pulse{from{transform:scale(1);opacity:.9}to{transform:scale(2.2);opacity:0}}
+  .ag.s-working .fig .up{animation:busy .7s steps(2,jump-none) infinite}
+  @keyframes busy{from{transform:translateY(0)}to{transform:translateY(-1px)}}
+  .ag.s-error .ring{animation:blink 1.1s steps(2,jump-none) infinite}
+  @keyframes blink{from{stroke-width:1.6}to{stroke-width:3.4}}
+  .ag:hover .ring,.ag:focus-visible .ring{stroke-width:2.8}
+  .ag:focus-visible .hit{stroke:#fff;stroke-width:1;stroke-dasharray:2 2}
+  .ag.sel .ring{stroke:#fff;stroke-width:2.8}
+  .ag.lk .ring{stroke:var(--cyan);stroke-width:2.6;stroke-dasharray:none}
+  .ag.away .fig,.ag.away .badge,.ag.away .pulse{display:none}
+  .ag.away .ring{fill:var(--slab);stroke-dasharray:2 3}
+  .bubble{display:none}
+  .ag.talk .bubble,.walker.talk .bubble{display:block}
+  .bubble rect,.bubble path{fill:#f1f5fa;stroke:#0a0f18;stroke-width:.7;stroke-linejoin:round}
+  .bubble circle{fill:#0a0f18;animation:dots 1s steps(1) infinite}
+  .bubble circle:nth-of-type(2){animation-delay:.2s} .bubble circle:nth-of-type(3){animation-delay:.4s}
+  @keyframes dots{0%,100%{fill:#9aa7b5}40%{fill:#0a0f18}}
+  .walker{cursor:pointer}
+  .walker .shadow{fill:#05080d}
+  .walker.sel .shadow{fill:#fff}
+  .aisle{fill:none;stroke:#1f2b3d;stroke-width:1;stroke-dasharray:1.5 5;stroke-linecap:round}
+
+  .walkbar{position:absolute;left:66px;right:16px;bottom:16px;z-index:4;display:flex;align-items:center;gap:10px;pointer-events:none}
+  .walkbar button{pointer-events:auto;appearance:none;cursor:pointer;flex:none;border:1px solid var(--line);background:rgba(7,11,18,.86);
+    border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--text)}
+  .walkbar button:hover{border-color:var(--cyan)}
+  .walkbar button[aria-pressed="false"]{color:var(--cyan);border-color:var(--cyan)}
+  #cap{min-width:0;color:var(--text);font-size:12px;background:rgba(7,11,18,.86);border:1px solid var(--line);border-radius:999px;
+    padding:5px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #cap:empty{display:none}
+  #cap b{font-weight:700;color:var(--cyan)}
+  #cap .muted{color:var(--dim)}
+
+  #tip{position:absolute;z-index:5;pointer-events:none;display:none;transform:translate(-50%,-100%);white-space:nowrap;
+    background:#0b1220;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+  #tip b{display:block;font-weight:700}
+  #tip span{color:var(--dim);font-size:11.5px}
+  #msg{position:absolute;left:16px;right:16px;bottom:16px;z-index:6;display:none;background:#2a1216;border:1px solid var(--red);
+    color:#ffd9d9;border-radius:10px;padding:9px 12px;font-size:12.5px}
+  #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim)}
+
+  /* paneel */
+  .panel{border-left:1px solid var(--line);background:var(--panel);overflow-y:auto;padding:16px 16px 28px;min-height:0}
+  .panel h2{margin:0 0 2px;font-size:17px;font-weight:700;line-height:1.25}
+  .panel h3{margin:20px 0 7px;font-size:12.5px;font-weight:600;color:var(--dim)}
+  .panel p{margin:6px 0}
+  .back{appearance:none;border:0;background:none;padding:0;margin:0 0 12px;color:var(--cyan);cursor:pointer;font-size:12.5px}
+  .back:hover{text-decoration:underline}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:color-mix(in srgb,var(--c) 55%,#fff);margin-bottom:6px}
+  button.chip{appearance:none;border:0;background:none;padding:0;cursor:pointer}
+  button.chip:hover{text-decoration:underline}
+  .pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--s);color:var(--s);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;margin:8px 0 2px}
+  .sdot{width:9px;height:9px;border-radius:50%;background:var(--s);flex:none;display:inline-block}
+  .s-working{--s:var(--cyan)} .s-ok{--s:var(--green)} .s-error{--s:var(--red)} .s-silent{--s:var(--amber)} .s-paused{--s:var(--grey)} .s-idle{--s:var(--dim)}
+  .sdot.hollow{background:none;border:1.5px dashed var(--s)}
+  .why{color:var(--dim);font-size:12.5px}
+  dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;margin:12px 0 0}
+  dt{color:var(--dim)} dd{margin:0;overflow-wrap:anywhere}
+  .sum{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12.5px;overflow-wrap:anywhere}
+  .list{list-style:none;margin:0;padding:0}
+  .row{appearance:none;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:none;cursor:pointer;
+    display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 9px;align-items:center;padding:7px 4px}
+  .list li:first-child .row{border-top:0}
+  .row:hover,.row.cur{background:rgba(255,255,255,.035)}
+  .row .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .mt{color:var(--dim);font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .row .sb{grid-column:2 / -1;color:var(--dim);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .ic{width:18px;text-align:center}
+  .bar{grid-column:2 / -1;display:flex;height:4px;border-radius:2px;overflow:hidden;background:var(--line);margin-top:3px}
+  .bar i{display:block;background:var(--s)}
+  .lanehd{margin:12px 0 2px;font-size:11px;font-weight:700;letter-spacing:.06em;color:color-mix(in srgb,var(--c) 50%,#b9cbd8)}
+  .runs{list-style:none;margin:0;padding:0}
+  .runs li{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:12px;align-items:baseline}
+  .runs li:first-child{border-top:0}
+  .runs time{color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .runs .rs{overflow-wrap:anywhere}
+  .links{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .links a{border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-weight:600;font-size:12.5px}
+  .links a:hover{border-color:var(--cyan);text-decoration:none}
+  .muted{color:var(--dim)}
+  .loopitem{border-left:2px solid var(--violet);padding:2px 0 2px 9px;margin:6px 0;font-size:12.5px}
+
+  @media (max-width:880px){
+    body{overflow:auto}
+    #app{height:auto;min-height:100%}
+    main{display:block}
+    .stage{height:66vh;min-height:400px}
+    .tools{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+    .tools::-webkit-scrollbar{display:none}
+    .tools .tool,.tools .lbl,.tools .note{flex:none;white-space:nowrap}
+    .panel{border-left:0;border-top:1px solid var(--line);padding-bottom:84px}
+    .walkbar{left:12px;right:12px;bottom:10px}
+    .metrics{gap:13px} .upd{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    #floor.intro .dept,.ag .pulse,.ag.s-error .ring,#wires path,.ag.s-working .fig .up,.bubble circle{animation:none}
+    #wires path{stroke-dashoffset:0}
+    .ag .pulse{opacity:.5;transform:scale(1.5)}
+  }
+  .sum.err{border-color:color-mix(in srgb,var(--red) 50%,var(--line));color:#ffd9d9}
+  .gate{display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;max-width:380px;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:20px 22px;color:var(--text)}
+  .gate span{color:var(--dim);font-size:12.5px}
+  .gate a{background:#e8231a;color:#fff;border-radius:8px;padding:6px 14px;font-weight:600}
+  .gate a:hover{text-decoration:none;filter:brightness(1.1)}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand"><span class="dot" id="live"></span><span class="ttl">THE BRIDGE</span><span class="sub">Office</span></div>
+    <div class="spacer"></div>
+    <div class="metrics" id="metrics"></div>
+    <div class="upd" id="upd"></div>
+  </header>
+  <main>
+    <section class="stage" id="stage" aria-label="Kantoorvloer">
+      <div class="tools" id="legend"><span class="lbl">Status</span></div>
+      <div class="scene" id="scene">
+        <svg id="floor" role="group" aria-label="Afdelingen en agents"></svg>
+        <div id="loading">Kantoor wordt opgebouwd…</div>
+      </div>
+      <svg id="wires" aria-hidden="true"></svg>
+      <div class="walkbar"><button type="button" id="walkBtn" aria-pressed="true">Pauzeer</button><span id="cap"></span></div>
+      <div id="tip" role="tooltip"></div>
+      <div id="msg" role="alert"></div>
+    </section>
+    <aside class="panel" id="panel" aria-label="Details"></aside>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------------------------------------------------------- config */
+  var CFG = window.BRIDGE_CONFIG || {};
+  var SB_URL = CFG.SUPABASE_URL || "https://wuvpbwowdycsdlrqkaoq.supabase.co";
+  var SB_KEY = CFG.SUPABASE_ANON_KEY || "";
+  var N8N = "https://gruposoltura.app.n8n.cloud/workflow/";
+  var REFRESH_MS = 60000;
+  var BA = window.BRIDGE_AGENTS;
+
+  var HW = 26, HH = 13;                 /* halve tegel: 1 cel = 52 x 26 px op het scherm */
+  var SLAB = 18;                        /* dikte van een afdelingsplatform */
+  var EDGE = Math.sqrt(HW * HW + HH * HH);
+  var PAD = 0.5, LANE_GAP = 0.25, ROW = 1.25, MAX_COLS = 6, DEPT_GAP = 1.5;   /* veelvouden van 0,25: het looprooster */
+  var SEAT_Y = 0.4, AISLE_Y = 1.0;     /* binnen een rij: kruk op 0,4 en het gangpad ervoor op 1,0 */
+  var FIG = 1.15;                      /* schaal van de figuren */
+  var SCENE_PAD = 52;                   /* gelijk aan padding-bottom van .scene: plek voor knop en bijschrift */
+  var MIN_SCALE = 0.85;                 /* kleiner dan dit: niet verder krimpen maar laten scrollen */
+
+  var WINDOW_H = 168;                   /* zo ver terug zoeken naar de laatste overdracht (max. 1000 runs) */
+  var PAIR_MS = 180000;                 /* marge: een aanroeper logt kort na de aangeroepen sub-workflow */
+  var TRIGGER_WIN_H = 2;                /* kind=trigger: afnemer pakt het binnen 2 uur op */
+  var DATA_WIN_H = 30;                  /* kind=data: max 30 uur (of freshness_hours als die kleiner is) */
+  var LIVE_MS = 900000;                 /* bij het openen telt alles van de laatste 15 minuten als "nu" */
+  var WORKING_MS = 900000;              /* ok-run jonger dan 15 min = "bezig" (zelfde regel als floor.html, BD-057) */
+  var WALK_SPEED = 88, STRIDE = 34, TALK_MS = 2400, MAX_WALKERS = 3;
+  var STAND_DX = 0.3;                   /* de loper stopt in het gangpad, iets links voor de kruk van de ander */
+  var REPLAY_PAUSE = 6000;              /* rust tussen twee herhalingen van de laatste overdracht */
+  var SVGNS = "http://www.w3.org/2000/svg";
+
+  var STATES = {
+    error:   { l: "Fout",          g: "!" },
+    silent:  { l: "Verouderd",     g: "z" },
+    working: { l: "Bezig",         g: "" },
+    ok:      { l: "In orde",       g: "" },
+    paused:  { l: "Gepauzeerd",    g: "‖" },
+    idle:    { l: "Zonder status", g: "" }
+  };
+  var STATE_ORDER = ["error", "silent", "working", "ok", "paused", "idle"];
+
+  var S = { depts: [], agents: [], byId: {}, byWf: {}, idx: [], sig: "",
+            focus: null, runs: {}, loadedAt: null, first: true,
+            links: [], linksOut: {}, linksIn: {}, pairLast: {}, hl: null, deptOf: {} };
+  /* lopers + afspeellijst */
+  var W = { on: true, list: [], raf: 0, last: 0, timer: 0, started: false, trips: [], live: [], played: {},
+            runs: [], seen: {}, lastRaw: "", liveCut: 0, linksKnown: false, rq: [], restAt: 0 };
+  var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  try { var pref = localStorage.getItem("bridge_office_walk"); W.on = pref === null ? !REDUCED : pref === "1"; } catch (e0) { W.on = !REDUCED; }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var elFloor = $("floor"), elStage = $("stage"), elScene = $("scene"), elLegend = $("legend"),
+      elWires = $("wires"), elTip = $("tip"), elMsg = $("msg"), elPanel = $("panel"),
+      elCap = $("cap"), elWalkBtn = $("walkBtn");
+
+  var sb = (window.supabase && SB_KEY) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+
+  /* --------------------------------------------------------------- helpers */
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function st(a) { return STATES[a.state] ? a.state : "ok"; }
+  function iso(x, y, z) { return [(x - y) * HW, (x + y) * HH - (z || 0)]; }
+  function pts(arr) { return arr.map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" "); }
+  function rel(isoStr) {
+    if (!isoStr) return "nooit";
+    var s = (Date.now() - new Date(isoStr).getTime()) / 1000;
+    if (s < 90) return "zojuist";
+    if (s < 3600) return Math.round(s / 60) + " min geleden";
+    if (s < 172800) return Math.round(s / 3600) + " u geleden";
+    return Math.round(s / 86400) + " d geleden";
+  }
+  var fmtAbs = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  var fmtDay = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Madrid", weekday: "short", hour: "2-digit", minute: "2-digit" });
+  var fmtClock = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  function abs(isoStr) { return isoStr ? fmtAbs.format(new Date(isoStr)) : "—"; }
+  function settle(p) { return Promise.resolve(p).then(function (v) { return { ok: true, v: v }; }, function (e) { return { ok: false, e: e }; }); }
+  function q(builder) {
+    return builder.then(function (r) { if (r.error) throw new Error(r.error.message || "query mislukt"); return r.data || []; });
+  }
+  function errText(e) { return (e && e.message) || String(e); }
+
+  /* Toestand van een agent: classify() uit bridge-agents.js (BD-004) is de enige bron;
+     'bezig' = running, of ok met een run van minder dan 15 minuten geleden. */
+  function stateOf(row) {
+    var c = BA.classify(row);
+    if (c === "paused") return "paused";
+    if (c === "error") return "error";
+    if (c === "stale") return "silent";
+    if (c === "running") return "working";
+    if (c === "idle") return "idle";
+    if (row.last_run && Date.now() - new Date(row.last_run).getTime() < WORKING_MS) return "working";
+    return "ok";
+  }
+
+  /* ----------------------------------------------------------------- laden */
+  var loading = false;
+  function load() {
+    if (loading || !sb) return Promise.resolve();
+    loading = true;
+    return Promise.all([
+      settle(q(sb.from("bridge_layout").select("agent_id,agent_name,bridge_dept,cluster_id,cluster_label,cluster_sort,grp_step,agent_sort,dept_name,dept_color,dept_icon,dept_sort,schedule_human,paused,n8n_workflow_id"))),
+      settle(BA.load(sb).then(function (r) { return r.agents; })),
+      settle(q(sb.from("jarvis_runs_24h").select("workflow,runs_24h"))),
+      settle(q(sb.from("agent_dependencies").select("agent_id,depends_on_agent_id,kind,via,freshness_hours")))
+    ]).then(function (res) {
+      if (!res[0].ok || !res[1].ok) {
+        var e = res[0].ok ? res[1].e : res[0].e;
+        showMsg("De office-data kon niet geladen worden (" + errText(e) + "). Nieuwe poging over een minuut.");
+        $("live").style.background = "var(--red)"; $("live").style.boxShadow = "0 0 9px var(--red)";
+        return;
+      }
+      showMsg("");
+      $("live").style.background = ""; $("live").style.boxShadow = "";
+      var r24 = {};
+      if (res[2].ok) res[2].v.forEach(function (r) { r24[r.workflow] = Number(r.runs_24h) || 0; });
+      ingest(res[0].v, res[1].v, r24);
+      var deps = res[3].ok ? res[3].v : null;
+      return loadRuns(deps).then(function (runs) { ingestWork(deps, runs); });
+    }).catch(function (e) {
+      showMsg("De office-data kon niet geladen worden (" + errText(e) + ").");
+    }).then(function () { loading = false; });
+  }
+  /* Runs van de agents die in een afhankelijkheid voorkomen (alleen die tellen voor de lopers). */
+  function loadRuns(deps) {
+    if (!deps) return Promise.resolve(null);
+    var tok = {};
+    deps.forEach(function (d) {
+      [d.agent_id, d.depends_on_agent_id].forEach(function (id) { var a = S.byId[id]; if (a && a.workflow_name) tok[a.workflow_name] = 1; });
+    });
+    var list = Object.keys(tok);
+    if (!list.length) return Promise.resolve([]);
+    var qb = sb.from("jarvis_runs_public").select("workflow,run_at,status").in("workflow", list);
+    qb = W.lastRaw ? qb.gt("run_at", W.lastRaw) : qb.gte("run_at", new Date(Date.now() - WINDOW_H * 3600000).toISOString());
+    return q(qb.order("run_at", { ascending: false }).limit(1000)).then(function (v) { return v; }, function () { return null; });
+  }
+
+  function ingest(lay, index, r24) {
+    var byIdx = {};
+    index.forEach(function (i) { byIdx[i.agent_id] = i; });
+    S.idx = index;
+    /* indeling uit bridge_layout (BD-001), status uit bridge_agent_index (BD-004) */
+    var agents = lay.map(function (l) {
+      var i = byIdx[l.agent_id] || { paused: l.paused };
+      return {
+        agent_id: l.agent_id, agent_name: l.agent_name || i.agent_name || l.agent_id,
+        dept_name: l.dept_name || (l.bridge_dept ? String(l.bridge_dept).toUpperCase() : "OVERIG"),
+        dept_color: l.dept_color || "#8aa0b5", dept_icon: l.dept_icon || "", dept_sort: l.dept_sort == null ? 999 : l.dept_sort,
+        grp: l.cluster_label || "", lane_sort: l.cluster_sort == null ? 999 : l.cluster_sort,
+        grp_step: l.grp_step, agent_sort: l.agent_sort,
+        schedule_human: l.schedule_human || i.schedule_human || "",
+        n8n_workflow_id: l.n8n_workflow_id || i.n8n_workflow_id || "",
+        workflow_name: i.run_token || "", wf_name: i.n8n_workflow_name || "",
+        last_run_at: i.last_run || null, last_summary: i.last_summary || "", last_error: i.last_error || "",
+        expected_interval_hours: i.expected_frequency_hours,
+        runs_24h: i.run_token ? (r24[i.run_token] || 0) : 0,
+        state: stateOf(i)
+      };
+    });
+    S.agents = agents; S.byId = {}; S.byWf = {};
+    agents.forEach(function (a) { S.byId[a.agent_id] = a; if (a.workflow_name) S.byWf[a.workflow_name] = a; });
+
+    var oldPos = {};
+    S.depts.forEach(function (d) { oldPos[d.name] = [d.x, d.y]; });
+    var seen = {};
+    S.depts = [];
+    agents.forEach(function (a) {
+      if (!seen[a.dept_name]) { seen[a.dept_name] = 1; S.depts.push({ name: a.dept_name, color: a.dept_color, icon: a.dept_icon, sort: a.dept_sort }); }
+    });
+    S.depts.sort(function (x, y) { return (x.sort - y.sort) || String(x.name).localeCompare(String(y.name)); });
+    S.depts.forEach(function (d) { d.agents = agents.filter(function (a) { return a.dept_name === d.name; }); });
+
+    var f = S.focus;
+    if (f && ((f.type === "agent" && !S.byId[f.id]) || (f.type === "dept" && !S.depts.some(function (d) { return d.name === f.name; })))) S.focus = null;
+
+    var sig = agents.map(function (a) { return [a.agent_id, a.dept_name, a.grp, a.lane_sort, a.grp_step, a.agent_sort].join("|"); }).sort().join(";")
+            + "#" + S.depts.map(function (d) { return d.name + d.color + d.icon; }).join(";");
+    if (sig !== S.sig || !S.paint) { S.sig = sig; layout(); renderFloor(); }
+    else {
+      var byName = {};
+      S.depts.forEach(function (d) {
+        planDept(d); d.x = oldPos[d.name][0]; d.y = oldPos[d.name][1]; byName[d.name] = d;
+        d.agents.forEach(function (a) { a._p = iso(d.x + a._lx, d.y + a._ly, SLAB); });
+      });
+      S.paint = S.paint.map(function (d) { return byName[d.name]; });
+      patchAgents();
+      bindDom();
+    }
+
+    S.loadedAt = new Date();
+    renderHeader(); renderLegend(); renderPanel(); applyFocus();
+    if (S.focus && S.focus.type === "agent") loadAgentRuns(S.byId[S.focus.id]);
+    if (S.first) { S.first = false; var qa = new URLSearchParams(location.search).get("agent"); if (qa && S.byId[qa]) setFocus({ type: "agent", id: qa }); }
+  }
+
+  /* --------------------------------------------------------------- indeling */
+  /* Rijen = rolclusters uit bridge_layout (cluster_label, volgorde cluster_sort);
+     agents zonder cluster komen in een naamloze rij achteraan. */
+  function laneKey(l) { return l.name ? l.sort : 1e6; }
+  function planDept(d) {
+    var map = {}, lanes = [];
+    d.agents.forEach(function (a) {
+      var k = a.grp || "";
+      if (!map[k]) { map[k] = { name: k, agents: [], sort: a.lane_sort }; lanes.push(map[k]); }
+      map[k].agents.push(a);
+      map[k].sort = Math.min(map[k].sort, a.lane_sort);
+    });
+    lanes.sort(function (x, y) { return (laneKey(x) - laneKey(y)) || x.name.localeCompare(y.name); });
+    var maxLabel = 0;
+    lanes.forEach(function (l) {
+      maxLabel = Math.max(maxLabel, l.name.length);
+      l.agents.sort(function (x, y) {
+        return ((x.grp_step == null ? 999 : x.grp_step) - (y.grp_step == null ? 999 : y.grp_step)) ||
+               ((x.agent_sort == null ? 999 : x.agent_sort) - (y.agent_sort == null ? 999 : y.agent_sort)) ||
+               String(x.agent_name).localeCompare(String(y.agent_name));
+      });
+    });
+    var gutter = maxLabel ? Math.min(3.6, Math.max(1.3, maxLabel * 5.7 / EDGE + 0.55)) : 0;
+    var cols = 0, y = PAD;
+    d.aisles = [];
+    lanes.forEach(function (l, i) {
+      if (i) y += LANE_GAP;
+      var n = l.agents.length, rows = Math.ceil(n / MAX_COLS), per = Math.ceil(n / rows);
+      l.y0 = y; l.rows = [];
+      for (var r = 0; r < rows; r++) {
+        l.agents.slice(r * per, (r + 1) * per).forEach(function (a, c) {
+          a._lx = PAD + gutter + c + 0.5; a._ly = y + SEAT_Y; a._ay = y + AISLE_Y;
+          cols = Math.max(cols, c + 1);
+        });
+        l.rows.push(y); d.aisles.push(y + AISLE_Y);
+        y += ROW;
+      }
+      l.y1 = y;
+    });
+    d.lanes = lanes; d.gutter = gutter;
+    d.labelChars = Math.max(3, Math.floor((gutter - 0.5) * EDGE / 5.7));
+    d.w = Math.ceil(Math.max(PAD * 2 + gutter + cols, (String(d.name).length * 7.3 + 40) / EDGE, 3) * 4) / 4;
+    d.d = y + 0.25;
+  }
+  function screenBox(d, x, y) {
+    return [(x - (y + d.d)) * HW, (x + y) * HH - SLAB - 50, ((x + d.w) - y) * HW, (x + d.w + y + d.d) * HH];
+  }
+  /* Platforms een voor een neerzetten op de plek die de hele scene het grootst in beeld laat. */
+  function pack(order, tw, th) {
+    var placed = [], bb = null, wb = null, cost = 0;
+    order.forEach(function (d) {
+      var best = null;
+      if (!placed.length) best = { x: 0, y: 0, c: 0 };
+      else {
+        for (var x = wb[0] - d.w - DEPT_GAP; x <= wb[2] + DEPT_GAP + 1e-9; x += 0.5) {
+          for (var y = wb[1] - d.d - DEPT_GAP; y <= wb[3] + DEPT_GAP + 1e-9; y += 0.5) {
+            var hit = false;
+            for (var i = 0; i < placed.length && !hit; i++) {
+              var p = placed[i];
+              hit = x < p.x + p.d.w + DEPT_GAP - 1e-9 && p.x < x + d.w + DEPT_GAP - 1e-9 && y < p.y + p.d.d + DEPT_GAP - 1e-9 && p.y < y + d.d + DEPT_GAP - 1e-9;
+            }
+            if (hit) continue;
+            var b = screenBox(d, x, y);
+            var w = Math.max(bb[2], b[2]) - Math.min(bb[0], b[0]), h = Math.max(bb[3], b[3]) - Math.min(bb[1], b[1]);
+            var cx = (b[0] + b[2]) / 2 - (bb[0] + bb[2]) / 2, cy = (b[1] + b[3]) / 2 - (bb[1] + bb[3]) / 2;
+            var c = Math.max(w / tw, h / th) + 0.05 * (w * h) / (tw * th) + 0.00002 * (cx * cx + cy * cy * 4) / (tw + th);
+            if (!best || c < best.c - 1e-9) best = { x: x, y: y, c: c };
+          }
+        }
+      }
+      placed.push({ d: d, x: best.x, y: best.y });
+      var sbx = screenBox(d, best.x, best.y);
+      bb = bb ? [Math.min(bb[0], sbx[0]), Math.min(bb[1], sbx[1]), Math.max(bb[2], sbx[2]), Math.max(bb[3], sbx[3])] : sbx;
+      wb = wb ? [Math.min(wb[0], best.x), Math.min(wb[1], best.y), Math.max(wb[2], best.x + d.w), Math.max(wb[3], best.y + d.d)] : [best.x, best.y, best.x + d.w, best.y + d.d];
+      cost = Math.max((bb[2] - bb[0]) / tw, (bb[3] - bb[1]) / th);
+    });
+    return { placed: placed, bb: bb, wb: wb, cost: cost };
+  }
+  function layout() {
+    S.depts.forEach(planDept);
+    var tw = Math.max(300, elScene.clientWidth - 28), th = Math.max(240, elScene.clientHeight - 28 - SCENE_PAD);
+    S.sceneSize = [elScene.clientWidth, elScene.clientHeight];
+    var orders = [
+      S.depts.slice(),
+      S.depts.slice().sort(function (p, r) { return r.w * r.d - p.w * p.d; }),
+      S.depts.slice().sort(function (p, r) { return r.d - p.d || r.w - p.w; }),
+      S.depts.slice().sort(function (p, r) { return r.w - p.w || r.d - p.d; })
+    ];
+    var best = null;
+    orders.forEach(function (o) { var r = pack(o, tw, th); if (!best || r.cost < best.cost - 1e-6) best = r; });
+    best.placed.forEach(function (pl) { pl.d.x = pl.x; pl.d.y = pl.y; });
+    S.bb = best.bb; S.wb = best.wb;
+    S.depts.forEach(function (d) { d.agents.forEach(function (a) { a._p = iso(d.x + a._lx, d.y + a._ly, SLAB); }); });
+
+    /* tekenvolgorde van achter naar voor */
+    var rest = S.depts.slice(), out = [];
+    function behind(p, r) { return (p.x + p.w <= r.x + 1e-9 && p.y < r.y + r.d) || (p.y + p.d <= r.y + 1e-9 && p.x < r.x + r.w); }
+    while (rest.length) {
+      var pick = -1;
+      for (var i = 0; i < rest.length && pick < 0; i++) {
+        var free = true;
+        for (var j = 0; j < rest.length && free; j++) if (j !== i && behind(rest[j], rest[i]) && !behind(rest[i], rest[j])) free = false;
+        if (free) pick = i;
+      }
+      if (pick < 0) { pick = 0; for (var k = 1; k < rest.length; k++) if (rest[k].x + rest[k].y < rest[pick].x + rest[pick].y) pick = k; }
+      out.push(rest.splice(pick, 1)[0]);
+    }
+    S.paint = out;
+    buildNav();
+  }
+
+  /* ---------------------------------------------------------------- tekenen */
+  function limb(cls, d) { return '<g class="' + cls + '"><path class="ol" d="' + d + '"/><path class="ln" d="' + d + '"/></g>'; }
+  var FIG_UP = limb("arm", "M-4.9,-18.6L-5.7,-11.6") + '<rect class="torso" x="-4.2" y="-20.6" width="8.4" height="11.6" rx="3"/>'
+    + limb("arm", "M4.9,-18.6L5.7,-11.6") + '<circle class="head" cy="-24.6" r="4.3"/>'
+    + '<path class="hair" d="M-4.4,-24.9a4.4,4.4 0 0 1 8.8,0q-4.4,-2.3 -8.8,0z"/>';
+  var FIG_STAND = '<g class="fig">' + limb("leg", "M-2.1,-10L-2.3,-.6") + limb("leg", "M2.1,-10L2.3,-.6") + '<g class="up">' + FIG_UP + "</g></g>";
+  var STOOL = '<polygon class="stool-l" points="-8.2,-6.4 -1.5,-3.3 -1.5,1.3 -8.2,-1.8"/><polygon class="stool-r" points="5.2,-6.4 -1.5,-3.3 -1.5,1.3 5.2,-1.8"/>'
+    + '<polygon class="stool-t" points="-8.2,-6.4 -1.5,-9.5 5.2,-6.4 -1.5,-3.3"/>';
+  var SEATED = '<g transform="scale(' + (-FIG) + "," + FIG + ')">' + STOOL + '<g class="fig">' + limb("leg far", "M-2.8,-7.2L2.4,-6.2L2.8,-.8")
+    + '<g transform="translate(-1.5,3.6)"><g class="up">' + FIG_UP + "</g></g>" + limb("leg", "M-.4,-6.1L4.9,-5.1L5.3,.3") + "</g></g>";
+  var SKIN = ["#f3cfae", "#e6b48c", "#cf9466", "#a9714b", "#7d4e30"], HAIR = ["#1d1a17", "#3b2a1c", "#6d4b2b", "#b38b53", "#8d8f98", "#2a2f3a"];
+  function look(a) {
+    var id = String(a.agent_id), n = 0;
+    for (var i = 0; i < id.length; i++) n = (n * 31 + id.charCodeAt(i)) >>> 0;
+    return "--c:" + (a.dept_color || "#8aa0b5") + ";--skin:" + SKIN[n % SKIN.length] + ";--hair:" + HAIR[(n >>> 3) % HAIR.length];
+  }
+  function bubble(x, y) {
+    return '<g class="bubble" transform="translate(' + x + "," + y + ')"><rect width="16" height="10" rx="5"/><path d="M3,9.4l-1.6,3.6l5,-3.6Z"/>'
+      + '<circle cx="4.4" cy="5" r="1.2"/><circle cx="8" cy="5" r="1.2"/><circle cx="11.6" cy="5" r="1.2"/></g>';
+  }
+  function agentInner(a) {
+    var s = st(a), g = STATES[s].g;
+    return '<rect class="hit" x="-14" y="-41" width="28" height="51" rx="6"/>'
+      + '<ellipse class="ring" rx="12.5" ry="6.25"/>'
+      + (s === "working" ? '<ellipse class="pulse" rx="12.5" ry="6.25"/>' : "")
+      + SEATED
+      + (g ? '<g class="badge" transform="translate(1.5,-36.5)"><circle r="5.6"/><text y="3.1" text-anchor="middle">' + esc(g) + "</text></g>" : "")
+      + bubble(5, -44);
+  }
+  function walkerInner() {
+    return '<ellipse class="shadow" rx="7.2" ry="3"/><g class="flip" transform="scale(' + FIG + ')">' + FIG_STAND + "</g>" + bubble(3, -48);
+  }
+  function agentLabel(a) { return a.agent_name + ", " + STATES[st(a)].l.toLowerCase() + ", afdeling " + a.dept_name; }
+
+  function renderFloor() {
+    if (!S.depts.length) { elFloor.innerHTML = ""; $("loading").textContent = "Geen agents in bridge_layout."; return; }
+    var wb = S.wb, far = 40, h = "", i, a, b;
+    var gx0 = Math.floor(wb[0]) - far, gx1 = Math.ceil(wb[2]) + far, gy0 = Math.floor(wb[1]) - far, gy1 = Math.ceil(wb[3]) + far;
+    h += '<polygon class="ground" points="' + pts([iso(gx0, gy0), iso(gx1, gy0), iso(gx1, gy1), iso(gx0, gy1)]) + '"/>';
+    for (i = gx0; i <= gx1; i += 2) { a = iso(i, gy0); b = iso(i, gy1); h += '<line class="grid" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>'; }
+    for (i = gy0; i <= gy1; i += 2) { a = iso(gx0, i); b = iso(gx1, i); h += '<line class="grid" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>'; }
+
+    S.paint.forEach(function (d, di) {
+      var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d;
+      h += '<g class="dept" data-dept="' + esc(d.name) + '" style="--c:' + esc(d.color) + ";--i:" + di + '">';
+      h += '<g class="slab" tabindex="0" role="button" aria-label="Afdeling ' + esc(d.name) + ", " + d.agents.length + ' agents">';
+      h += '<polygon class="slab-l" points="' + pts([iso(x0, y1, SLAB), iso(x1, y1, SLAB), iso(x1, y1), iso(x0, y1)]) + '"/>';
+      h += '<polygon class="slab-r" points="' + pts([iso(x1, y1, SLAB), iso(x1, y0, SLAB), iso(x1, y0), iso(x1, y1)]) + '"/>';
+      h += '<polygon class="slab-top" points="' + pts([iso(x0, y0, SLAB), iso(x1, y0, SLAB), iso(x1, y1, SLAB), iso(x0, y1, SLAB)]) + '"/>';
+      d.lanes.forEach(function (l) {
+        l.rows.forEach(function (ry) {
+          h += '<polygon class="band" points="' + pts([iso(x0 + 0.5, y0 + ry, SLAB), iso(x1 - 0.5, y0 + ry, SLAB), iso(x1 - 0.5, y0 + ry + 0.78, SLAB), iso(x0 + 0.5, y0 + ry + 0.78, SLAB)]) + '"/>';
+          var a0 = iso(x0 + 0.25, y0 + ry + AISLE_Y, SLAB), a1 = iso(x1 - 0.25, y0 + ry + AISLE_Y, SLAB);
+          h += '<line class="aisle" x1="' + a0[0].toFixed(1) + '" y1="' + a0[1].toFixed(1) + '" x2="' + a1[0].toFixed(1) + '" y2="' + a1[1].toFixed(1) + '"/>';
+        });
+        if (l.name) {
+          var lp = iso(x0 + 0.66, y0 + l.y0 + 0.53, SLAB), nm = l.name.toUpperCase();
+          if (nm.length > d.labelChars) nm = nm.slice(0, d.labelChars - 1) + "…";
+          h += '<text class="lane" transform="matrix(.894,.447,-.894,.447,' + lp[0].toFixed(1) + "," + lp[1].toFixed(1) + ')">' + esc(nm) + "</text>";
+        }
+      });
+      var pp = iso(x0 + 0.3, y1, 0);
+      h += '<text class="plate" transform="matrix(.894,.447,0,1,' + pp[0].toFixed(1) + "," + (pp[1] - 5.2).toFixed(1) + ')">' + esc((d.icon ? d.icon + " " : "") + d.name) + "</text>";
+      if (d.d >= 2.4) {
+        var cp = iso(x1, y1 - 0.3, 0);
+        h += '<text class="count" transform="matrix(.894,-.447,0,1,' + cp[0].toFixed(1) + "," + (cp[1] - 5.6).toFixed(1) + ')">' + d.agents.length + " agents</text>";
+      }
+      h += "</g>";
+      d.agents.slice().sort(function (p, r) { return (p._lx + p._ly) - (r._lx + r._ly); }).forEach(function (ag) {
+        h += '<g class="ag s-' + st(ag) + '" data-id="' + esc(ag.agent_id) + '" style="' + look(ag) + '" tabindex="0" role="button" aria-label="' + esc(agentLabel(ag)) +
+             '" transform="translate(' + ag._p[0].toFixed(1) + "," + ag._p[1].toFixed(1) + ')">' + agentInner(ag) + "</g>";
+      });
+      h += "</g>";
+    });
+
+    h += '<g id="walk-layer"></g>';
+    S.vb = [S.bb[0] - 16, S.bb[1] - 14, S.bb[2] - S.bb[0] + 32, S.bb[3] - S.bb[1] + 30];
+    elFloor.setAttribute("viewBox", S.vb.map(function (n) { return n.toFixed(1); }).join(" "));
+    clearWalkers();
+    elFloor.innerHTML = h;
+    bindDom();
+    $("loading").style.display = "none";
+    fit(true);
+    if (S.first) { elFloor.classList.add("intro"); setTimeout(function () { elFloor.classList.remove("intro"); }, 1400); }
+  }
+  function fit(center) {
+    if (!S.vb) return;
+    var cw = elScene.clientWidth, ch = elScene.clientHeight - SCENE_PAD, sc = Math.min(cw / S.vb[2], ch / S.vb[3]);
+    if (sc < MIN_SCALE) {
+      elFloor.style.width = Math.round(S.vb[2] * MIN_SCALE) + "px"; elFloor.style.height = Math.round(S.vb[3] * MIN_SCALE) + "px";
+      if (center) { elScene.scrollLeft = (elScene.scrollWidth - cw) / 2; elScene.scrollTop = 0; }
+    } else { elFloor.style.width = ""; elFloor.style.height = ""; }
+  }
+  function agentEl(id) { return elFloor.querySelector('.ag[data-id="' + CSS.escape(id) + '"]'); }
+  function patchAgents() {
+    S.agents.forEach(function (a) {
+      var el = agentEl(a.agent_id); if (!el) return;
+      var keep = ["sel", "hl", "away", "talk"].filter(function (c) { return el.classList.contains(c); }).join(" ");
+      el.setAttribute("class", "ag s-" + st(a) + (keep ? " " + keep : ""));
+      el.setAttribute("aria-label", agentLabel(a));
+      el.innerHTML = agentInner(a);
+    });
+    W.list.forEach(function (w) {
+      var a = S.byId[w.id]; if (!a) return;
+      STATE_ORDER.forEach(function (k) { w.el.classList.toggle("s-" + k, st(a) === k); });
+    });
+  }
+
+  /* ------------------------------------------------------------------- kop */
+  function counts(list) {
+    var c = {}; STATE_ORDER.forEach(function (k) { c[k] = 0; });
+    list.forEach(function (a) { c[st(a)]++; });
+    return c;
+  }
+  function renderHeader() {
+    var bc = BA.count(S.idx), c = counts(S.agents), runs = 0;
+    S.agents.forEach(function (a) { runs += Number(a.runs_24h) || 0; });
+    function m(cls, val, lbl) { return '<div class="metric ' + cls + (val ? "" : " zero") + '"><b>' + val + "</b><span>" + lbl + "</span></div>"; }
+    $("metrics").innerHTML = m("", bc.total, "agents") + m("m-working", c.working, "bezig") + m("m-error", bc.error, "fout") + m("m-silent", bc.stale, "verouderd") + m("", runs, "runs 24 u");
+    $("upd").textContent = "bijgewerkt " + fmtClock.format(S.loadedAt);
+  }
+
+  /* -------------------------------------------------------------- legenda */
+  function renderLegend() {
+    var c = counts(S.agents), f = S.focus, h = '<span class="lbl">Status</span>';
+    STATE_ORDER.forEach(function (k) {
+      if (!c[k] && k !== "error") return;
+      var on = f && f.type === "state" && f.key === k;
+      h += '<button type="button" class="tool s-' + k + (on ? " on" : "") + '" data-state="' + k + '" aria-pressed="' + (on ? "true" : "false") + '">'
+        + sdot(k) + STATES[k].l + "<i>" + c[k] + "</i></button>";
+    });
+    h += '<span class="note">Lopen = een afnemer haalt werk op bij zijn leverancier (agent_dependencies + runs).</span>';
+    elLegend.innerHTML = h;
+  }
+
+  /* ----------------------------------------------------------------- focus */
+  function setFocus(f) {
+    S.focus = f;
+    var u = new URL(location.href);
+    if (f && f.type === "agent") u.searchParams.set("agent", f.id); else u.searchParams.delete("agent");
+    try { history.replaceState(null, "", u); } catch (e) {}
+    renderPanel(); renderLegend(); applyFocus();
+    if (f && f.type === "agent") loadAgentRuns(S.byId[f.id]);
+  }
+  function applyFocus() {
+    var f = S.focus, hl = null, pairs = [];
+    Array.prototype.forEach.call(elFloor.querySelectorAll(".ag.sel,.ag.hl,.ag.lk,.walker.sel,.walker.hl"), function (e) { e.classList.remove("sel", "hl", "lk"); });
+    Array.prototype.forEach.call(elFloor.querySelectorAll(".dept.hl-d,.dept.cur"), function (e) { e.classList.remove("hl-d", "cur"); });
+
+    if (f && f.type === "dept") {
+      hl = S.agents.filter(function (a) { return a.dept_name === f.name; }).map(function (a) { return a.agent_id; });
+      var dg = elFloor.querySelector('.dept[data-dept="' + CSS.escape(f.name) + '"]'); if (dg) dg.classList.add("cur");
+    } else if (f && f.type === "state") {
+      hl = S.agents.filter(function (a) { return st(a) === f.key; }).map(function (a) { return a.agent_id; });
+    } else if (f && f.type === "agent" && S.byId[f.id]) {
+      var el = agentEl(f.id);
+      if (el) {
+        el.classList.add("sel");
+        /* lijnen naar leveranciers en afnemers */
+        (S.linksOut[f.id] || []).concat(S.linksIn[f.id] || []).forEach(function (l) {
+          var oid = l.from === f.id ? l.to : l.from, o = agentEl(oid);
+          if (o) { o.classList.add("lk"); pairs.push([el, o]); }
+        });
+      }
+    }
+
+    elFloor.classList.toggle("has-hl", !!hl);
+    if (hl) hl.forEach(function (id) {
+      var e = agentEl(id); if (!e) return;
+      e.classList.add("hl"); if (e.parentNode) e.parentNode.classList.add("hl-d");
+    });
+    S.hl = hl;
+    W.list.forEach(function (w) {
+      if (hl && hl.indexOf(w.id) >= 0) w.el.classList.add("hl");
+      if (f && f.type === "agent" && f.id === w.id) w.el.classList.add("sel");
+    });
+    S.pairs = pairs; drawWires();
+  }
+  function anchor(el, sr) {
+    var hd = el.querySelector(el.classList.contains("away") ? ".ring" : ".head"); if (!hd) return null;
+    var r = hd.getBoundingClientRect();
+    return [r.left + r.width / 2 - sr.left, r.top - sr.top - 3];
+  }
+  function drawWires() {
+    var pairs = S.pairs || [], h = "";
+    if (pairs.length) {
+      var sr = elStage.getBoundingClientRect();
+      elWires.setAttribute("viewBox", "0 0 " + sr.width + " " + sr.height);
+      pairs.forEach(function (p) {
+        var a = anchor(p[0], sr), b = anchor(p[1], sr); if (!a || !b) return;
+        var lift = Math.max(30, Math.abs(b[0] - a[0]) * 0.25);
+        var cy = Math.min(a[1], b[1]) - lift;
+        h += '<path pathLength="1" d="M' + a[0].toFixed(1) + "," + a[1].toFixed(1) + " C" + a[0].toFixed(1) + "," + cy.toFixed(1) + " " + b[0].toFixed(1) + "," + cy.toFixed(1) + " " + b[0].toFixed(1) + "," + b[1].toFixed(1) + '"/>'
+          + '<circle cx="' + b[0].toFixed(1) + '" cy="' + b[1].toFixed(1) + '" r="2.1"/>';
+      });
+    }
+    elWires.innerHTML = h;
+  }
+
+  /* ---------------------------------------------------------------- paneel */
+  function sdot(s) { return '<span class="sdot s-' + s + (s === "idle" || s === "silent" ? " hollow" : "") + '"></span>'; }
+  function agentRow(a, sub) {
+    var s = st(a);
+    return '<li><button type="button" class="row" data-agent="' + esc(a.agent_id) + '">' + sdot(s)
+      + '<span class="nm">' + esc(a.agent_name) + '</span><span class="mt">' + esc(a.last_run_at ? rel(a.last_run_at) : STATES[s].l.toLowerCase()) + "</span>"
+      + '<span class="sb">' + esc(sub) + "</span></button></li>";
+  }
+  function why(a) {
+    var s = st(a);
+    if (s === "error") return "De laatste run is mislukt (" + rel(a.last_run_at) + ").";
+    if (s === "silent") return "Laatste run " + rel(a.last_run_at) + (a.expected_interval_hours ? "; verwacht minstens elke " + Number(a.expected_interval_hours) + " uur." : ".");
+    if (s === "working") return "Draaide " + rel(a.last_run_at) + ".";
+    if (s === "paused") return "Staat op pauze in de agent-registry.";
+    if (s === "idle") return "Er is nog geen run gelogd.";
+    return "Laatste run " + rel(a.last_run_at) + " geslaagd.";
+  }
+
+  function panelOverview() {
+    var c = counts(S.agents), f = S.focus, h = "<h2>Overzicht</h2>";
+    h += '<p class="muted">' + S.agents.length + " agents in " + S.depts.length + " afdelingen. Kies een figuur of een platform.</p>";
+    h += '<h3>Status</h3><ul class="list">';
+    STATE_ORDER.forEach(function (k) {
+      if (!c[k] && k !== "error") return;
+      h += '<li><button type="button" class="row' + (f && f.type === "state" && f.key === k ? " cur" : "") + '" data-state="' + k + '">' + sdot(k)
+        + '<span class="nm">' + STATES[k].l + '</span><span class="mt">' + c[k] + "</span></button></li>";
+    });
+    h += "</ul>";
+    var att = S.agents.filter(function (a) { var s = st(a); return s === "error" || s === "silent"; })
+      .sort(function (x, y) { return STATE_ORDER.indexOf(st(x)) - STATE_ORDER.indexOf(st(y)); });
+    h += "<h3>Vraagt aandacht</h3>";
+    if (att.length) { h += '<ul class="list">'; att.forEach(function (a) { h += agentRow(a, a.dept_name + " — " + why(a)); }); h += "</ul>"; }
+    else h += '<p class="muted">Niets. Geen fouten en geen verouderde agents.</p>';
+    h += '<h3>Afdelingen</h3><ul class="list">';
+    S.depts.forEach(function (d) {
+      var dc = counts(d.agents), runs = 0, bar = "";
+      d.agents.forEach(function (a) { runs += Number(a.runs_24h) || 0; });
+      STATE_ORDER.forEach(function (k) { if (dc[k]) bar += '<i class="s-' + k + '" style="flex:' + dc[k] + '"></i>'; });
+      h += '<li><button type="button" class="row" data-dept="' + esc(d.name) + '" style="--c:' + esc(d.color) + '"><span class="ic">' + esc(d.icon) + "</span>"
+        + '<span class="nm">' + esc(d.name) + '</span><span class="mt">' + d.agents.length + " agents · " + runs + " runs</span>"
+        + '<span class="bar">' + bar + "</span></button></li>";
+    });
+    return h + "</ul>";
+  }
+  function panelDept(d) {
+    var c = counts(d.agents), runs = 0, parts = [];
+    d.agents.forEach(function (a) { runs += Number(a.runs_24h) || 0; });
+    STATE_ORDER.forEach(function (k) { if (c[k]) parts.push(c[k] + " " + STATES[k].l.toLowerCase()); });
+    var h = '<button type="button" class="back" data-back>← Overzicht</button><div style="--c:' + esc(d.color) + '">'
+      + "<h2>" + esc((d.icon ? d.icon + " " : "") + d.name) + "</h2>"
+      + '<p class="muted">' + d.agents.length + " agents · " + runs + " runs in 24 uur<br>" + esc(parts.join(", ")) + "</p>";
+    d.lanes.forEach(function (l) {
+      if (l.name) h += '<div class="lanehd">' + esc(l.name.toUpperCase()) + "</div>";
+      h += '<ul class="list">';
+      l.agents.forEach(function (a) { h += agentRow(a, a.schedule_human || ""); });
+      h += "</ul>";
+    });
+    return h + "</div>";
+  }
+  function panelState(k) {
+    var list = S.agents.filter(function (a) { return st(a) === k; });
+    var h = '<button type="button" class="back" data-back>← Overzicht</button><h2>' + STATES[k].l + '</h2><p class="muted">' + list.length + " agents</p>";
+    if (!list.length) return h + '<p class="muted">Geen agents met deze status.</p>';
+    h += '<ul class="list">'; list.forEach(function (a) { h += agentRow(a, a.dept_name + " — " + (a.schedule_human || "")); });
+    return h + "</ul>";
+  }
+  function panelAgent(a) {
+    var s = st(a), d = null;
+    S.depts.forEach(function (x) { if (x.name === a.dept_name) d = x; });
+    var h = '<button type="button" class="back" data-back>← Overzicht</button>'
+      + '<div><button type="button" class="chip" data-dept="' + esc(a.dept_name) + '" style="--c:' + esc(d ? d.color : "#8aa0b5") + '">' + esc((d && d.icon ? d.icon + " " : "") + a.dept_name + (a.grp ? " › " + String(a.grp).toUpperCase() : "")) + "</button></div>"
+      + "<h2>" + esc(a.agent_name) + "</h2>"
+      + '<div class="pill s-' + s + '">' + sdot(s) + STATES[s].l + "</div>"
+      + '<p class="why">' + esc(why(a)) + "</p>"
+      + "<dl><dt>Schema</dt><dd>" + esc(a.schedule_human || "—") + "</dd>"
+      + "<dt>Laatste run</dt><dd>" + (a.last_run_at ? esc(abs(a.last_run_at)) + ' <span class="muted">(' + esc(rel(a.last_run_at)) + ")</span>" : "—") + "</dd>"
+      + "<dt>Runs 24 uur</dt><dd>" + (Number(a.runs_24h) || 0) + "</dd>"
+      + "<dt>Workflow</dt><dd>" + esc(a.wf_name || "—") + "</dd>"
+      + "<dt>Run-token</dt><dd>" + esc(a.workflow_name || "—") + "</dd></dl>";
+    if (s === "error" && a.last_error) h += '<h3>Laatste fout</h3><div class="sum err">' + esc(a.last_error) + "</div>";
+    if (a.last_summary) h += '<h3>Laatste resultaat</h3><div class="sum">' + esc(a.last_summary) + "</div>";
+    h += "<h3>Werkt samen met</h3>" + linksHtml(a);
+    h += '<h3>Laatste runs</h3><div id="p-runs">' + runsHtml(a) + "</div>";
+    h += '<div class="links">' + (a.n8n_workflow_id ? '<a href="' + N8N + encodeURIComponent(a.n8n_workflow_id) + '" target="_blank" rel="noopener">Open in n8n</a>' : "") + "</div>";
+    return h;
+  }
+  function linksHtml(a) {
+    var out = S.linksOut[a.agent_id] || [], inn = S.linksIn[a.agent_id] || [], h = "";
+    if (!out.length && !inn.length) {
+      return '<p class="muted">' + (W.linksKnown ? "Geen afhankelijkheden vastgelegd in agent_dependencies." : "Afhankelijkheden konden niet geladen worden.") + "</p>";
+    }
+    function rows(list, key, dir) {
+      var r = '<ul class="list">';
+      list.forEach(function (l) {
+        var o = S.byId[l[key]]; if (!o) return;
+        var last = S.pairLast[l.from + ">" + l.to];
+        r += agentRow(o, dir + (l.via ? " via " + l.via : "") + (last ? " — laatst " + fmtDay.format(new Date(last)) : ""));
+      });
+      return r + "</ul>";
+    }
+    if (out.length) h += '<div class="lanehd">LEVERT AAN DEZE AGENT</div>' + rows(out, "to", "levert");
+    if (inn.length) h += '<div class="lanehd">AFNEMERS</div>' + rows(inn, "from", "neemt af");
+    return h;
+  }
+  function runsHtml(a) {
+    var r = S.runs[a.agent_id];
+    if (!a.workflow_name) return '<p class="muted">Geen run-token in agent_status.</p>';
+    if (!r) return '<p class="muted">Laden…</p>';
+    if (r.error) return '<p class="muted">Runs konden niet geladen worden (' + esc(r.error) + ").</p>";
+    if (!r.rows.length) return '<p class="muted">Nog geen runs gelogd.</p>';
+    var h = '<ul class="runs">';
+    r.rows.forEach(function (x) {
+      var s = x.status === "error" ? "error" : (x.status === "ok" ? "ok" : "silent");
+      h += "<li>" + sdot(s) + '<time title="' + esc(rel(x.run_at)) + '">' + esc(abs(x.run_at)) + '</time><span class="rs">' + esc(x.summary || x.status || "") + "</span></li>";
+    });
+    return h + "</ul>";
+  }
+  function loadAgentRuns(a) {
+    if (!a || !a.workflow_name) return;
+    var id = a.agent_id;
+    settle(q(sb.from("bridge_agent_runs").select("run_at,status,summary").eq("workflow", a.workflow_name).order("run_at", { ascending: false }).limit(8)))
+      .then(function (r) {
+        S.runs[id] = r.ok ? { rows: r.v } : { error: errText(r.e) };
+        if (S.focus && S.focus.type === "agent" && S.focus.id === id) { var pr = $("p-runs"); if (pr) pr.innerHTML = runsHtml(a); }
+      });
+  }
+  function renderPanel() {
+    var f = S.focus, keep = elPanel.scrollTop, key = f ? f.type + ":" + (f.id || f.name || f.key) : "";
+    var h;
+    if (!S.agents.length) h = "";
+    else if (f && f.type === "agent" && S.byId[f.id]) h = panelAgent(S.byId[f.id]);
+    else if (f && f.type === "dept") { var d = null; S.depts.forEach(function (x) { if (x.name === f.name) d = x; }); h = d ? panelDept(d) : panelOverview(); }
+    else if (f && f.type === "state") h = panelState(f.key);
+    else h = panelOverview();
+    elPanel.innerHTML = h;
+    elPanel.scrollTop = key === S.panelKey ? keep : 0;
+    S.panelKey = key;
+  }
+
+  /* ------------------------------------------------------------ interactie */
+  function showMsg(t) { elMsg.textContent = t; elMsg.style.display = t ? "block" : "none"; }
+  function tipFor(el) {
+    var a = S.byId[el.getAttribute("data-id")]; if (!a) return;
+    var r = (el.querySelector(".hit") || el.querySelector(".shadow") || el).getBoundingClientRect(), sr = elStage.getBoundingClientRect();
+    elTip.innerHTML = "<b>" + esc(a.agent_name) + "</b><span>" + esc(STATES[st(a)].l + (a.schedule_human ? " · " + a.schedule_human : "")) + "</span>";
+    elTip.style.display = "block";
+    var half = elTip.offsetWidth / 2, x = r.left + r.width / 2 - sr.left;
+    elTip.style.left = Math.max(half + 6, Math.min(sr.width - half - 6, x)) + "px";
+    elTip.style.top = Math.max(elTip.offsetHeight + 4, r.top - sr.top - 4) + "px";
+  }
+  function hideTip() { elTip.style.display = "none"; }
+  function closest(t, sel) { return t && t.closest ? t.closest(sel) : null; }
+  function same(f, type, v) { return f && f.type === type && (f.id === v || f.name === v || f.key === v); }
+
+  elFloor.addEventListener("click", function (e) {
+    var ag = closest(e.target, ".ag,.walker");
+    if (ag) { if (!window.matchMedia("(hover: hover)").matches) hideTip(); var id = ag.getAttribute("data-id"); setFocus(same(S.focus, "agent", id) ? null : { type: "agent", id: id }); return; }
+    var sl = closest(e.target, ".slab");
+    if (sl) { var n = sl.parentNode.getAttribute("data-dept"); setFocus(same(S.focus, "dept", n) ? null : { type: "dept", name: n }); return; }
+    if (S.focus) setFocus(null);
+  });
+  elFloor.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var t = closest(e.target, ".ag,.slab"); if (!t) return;
+    e.preventDefault(); t.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  elFloor.addEventListener("pointerover", function (e) { var ag = closest(e.target, ".ag,.walker"); if (ag) tipFor(ag); });
+  elFloor.addEventListener("pointerout", function (e) { if (closest(e.target, ".ag,.walker")) hideTip(); });
+  elFloor.addEventListener("focusin", function (e) { var ag = closest(e.target, ".ag"); if (ag) tipFor(ag); });
+  elFloor.addEventListener("focusout", hideTip);
+
+  elLegend.addEventListener("click", function (e) {
+    var b = closest(e.target, "[data-state]"); if (!b) return;
+    var k = b.getAttribute("data-state"); setFocus(same(S.focus, "state", k) ? null : { type: "state", key: k });
+  });
+  elPanel.addEventListener("click", function (e) {
+    var t = closest(e.target, "[data-back],[data-agent],[data-dept],[data-state]"); if (!t) return;
+    if (t.hasAttribute("data-back")) setFocus(null);
+    else if (t.hasAttribute("data-agent")) setFocus({ type: "agent", id: t.getAttribute("data-agent") });
+    else if (t.hasAttribute("data-dept")) setFocus({ type: "dept", name: t.getAttribute("data-dept") });
+    else { var k = t.getAttribute("data-state"); setFocus(same(S.focus, "state", k) ? null : { type: "state", key: k }); }
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && S.focus) setFocus(null); });
+  elScene.addEventListener("scroll", function () { hideTip(); drawWires(); }, { passive: true });
+  var rzT = null;
+  window.addEventListener("resize", function () {
+    hideTip(); elWires.innerHTML = "";
+    clearTimeout(rzT);
+    rzT = setTimeout(function () {
+      if (!S.agents.length) return;
+      var o = S.sceneSize || [1, 1], n = [elScene.clientWidth, elScene.clientHeight];
+      if (n[1] > 0 && Math.abs(n[0] / n[1] - o[0] / o[1]) > 0.08 * (o[0] / o[1])) { layout(); renderFloor(); } else fit(false);
+      applyFocus();
+    }, 220);
+  });
+
+  /* ------------------------------------------------------------ overdracht */
+  /* agent_dependencies: agent_id (afnemer) hangt af van depends_on_agent_id (leverancier).
+     Een overdracht = de leverancier had een run en de afnemer draaide daarna binnen het venster
+     (kind trigger 2 uur, kind data freshness_hours of max 30 uur; een aanroeper mag 3 min eerder loggen).
+     Elke leveranciersrun telt een keer, bij de eerste afnemersrun erna. De afnemer loopt naar de
+     leverancier, overlegt en loopt terug. */
+  function ingestWork(deps, runs) {
+    if (deps) {
+      W.linksKnown = true;
+      S.links = []; S.linksOut = {}; S.linksIn = {};
+      deps.forEach(function (l) {
+        if (!S.byId[l.agent_id] || !S.byId[l.depends_on_agent_id] || l.agent_id === l.depends_on_agent_id) return;
+        var wh = l.kind === "trigger" ? TRIGGER_WIN_H : Math.min(Number(l.freshness_hours) || DATA_WIN_H, DATA_WIN_H);
+        var o = { from: l.agent_id, to: l.depends_on_agent_id, kind: l.kind, via: l.via || "", win: wh * 3600000 };
+        S.links.push(o);
+        (S.linksOut[o.from] = S.linksOut[o.from] || []).push(o);
+        (S.linksIn[o.to] = S.linksIn[o.to] || []).push(o);
+      });
+    }
+    var firstRuns = !W.lastRaw && !!runs;
+    var prevMax = 0;
+    W.runs.forEach(function (r) { if (r.t > prevMax) prevMax = r.t; });
+    if (runs) {
+      runs.forEach(function (r) {
+        var key = r.workflow + "|" + r.run_at; if (W.seen[key]) return;
+        W.seen[key] = 1;
+        W.runs.push({ wf: r.workflow, t: Date.parse(r.run_at), ok: r.status !== "error" });
+        if (!W.lastRaw || r.run_at > W.lastRaw) W.lastRaw = r.run_at;
+      });
+      var cutoff = Date.now() - WINDOW_H * 3600000;
+      W.runs = W.runs.filter(function (r) { return r.t >= cutoff; });
+    }
+    if (firstRuns) W.liveCut = Date.now() - LIVE_MS; else if (prevMax) W.liveCut = Math.max(W.liveCut, prevMax);
+
+    W.trips = buildTrips();
+    W.trips.forEach(function (tr) {
+      var key = tr.from + "|" + tr.t;
+      if (tr.tEnd > W.liveCut && !W.played[key]) { W.played[key] = 1; if (W.on) W.live.push(tr); }
+    });
+    if (W.live.length > 6) W.live = W.live.slice(-6);            /* niet eindeloos achterlopen */
+    if (S.focus && S.focus.type === "agent") renderPanel();
+    if (!W.started && S.agents.length) { W.started = true; schedule(1700); }
+    else if (W.live.length && W.on) schedule(50);
+    if (!W.on || (!W.list.length && !W.live.length)) idleCaption();
+  }
+  function buildTrips() {
+    var by = {}, ev = [], trips = [];
+    W.runs.forEach(function (r) { (by[r.wf] = by[r.wf] || []).push(r); });
+    Object.keys(by).forEach(function (k) { by[k].sort(function (x, y) { return x.t - y.t; }); });
+    S.pairLast = {};
+    S.links.forEach(function (l) {
+      var ra = by[S.byId[l.from].workflow_name], rb = by[S.byId[l.to].workflow_name];
+      if (!ra || !rb) return;
+      var j = 0, used = {};
+      rb.forEach(function (sup) {
+        if (!sup.ok) return;
+        while (j < ra.length && ra[j].t < sup.t - PAIR_MS) j++;
+        for (var i = j; i < ra.length && ra[i].t <= sup.t + l.win; i++) {
+          if (used[i]) continue;
+          used[i] = 1;
+          var t = ra[i].t;
+          ev.push({ t: t, tm: Math.max(t, sup.t), from: l.from, to: l.to });
+          var k = l.from + ">" + l.to; if (!S.pairLast[k] || t > S.pairLast[k]) S.pairLast[k] = t;
+          break;
+        }
+      });
+    });
+    ev.sort(function (x, y) { return (x.t - y.t) || (x.from < y.from ? -1 : x.from > y.from ? 1 : 0); });
+    ev.forEach(function (e) {
+      var hit = null;
+      for (var i = trips.length - 1; i >= 0 && e.t - trips[i].tLast <= 300000; i--) if (trips[i].from === e.from) { hit = trips[i]; break; }
+      if (hit) { if (hit.stops.indexOf(e.to) < 0 && hit.stops.length < 4) hit.stops.push(e.to); hit.tLast = e.t; hit.tEnd = Math.max(hit.tEnd, e.tm); }
+      else trips.push({ t: e.t, tLast: e.t, tEnd: e.tm, from: e.from, stops: [e.to] });
+    });
+    return trips;
+  }
+  function lastMoment() {
+    if (!W.trips.length) return [];
+    var last = 0;
+    W.trips.forEach(function (tr) { if (tr.t > last) last = tr.t; });
+    return W.trips.filter(function (tr) { return last - tr.t <= PAIR_MS; });
+  }
+
+  /* ------------------------------------------------------------- gangpaden */
+  var GRID = 0.25, NAV = null;
+  function deptAt(x, y) {
+    for (var i = 0; i < S.depts.length; i++) {
+      var d = S.depts[i];
+      if (x >= d.x - 0.01 && x <= d.x + d.w + 0.01 && y >= d.y - 0.01 && y <= d.y + d.d + 0.01) return d;
+    }
+    return null;
+  }
+  function buildNav() {
+    var m = 2.5, wb = S.wb, ox = wb[0] - m, oy = wb[1] - m, e = 1e-6;
+    var nx = Math.round((wb[2] - wb[0] + 2 * m) / GRID) + 1, ny = Math.round((wb[3] - wb[1] + 2 * m) / GRID) + 1;
+    var cost = new Uint8Array(nx * ny);
+    for (var iy = 0; iy < ny; iy++) {
+      for (var ix = 0; ix < nx; ix++) {
+        var x = ox + ix * GRID, y = oy + iy * GRID, c = 1;
+        for (var k = 0; k < S.depts.length; k++) {
+          var d = S.depts[k], lx = x - d.x, ly = y - d.y;
+          if (lx > -e && lx < d.w + e && ly > -e && ly < d.d + e) {
+            var aisle = Math.abs(lx - 0.25) < e || Math.abs(lx - (d.w - 0.25)) < e;
+            for (var j = 0; j < d.aisles.length && !aisle; j++) aisle = Math.abs(ly - d.aisles[j]) < e;
+            c = aisle ? 1 : 0; break;
+          }
+          if (lx > -0.5 - e && lx < d.w + 0.5 + e && ly > -0.5 - e && ly < d.d + 0.5 + e) c = 3;
+        }
+        cost[iy * nx + ix] = c;
+      }
+    }
+    NAV = { ox: ox, oy: oy, nx: nx, ny: ny, cost: cost };
+  }
+  /* A* over (cel, looprichting); geeft de hoekpunten van de route in wereldcoordinaten, of null. */
+  function route(ax, ay, bx, by) {
+    var N = NAV, nx = N.nx, ny = N.ny, cost = N.cost, TURN = 5;
+    var sx = Math.round((ax - N.ox) / GRID), sy = Math.round((ay - N.oy) / GRID), tx = Math.round((bx - N.ox) / GRID), ty = Math.round((by - N.oy) / GRID);
+    if (sx < 0 || sy < 0 || tx < 0 || ty < 0 || sx >= nx || tx >= nx || sy >= ny || ty >= ny) return null;
+    if (!cost[sy * nx + sx] || !cost[ty * nx + tx]) return null;
+    var total = nx * ny * 4, g = new Float32Array(total), from = new Int32Array(total), hf = [], hs = [];
+    for (var z = 0; z < total; z++) { g[z] = 1e9; from[z] = -1; }
+    function push(f, s) {
+      var i = hf.length; hf.push(f); hs.push(s);
+      while (i > 0) { var p = (i - 1) >> 1; if (hf[p] <= f) break; hf[i] = hf[p]; hs[i] = hs[p]; i = p; }
+      hf[i] = f; hs[i] = s;
+    }
+    function pop() {
+      var top = hs[0], f = hf.pop(), s = hs.pop(), n = hf.length;
+      if (n) {
+        var i = 0;
+        for (;;) {
+          var l = 2 * i + 1, r = l + 1; if (l >= n) break;
+          var c = r < n && hf[r] < hf[l] ? r : l; if (hf[c] >= f) break;
+          hf[i] = hf[c]; hs[i] = hs[c]; i = c;
+        }
+        hf[i] = f; hs[i] = s;
+      }
+      return top;
+    }
+    var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1], start = sy * nx + sx, goal = ty * nx + tx, end = -1;
+    for (var d0 = 0; d0 < 4; d0++) { g[start * 4 + d0] = 0; push(Math.abs(tx - sx) + Math.abs(ty - sy), start * 4 + d0); }
+    while (hf.length) {
+      var s = pop(), cell = s >> 2, dir = s & 3;
+      if (cell === goal) { end = s; break; }
+      var cx = cell % nx, cy = (cell - cx) / nx, gs = g[s];
+      for (var nd = 0; nd < 4; nd++) {
+        if (((nd + 2) & 3) === dir && cell !== start) continue;
+        var qx = cx + DX[nd], qy = cy + DY[nd];
+        if (qx < 0 || qy < 0 || qx >= nx || qy >= ny) continue;
+        var qc = qy * nx + qx, cc = cost[qc]; if (!cc) continue;
+        var ng = gs + cc + (nd !== dir ? TURN : 0), qs = qc * 4 + nd;
+        if (ng < g[qs]) { g[qs] = ng; from[qs] = s; push(ng + Math.abs(tx - qx) + Math.abs(ty - qy), qs); }
+      }
+    }
+    if (end < 0) return null;
+    var out = [], cur = end, lastDir = -1;
+    while (cur >= 0) {
+      var c2 = cur >> 2, x2 = c2 % nx, y2 = (c2 - x2) / nx, dd = cur & 3;
+      if (dd !== lastDir || from[cur] < 0) out.push([N.ox + x2 * GRID, N.oy + y2 * GRID]);
+      lastDir = dd; cur = from[cur];
+    }
+    out.reverse();
+    var first = [N.ox + sx * GRID, N.oy + sy * GRID];
+    if (!out.length || Math.abs(out[0][0] - first[0]) + Math.abs(out[0][1] - first[1]) > 1e-6) out.unshift(first);
+    return out;
+  }
+  function seatOf(a) { var d = S.deptOf[a.agent_id]; return [d.x + a._lx, d.y + a._ly]; }
+  function aisleOf(a, dx) { var d = S.deptOf[a.agent_id]; return [d.x + a._lx + (dx || 0), d.y + a._ay]; }
+  function legPath(p, r) {
+    var a = [Math.round((p[0] - NAV.ox) / GRID) * GRID + NAV.ox, p[1]], b = [Math.round((r[0] - NAV.ox) / GRID) * GRID + NAV.ox, r[1]];
+    var mid = route(a[0], a[1], b[0], b[1]) || [];
+    var out = [];
+    [p].concat(mid, [r]).forEach(function (pt) {
+      var l = out[out.length - 1];
+      if (!l || Math.abs(l[0] - pt[0]) + Math.abs(l[1] - pt[1]) > 1e-3) out.push(pt);
+    });
+    return out;
+  }
+  function bindDom() {
+    S.deptOf = {};
+    S.depts.forEach(function (d) {
+      d._g = elFloor.querySelector('.dept[data-dept="' + CSS.escape(d.name) + '"]');
+      d._order = d.agents.map(function (a) { S.deptOf[a.agent_id] = d; return { depth: a._lx + a._ly, el: agentEl(a.agent_id) }; })
+        .sort(function (p, r) { return p.depth - r.depth; });
+    });
+  }
+  function place(w) {
+    var d = deptAt(w.wx, w.wy), parent, before = null, i;
+    if (d && d._g) {
+      parent = d._g;
+      var dep = (w.wx - d.x) + (w.wy - d.y);
+      for (i = 0; i < d._order.length; i++) if (d._order[i].depth > dep + 0.01 && d._order[i].el && d._order[i].el.parentNode === parent) { before = d._order[i].el; break; }
+    } else {
+      parent = elFloor; before = elFloor.querySelector("#walk-layer");
+      for (i = 0; i < S.paint.length; i++) {
+        var r = S.paint[i];
+        if (r._g && ((w.wx <= r.x + 1e-9 && w.wy < r.y + r.d) || (w.wy <= r.y + 1e-9 && w.wx < r.x + r.w))) { before = r._g; break; }
+      }
+    }
+    if (w.parent !== parent || w.before !== before) { parent.insertBefore(w.el, before); w.parent = parent; w.before = before; }
+  }
+
+  /* ----------------------------------------------------------------- lopers */
+  function walkerOf(id) { for (var i = 0; i < W.list.length; i++) if (W.list[i].id === id) return W.list[i]; return null; }
+  function busy(id) {
+    if (walkerOf(id)) return true;
+    for (var i = 0; i < W.list.length; i++) if (W.list[i].stops.indexOf(id) >= 0) return true;
+    return false;
+  }
+  function names(ids) { return ids.map(function (id) { return S.byId[id] ? S.byId[id].agent_name : id; }).join(", "); }
+  function setCaption(tr, live) {
+    elCap.innerHTML = (live ? "<b>Nu</b> " : '<span class="muted">Herhaling ' + esc(fmtDay.format(new Date(tr.t))) + "</span> ")
+      + esc(names([tr.from])) + ' <span class="muted">haalt op bij</span> ' + esc(names(tr.stops));
+  }
+  function idleCaption() {
+    if (!W.on) { elCap.innerHTML = '<span class="muted">Lopen staat uit</span>'; return; }
+    if (!W.linksKnown || !S.links.length) elCap.innerHTML = '<span class="muted">Geen afhankelijkheden bekend (agent_dependencies)</span>';
+    else if (!W.trips.length) elCap.innerHTML = '<span class="muted">Geen overdrachten in de laatste ' + Math.round(WINDOW_H / 24) + " dagen</span>";
+  }
+  function renderWalkBtn() {
+    elWalkBtn.textContent = W.on ? "Pauzeer" : "Laat lopen";
+    elWalkBtn.setAttribute("aria-pressed", W.on ? "true" : "false");
+    elWalkBtn.title = W.on ? "Lopen stilzetten" : "Agents weer laten lopen";
+  }
+  function schedule(ms) { clearTimeout(W.timer); W.timer = setTimeout(player, ms); }
+  function liveWalking() { return W.list.some(function (w) { return w.live; }); }
+  function player() {
+    if (!W.on) return;
+    if (document.hidden || !S.agents.length || !NAV) return schedule(2500);
+    var tr, ids;
+    if (W.live.length) {
+      W.rq = [];
+      W.list.slice().forEach(function (w) { if (!w.live) finish(w); });
+      tr = W.live[0]; ids = [tr.from].concat(tr.stops);
+      if (W.list.length >= MAX_WALKERS || ids.some(busy)) return schedule(600);
+      W.live.shift(); startTrip(tr, true);
+      return schedule(1500);
+    }
+    if (liveWalking()) return schedule(600);
+    if (W.rq.length) {
+      tr = W.rq[0]; ids = [tr.from].concat(tr.stops);
+      if (W.list.length >= MAX_WALKERS || ids.some(busy)) return schedule(600);
+      W.rq.shift(); startTrip(tr, false);
+      return schedule(1800);
+    }
+    if (W.list.length) return schedule(600);
+    if (Date.now() - W.restAt < REPLAY_PAUSE) return schedule(600);
+    W.rq = lastMoment();
+    if (!W.rq.length) { idleCaption(); return schedule(8000); }
+    schedule(50);
+  }
+  function startTrip(tr, live) {
+    var a = S.byId[tr.from], home = a && agentEl(tr.from);
+    if (!home || !S.deptOf[tr.from]) return;
+    var stops = tr.stops.filter(function (id) { return S.byId[id] && agentEl(id) && S.deptOf[id]; });
+    if (!stops.length) return;
+    var g = document.createElementNS(SVGNS, "g");
+    g.setAttribute("class", "walker s-" + st(a) + (S.hl && S.hl.indexOf(a.agent_id) >= 0 ? " hl" : "") + (S.focus && S.focus.type === "agent" && S.focus.id === a.agent_id ? " sel" : ""));
+    g.setAttribute("data-id", a.agent_id);
+    g.setAttribute("style", look(a));
+    g.innerHTML = walkerInner();
+    home.classList.add("away");
+    var seat = seatOf(a), out = aisleOf(a);
+    var legs = [], at = out;
+    stops.forEach(function (id) { var to = aisleOf(S.byId[id], -STAND_DX); legs.push(legPath(at, to)); at = to; });
+    legs.push(legPath(at, out).concat([seat]));
+    legs[0] = [seat].concat(legs[0]);
+    var w = { id: a.agent_id, el: g, live: !!live, wx: seat[0], wy: seat[1], drop: 0, phase: 0, face: 1,
+              stops: stops, i: 0, legsPath: legs, path: legs[0], pi: 1, mode: "rise", wait: 260, parent: null, before: null,
+              legs: g.querySelectorAll(".leg"), arms: g.querySelectorAll(".arm"), up: g.querySelector(".up"), flip: g.querySelector(".flip") };
+    W.list.push(w);
+    setCaption({ t: tr.t, from: tr.from, stops: stops }, live);
+    draw(w, false);
+    if (S.pairs && S.pairs.length) drawWires();
+    if (!W.raf) { W.last = 0; W.raf = requestAnimationFrame(frame); }
+  }
+  function endTalk(w) {
+    w.el.classList.remove("talk");
+    var o = agentEl(w.stops[w.i]); if (o) o.classList.remove("talk");
+  }
+  function finish(w) {
+    if (w.mode === "talk") endTalk(w);
+    if (w.el.parentNode) w.el.parentNode.removeChild(w.el);
+    var home = agentEl(w.id); if (home) home.classList.remove("away");
+    var i = W.list.indexOf(w); if (i >= 0) W.list.splice(i, 1);
+    if (!W.list.length) { W.restAt = Date.now(); if (w.live && !W.live.length) elCap.innerHTML = ""; }
+  }
+  function clearWalkers() {
+    W.list.slice().forEach(finish);
+    W.rq = [];
+    Array.prototype.forEach.call(elFloor.querySelectorAll(".ag.away,.ag.talk"), function (e) { e.classList.remove("away", "talk"); });
+  }
+  function draw(w, moving) {
+    var sw = moving ? Math.sin(w.phase / STRIDE * 2 * Math.PI) : 0, a = sw * 27, p = iso(w.wx, w.wy, SLAB);
+    w.legs[0].setAttribute("transform", "rotate(" + a.toFixed(1) + " 0 -10)");
+    w.legs[1].setAttribute("transform", "rotate(" + (-a).toFixed(1) + " 0 -10)");
+    w.arms[0].setAttribute("transform", "rotate(" + (-a * 0.8).toFixed(1) + " -4.9 -18.6)");
+    w.arms[1].setAttribute("transform", "rotate(" + (a * 0.8).toFixed(1) + " 4.9 -18.6)");
+    w.up.setAttribute("transform", "translate(0," + (-Math.abs(sw) * 0.9).toFixed(2) + ")");
+    w.flip.setAttribute("transform", "scale(" + (w.face * FIG) + "," + FIG + ")");
+    w.el.setAttribute("transform", "translate(" + p[0].toFixed(1) + "," + (p[1] + w.drop).toFixed(1) + ")");
+    place(w);
+  }
+  function step(w, dt) {
+    var moving = false;
+    if (w.mode === "rise" || w.mode === "talk") {
+      w.wait -= dt * 1000;
+      if (w.wait <= 0) {
+        if (w.mode === "talk") { endTalk(w); w.i++; w.path = w.legsPath[w.i]; w.pi = 1; }
+        w.mode = "walk";
+      }
+    } else {
+      var go = WALK_SPEED / EDGE * dt;
+      while (go > 1e-9 && w.pi < w.path.length) {
+        var t = w.path[w.pi], dx = t[0] - w.wx, dy = t[1] - w.wy, dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= go) { w.wx = t[0]; w.wy = t[1]; go -= dist; w.phase += dist * EDGE; w.pi++; }
+        else {
+          w.wx += dx / dist * go; w.wy += dy / dist * go; w.phase += go * EDGE; go = 0;
+          var sdx = dx - dy; if (Math.abs(sdx) > 1e-6) w.face = sdx < 0 ? -1 : 1;
+        }
+        moving = true;
+      }
+      if (w.pi >= w.path.length) {
+        if (w.i >= w.stops.length) { finish(w); if (S.pairs && S.pairs.length) drawWires(); return; }
+        var o = agentEl(w.stops[w.i]);
+        w.face = 1;
+        w.mode = "talk"; w.wait = TALK_MS; w.el.classList.add("talk"); if (o) o.classList.add("talk");
+        moving = false;
+      }
+    }
+    var want = deptAt(w.wx, w.wy) ? 0 : SLAB;
+    w.drop += (want - w.drop) * Math.min(1, dt * 11);
+    draw(w, moving);
+  }
+  function frame(ts) {
+    var dt = W.last ? Math.min(0.05, (ts - W.last) / 1000) : 0.016;
+    W.last = ts;
+    W.list.slice().forEach(function (w) { step(w, dt); });
+    W.raf = W.list.length ? requestAnimationFrame(frame) : 0;
+  }
+  elWalkBtn.addEventListener("click", function () {
+    W.on = !W.on;
+    try { localStorage.setItem("bridge_office_walk", W.on ? "1" : "0"); } catch (e) {}
+    renderWalkBtn();
+    if (W.on) { W.started = true; W.restAt = 0; elCap.innerHTML = ""; schedule(300); }
+    else { clearTimeout(W.timer); W.live = []; clearWalkers(); idleCaption(); if (S.pairs && S.pairs.length) drawWires(); }
+  });
+
+  /* ----------------------------------------------------------------- start */
+  window.BRIDGE_OFFICE = { S: S, W: W };   /* alleen om in de console mee te kijken */
+  renderWalkBtn();
+  function loggedOut() {
+    $("loading").innerHTML = '<div class="gate"><b>Niet ingelogd</b><span>Dit paneel deelt de login van The Bridge. Log in op het hoofdscherm en dit paneel vult zich vanzelf.</span><a href="/" target="_top">Naar The Bridge</a></div>';
+    $("loading").style.display = "flex";
+  }
+  if (!sb || !BA) { $("loading").style.display = "none"; showMsg("bridge-config.js, bridge-agents.js of supabase-js is niet geladen."); return; }
+  var timer = 0;
+  function startLive() {
+    if (timer) return;
+    load();
+    timer = setInterval(function () { if (!document.hidden) load(); }, REFRESH_MS);
+  }
+  sb.auth.getSession().then(function (r) { if (r.data && r.data.session) startLive(); else loggedOut(); });
+  sb.auth.onAuthStateChange(function (_e, session) { if (session) startLive(); });
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && timer && S.loadedAt && Date.now() - S.loadedAt.getTime() > REFRESH_MS) load();
+  });
+})();
+</script>
+</body>
+</html>
