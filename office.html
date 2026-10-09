@@ -12,6 +12,8 @@
       agent_dependencies   wie levert aan wie (agent_id hangt af van depends_on_agent_id)
       jarvis_runs_public   runs van agents met een afhankelijkheid, laatste 7 dagen (voor de lopers)
       bridge_agent_runs    laatste 8 runs met samenvatting van een gekozen agent
+      bridge_agent_tools   tools per agent (n8n-scan 03:00 door JARVIS-Infra-SubworkflowFlagger -> workflow_tools)
+  Tools-balk bovenaan: klik/hover op een tool = lijnen naar de agents die hem gebruiken; klik op een agent = zijn tools lichten op.
   Toestand: classify() uit bridge-agents.js; 'bezig' = running of ok-run jonger dan 15 min (zoals floor.html).
   Lopen: had de leverancier een run en draaide de afnemer daarna binnen het venster (trigger 2 u, data
   freshness_hours of max 30 u), dan loopt de afnemer naar de leverancier, overlegt en loopt terug.
@@ -244,6 +246,7 @@
     #wires path{stroke-dashoffset:0}
     .ag .pulse{opacity:.5;transform:scale(1.5)}
   }
+  .ptools{display:flex;flex-wrap:wrap;gap:6px}
   .sum.err{border-color:color-mix(in srgb,var(--red) 50%,var(--line));color:#ffd9d9}
   .gate{display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;max-width:380px;background:var(--panel);
     border:1px solid var(--line);border-radius:12px;padding:20px 22px;color:var(--text)}
@@ -263,7 +266,7 @@
   </header>
   <main>
     <section class="stage" id="stage" aria-label="Kantoorvloer">
-      <div class="tools" id="legend"><span class="lbl">Status</span></div>
+      <div class="tools" id="tools"><span class="lbl">Tools</span></div>
       <div class="scene" id="scene">
         <svg id="floor" role="group" aria-label="Afdelingen en agents"></svg>
         <div id="loading">Kantoor wordt opgebouwd…</div>
@@ -319,7 +322,7 @@
   };
   var STATE_ORDER = ["error", "silent", "working", "ok", "paused", "idle"];
 
-  var S = { depts: [], agents: [], byId: {}, byWf: {}, idx: [], sig: "",
+  var S = { depts: [], agents: [], byId: {}, byWf: {}, idx: [], sig: "", tools: [], toolsByAgent: {}, hoverTool: null, toolsKnown: false,
             focus: null, runs: {}, loadedAt: null, first: true,
             links: [], linksOut: {}, linksIn: {}, pairLast: {}, hl: null, deptOf: {} };
   /* lopers + afspeellijst */
@@ -329,7 +332,7 @@
   try { var pref = localStorage.getItem("bridge_office_walk"); W.on = pref === null ? !REDUCED : pref === "1"; } catch (e0) { W.on = !REDUCED; }
 
   var $ = function (id) { return document.getElementById(id); };
-  var elFloor = $("floor"), elStage = $("stage"), elScene = $("scene"), elLegend = $("legend"),
+  var elFloor = $("floor"), elStage = $("stage"), elScene = $("scene"), elTools = $("tools"),
       elWires = $("wires"), elTip = $("tip"), elMsg = $("msg"), elPanel = $("panel"),
       elCap = $("cap"), elWalkBtn = $("walkBtn");
 
@@ -384,7 +387,8 @@
       settle(q(sb.from("bridge_layout").select("agent_id,agent_name,bridge_dept,cluster_id,cluster_label,cluster_sort,grp_step,agent_sort,dept_name,dept_color,dept_icon,dept_sort,schedule_human,paused,n8n_workflow_id"))),
       settle(BA.load(sb).then(function (r) { return r.agents; })),
       settle(q(sb.from("jarvis_runs_24h").select("workflow,runs_24h"))),
-      settle(q(sb.from("agent_dependencies").select("agent_id,depends_on_agent_id,kind,via,freshness_hours")))
+      settle(q(sb.from("agent_dependencies").select("agent_id,depends_on_agent_id,kind,via,freshness_hours"))),
+      settle(q(sb.from("bridge_agent_tools").select("agent_id,tool")))
     ]).then(function (res) {
       if (!res[0].ok || !res[1].ok) {
         var e = res[0].ok ? res[1].e : res[0].e;
@@ -396,7 +400,7 @@
       $("live").style.background = ""; $("live").style.boxShadow = "";
       var r24 = {};
       if (res[2].ok) res[2].v.forEach(function (r) { r24[r.workflow] = Number(r.runs_24h) || 0; });
-      ingest(res[0].v, res[1].v, r24);
+      ingest(res[0].v, res[1].v, r24, res[4].ok ? res[4].v : null);
       var deps = res[3].ok ? res[3].v : null;
       return loadRuns(deps).then(function (runs) { ingestWork(deps, runs); });
     }).catch(function (e) {
@@ -417,7 +421,7 @@
     return q(qb.order("run_at", { ascending: false }).limit(1000)).then(function (v) { return v; }, function () { return null; });
   }
 
-  function ingest(lay, index, r24) {
+  function ingest(lay, index, r24, tools) {
     var byIdx = {};
     index.forEach(function (i) { byIdx[i.agent_id] = i; });
     S.idx = index;
@@ -452,8 +456,23 @@
     S.depts.sort(function (x, y) { return (x.sort - y.sort) || String(x.name).localeCompare(String(y.name)); });
     S.depts.forEach(function (d) { d.agents = agents.filter(function (a) { return a.dept_name === d.name; }); });
 
+    if (tools) {
+      S.toolsKnown = true; S.toolsByAgent = {};
+      var tmap = {};
+      tools.forEach(function (r) {
+        if (!S.byId[r.agent_id] || !r.tool) return;
+        (tmap[r.tool] = tmap[r.tool] || []).push(r.agent_id);
+        (S.toolsByAgent[r.agent_id] = S.toolsByAgent[r.agent_id] || []).push(r.tool);
+      });
+      S.tools = Object.keys(tmap).map(function (t) { return { tool: t, ids: tmap[t] }; })
+        .sort(function (x, y) { return (y.ids.length - x.ids.length) || x.tool.localeCompare(y.tool); });
+      Object.keys(S.toolsByAgent).forEach(function (id) {
+        S.toolsByAgent[id].sort(function (x, y) { return (tmap[y].length - tmap[x].length) || x.localeCompare(y); });
+      });
+    }
     var f = S.focus;
-    if (f && ((f.type === "agent" && !S.byId[f.id]) || (f.type === "dept" && !S.depts.some(function (d) { return d.name === f.name; })))) S.focus = null;
+    if (f && ((f.type === "agent" && !S.byId[f.id]) || (f.type === "dept" && !S.depts.some(function (d) { return d.name === f.name; })) ||
+              (f.type === "tool" && !toolByName(f.name)))) S.focus = null;
 
     var sig = agents.map(function (a) { return [a.agent_id, a.dept_name, a.grp, a.lane_sort, a.grp_step, a.agent_sort].join("|"); }).sort().join(";")
             + "#" + S.depts.map(function (d) { return d.name + d.color + d.icon; }).join(";");
@@ -470,7 +489,7 @@
     }
 
     S.loadedAt = new Date();
-    renderHeader(); renderLegend(); renderPanel(); applyFocus();
+    renderHeader(); renderTools(); renderPanel(); applyFocus();
     if (S.focus && S.focus.type === "agent") loadAgentRuns(S.byId[S.focus.id]);
     if (S.first) { S.first = false; var qa = new URLSearchParams(location.search).get("agent"); if (qa && S.byId[qa]) setFocus({ type: "agent", id: qa }); }
   }
@@ -708,34 +727,50 @@
     $("upd").textContent = "bijgewerkt " + fmtClock.format(S.loadedAt);
   }
 
-  /* -------------------------------------------------------------- legenda */
-  function renderLegend() {
-    var c = counts(S.agents), f = S.focus, h = '<span class="lbl">Status</span>';
-    STATE_ORDER.forEach(function (k) {
-      if (!c[k] && k !== "error") return;
-      var on = f && f.type === "state" && f.key === k;
-      h += '<button type="button" class="tool s-' + k + (on ? " on" : "") + '" data-state="' + k + '" aria-pressed="' + (on ? "true" : "false") + '">'
-        + sdot(k) + STATES[k].l + "<i>" + c[k] + "</i></button>";
-    });
-    h += '<span class="note">Lopen = een afnemer haalt werk op bij zijn leverancier (agent_dependencies + runs).</span>';
-    elLegend.innerHTML = h;
+  /* ----------------------------------------------------------------- tools */
+  /* Bron: view bridge_agent_tools (agents x workflow_tools), elke nacht 03:00 gevuld door
+     JARVIS-Infra-SubworkflowFlagger uit de n8n-workflows (node-type, credential, host van HTTP-calls). */
+  function renderTools() {
+    var h = '<span class="lbl">Tools</span>';
+    if (!S.tools.length) {
+      h += '<span class="note">' + (S.toolsKnown ? "Nog geen tool-koppelingen. De n8n-scan (SubworkflowFlagger) vult ze elke nacht om 03:00."
+        : "Tool-koppelingen konden niet geladen worden.") + "</span>";
+    } else {
+      S.tools.forEach(function (t) {
+        h += '<button type="button" class="tool" data-tool="' + esc(t.tool) + '" aria-pressed="false" title="' + t.ids.length + ' agents gebruiken ' + esc(t.tool) + '">' + esc(t.tool) + "<i>" + t.ids.length + "</i></button>";
+      });
+    }
+    elTools.innerHTML = h;
   }
+  function toolByName(n) { for (var i = 0; i < S.tools.length; i++) if (S.tools[i].tool === n) return S.tools[i]; return null; }
+  function chipEl(n) { return elTools.querySelector('.tool[data-tool="' + CSS.escape(n) + '"]'); }
 
   /* ----------------------------------------------------------------- focus */
   function setFocus(f) {
-    S.focus = f;
+    S.focus = f; S.hoverTool = null;
     var u = new URL(location.href);
     if (f && f.type === "agent") u.searchParams.set("agent", f.id); else u.searchParams.delete("agent");
     try { history.replaceState(null, "", u); } catch (e) {}
-    renderPanel(); renderLegend(); applyFocus();
+    renderPanel(); applyFocus();
     if (f && f.type === "agent") loadAgentRuns(S.byId[f.id]);
   }
   function applyFocus() {
-    var f = S.focus, hl = null, pairs = [];
+    var f = S.focus, hl = null, pairs = [], toolName = S.hoverTool || (f && f.type === "tool" ? f.name : null);
     Array.prototype.forEach.call(elFloor.querySelectorAll(".ag.sel,.ag.hl,.ag.lk,.walker.sel,.walker.hl"), function (e) { e.classList.remove("sel", "hl", "lk"); });
     Array.prototype.forEach.call(elFloor.querySelectorAll(".dept.hl-d,.dept.cur"), function (e) { e.classList.remove("hl-d", "cur"); });
+    Array.prototype.forEach.call(elTools.querySelectorAll(".tool"), function (e) { e.classList.remove("on", "has", "pre"); e.setAttribute("aria-pressed", "false"); });
 
-    if (f && f.type === "dept") {
+    if (toolName) {
+      var t = toolByName(toolName), chip = chipEl(toolName);
+      if (t && chip) {
+        hl = t.ids;
+        chip.classList.add(S.hoverTool && !(f && f.type === "tool" && f.name === toolName) ? "pre" : "on");
+        if (f && f.type === "tool" && f.name === toolName) chip.setAttribute("aria-pressed", "true");
+        t.ids.forEach(function (id) { var e = agentEl(id); if (e) pairs.push([chip, e, "chip"]); });
+      }
+    }
+    if (toolName) { /* tool gaat voor */ }
+    else if (f && f.type === "dept") {
       hl = S.agents.filter(function (a) { return a.dept_name === f.name; }).map(function (a) { return a.agent_id; });
       var dg = elFloor.querySelector('.dept[data-dept="' + CSS.escape(f.name) + '"]'); if (dg) dg.classList.add("cur");
     } else if (f && f.type === "state") {
@@ -744,6 +779,10 @@
       var el = agentEl(f.id);
       if (el) {
         el.classList.add("sel");
+        /* tools van deze agent oplichten, met een lijn naar de agent */
+        (S.toolsByAgent[f.id] || []).forEach(function (tn) {
+          var c = chipEl(tn); if (c) { c.classList.add("has"); pairs.push([c, el, "chip"]); }
+        });
         /* lijnen naar leveranciers en afnemers */
         (S.linksOut[f.id] || []).concat(S.linksIn[f.id] || []).forEach(function (l) {
           var oid = l.from === f.id ? l.to : l.from, o = agentEl(oid);
@@ -775,6 +814,13 @@
       var sr = elStage.getBoundingClientRect();
       elWires.setAttribute("viewBox", "0 0 " + sr.width + " " + sr.height);
       pairs.forEach(function (p) {
+        if (p[2] === "chip") {
+          var c = p[0].getBoundingClientRect(), hb = anchor(p[1], sr); if (!hb) return;
+          var x1 = c.left + c.width / 2 - sr.left, y1 = c.bottom - sr.top + 1, k = Math.max(26, (hb[1] - y1) * 0.5);
+          h += '<path pathLength="1" d="M' + x1.toFixed(1) + "," + y1.toFixed(1) + " C" + x1.toFixed(1) + "," + (y1 + k).toFixed(1) + " " + hb[0].toFixed(1) + "," + (hb[1] - k).toFixed(1) + " " + hb[0].toFixed(1) + "," + hb[1].toFixed(1) + '"/>'
+            + '<circle cx="' + hb[0].toFixed(1) + '" cy="' + hb[1].toFixed(1) + '" r="2.1"/>';
+          return;
+        }
         var a = anchor(p[0], sr), b = anchor(p[1], sr); if (!a || !b) return;
         var lift = Math.max(30, Math.abs(b[0] - a[0]) * 0.25);
         var cy = Math.min(a[1], b[1]) - lift;
@@ -805,7 +851,7 @@
 
   function panelOverview() {
     var c = counts(S.agents), f = S.focus, h = "<h2>Overzicht</h2>";
-    h += '<p class="muted">' + S.agents.length + " agents in " + S.depts.length + " afdelingen. Kies een figuur of een platform.</p>";
+    h += '<p class="muted">' + S.agents.length + " agents in " + S.depts.length + " afdelingen. Kies een figuur, een platform of een tool.</p>";
     h += '<h3>Status</h3><ul class="list">';
     STATE_ORDER.forEach(function (k) {
       if (!c[k] && k !== "error") return;
@@ -851,6 +897,17 @@
     h += '<ul class="list">'; list.forEach(function (a) { h += agentRow(a, a.dept_name + " — " + (a.schedule_human || "")); });
     return h + "</ul>";
   }
+  function panelTool(t) {
+    var h = '<button type="button" class="back" data-back>\u2190 Overzicht</button><h2>' + esc(t.tool) + '</h2><p class="muted">Gebruikt door ' + t.ids.length + " agents</p>";
+    S.depts.forEach(function (d) {
+      var list = d.agents.filter(function (a) { return t.ids.indexOf(a.agent_id) >= 0; });
+      if (!list.length) return;
+      h += '<div class="lanehd" style="--c:' + esc(d.color) + '">' + esc(d.name) + '</div><ul class="list">';
+      list.forEach(function (a) { h += agentRow(a, a.schedule_human || ""); });
+      h += "</ul>";
+    });
+    return h;
+  }
   function panelAgent(a) {
     var s = st(a), d = null;
     S.depts.forEach(function (x) { if (x.name === a.dept_name) d = x; });
@@ -866,6 +923,10 @@
       + "<dt>Run-token</dt><dd>" + esc(a.workflow_name || "—") + "</dd></dl>";
     if (s === "error" && a.last_error) h += '<h3>Laatste fout</h3><div class="sum err">' + esc(a.last_error) + "</div>";
     if (a.last_summary) h += '<h3>Laatste resultaat</h3><div class="sum">' + esc(a.last_summary) + "</div>";
+    var tl = S.toolsByAgent[a.agent_id] || [];
+    h += "<h3>Tools</h3>";
+    if (tl.length) { h += '<div class="ptools">'; tl.forEach(function (t) { h += '<button type="button" class="tool" data-tool="' + esc(t) + '">' + esc(t) + "</button>"; }); h += "</div>"; }
+    else h += '<p class="muted">' + (S.tools.length ? "Geen tools herkend in deze workflow." : "Nog niet gevuld; volgt na de n8n-scan van 03:00.") + "</p>";
     h += "<h3>Werkt samen met</h3>" + linksHtml(a);
     h += '<h3>Laatste runs</h3><div id="p-runs">' + runsHtml(a) + "</div>";
     h += '<div class="links">' + (a.n8n_workflow_id ? '<a href="' + N8N + encodeURIComponent(a.n8n_workflow_id) + '" target="_blank" rel="noopener">Open in n8n</a>' : "") + "</div>";
@@ -917,6 +978,7 @@
     if (!S.agents.length) h = "";
     else if (f && f.type === "agent" && S.byId[f.id]) h = panelAgent(S.byId[f.id]);
     else if (f && f.type === "dept") { var d = null; S.depts.forEach(function (x) { if (x.name === f.name) d = x; }); h = d ? panelDept(d) : panelOverview(); }
+    else if (f && f.type === "tool" && toolByName(f.name)) h = panelTool(toolByName(f.name));
     else if (f && f.type === "state") h = panelState(f.key);
     else h = panelOverview();
     elPanel.innerHTML = h;
@@ -956,11 +1018,28 @@
   elFloor.addEventListener("focusin", function (e) { var ag = closest(e.target, ".ag"); if (ag) tipFor(ag); });
   elFloor.addEventListener("focusout", hideTip);
 
-  elLegend.addEventListener("click", function (e) {
-    var b = closest(e.target, "[data-state]"); if (!b) return;
-    var k = b.getAttribute("data-state"); setFocus(same(S.focus, "state", k) ? null : { type: "state", key: k });
-  });
+  function toolClick(e) {
+    var b = closest(e.target, ".tool[data-tool]"); if (!b) return false;
+    var n = b.getAttribute("data-tool"); if (!toolByName(n)) return true;
+    setFocus(same(S.focus, "tool", n) ? null : { type: "tool", name: n });
+    return true;
+  }
+  elTools.addEventListener("click", toolClick);
+  function toolHover(on) {
+    return function (e) {
+      var b = closest(e.target, ".tool[data-tool]"); if (!b) return;
+      var n = on ? b.getAttribute("data-tool") : null;
+      if (S.hoverTool === n) return;
+      S.hoverTool = n; applyFocus();
+    };
+  }
+  elTools.addEventListener("pointerover", toolHover(true));
+  elTools.addEventListener("pointerout", toolHover(false));
+  elTools.addEventListener("focusin", toolHover(true));
+  elTools.addEventListener("focusout", toolHover(false));
+  elTools.addEventListener("scroll", drawWires, { passive: true });
   elPanel.addEventListener("click", function (e) {
+    if (toolClick(e)) return;
     var t = closest(e.target, "[data-back],[data-agent],[data-dept],[data-state]"); if (!t) return;
     if (t.hasAttribute("data-back")) setFocus(null);
     else if (t.hasAttribute("data-agent")) setFocus({ type: "agent", id: t.getAttribute("data-agent") });
