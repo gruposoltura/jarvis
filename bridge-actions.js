@@ -2,13 +2,18 @@
    The Bridge - Actielijst (waarschuwingen + taken) - BD-124, 2026-10-09
    Naar het DEWI-patroon (BD-006, Soltura-data; geen HDB-code of -credentials).
    - Data:   RPC bridge_actielijst()  (ingelogd; open issues uit de escalatieladder
-             BD-123 + memo's binnen hun waarschuwingsvenster).
+             BD-123 + alle open memo's).
+   - Indeling (BD-126): bovenaan wat actie vraagt (geescaleerde issues + memo's
+             binnen hun waarschuwingsvenster); daaronder ZELFHERSTEL & GEPLAND
+             (issues die zichzelf nog kunnen oplossen + memo's waarvan het
+             waarschuwingsvenster nog niet open is). Het losse Memo's-paneel in
+             kpi.html is vervallen.
    - Acties: RPC bridge_action_update(p_id, p_op, p_days)
              done = afgerond, snooze = 7 dagen opschuiven, hide = niet meer tonen.
    - AI:     n8n JARVIS-Infra-IssueAsk (QMqGZn4r5okzmGUi), POST /webhook/jarvis-ask
              met de Supabase-sessie als Bearer. Alleen lezen en uitleggen.
    Wordt alleen op kpi.html geladen (loader onderaan bridge-config.js) en zet
-   zichzelf als eerste blok in #kpiScroll. kpi.html zelf is niet aangepast.
+   zichzelf als eerste blok in #kpiScroll.
    ===================================================================== */
 (function(){
   'use strict';
@@ -17,11 +22,14 @@
   var LIMIT = 8;
   var CFG = window.BRIDGE_CONFIG || {};
   var sb = null;
-  var AL = { rows: [], filter: 'all', showAll: false, staleOpen: false };
+  var AL = { rows: [], filter: 'all', showAll: false, staleOpen: false, quietOpen: false };
 
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function fmtDT(t){ try{ return new Date(t).toLocaleString('nl-NL', { timeZone:'Europe/Madrid', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }); }catch(e){ return ''; } }
+  function dm(d){ d = String(d || ''); return d.length >= 10 ? d.slice(8,10) + '/' + d.slice(5,7) : ''; }
+  /* stil = loopt nog zonder Rick: issue in zelfherstel of memo nog niet in het venster */
+  function isQuiet(r){ return r.src === 'issue' ? r.stage !== 'geescaleerd' : r.stage === 'gepland'; }
 
   var CSS = ''
   + '#actions{margin:0 0 14px;background:var(--panel,#0d1420);border:1px solid var(--line,#1c2940);border-radius:12px;padding:12px 14px 10px}'
@@ -32,9 +40,12 @@
   + '#actions .al-f button{appearance:none;background:none;border:1px solid var(--line,#1c2940);color:var(--muted,#7d8ca3);font:600 11px system-ui;border-radius:8px;padding:3px 9px;cursor:pointer}'
   + '#actions .al-f button.on{border-color:var(--yellow,#ffd400);color:var(--yellow,#ffd400)}'
   + '#actions .al-f button:focus-visible{outline:2px solid var(--cyan,#00d4ff);outline-offset:1px}'
-  + '#actions .al-heal{display:none;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;padding:7px 12px;border-radius:10px;border:1px dashed rgba(125,140,163,.5);background:rgba(125,140,163,.06);font-size:11px;color:var(--muted,#7d8ca3)}'
-  + '#actions .al-heal.on{display:flex}'
-  + '#actions .al-heal .h{font:800 9.5px/1 system-ui;letter-spacing:.16em;color:var(--green,#4fd1a1)}'
+  + '.al-quiet{margin-top:8px;border-radius:10px;border:1px dashed rgba(79,209,161,.45);background:rgba(79,209,161,.04);padding:0 12px}'
+  + '.al-quiet summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;cursor:pointer;list-style:none;padding:8px 0;font-size:11px;color:var(--muted,#7d8ca3)}'
+  + '.al-quiet summary::-webkit-details-marker{display:none}'
+  + '.al-quiet summary .h{font:800 9.5px/1 system-ui;letter-spacing:.16em;color:var(--green,#4fd1a1)}'
+  + '.al-quiet summary .c{margin-left:auto;color:var(--green,#4fd1a1);font-weight:700}'
+  + '.al-quiet[open] summary{border-bottom:1px dashed rgba(79,209,161,.3)}'
   + '.al-list{display:flex;flex-direction:column}'
   + '.al-row{display:grid;grid-template-columns:4px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid rgba(28,41,64,.6)}'
   + '.al-row:first-child{border-top:0}'
@@ -96,7 +107,6 @@
       + '<button type="button" data-f="all" class="on">Alles</button>'
       + '<button type="button" data-f="w">Waarschuwingen</button>'
       + '<button type="button" data-f="t">Taken</button></span></div>'
-      + '<div class="al-heal" id="al-heal"></div>'
       + '<div id="al-body"><div class="al-empty">laden&hellip;</div></div>';
     host.insertBefore(sec, host.firstChild);
     sec.addEventListener('click', onClick);
@@ -111,7 +121,7 @@
     if(d < 0) return '<span class="late">' + (-d) + ' d te laat</span>';
     if(d === 0) return '<span class="soon">vandaag</span>';
     if(d <= 3) return '<span class="soon">over ' + d + ' d</span>';
-    return 'deadline ' + String(r.deadline).slice(8,10) + '/' + String(r.deadline).slice(5,7);
+    return 'deadline ' + dm(r.deadline);
   }
   function rowHtml(r){
     var meta = [];
@@ -120,6 +130,12 @@
       if(r.category) meta.push(esc(r.category));
       meta.push('sinds ' + esc(fmtDT(r.started_at)));
       if(r.stage !== 'geescaleerd') meta.push('escaleert ' + esc(fmtDT(r.escalate_after)));
+    } else if(r.stage === 'gepland'){
+      meta.push('<span class="k-h">Gepland</span>');
+      if(r.category) meta.push(esc(r.category));
+      if(r.warn_from) meta.push('actie vanaf ' + esc(dm(r.warn_from)));
+      if(r.deadline) meta.push('deadline ' + esc(dm(r.deadline)));
+      else meta.push('geen deadline');
     } else {
       meta.push('<span class="k-t">Taak</span>');
       if(r.category) meta.push(esc(r.category));
@@ -147,33 +163,40 @@
     if(AL.filter === 't') return r.src === 'memo';
     return true;
   }
+  function plural(n, one, many){ return n + ' ' + (n === 1 ? one : many); }
   function render(){
     var box = $('al-body'); if(!box) return;
-    var heal = AL.rows.filter(function(r){ return r.src === 'issue' && r.stage !== 'geescaleerd'; });
-    var act = AL.rows.filter(function(r){ return !r.stale && !(r.src === 'issue' && r.stage !== 'geescaleerd'); });
-    var stale = AL.rows.filter(function(r){ return r.stale; });
+    var quiet = AL.rows.filter(isQuiet);
+    var act = AL.rows.filter(function(r){ return !r.stale && !isQuiet(r); });
+    var stale = AL.rows.filter(function(r){ return r.stale && !isQuiet(r); });
     var nW = act.filter(function(r){ return r.src === 'issue'; }).length, nT = act.length - nW;
-    $('al-sum').textContent = (nW + ' waarschuwing' + (nW === 1 ? '' : 'en') + ' met actie, ' + nT + ' ta' + (nT === 1 ? 'ak' : 'ken'))
-      + (heal.length ? ' · ' + heal.length + ' in zelfherstel' : '');
-    var hb = $('al-heal');
-    if(hb){
-      hb.classList.toggle('on', heal.length > 0 && AL.filter !== 't');
-      hb.innerHTML = '<span class="h">ZELFHERSTEL</span><span>' + heal.length + ' punt' + (heal.length === 1 ? '' : 'en')
-        + ' lost' + (heal.length === 1 ? '' : 'en') + ' zichzelf waarschijnlijk op; je hoort er pas van als dat binnen de wachttijd niet lukt. Ze staan hieronder onderaan, groen gemarkeerd.</span>';
-    }
-    var list = act.concat(AL.filter === 't' ? [] : heal).filter(match);
+    var qH = quiet.filter(function(r){ return r.src === 'issue'; }).length, qP = quiet.length - qH;
+    $('al-sum').textContent = plural(nW, 'waarschuwing', 'waarschuwingen') + ' met actie, ' + plural(nT, 'taak', 'taken')
+      + (quiet.length ? ' · ' + quiet.length + ' in zelfherstel/gepland' : '');
+
+    var list = act.filter(match);
     var shown = AL.showAll ? list : list.slice(0, LIMIT);
     var h = shown.length ? '<div class="al-list">' + shown.map(rowHtml).join('') + '</div>'
       : '<div class="al-empty">' + (AL.filter === 't' ? 'Geen taken die nu op je wachten.' : 'Niets dat nu je aandacht vraagt.') + '</div>';
     if(list.length > LIMIT) h += '<button type="button" class="al-more" data-op="more">' + (AL.showAll ? 'Toon minder' : 'Toon alle ' + list.length) + '</button>';
     var staleF = stale.filter(match);
     if(staleF.length){
-      h += '<details class="al-stale"' + (AL.staleOpen ? ' open' : '') + '><summary><b>' + staleF.length
+      h += '<details class="al-stale" id="al-staleD"' + (AL.staleOpen ? ' open' : '') + '><summary><b>' + staleF.length
         + '</b> ' + (staleF.length === 1 ? 'taak' : 'taken') + ' al 14+ dagen over de deadline &mdash; mogelijk achterhaald</summary>'
         + '<div class="al-list">' + staleF.map(rowHtml).join('') + '</div></details>';
     }
+    var quietF = quiet.filter(match);
+    if(quietF.length){
+      var parts = [];
+      if(qH && AL.filter !== 't') parts.push(plural(qH, 'waarschuwing lost', 'waarschuwingen lossen') + ' zichzelf waarschijnlijk op');
+      if(qP && AL.filter !== 'w') parts.push(plural(qP, 'taak is', 'taken zijn') + ' gepland en ' + (qP === 1 ? 'komt' : 'komen') + ' pas bij de actie als het waarschuwingsvenster opengaat');
+      h += '<details class="al-quiet" id="al-quietD"' + (AL.quietOpen ? ' open' : '') + '><summary><span class="h">ZELFHERSTEL &amp; GEPLAND</span>'
+        + '<span>' + esc(parts.join('; ')) + '. Je hoort er pas van als het nodig is.</span><span class="c">' + quietF.length + '</span></summary>'
+        + '<div class="al-list">' + quietF.map(rowHtml).join('') + '</div></details>';
+    }
     box.innerHTML = h;
-    var sd = box.querySelector('.al-stale'); if(sd) sd.addEventListener('toggle', function(){ AL.staleOpen = sd.open; });
+    var sd = $('al-staleD'); if(sd) sd.addEventListener('toggle', function(){ AL.staleOpen = sd.open; });
+    var qd = $('al-quietD'); if(qd) qd.addEventListener('toggle', function(){ AL.quietOpen = qd.open; });
     Array.prototype.forEach.call(document.querySelectorAll('#actions .al-f button'), function(b){ b.classList.toggle('on', b.getAttribute('data-f') === AL.filter); });
   }
   function load(){
@@ -202,6 +225,7 @@
     b.disabled = true;
     sb.rpc('bridge_action_update', { p_id: id, p_op: op, p_days: 7 }).then(function(res){
       if(res.error) throw res.error;
+      if(op === 'snooze' && r && r.src === 'memo'){ load(); return; }   // memo blijft, met nieuwe deadline
       AL.rows = AL.rows.filter(function(x){ return String(x.id) !== id; });
       render();
     }).catch(function(err){ b.disabled = false; alert('Niet gelukt: ' + (err.message || err)); });
