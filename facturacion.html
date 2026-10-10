@@ -86,6 +86,22 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .acc .logos{display:flex;align-items:center;gap:22px;margin-right:56px}.acc .logos img{height:38px;width:auto}.acc .logos img.gipe{height:43px}
 .ft{position:absolute;left:42px;right:42px;bottom:42px;border-top:2px solid var(--s-rule);padding-top:8px;display:flex;justify-content:space-between;font-size:8.8px;color:var(--s-grey);line-height:1.5}
 .ft b{color:var(--s-red)}.ft .r{text-align:right;color:var(--s-slate)}.ft .r span{color:var(--s-red)}
+.combo{position:relative}
+.results{position:absolute;z-index:5;left:0;right:0;top:calc(100% + 4px);background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.12);max-height:340px;overflow:auto}
+.res{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg);padding:9px 12px;font:inherit;cursor:pointer}
+.res:last-child{border-bottom:0}.res:hover,.res.act{background:var(--accent-soft)}
+.res b{font-weight:600}.res small{display:block;color:var(--muted);font-size:12px}
+.chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:4px;background:var(--bg);color:var(--muted);margin-left:6px}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;gap:10px;align-items:center;background:var(--bg)}
+.card b{font-weight:600}.card small{display:block;color:var(--muted);font-size:12px}
+.drop{border:1.5px dashed var(--line);border-radius:8px;padding:12px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop b{color:var(--fg)}
+.extract{display:flex;flex-direction:column;gap:8px;font-size:13px}
+.extract .party-pick{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.missing{color:var(--warn);font-size:12px}
+.sendbox{border:1px solid var(--ok);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.sendrow{display:flex;gap:8px;flex-wrap:wrap}.sendrow input{flex:1 1 200px}
 </style>
 </head>
 <body>
@@ -96,36 +112,54 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 <div class="banner" id="banner" hidden></div>
 
 <main class="wrap">
-  <form class="panel" id="frm" novalidate>
+  <form class="panel" id="frm" novalidate autocomplete="off">
     <section class="sec">
       <h2>1 · Klant</h2>
-      <label for="client">Klant kiezen<select id="client"></select></label>
-      <div id="newClient" class="sec" hidden>
+      <div class="combo">
+        <label for="q">Zoek in het CRM (naam, e-mail of referentie)<input id="q" type="search" placeholder="Bijv. Lambert of RH400" aria-autocomplete="list" aria-controls="results"></label>
+        <div class="results" id="results" role="listbox" hidden></div>
+      </div>
+      <div class="card" id="picked" hidden><div id="pickedTxt"></div><button type="button" class="btn ghost small" id="unpick">Andere klant</button></div>
+      <button type="button" class="btn ghost small" id="manual">+ Klant die niet in het CRM staat</button>
+
+      <div class="drop" id="drop">
+        <span><b>Contract inlezen</b>: sleep de arras, escritura of nota simple hierheen, of kies een bestand. Claude vult NIE, adres, finca en ref. catastral in.</span>
+        <div><input type="file" id="file" accept="application/pdf,image/jpeg,image/png" hidden><button type="button" class="btn small" id="pickFile">Bestand kiezen</button></div>
+        <div class="extract" id="extract" hidden></div>
+      </div>
+
+      <div id="clientForm" class="sec" hidden>
         <div class="row">
-          <label for="nc-sal">Aanhef<select id="nc-sal"><option>Don</option><option>Doña</option><option>Don y Doña</option><option value="">Empresa</option></select></label>
-          <label for="nc-nat">Nationaliteit<select id="nc-nat"></select></label>
+          <label for="c-sal">Aanhef<select id="c-sal"><option>Don</option><option>Doña</option><option>Don y Doña</option><option value="">Empresa / geen</option></select></label>
+          <label for="c-lang">Taal klant<select id="c-lang"><option value="es">Español</option><option value="en">English</option><option value="nl">Nederlands</option><option value="fr">Français</option><option value="de">Deutsch</option></select></label>
         </div>
-        <label for="nc-name">Naam volgens contract<input id="nc-name" autocomplete="off"></label>
+        <label for="c-name">Naam volgens contract<input id="c-name"></label>
         <div class="row">
-          <label for="nc-idt">Document<select id="nc-idt"><option>NIE</option><option>DNI</option><option>CIF</option><option>PAS</option></select></label>
-          <label for="nc-idn">Nummer<input id="nc-idn" autocomplete="off"></label>
+          <label for="c-idt">Document<select id="c-idt"><option>NIE</option><option>DNI</option><option>CIF</option><option>PAS</option></select></label>
+          <label for="c-idn">Nummer<input id="c-idn"></label>
         </div>
-        <label for="nc-addr">Adres<input id="nc-addr" autocomplete="off"></label>
-        <label for="nc-city">Postcode en plaats<input id="nc-city" placeholder="03170 Rojales, Alicante" autocomplete="off"></label>
-        <label for="nc-mail">E-mail (optioneel)<input id="nc-mail" type="email" autocomplete="off"></label>
+        <label for="c-addr">Adres<input id="c-addr"></label>
+        <div class="row">
+          <label for="c-city">Postcode en plaats<input id="c-city"></label>
+          <label for="c-country">Land<input id="c-country" placeholder="España"></label>
+        </div>
+        <label for="c-mail">E-mail<input id="c-mail" type="email"></label>
+        <p class="missing" id="missing" hidden></p>
+        <p class="hint">Wat je hier aanvult, wordt bewaard bij deze klant en staat er bij de volgende factuur weer. Er gaat niets terug naar WordPress.</p>
       </div>
       <div class="lang">Taal omschrijving <span class="tag" id="langTag">ES</span>
         <select id="langOverride" aria-label="Taal van de omschrijving kiezen" style="width:auto">
-          <option value="">automatisch</option><option value="es">Español</option><option value="en">English</option><option value="nl">Nederlands</option><option value="fr">Français</option><option value="de">Deutsch</option>
+          <option value="">volgens klant</option><option value="es">Español</option><option value="en">English</option><option value="nl">Nederlands</option><option value="fr">Français</option><option value="de">Deutsch</option>
         </select><span class="hint" id="langWhy"></span>
       </div>
     </section>
 
     <section class="sec">
       <h2>2 · Woning</h2>
+      <label for="prop" id="propLbl" hidden>Woning van deze klant<select id="prop"></select></label>
       <div class="row">
-        <label for="finca">Número de finca<input id="finca" autocomplete="off"></label>
-        <label for="refcat">Ref. catastral<input id="refcat" class="mono" autocomplete="off"></label>
+        <label for="finca">Número de finca<input id="finca"></label>
+        <label for="refcat">Ref. catastral<input id="refcat" class="mono"></label>
       </div>
       <p class="hint">Komt onder elke dienst die bij de woning hoort.</p>
     </section>
@@ -150,7 +184,12 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
         <button type="submit" class="btn prim" id="emit">Emitir factura</button>
         <button type="button" class="btn" id="newInv">Nieuwe factuur</button>
       </div>
-      <p class="hint">Volgend proefnummer <span class="mono" id="nextNo">…</span>. De PDF komt in Drive-map Facturas PRUEBA. Er gaat niets naar de klant of het btw-rapport.</p>
+      <div class="sendbox" id="sendbox" hidden>
+        <span id="sendTxt"></span>
+        <div class="sendrow"><input id="sendTo" type="email" aria-label="E-mailadres ontvanger"><button type="button" class="btn prim" id="sendBtn">Enviar factura</button></div>
+        <p class="hint">Proefmodus: versturen kan alleen naar een @gruposoltura.com-adres.</p>
+      </div>
+      <p class="hint">Volgend proefnummer <span class="mono" id="nextNo">…</span>. De PDF komt in Drive-map Facturas PRUEBA. Er gaat niets naar het btw-rapport.</p>
     </section>
 
     <section class="sec">
@@ -158,7 +197,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       <div class="log" id="log"><p class="hint">Laden…</p></div>
       <button type="button" class="btn ghost small" id="resetBtn">Alles wissen en terug naar nul</button>
       <div class="confirm" id="confirm" hidden>
-        <span>Alle proeffacturen, klanten en proef-PDF's worden gewist en de nummering begint weer bij 0001. Diensten en tarieven blijven staan.</span>
+        <span>Alle proeffacturen, aangevulde klantgegevens en proef-PDF's worden gewist en de nummering begint weer bij 0001. Diensten, tarieven en het CRM blijven staan.</span>
         <div class="actions"><button type="button" class="btn" id="resetNo">Annuleren</button><button type="button" class="btn prim" id="resetYes">Wissen</button></div>
       </div>
     </section>
@@ -172,9 +211,10 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 
 <script>
 const HOOK="https://gruposoltura.app.n8n.cloud/webhook/invoicing-test";
-const LANGS=["es","en","nl","fr","de"];
-const NATNAME={ES:"Spaans",GB:"Brits",IE:"Iers",US:"Amerikaans",NO:"Noors",SE:"Zweeds",DK:"Deens",FI:"Fins",PL:"Pools",NL:"Nederlands",BE:"Belgisch",FR:"Frans",LU:"Luxemburgs",DE:"Duits",AT:"Oostenrijks",CH:"Zwitsers"};
 const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const LANGNAME={es:"Spaans",en:"Engels",nl:"Nederlands",fr:"Frans",de:"Duits"};
+const COUNTRY_ES={spain:"España",espana:"España","españa":"España",netherlands:"Países Bajos","the netherlands":"Países Bajos",holland:"Países Bajos",nederland:"Países Bajos","united kingdom":"Reino Unido",uk:"Reino Unido",england:"Reino Unido","great britain":"Reino Unido",scotland:"Reino Unido",wales:"Reino Unido",ireland:"Irlanda",belgium:"Bélgica","belgië":"Bélgica",belgie:"Bélgica",germany:"Alemania",deutschland:"Alemania",france:"Francia",sweden:"Suecia",norway:"Noruega",denmark:"Dinamarca",finland:"Finlandia",poland:"Polonia",switzerland:"Suiza",austria:"Austria",luxembourg:"Luxemburgo",italy:"Italia",portugal:"Portugal","united states":"Estados Unidos",usa:"Estados Unidos"};
+const TITLE={mr:"Don","mr.":"Don",mrs:"Doña","mrs.":"Doña",ms:"Doña","ms.":"Doña",mrmrs:"Don y Doña","mr & mrs":"Don y Doña","mr and mrs":"Don y Doña"};
 const $=id=>document.getElementById(id);
 const r2=n=>Math.round((n+Number.EPSILON)*100)/100;
 const parseNum=v=>{v=String(v??"").trim();if(!v)return NaN;if(v.includes(","))v=v.replace(/\./g,"").replace(",",".");else if(/^\d{1,3}(\.\d{3})+$/.test(v))v=v.replace(/\./g,"");return Number(v)};
@@ -183,10 +223,11 @@ const toField=n=>isNaN(n)?"":Number(n).toFixed(2).replace(".",",");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fecha=d=>{const t=new Date(d+"T12:00:00");return t.getDate()+" de "+MESES[t.getMonth()]+" "+t.getFullYear()};
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const countryEs=c=>{const k=String(c||"").trim();return COUNTRY_ES[k.toLowerCase()]||k};
 
-let CFG={services:[],clients:[],invoices:[],nationality_language:{},next_no:"",last:null};
+let CFG={services:[],invoices:[],next_no:"",last:null};
 let IMG={logo:"",api:"",gipe:"",cei:"",aipp:""};
-let seq=0, busy=false, issued=null;
+let seq=0,busy=false,crm=null,results=[],act=-1,searchT=null,lastIssued=null;
 
 async function call(action,extra){
   const r=await fetch(HOOK,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({action},extra||{}))});
@@ -199,7 +240,7 @@ function banner(t){$("banner").hidden=!t;$("banner").textContent=t||""}
 const svc=c=>CFG.services.find(s=>s.code===c);
 
 async function shrink(src,h){
-  return new Promise(res=>{const im=new Image();im.onload=()=>{const s=Math.min(1,h/im.height),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.9))};im.onerror=()=>res("");im.src=src});
+  return new Promise(res=>{if(!src)return res("");const im=new Image();im.onload=()=>{const s=Math.min(1,h/im.height),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.9))};im.onerror=()=>res("");im.src=src});
 }
 async function loadAssets(){
   try{const c=JSON.parse(localStorage.getItem("soltura-inv-assets-v1")||"null");if(c&&c.logo){IMG=c;return}}catch(e){}
@@ -209,25 +250,100 @@ async function loadAssets(){
 }
 async function loadConfig(){
   CFG=await call("config");
-  const keep=$("client").value;
-  $("client").innerHTML='<option value="">Kies een klant…</option>'+CFG.clients.map(c=>`<option value="${c.id}">${esc([c.salutation,c.full_name].filter(Boolean).join(" "))}</option>`).join("")+'<option value="new">+ Nieuwe klant</option>';
-  if([...$("client").options].some(o=>o.value===keep))$("client").value=keep;
-  $("log").innerHTML=CFG.invoices.length?CFG.invoices.map(x=>`<div class="log-item"><span>${x.pdf_url?`<a href="${esc(x.pdf_url)}" target="_blank" rel="noopener">${esc(x.invoice_no)}</a>`:esc(x.invoice_no)} · ${esc(x.client)}</span><span>${eur(Number(x.total))}</span></div>`).join(""):'<p class="hint">Nog geen proeffacturen.</p>';
+  $("log").innerHTML=CFG.invoices.length?CFG.invoices.map(x=>`<div class="log-item"><span>${x.pdf_url?`<a href="${esc(x.pdf_url)}" target="_blank" rel="noopener">${esc(x.invoice_no)}</a>`:esc(x.invoice_no)} · ${esc(x.client)}${x.sent_at?` · verstuurd naar ${esc(x.sent_to)}`:""}</span><span>${eur(Number(x.total))}</span></div>`).join(""):'<p class="hint">Nog geen proeffacturen.</p>';
   const L=CFG.last;$("lastHint").hidden=!L;
   if(L)$("lastHint").textContent=`Vorige factuur ${L.invoice_no} is van ${fecha(L.issue_date)}. Een eerdere datum kan niet.`;
   $("date").min=L?L.issue_date:"";
   if(L&&$("date").value<L.issue_date)$("date").value=L.issue_date;
 }
+
+/* ---------- klant zoeken ---------- */
+function showResults(){
+  const box=$("results");
+  if(!results.length){box.innerHTML='<div class="res"><small>Niets gevonden. Gebruik "Klant die niet in het CRM staat" of lees het contract in.</small></div>';box.hidden=false;return}
+  box.innerHTML=results.map((r,i)=>{
+    const props=(r.properties||[]).map(p=>p.reference).filter(Boolean).join(", ");
+    return `<button type="button" class="res${i===act?" act":""}" role="option" data-i="${i}"><b>${esc(r.full_name||"(zonder naam)")}</b><span class="chip">${esc(r.category||"")}</span><small>${esc([r.email,r.city,props&&("woning "+props)].filter(Boolean).join(" · "))}</small></button>`}).join("");
+  box.hidden=false;
+  box.querySelectorAll(".res[data-i]").forEach(b=>b.onclick=()=>pick(results[+b.dataset.i]));
+}
+$("q").addEventListener("input",()=>{
+  clearTimeout(searchT);const q=$("q").value.trim();
+  if(q.length<2){$("results").hidden=true;return}
+  searchT=setTimeout(async()=>{try{const j=await call("search",{q});if($("q").value.trim()!==q)return;results=j.results||[];act=-1;showResults()}catch(e){$("results").innerHTML=`<div class="res"><small>${esc(e.message)}</small></div>`;$("results").hidden=false}},250);
+});
+$("q").addEventListener("keydown",e=>{
+  if($("results").hidden||!results.length)return;
+  if(e.key==="ArrowDown"){act=Math.min(results.length-1,act+1);showResults();e.preventDefault()}
+  else if(e.key==="ArrowUp"){act=Math.max(0,act-1);showResults();e.preventDefault()}
+  else if(e.key==="Enter"&&act>=0){pick(results[act]);e.preventDefault()}
+  else if(e.key==="Escape"){$("results").hidden=true}
+});
+document.addEventListener("click",e=>{if(!e.target.closest(".combo"))$("results").hidden=true});
+
+function setForm(c){
+  $("c-sal").value=c.salutation??"Don";$("c-name").value=c.full_name||"";$("c-idt").value=c.id_type||"NIE";$("c-idn").value=c.id_number||"";
+  $("c-addr").value=c.address||"";$("c-city").value=c.city||"";$("c-country").value=countryEs(c.country)||"";$("c-mail").value=c.email||"";
+  $("c-lang").value=["es","en","nl","fr","de"].includes(c.language)?c.language:"es";
+}
+function pick(r){
+  crm=r;$("results").hidden=true;$("q").value="";
+  setForm(Object.assign({},r,{salutation:r.salutation??TITLE[String(r.title_raw||"").toLowerCase()]??"Don"}));
+  $("picked").hidden=false;$("pickedTxt").innerHTML=`<b>${esc(r.full_name)}</b><small>Uit het CRM · ${esc(r.category||"")}${r.enriched?" · eerder aangevuld":""}</small>`;
+  $("clientForm").hidden=false;
+  const ps=r.properties||[];
+  $("propLbl").hidden=!ps.length;
+  $("prop").innerHTML=ps.map(p=>`<option value="${p.wp_id}">${esc(p.reference||"?")} · ${esc(p.town||"")}${p.role==="buyer"?" (koper)":""}</option>`).join("")+'<option value="">Andere woning / geen</option>';
+  if(ps.length)applyProp(ps[0]);else{$("finca").value="";$("refcat").value=""}
+  render();
+}
+function applyProp(p){$("prop").value=p?String(p.wp_id):"";$("finca").value=p&&p.finca||"";$("refcat").value=p&&p.ref_catastral||"";render()}
+$("prop").onchange=()=>{const p=(crm&&crm.properties||[]).find(x=>String(x.wp_id)===$("prop").value);applyProp(p||null)};
+$("unpick").onclick=()=>{crm=null;$("picked").hidden=true;$("clientForm").hidden=true;$("propLbl").hidden=true;$("finca").value="";$("refcat").value="";$("q").focus();render()};
+$("manual").onclick=()=>{crm=null;$("picked").hidden=false;$("pickedTxt").innerHTML="<b>Nieuwe klant</b><small>Niet in het CRM; wordt alleen in de proefomgeving bewaard</small>";setForm({});$("clientForm").hidden=false;$("propLbl").hidden=true;$("c-name").focus();render()};
+
+/* ---------- contract inlezen ---------- */
+function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]);r.onerror=rej;r.readAsDataURL(f)})}
+async function extractFile(f){
+  if(!f)return;
+  if(!/^(application\/pdf|image\/(jpeg|png))$/.test(f.type)){$("extract").hidden=false;$("extract").innerHTML='<span class="msg err">Alleen PDF, JPG of PNG.</span>';return}
+  if(f.size>15*1024*1024){$("extract").hidden=false;$("extract").innerHTML='<span class="msg err">Bestand is groter dan 15 MB.</span>';return}
+  $("extract").hidden=false;$("extract").innerHTML=`<span>${esc(f.name)} wordt gelezen…</span>`;
+  try{
+    const j=await call("extract",{mime:f.type,file_base64:await readFile(f)});const d=j.data||{};
+    const parties=[...(d.sellers||[]).map(p=>Object.assign({role:"Verkoper"},p)),...(d.buyers||[]).map(p=>Object.assign({role:"Koper"},p))];
+    const pr=d.property||{};
+    window._ex={parties,property:pr};
+    $("extract").innerHTML=`<span>${esc(f.name)}: ${esc(d.doc_type||"document")}${pr.finca?` · finca ${esc(pr.finca)}`:""}${pr.ref_catastral?` · ref. ${esc(pr.ref_catastral)}`:""}</span>`+
+      parties.map((p,i)=>`<div class="party-pick"><span><b>${esc([p.salutation,p.full_name].filter(Boolean).join(" "))}</b><small>${esc(p.role)}${p.id_number?" · "+esc(p.id_type||"")+" "+esc(p.id_number):""}</small></span><button type="button" class="btn small" data-p="${i}">Gebruik</button></div>`).join("")||'<span class="missing">Geen partijen gevonden.</span>';
+    $("extract").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>useParty(window._ex.parties[+b.dataset.p]));
+    if(pr.finca||pr.ref_catastral){if(pr.finca)$("finca").value=pr.finca;if(pr.ref_catastral)$("refcat").value=pr.ref_catastral;render()}
+  }catch(e){$("extract").innerHTML=`<span class="msg err">${esc(e.message)}</span>`}
+}
+function useParty(p){
+  if($("clientForm").hidden){crm=null;$("picked").hidden=false;$("pickedTxt").innerHTML=`<b>${esc(p.full_name)}</b><small>Uit het contract, niet gekoppeld aan het CRM</small>`;setForm({});$("clientForm").hidden=false}
+  const put=(id,v,force)=>{if(v&&(force||!$(id).value.trim()))$(id).value=v};
+  if(p.salutation)$("c-sal").value=p.salutation;
+  put("c-name",p.full_name,true);if(p.id_type)$("c-idt").value=p.id_type;put("c-idn",p.id_number,true);
+  put("c-addr",p.address,true);put("c-city",p.city,true);put("c-country",p.country,true);
+  render();
+}
+$("pickFile").onclick=()=>$("file").click();
+$("file").onchange=()=>{extractFile($("file").files[0]);$("file").value=""};
+["dragenter","dragover"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.add("over")}));
+["dragleave","drop"].forEach(ev=>$("drop").addEventListener(ev,e=>{e.preventDefault();$("drop").classList.remove("over")}));
+$("drop").addEventListener("drop",e=>extractFile(e.dataTransfer.files[0]));
+
+/* ---------- klant, taal, regels ---------- */
 function client(){
-  const v=$("client").value;
-  if(v==="new")return{isNew:true,salutation:$("nc-sal").value,full_name:$("nc-name").value.trim(),id_type:$("nc-idt").value,id_number:$("nc-idn").value.trim(),address:$("nc-addr").value.trim(),city:$("nc-city").value.trim(),nationality:$("nc-nat").value,email:$("nc-mail").value.trim()};
-  return CFG.clients.find(c=>c.id===v)||null;
+  if($("clientForm").hidden)return null;
+  return{wp_contact_id:crm?crm.wp_id:null,salutation:$("c-sal").value,full_name:$("c-name").value.trim(),id_type:$("c-idt").value,id_number:$("c-idn").value.trim(),
+    address:$("c-addr").value.trim(),city:$("c-city").value.trim(),country:$("c-country").value.trim()||"España",email:$("c-mail").value.trim(),language:$("c-lang").value};
 }
 function language(){
   const o=$("langOverride").value,c=client();
   if(o)return{lang:o,why:"handmatig gekozen"};
-  const l=c&&CFG.nationality_language[c.nationality];
-  if(l)return{lang:l,why:"klant is "+(NATNAME[c.nationality]||c.nationality).toLowerCase()};
+  if(c)return{lang:c.language,why:"klant spreekt "+(LANGNAME[c.language]||c.language)};
   return{lang:"es",why:"standaard Spaans"};
 }
 function addLine(code){
@@ -280,9 +396,9 @@ function sheetHtml(o){
   const propHtml=(o.finca?`<div class="fn">Número de finca: ${esc(o.finca)}</div>`:"")+(o.ref?`<div class="rc">Ref.cat.: ${esc(o.ref)}</div>`:"");
   const rows=o.lines.length?o.lines.map(l=>`<tr><td><div class="ds">${esc(l.desc)}${l.detail?" "+esc(l.detail):""}</div>${l.prop?propHtml:""}</td><td class="c">${isNaN(l.unit)?"":eur(l.unit)}</td><td class="t">${isNaN(l.total)?"":eur(l.total)}</td></tr>`).join(""):`<tr><td colspan="3" style="color:var(--s-grey)">Kies een servicio</td></tr>`;
   const c=o.client,name=c?[c.salutation,c.full_name].filter(Boolean).join(" "):"";
-  const cl=c&&c.full_name?`<div class="pname">${esc(name)}</div>${c.address?`<p>${esc(c.address)}</p>`:""}${c.city?`<p>${esc(c.city)}</p>`:""}${c.address||c.city?`<p>${esc(c.country||"España")}</p>`:""}${c.id_number?`<p class="gap" style="font-size:12px">${esc(c.id_type||"NIE")}: ${esc(c.id_number)}</p>`:""}`:"";
+  const cl=c&&c.full_name?`<div class="pname">${esc(name)}</div>${c.address?`<p>${esc(c.address)}</p>`:""}${c.city?`<p>${esc(c.city)}</p>`:""}${c.address||c.city?`<p>${esc(countryEs(c.country)||"España")}</p>`:""}${c.id_number?`<p class="gap" style="font-size:12px">${esc(c.id_type||"NIE")}: ${esc(c.id_number)}</p>`:""}`:"";
   const img=(k,cls,alt)=>IMG[k]?`<img ${cls?`class="${cls}"`:""} src="${IMG[k]}" alt="${alt}">`:"";
-  return `${o.final?"":'<div class="wm" aria-hidden="true">PRUEBA</div>'}<div class="pg">
+  return `<div class="wm" aria-hidden="true">PRUEBA</div><div class="pg">
   <div class="hd">${IMG.logo?`<img class="logo" src="${IMG.logo}" alt="Soltura Real Estate">`:'<div class="logo"></div>'}<div class="box"><h1>FACTURA</h1><div class="no">Nº ${esc(o.no)}</div><div class="dt">Formentera del Segura, ${fecha(o.date)}</div></div></div>
   <div class="rule"></div>
   <div class="parties"><div class="party em"><div class="plbl">EMISOR / PROVEEDOR</div><div class="pname">Grupo Soltura SL</div><p>Avd. De la Constitución s/n</p><p>03179 Formentera del Segura, Alicante</p><p>España</p><p class="gap"><b>CIF:</b> B54286042</p><p><b>T:</b> +34 966 792 113</p><p><b>E:</b> info@gruposoltura.com</p><p><b>W:</b> www.gruposoltura.com</p></div>
@@ -305,7 +421,10 @@ function render(){
   if(busy)return;
   const o=state();
   $("langTag").textContent=o.lang.toUpperCase();$("langWhy").textContent=o.why;
-  $("newClient").hidden=$("client").value!=="new";
+  const c=o.client,miss=[];
+  if(c){if(!c.id_number)miss.push("NIE/DNI");if(!c.address)miss.push("adres");if(!c.city)miss.push("postcode en plaats");if(!c.email)miss.push("e-mail")}
+  if(o.lines.some(l=>l.prop)){if(!o.finca)miss.push("finca");if(!o.ref)miss.push("ref. catastral")}
+  $("missing").hidden=!miss.length;$("missing").textContent="Nog leeg: "+miss.join(", ")+". Vul aan of lees het contract in.";
   $("sBase").textContent=eur(o.base);$("sIva").textContent=eur(o.iva);$("sTot").textContent=eur(o.tot);$("nextNo").textContent=o.no;
   $("sheet").innerHTML=sheetHtml(o);fit();
 }
@@ -313,7 +432,7 @@ function fit(){const w=$("sheetWrap").clientWidth,s=Math.min(1,w/794);$("sheet")
 addEventListener("resize",fit);
 
 async function makePdf(o){
-  const cap=$("capture");cap.innerHTML=sheetHtml(Object.assign({},o,{final:false}));
+  const cap=$("capture");cap.innerHTML=sheetHtml(o);
   await document.fonts.ready;
   await Promise.all([...cap.querySelectorAll("img")].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r})));
   const canvas=await html2canvas(cap,{scale:2.5,backgroundColor:"#ffffff",useCORS:true,logging:false,width:794,height:1123,windowWidth:794});
@@ -327,46 +446,57 @@ async function makePdf(o){
 $("frm").addEventListener("submit",async e=>{
   e.preventDefault();if(busy)return;
   const o=state(),c=o.client;
-  if(!c||!c.full_name)return msg("Kies eerst een klant of vul de naam van de nieuwe klant in.","err");
+  if(!c||!c.full_name)return msg("Kies eerst een klant in het CRM, lees een contract in of vul een nieuwe klant in.","err");
   if(!o.lines.length)return msg("Voeg minstens één servicio toe.","err");
   if(o.lines.some(l=>isNaN(l.unit)||l.unit<=0))return msg("Elke servicio heeft een bedrag hoger dan nul nodig.","err");
   if(CFG.last&&o.date<CFG.last.issue_date)return msg(`Deze datum ligt vóór de vorige factuur (${CFG.last.invoice_no} van ${fecha(CFG.last.issue_date)}). Kies die datum of later.`,"err");
-  const payload={issue_date:o.date,language:$("langOverride").value||null,finca:o.finca,ref_catastral:o.ref,
+  const propSel=$("propLbl").hidden?"":$("prop").value,prop=crm&&(crm.properties||[]).find(p=>String(p.wp_id)===propSel);
+  const payload={issue_date:o.date,language:o.lang,finca:o.finca,ref_catastral:o.ref,property_wp_id:prop?prop.wp_id:null,property_ref:prop?prop.reference:null,
+    client:Object.assign({},c,{country:countryEs(c.country)}),
     lines:o.lines.map(l=>({service_code:l.code,description:l.desc,detail:l.detail,quantity:l.qty,unit_amount:l.unit,iva_rate:21,price_overridden:l.ov,pricing_input:l.input}))};
-  if(c.isNew){const n=Object.assign({},c);delete n.isNew;n.country="España";payload.client=n}else payload.client_id=c.id;
-  busy=true;$("emit").disabled=true;msg("Factuur wordt aangemaakt…");
+  busy=true;$("emit").disabled=true;$("sendbox").hidden=true;msg("Factuur wordt aangemaakt…");
   try{
     const r=await call("issue",{payload});const inv=r.invoice;
     msg(`Factuur ${inv.invoice_no} aangemaakt. PDF wordt gemaakt…`,"ok");
     const pdfO=Object.assign({},o,{no:inv.invoice_no,date:inv.issue_date,base:Number(inv.base),iva:Number(inv.iva),tot:Number(inv.total)});
     $("sheet").innerHTML=sheetHtml(pdfO);fit();
     const b64=await makePdf(pdfO);
-    const first=o.lines[0],surname=String(c.full_name).trim().split(/\s+/).pop();
-    const s=await call("store_pdf",{invoice_id:inv.id,invoice_no:inv.invoice_no,client_name:c.full_name,file_title:(svc(first.code).desc_es.replace(/\s*\(.*\)/,"")+" "+surname),pdf_base64:b64});
-    msg(`Factuur ${inv.invoice_no} staat klaar: ${s.name}`,"ok");
+    const surname=String(c.full_name).trim().split(/\s+/).pop();
+    const s=await call("store_pdf",{invoice_id:inv.id,invoice_no:inv.invoice_no,client_name:c.full_name,file_title:(svc(o.lines[0].code).desc_es.replace(/\s*\(.*\)/,"")+" "+surname),pdf_base64:b64});
+    msg(`Factuur ${inv.invoice_no} staat klaar in Drive: ${s.name}`,"ok");
+    lastIssued={id:inv.id,no:inv.invoice_no,url:s.url};
+    $("sendTxt").innerHTML=`Factuur <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(inv.invoice_no)}</a> mailen naar de klant?`;
+    $("sendTo").value=c.email||"";$("sendbox").hidden=false;
     await loadConfig();
     busy=false;resetForm(true);
   }catch(err){busy=false;msg(err.message,"err");try{await loadConfig()}catch(x){}render()}
   finally{busy=false;$("emit").disabled=false}
 });
+$("sendBtn").onclick=async()=>{
+  if(!lastIssued)return;const to=$("sendTo").value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(to))return msg("Vul een geldig e-mailadres in.","err");
+  $("sendBtn").disabled=true;msg(`Factuur ${lastIssued.no} wordt verstuurd…`);
+  try{const r=await call("send",{invoice_id:lastIssued.id,to});msg(`Factuur ${lastIssued.no} is verstuurd naar ${r.sent_to}.`,"ok");$("sendbox").hidden=true;await loadConfig()}
+  catch(e){msg(e.message,"err")}finally{$("sendBtn").disabled=false}
+};
 function resetForm(keepMsg){
-  $("client").value="";["finca","refcat","nc-name","nc-idn","nc-addr","nc-city","nc-mail"].forEach(i=>$(i).value="");$("langOverride").value="";
+  crm=null;$("picked").hidden=true;$("clientForm").hidden=true;$("propLbl").hidden=true;$("extract").hidden=true;$("q").value="";
+  ["finca","refcat","c-name","c-idn","c-addr","c-city","c-country","c-mail"].forEach(i=>$(i).value="");$("langOverride").value="";
   $("lines").innerHTML="";const t=today(),L=CFG.last;$("date").value=L&&L.issue_date>t?L.issue_date:t;
-  if(!keepMsg)msg("");addLine(CFG.services[0]&&CFG.services[0].code);
+  if(!keepMsg){msg("");$("sendbox").hidden=true}
+  addLine(CFG.services[0]&&CFG.services[0].code);
 }
-$("client").onchange=render;
-["langOverride","finca","refcat","date","nc-sal","nc-nat","nc-name","nc-idt","nc-idn","nc-addr","nc-city"].forEach(i=>$(i).addEventListener("input",render));
+["langOverride","finca","refcat","date","c-sal","c-lang","c-name","c-idt","c-idn","c-addr","c-city","c-country","c-mail"].forEach(i=>$(i).addEventListener("input",render));
 $("addLine").onclick=()=>addLine("CEE");
 $("newInv").onclick=()=>resetForm(false);
 $("resetBtn").onclick=()=>{$("confirm").hidden=false};
 $("resetNo").onclick=()=>{$("confirm").hidden=true};
 $("resetYes").onclick=async()=>{
   $("resetYes").disabled=true;
-  try{await call("reset");$("confirm").hidden=true;await loadConfig();resetForm(true);msg("Proefomgeving staat weer op nul.","ok")}
+  try{await call("reset");$("confirm").hidden=true;await loadConfig();resetForm(false);msg("Proefomgeving staat weer op nul.","ok")}
   catch(err){msg(err.message,"err")}finally{$("resetYes").disabled=false}
 };
 (async()=>{
-  $("nc-nat").innerHTML=Object.keys(NATNAME).map(k=>`<option value="${k}" ${k==="NL"?"selected":""}>${NATNAME[k]}</option>`).join("");
   $("date").value=today();
   try{await loadConfig()}catch(err){banner("Kan de facturatie-agent niet bereiken: "+err.message);return}
   resetForm(false);
