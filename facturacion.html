@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facturación · The Bridge</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* JARVIS-Finance-Invoicing (proef). Formulier links, factuur rechts in de huisstijl van 2026/0030. */
+:root{--bg:#eef1f3;--panel:#fff;--fg:#1b2731;--muted:#5d6b76;--line:#d6dde2;--accent:#c0392b;--accent-ink:#fff;--accent-soft:#fae8e6;
+--warn:#8a5a00;--warn-bg:#fbf1dc;--danger:#a1302b;--ok:#2f6b3a;--ok-bg:#e3f1e5;
+--f-ui:"Manrope",system-ui,sans-serif;--f-num:"IBM Plex Mono",ui-monospace,monospace;
+--s-red:#c0392b;--s-rule:#e05a45;--s-pink:#fae8e6;--s-cream:#fffbea;--s-slate:#2e3a48;--s-gold:#f5c518;--s-goldtxt:#c69500;--s-grey:#6b7280;--s-hair:#e3e5e8;
+--f-doc:"Carlito","Calibri",Arial,sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#12181d;--panel:#1a2229;--fg:#e4eaee;--muted:#9aa8b2;--line:#2c3842;--accent:#e06a5c;--accent-ink:#1a0d0b;--accent-soft:#3a1f1c;--warn:#f0c46a;--warn-bg:#3a2e14;--danger:#f08a84;--ok:#8fd19b;--ok-bg:#1d3324;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-ui);padding:20px 16px 40px}
+.top{max-width:1300px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.brand{display:flex;flex-direction:column}.brand b{font-size:20px}.brand span{color:var(--muted);font-size:13px}
+.pill{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:var(--warn-bg);color:var(--warn)}
+.wrap{max-width:1300px;margin:0 auto;display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:960px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:18px}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec h2{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px;min-width:0}
+input,select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.num{font-family:var(--f-num);text-align:right}.mono{font-family:var(--f-num)}
+.hint{font-size:12px;color:var(--muted);margin:0}
+.lang{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+.tag{font-family:var(--f-num);font-size:12px;padding:2px 8px;border-radius:5px;background:var(--accent-soft);color:var(--accent);font-weight:500}
+.line{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.lines{display:flex;flex-direction:column;gap:10px}
+.line-head{display:flex;gap:8px;align-items:center}.line-head select{flex:1}
+.x{border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;padding:4px 8px;border-radius:6px;cursor:pointer}
+.x:hover{color:var(--danger);background:var(--bg)}
+.calc{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ov{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--warn)}
+.chk{flex-direction:row;align-items:center;gap:6px;font-size:12px}.chk input{width:auto}
+.btn{font:inherit;font-weight:600;border-radius:8px;padding:10px 14px;cursor:pointer;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+.btn.prim{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent}.btn.small{padding:6px 10px;font-size:13px}
+.btn[disabled]{opacity:.55;cursor:wait}
+.actions{display:flex;gap:10px;flex-wrap:wrap}.actions .btn{flex:1 1 140px}
+.msg{font-size:13px;min-height:1em}.msg.err{color:var(--danger)}.msg.ok{color:var(--ok)}
+.sums{display:flex;flex-direction:column;gap:4px;font-size:14px;border-top:1px solid var(--line);padding-top:10px}
+.sums div{display:flex;justify-content:space-between}.sums .tot{font-size:17px;font-weight:700}.sums span:last-child{font-family:var(--f-num)}
+.log{display:flex;flex-direction:column;gap:6px}
+.log-item{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:8px 10px;border-radius:7px;background:var(--ok-bg);color:var(--ok)}
+.log-item a{color:inherit}.log-item span:last-child{font-family:var(--f-num)}
+.confirm{border:1px solid var(--danger);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;font-size:13px}
+.banner{max-width:1300px;margin:0 auto 12px;padding:10px 14px;border-radius:8px;background:var(--warn-bg);color:var(--warn);font-size:14px}
+[hidden]{display:none!important}
+.sheet-wrap{position:relative;width:100%}
+.sheet{width:794px;height:1123px;background:#fff;color:var(--s-slate);font:11px/1.45 var(--f-doc);position:absolute;top:0;left:0;transform-origin:0 0;box-shadow:0 1px 4px rgba(0,0,0,.18);overflow:hidden}
+#capture{position:fixed;left:-2000px;top:0;box-shadow:none}
+.pg{position:absolute;inset:42px 42px 0 42px}
+.wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 120px/1 var(--f-doc);color:rgba(192,57,43,.07);transform:rotate(-28deg);letter-spacing:.12em;pointer-events:none}
+.hd{display:flex;justify-content:space-between;align-items:stretch;height:126px}
+.hd .logo{width:100px;height:100px;align-self:center;margin-left:14px;object-fit:contain}
+.hd .box{width:388px;background:var(--s-red);color:#fff;text-align:right;padding:28px 18px 0}
+.hd .box h1{font:700 33px/1 var(--f-doc);margin:0 0 10px}
+.hd .box .no{color:var(--s-gold);font-size:13px}.hd .box .dt{font-size:10px}
+.rule{height:2px;background:var(--s-rule);margin-top:20px}
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:30px}
+.party{padding:12px 12px 10px;min-height:177px}.party.em{background:var(--s-pink)}.party.cl{background:var(--s-cream)}
+.plbl{font-size:8px;font-weight:700;margin-bottom:26px}.em .plbl{color:var(--s-red)}.cl .plbl{color:var(--s-goldtxt)}
+.pname{font-size:14px;font-weight:700;margin-bottom:6px}.party p{margin:0;font-size:11px}.party .gap{margin-top:5px}
+.tbl{margin-top:50px;width:100%;border-collapse:collapse}
+.tbl th{background:var(--s-slate);color:#fff;font-size:11px;font-weight:700;text-align:left;padding:8px 12px;height:27px}
+.tbl th.c,.tbl td.c{text-align:right;width:110px}.tbl th.t,.tbl td.t{text-align:right;width:105px}
+.tbl td{padding:11px 12px;vertical-align:middle;border-bottom:1px solid var(--s-hair)}.tbl td.t{font-weight:700}
+.ds{font-size:12.5px}.fn{color:var(--s-grey);font-size:10.5px;margin-top:3px}.rc{font-size:11.5px;margin-top:3px}
+.tbl tr.sub td{color:var(--s-grey);font-size:11px;padding:5px 12px;border:0;font-weight:400}
+.grand{display:flex;justify-content:space-between;align-items:center;background:var(--s-red);color:#fff;height:41px;padding:0 12px;margin-top:2px}
+.grand b{font-size:14.5px}.grand span{color:var(--s-gold);font-weight:700;font-size:17px}
+.pay{margin-top:56px;background:var(--s-cream);border-top:2px solid var(--s-gold);border-left:2px solid var(--s-gold);padding:14px 16px 12px}
+.pay .plbl{color:var(--s-goldtxt);font-size:10px;margin-bottom:6px}.pay p{margin:0 0 3px;font-size:11px}
+.acc{margin-top:72px;border-top:1px solid var(--s-hair);border-bottom:1px solid var(--s-hair);padding:12px 0 24px;display:flex;justify-content:space-between;align-items:center;gap:20px}
+.acc .txt{font-size:8.6px;color:var(--s-grey);line-height:1.55}.acc .txt b{color:var(--s-slate)}
+.acc .logos{display:flex;align-items:center;gap:22px;margin-right:56px}.acc .logos img{height:38px;width:auto}.acc .logos img.gipe{height:43px}
+.ft{position:absolute;left:42px;right:42px;bottom:42px;border-top:2px solid var(--s-rule);padding-top:8px;display:flex;justify-content:space-between;font-size:8.8px;color:var(--s-grey);line-height:1.5}
+.ft b{color:var(--s-red)}.ft .r{text-align:right;color:var(--s-slate)}.ft .r span{color:var(--s-red)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><b>Facturación</b><span>Grupo Soltura · werkplek Ingrid</span></div>
+  <span class="pill">Proefmodus</span>
+</header>
+<div class="banner" id="banner" hidden></div>
+
+<main class="wrap">
+  <form class="panel" id="frm" novalidate>
+    <section class="sec">
+      <h2>1 · Klant</h2>
+      <label for="client">Klant kiezen<select id="client"></select></label>
+      <div id="newClient" class="sec" hidden>
+        <div class="row">
+          <label for="nc-sal">Aanhef<select id="nc-sal"><option>Don</option><option>Doña</option><option>Don y Doña</option><option value="">Empresa</option></select></label>
+          <label for="nc-nat">Nationaliteit<select id="nc-nat"></select></label>
+        </div>
+        <label for="nc-name">Naam volgens contract<input id="nc-name" autocomplete="off"></label>
+        <div class="row">
+          <label for="nc-idt">Document<select id="nc-idt"><option>NIE</option><option>DNI</option><option>CIF</option><option>PAS</option></select></label>
+          <label for="nc-idn">Nummer<input id="nc-idn" autocomplete="off"></label>
+        </div>
+        <label for="nc-addr">Adres<input id="nc-addr" autocomplete="off"></label>
+        <label for="nc-city">Postcode en plaats<input id="nc-city" placeholder="03170 Rojales, Alicante" autocomplete="off"></label>
+        <label for="nc-mail">E-mail (optioneel)<input id="nc-mail" type="email" autocomplete="off"></label>
+      </div>
+      <div class="lang">Taal omschrijving <span class="tag" id="langTag">ES</span>
+        <select id="langOverride" aria-label="Taal van de omschrijving kiezen" style="width:auto">
+          <option value="">automatisch</option><option value="es">Español</option><option value="en">English</option><option value="nl">Nederlands</option><option value="fr">Français</option><option value="de">Deutsch</option>
+        </select><span class="hint" id="langWhy"></span>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2>2 · Woning</h2>
+      <div class="row">
+        <label for="finca">Número de finca<input id="finca" autocomplete="off"></label>
+        <label for="refcat">Ref. catastral<input id="refcat" class="mono" autocomplete="off"></label>
+      </div>
+      <p class="hint">Komt onder elke dienst die bij de woning hoort.</p>
+    </section>
+
+    <section class="sec">
+      <h2>3 · Servicios</h2>
+      <div class="lines" id="lines"></div>
+      <button type="button" class="btn ghost small" id="addLine">+ Añadir servicio</button>
+    </section>
+
+    <section class="sec">
+      <h2>4 · Controle</h2>
+      <label for="date">Fecha de factura<input id="date" type="date"></label>
+      <p class="hint" id="lastHint" hidden></p>
+      <div class="sums" aria-live="polite">
+        <div><span>Base imponible</span><span id="sBase">0,00 €</span></div>
+        <div><span>IVA 21%</span><span id="sIva">0,00 €</span></div>
+        <div class="tot"><span>Total a pagar</span><span id="sTot">0,00 €</span></div>
+      </div>
+      <div class="msg" id="msg" role="status"></div>
+      <div class="actions">
+        <button type="submit" class="btn prim" id="emit">Emitir factura</button>
+        <button type="button" class="btn" id="newInv">Nieuwe factuur</button>
+      </div>
+      <p class="hint">Volgend proefnummer <span class="mono" id="nextNo">…</span>. De PDF komt in Drive-map Facturas PRUEBA. Er gaat niets naar de klant of het btw-rapport.</p>
+    </section>
+
+    <section class="sec">
+      <h2>Uitgegeven in deze proef</h2>
+      <div class="log" id="log"><p class="hint">Laden…</p></div>
+      <button type="button" class="btn ghost small" id="resetBtn">Alles wissen en terug naar nul</button>
+      <div class="confirm" id="confirm" hidden>
+        <span>Alle proeffacturen, klanten en proef-PDF's worden gewist en de nummering begint weer bij 0001. Diensten en tarieven blijven staan.</span>
+        <div class="actions"><button type="button" class="btn" id="resetNo">Annuleren</button><button type="button" class="btn prim" id="resetYes">Wissen</button></div>
+      </div>
+    </section>
+  </form>
+
+  <section aria-label="Voorbeeld van de factuur">
+    <div class="sheet-wrap" id="sheetWrap"><article class="sheet" id="sheet"></article></div>
+  </section>
+</main>
+<article class="sheet" id="capture" aria-hidden="true"></article>
+
+<script>
+const HOOK="https://gruposoltura.app.n8n.cloud/webhook/invoicing-test";
+const LANGS=["es","en","nl","fr","de"];
+const NATNAME={ES:"Spaans",GB:"Brits",IE:"Iers",US:"Amerikaans",NO:"Noors",SE:"Zweeds",DK:"Deens",FI:"Fins",PL:"Pools",NL:"Nederlands",BE:"Belgisch",FR:"Frans",LU:"Luxemburgs",DE:"Duits",AT:"Oostenrijks",CH:"Zwitsers"};
+const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const $=id=>document.getElementById(id);
+const r2=n=>Math.round((n+Number.EPSILON)*100)/100;
+const parseNum=v=>{v=String(v??"").trim();if(!v)return NaN;if(v.includes(","))v=v.replace(/\./g,"").replace(",",".");else if(/^\d{1,3}(\.\d{3})+$/.test(v))v=v.replace(/\./g,"");return Number(v)};
+const eur=n=>(isNaN(n)?0:n).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:"always"})+" €";
+const toField=n=>isNaN(n)?"":Number(n).toFixed(2).replace(".",",");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fecha=d=>{const t=new Date(d+"T12:00:00");return t.getDate()+" de "+MESES[t.getMonth()]+" "+t.getFullYear()};
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+
+let CFG={services:[],clients:[],invoices:[],nationality_language:{},next_no:"",last:null};
+let IMG={logo:"",api:"",gipe:"",cei:"",aipp:""};
+let seq=0, busy=false, issued=null;
+
+async function call(action,extra){
+  const r=await fetch(HOOK,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({action},extra||{}))});
+  let j=null;try{j=await r.json()}catch(e){}
+  if(!r.ok||!j||j.ok===false)throw new Error((j&&j.error)||("Server gaf status "+r.status));
+  return j;
+}
+function msg(t,kind){const m=$("msg");m.textContent=t||"";m.className="msg"+(kind?" "+kind:"")}
+function banner(t){$("banner").hidden=!t;$("banner").textContent=t||""}
+const svc=c=>CFG.services.find(s=>s.code===c);
+
+async function shrink(src,h){
+  return new Promise(res=>{const im=new Image();im.onload=()=>{const s=Math.min(1,h/im.height),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.9))};im.onerror=()=>res("");im.src=src});
+}
+async function loadAssets(){
+  try{const c=JSON.parse(localStorage.getItem("soltura-inv-assets-v1")||"null");if(c&&c.logo){IMG=c;return}}catch(e){}
+  const j=await call("assets");const by=n=>(j.images.find(i=>i.name===n)||{}).data||"";
+  IMG={logo:await shrink(by("image1.jpg"),300),api:await shrink(by("image2.png"),120),gipe:await shrink(by("image3.png"),130),cei:await shrink(by("image4.png"),120),aipp:await shrink(by("image5.png"),120)};
+  try{localStorage.setItem("soltura-inv-assets-v1",JSON.stringify(IMG))}catch(e){}
+}
+async function loadConfig(){
+  CFG=await call("config");
+  const keep=$("client").value;
+  $("client").innerHTML='<option value="">Kies een klant…</option>'+CFG.clients.map(c=>`<option value="${c.id}">${esc([c.salutation,c.full_name].filter(Boolean).join(" "))}</option>`).join("")+'<option value="new">+ Nieuwe klant</option>';
+  if([...$("client").options].some(o=>o.value===keep))$("client").value=keep;
+  $("log").innerHTML=CFG.invoices.length?CFG.invoices.map(x=>`<div class="log-item"><span>${x.pdf_url?`<a href="${esc(x.pdf_url)}" target="_blank" rel="noopener">${esc(x.invoice_no)}</a>`:esc(x.invoice_no)} · ${esc(x.client)}</span><span>${eur(Number(x.total))}</span></div>`).join(""):'<p class="hint">Nog geen proeffacturen.</p>';
+  const L=CFG.last;$("lastHint").hidden=!L;
+  if(L)$("lastHint").textContent=`Vorige factuur ${L.invoice_no} is van ${fecha(L.issue_date)}. Een eerdere datum kan niet.`;
+  $("date").min=L?L.issue_date:"";
+  if(L&&$("date").value<L.issue_date)$("date").value=L.issue_date;
+}
+function client(){
+  const v=$("client").value;
+  if(v==="new")return{isNew:true,salutation:$("nc-sal").value,full_name:$("nc-name").value.trim(),id_type:$("nc-idt").value,id_number:$("nc-idn").value.trim(),address:$("nc-addr").value.trim(),city:$("nc-city").value.trim(),nationality:$("nc-nat").value,email:$("nc-mail").value.trim()};
+  return CFG.clients.find(c=>c.id===v)||null;
+}
+function language(){
+  const o=$("langOverride").value,c=client();
+  if(o)return{lang:o,why:"handmatig gekozen"};
+  const l=c&&CFG.nationality_language[c.nationality];
+  if(l)return{lang:l,why:"klant is "+(NATNAME[c.nationality]||c.nationality).toLowerCase()};
+  return{lang:"es",why:"standaard Spaans"};
+}
+function addLine(code){
+  const id=++seq,el=document.createElement("div");el.className="line";el.dataset.id=id;
+  el.innerHTML=`<div class="line-head"><select id="ls-${id}" aria-label="Servicio">${CFG.services.map(x=>`<option value="${x.code}" ${x.code===code?"selected":""}>${esc(x.desc_es)}</option>`).join("")}</select><button type="button" class="x" aria-label="Regel verwijderen">×</button></div>
+  <div id="lp-${id}"></div>
+  <label for="ld-${id}">Aanvulling op de omschrijving (optioneel)<input id="ld-${id}" placeholder="Bijv. Piscina, Ampliación"></label>
+  <div class="calc"><span id="lc-${id}"></span><span class="ov" id="lo-${id}" hidden>Aangepast</span></div>`;
+  $("lines").appendChild(el);
+  el.querySelector(".x").onclick=()=>{el.remove();render()};
+  $("ls-"+id).onchange=()=>{pricing(id);render()};
+  $("ld-"+id).oninput=render;
+  pricing(id);render();
+}
+function pricing(id){
+  const s=svc($("ls-"+id).value);let h="";
+  const pct=Number(s.default_percent),min=Number(s.min_amount||0),amt=Number(s.default_amount);
+  if(s.pricing_mode==="percent_of_price")h+=`<div class="row"><label for="lpr-${id}">${esc(s.basis_label||"Bedrag")}<input id="lpr-${id}" class="num" inputmode="decimal"></label><label for="lpc-${id}">Percentage<input id="lpc-${id}" class="num" inputmode="decimal" value="${String(pct).replace(".",",")}"></label></div>`;
+  if(s.pricing_mode==="fixed")h+=`<label for="lq-${id}">Aantal<input id="lq-${id}" class="num" inputmode="numeric" value="1"></label>`;
+  const lbl=s.pricing_mode==="percent_of_price"?`Importe (${String(pct).replace(".",",")}%${min?", minimum "+eur(min):""} excl. IVA; mag je overschrijven)`:s.pricing_mode==="fixed"?`Importe (tarief ${eur(amt)} excl. IVA)`:"Importe (zelf invullen)";
+  h+=`<label for="la-${id}">${lbl}<input id="la-${id}" class="num" inputmode="decimal" value="${s.pricing_mode==="fixed"?toField(amt):""}"></label>
+  <label class="chk" for="lg-${id}"><input type="checkbox" id="lg-${id}"> Afgesproken bedrag is inclusief IVA</label>`;
+  $("lp-"+id).innerHTML=h;
+  $("lp-"+id).querySelectorAll("input").forEach(i=>i.addEventListener("input",()=>{if(i.id.startsWith("la-"))i.dataset.touched="1";else if(!i.id.startsWith("lg-")&&!i.id.startsWith("lq-"))$("la-"+id).dataset.touched="";render()}));
+}
+function lines(lang){
+  return [...$("lines").children].map(el=>{
+    const id=el.dataset.id,s=svc($("ls-"+id).value),a=$("la-"+id);
+    let amt=parseNum(a.value),ov=false,note="",input={};
+    if(s.pricing_mode==="percent_of_price"){
+      const pr=parseNum($("lpr-"+id).value),pc=parseNum($("lpc-"+id).value),min=Number(s.min_amount||0);
+      const raw=(!isNaN(pr)&&!isNaN(pc))?r2(pr*pc/100):NaN,calc=isNaN(raw)?NaN:Math.max(raw,min);
+      input={basis:pr,percent:pc,minimum:min,formula:calc};
+      if(a.dataset.touched==="1"&&!isNaN(amt)){ov=!isNaN(calc)&&Math.abs(calc-amt)>.004;note=isNaN(calc)?"handmatig":"formule gaf "+eur(calc)}
+      else{amt=calc;a.value=toField(calc);note=isNaN(calc)?"vul "+String(s.basis_label||"bedrag").toLowerCase()+" in":`${String(pc).replace(".",",")}% van ${eur(pr)} = ${eur(raw)}`+(raw<calc?` · minimum ${eur(min)} toegepast`:"")}
+    }else if(s.pricing_mode==="fixed"){const d=Number(s.default_amount);ov=!isNaN(amt)&&Math.abs(amt-d)>.004;note="vast tarief "+eur(d);input={tariff:d}}
+    else note="handmatig bedrag";
+    let unit=amt;
+    if($("lg-"+id).checked&&!isNaN(amt)){unit=r2(amt/1.21);note+=` · ${eur(amt)} incl. IVA = base ${eur(unit)}`;input.incl_iva=amt}
+    const qe=$("lq-"+id),qty=qe?Math.max(1,Math.round(parseNum(qe.value)||1)):1,total=isNaN(unit)?NaN:r2(unit*qty);
+    if(qty>1&&!isNaN(unit))note+=` · ${qty} × ${eur(unit)} = ${eur(total)}`;
+    $("lc-"+id).textContent=note;$("lo-"+id).hidden=!ov;
+    const extra=$("ld-"+id).value.trim(),dl=s["desc_"+lang]||s.desc_es;
+    let desc=lang==="es"?s.desc_es:`${dl} / ${s.desc_es}`;
+    if(qty>1)desc=`${qty} × ${desc}`;
+    return{code:s.code,desc,detail:extra,unit,qty,total,prop:s.needs_property,ov,input};
+  });
+}
+function sheetHtml(o){
+  const propHtml=(o.finca?`<div class="fn">Número de finca: ${esc(o.finca)}</div>`:"")+(o.ref?`<div class="rc">Ref.cat.: ${esc(o.ref)}</div>`:"");
+  const rows=o.lines.length?o.lines.map(l=>`<tr><td><div class="ds">${esc(l.desc)}${l.detail?" "+esc(l.detail):""}</div>${l.prop?propHtml:""}</td><td class="c">${isNaN(l.unit)?"":eur(l.unit)}</td><td class="t">${isNaN(l.total)?"":eur(l.total)}</td></tr>`).join(""):`<tr><td colspan="3" style="color:var(--s-grey)">Kies een servicio</td></tr>`;
+  const c=o.client,name=c?[c.salutation,c.full_name].filter(Boolean).join(" "):"";
+  const cl=c&&c.full_name?`<div class="pname">${esc(name)}</div>${c.address?`<p>${esc(c.address)}</p>`:""}${c.city?`<p>${esc(c.city)}</p>`:""}${c.address||c.city?`<p>${esc(c.country||"España")}</p>`:""}${c.id_number?`<p class="gap" style="font-size:12px">${esc(c.id_type||"NIE")}: ${esc(c.id_number)}</p>`:""}`:"";
+  const img=(k,cls,alt)=>IMG[k]?`<img ${cls?`class="${cls}"`:""} src="${IMG[k]}" alt="${alt}">`:"";
+  return `${o.final?"":'<div class="wm" aria-hidden="true">PRUEBA</div>'}<div class="pg">
+  <div class="hd">${IMG.logo?`<img class="logo" src="${IMG.logo}" alt="Soltura Real Estate">`:'<div class="logo"></div>'}<div class="box"><h1>FACTURA</h1><div class="no">Nº ${esc(o.no)}</div><div class="dt">Formentera del Segura, ${fecha(o.date)}</div></div></div>
+  <div class="rule"></div>
+  <div class="parties"><div class="party em"><div class="plbl">EMISOR / PROVEEDOR</div><div class="pname">Grupo Soltura SL</div><p>Avd. De la Constitución s/n</p><p>03179 Formentera del Segura, Alicante</p><p>España</p><p class="gap"><b>CIF:</b> B54286042</p><p><b>T:</b> +34 966 792 113</p><p><b>E:</b> info@gruposoltura.com</p><p><b>W:</b> www.gruposoltura.com</p></div>
+   <div class="party cl"><div class="plbl">FACTURADO A / CLIENTE</div>${cl}</div></div>
+  <table class="tbl"><thead><tr><th>DESCRIPCIÓN</th><th class="c">IMPORTE</th><th class="t">TOTAL</th></tr></thead><tbody>${rows}
+   <tr class="sub"><td>IVA 21% &nbsp;(sobre ${eur(o.base)})</td><td class="c">21%</td><td class="t" style="font-weight:400">${eur(o.iva)}</td></tr>
+   <tr class="sub"><td>Base imponible</td><td class="c"></td><td class="t" style="font-weight:400">${eur(o.base)}</td></tr></tbody></table>
+  <div class="grand"><b>TOTAL A PAGAR</b><span>${eur(o.tot)}</span></div>
+  <div class="pay"><div class="plbl">DATOS DE PAGO / PAYMENT DETAILS</div><p><b>Banco:</b> Banco Sabadell &nbsp;·&nbsp; a nombre de Grupo Soltura SL</p><p><b>IBAN:</b> ES16 0081 1432 2100 0101 4302</p><p><b>SWIFT/BIC:</b> BSAB ESBB</p></div>
+  <div class="acc"><div class="txt"><b>Acreditaciones profesionales</b><br>Miembro GIPE n.º 3.473 (Asoc. Prof. de Gestores Inmobiliarios) &nbsp;·&nbsp; Miembro CEI<br>API Asociado n.º 992 &nbsp;·&nbsp; Colegio Oficial de Agentes de la Propiedad Inmobiliaria de Alicante<br>Member AIPP (Association of International Property Professionals)</div>
+   <div class="logos">${img("api","","API")}${img("gipe","gipe","GIPE")}${img("cei","","CEI")}${img("aipp","","AIPP")}</div></div></div>
+  <div class="ft"><div><b>Grupo Soltura SL &nbsp;·&nbsp; CIF: B54286042</b><br>Avd. De la Constitución s/n &nbsp;·&nbsp; 03179 Formentera del Segura<br>Postal: Calle Agata Buzón 77 &nbsp;·&nbsp; 03170 Rojales, Alicante</div><div class="r">T: +34 966 792 113 &nbsp;·&nbsp; info@gruposoltura.com<br><span>www.gruposoltura.com</span></div></div>`;
+}
+function state(){
+  const{lang,why}=language(),c=client(),L=lines(lang);
+  const base=r2(L.reduce((t,l)=>t+(isNaN(l.total)?0:l.total),0)),iva=r2(base*.21);
+  return{lang,why,client:c,lines:L,base,iva,tot:r2(base+iva),finca:$("finca").value.trim(),ref:$("refcat").value.trim(),date:$("date").value||today(),no:CFG.next_no||"…"};
+}
+function render(){
+  if(busy)return;
+  const o=state();
+  $("langTag").textContent=o.lang.toUpperCase();$("langWhy").textContent=o.why;
+  $("newClient").hidden=$("client").value!=="new";
+  $("sBase").textContent=eur(o.base);$("sIva").textContent=eur(o.iva);$("sTot").textContent=eur(o.tot);$("nextNo").textContent=o.no;
+  $("sheet").innerHTML=sheetHtml(o);fit();
+}
+function fit(){const w=$("sheetWrap").clientWidth,s=Math.min(1,w/794);$("sheet").style.transform=`scale(${s})`;$("sheetWrap").style.height=(1123*s)+"px"}
+addEventListener("resize",fit);
+
+async function makePdf(o){
+  const cap=$("capture");cap.innerHTML=sheetHtml(Object.assign({},o,{final:false}));
+  await document.fonts.ready;
+  await Promise.all([...cap.querySelectorAll("img")].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r})));
+  const canvas=await html2canvas(cap,{scale:2.5,backgroundColor:"#ffffff",useCORS:true,logging:false,width:794,height:1123,windowWidth:794});
+  const pdf=new jspdf.jsPDF({unit:"mm",format:"a4",orientation:"portrait",compress:true});
+  pdf.addImage(canvas.toDataURL("image/jpeg",.92),"JPEG",0,0,210,297);
+  pdf.setProperties({title:"Factura "+o.no,author:"Grupo Soltura SL"});
+  cap.innerHTML="";
+  return pdf.output("datauristring").split(",")[1];
+}
+
+$("frm").addEventListener("submit",async e=>{
+  e.preventDefault();if(busy)return;
+  const o=state(),c=o.client;
+  if(!c||!c.full_name)return msg("Kies eerst een klant of vul de naam van de nieuwe klant in.","err");
+  if(!o.lines.length)return msg("Voeg minstens één servicio toe.","err");
+  if(o.lines.some(l=>isNaN(l.unit)||l.unit<=0))return msg("Elke servicio heeft een bedrag hoger dan nul nodig.","err");
+  if(CFG.last&&o.date<CFG.last.issue_date)return msg(`Deze datum ligt vóór de vorige factuur (${CFG.last.invoice_no} van ${fecha(CFG.last.issue_date)}). Kies die datum of later.`,"err");
+  const payload={issue_date:o.date,language:$("langOverride").value||null,finca:o.finca,ref_catastral:o.ref,
+    lines:o.lines.map(l=>({service_code:l.code,description:l.desc,detail:l.detail,quantity:l.qty,unit_amount:l.unit,iva_rate:21,price_overridden:l.ov,pricing_input:l.input}))};
+  if(c.isNew){const n=Object.assign({},c);delete n.isNew;n.country="España";payload.client=n}else payload.client_id=c.id;
+  busy=true;$("emit").disabled=true;msg("Factuur wordt aangemaakt…");
+  try{
+    const r=await call("issue",{payload});const inv=r.invoice;
+    msg(`Factuur ${inv.invoice_no} aangemaakt. PDF wordt gemaakt…`,"ok");
+    const pdfO=Object.assign({},o,{no:inv.invoice_no,date:inv.issue_date,base:Number(inv.base),iva:Number(inv.iva),tot:Number(inv.total)});
+    $("sheet").innerHTML=sheetHtml(pdfO);fit();
+    const b64=await makePdf(pdfO);
+    const first=o.lines[0],surname=String(c.full_name).trim().split(/\s+/).pop();
+    const s=await call("store_pdf",{invoice_id:inv.id,invoice_no:inv.invoice_no,client_name:c.full_name,file_title:(svc(first.code).desc_es.replace(/\s*\(.*\)/,"")+" "+surname),pdf_base64:b64});
+    msg(`Factuur ${inv.invoice_no} staat klaar: ${s.name}`,"ok");
+    await loadConfig();
+    busy=false;resetForm(true);
+  }catch(err){busy=false;msg(err.message,"err");try{await loadConfig()}catch(x){}render()}
+  finally{busy=false;$("emit").disabled=false}
+});
+function resetForm(keepMsg){
+  $("client").value="";["finca","refcat","nc-name","nc-idn","nc-addr","nc-city","nc-mail"].forEach(i=>$(i).value="");$("langOverride").value="";
+  $("lines").innerHTML="";const t=today(),L=CFG.last;$("date").value=L&&L.issue_date>t?L.issue_date:t;
+  if(!keepMsg)msg("");addLine(CFG.services[0]&&CFG.services[0].code);
+}
+$("client").onchange=render;
+["langOverride","finca","refcat","date","nc-sal","nc-nat","nc-name","nc-idt","nc-idn","nc-addr","nc-city"].forEach(i=>$(i).addEventListener("input",render));
+$("addLine").onclick=()=>addLine("CEE");
+$("newInv").onclick=()=>resetForm(false);
+$("resetBtn").onclick=()=>{$("confirm").hidden=false};
+$("resetNo").onclick=()=>{$("confirm").hidden=true};
+$("resetYes").onclick=async()=>{
+  $("resetYes").disabled=true;
+  try{await call("reset");$("confirm").hidden=true;await loadConfig();resetForm(true);msg("Proefomgeving staat weer op nul.","ok")}
+  catch(err){msg(err.message,"err")}finally{$("resetYes").disabled=false}
+};
+(async()=>{
+  $("nc-nat").innerHTML=Object.keys(NATNAME).map(k=>`<option value="${k}" ${k==="NL"?"selected":""}>${NATNAME[k]}</option>`).join("");
+  $("date").value=today();
+  try{await loadConfig()}catch(err){banner("Kan de facturatie-agent niet bereiken: "+err.message);return}
+  resetForm(false);
+  try{await loadAssets();render()}catch(err){banner("Logo's konden niet geladen worden; de PDF krijgt ze dan niet. ("+err.message+")")}
+})();
+</script>
+</body>
+</html>
