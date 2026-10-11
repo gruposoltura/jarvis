@@ -196,7 +196,7 @@
   });
   (function(){
     const h = document.getElementById("agents-h2");
-    if(h) h.innerHTML = "Agents \u2014 <span class='h2-counts'>" + window.BRIDGE_AGENTS.summaryHTML(counts) + "</span>";
+    if(h) h.innerHTML = "Agents — <span class='h2-counts'>" + window.BRIDGE_AGENTS.summaryHTML(counts) + "</span>";
   })();
 
   // --- detail ---
@@ -214,7 +214,7 @@
     if(agent.last_run) bits.push("Laatste run: "+fmtDT(agent.last_run));
     if(agent.last_duration_ms != null) bits.push(fmtMs(agent.last_duration_ms));
     if(agent.paused) bits.push("GEPAUZEERD");
-    document.getElementById("d-meta").textContent = bits.join("  \u00b7  ");
+    document.getElementById("d-meta").textContent = bits.join("  ·  ");
     const errEl = document.getElementById("d-err");
     if(agent.last_status === "error" && agent.last_error){ errEl.style.display="block"; errEl.textContent = "Laatste fout: "+agent.last_error; }
     else errEl.style.display = "none";
@@ -239,7 +239,7 @@
       }).join("")+"</tbody></table>";
   }
 
-  // --- executies + pipeline (via /api/agent-run) ---
+  // --- executies + pipeline (via Supabase Edge Function agent-run (was /api/agent-run op Vercel)) ---
   // Het access-token wordt VERS per aanroep opgehaald. De sessie die bij het
   // laden werd opgehaald bevat een token dat na ~1 uur verloopt; de client
   // ververst zichzelf op de achtergrond (tabel-reads blijven werken), maar een
@@ -249,7 +249,7 @@
     const { data:{ session: live } } = await sb.auth.getSession();
     const token = live && live.access_token;
     if(!token){ location.href = "/"; throw new Error("sessie verlopen"); }
-    const r = await fetch("/api/agent-run?"+qs, { headers: { authorization: "Bearer "+token }});
+    const r = await fetch("https://wuvpbwowdycsdlrqkaoq.supabase.co/functions/v1/agent-run?"+qs, { headers: { authorization: "Bearer "+token }});
     if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || ("API "+r.status));
     return r.json();
   }
@@ -272,8 +272,8 @@
       executions.forEach((e,i)=>{
         const chip = document.createElement("button");
         chip.className = "exec-chip"+(i===0?" sel":"");
-        const glyph = e.status==="success"?"\u2713":(e.status==="error"||e.status==="crashed"?"\u2717":"\u25CC");
-        chip.innerHTML = "<span class='st'>"+glyph+"</span>"+fmtDT(e.startedAt)+(e.duration_ms!=null?" \u00b7 "+fmtMs(e.duration_ms):"");
+        const glyph = e.status==="success"?"✓":(e.status==="error"||e.status==="crashed"?"✗":"◌");
+        chip.innerHTML = "<span class='st'>"+glyph+"</span>"+fmtDT(e.startedAt)+(e.duration_ms!=null?" · "+fmtMs(e.duration_ms):"");
         chip.addEventListener("click", ()=>{
           picker.querySelectorAll(".sel").forEach(x=>x.classList.remove("sel"));
           chip.classList.add("sel");
@@ -314,7 +314,7 @@
         if(extra.length){
           raw.style.display = "block";
           document.getElementById("rawnodes-body").innerHTML =
-            extra.map(s=>esc(s.node)+" \u2014 "+esc(s.status)+(s.ms!=null?" ("+fmtMs(s.ms)+")":"")).join("<br>");
+            extra.map(s=>esc(s.node)+" — "+esc(s.status)+(s.ms!=null?" ("+fmtMs(s.ms)+")":"")).join("<br>");
         } else raw.style.display = "none";
         note.textContent = "";
       } else {
@@ -323,9 +323,9 @@
         raw.style.display = "none";
         note.textContent = "Automatische weergave op n8n-nodenamen. Voeg rijen toe aan agent_steps voor leesbare stappen.";
       }
-      const overall = execution.status==="success"?"":" \u2014 status: "+execution.status;
+      const overall = execution.status==="success"?"":" — status: "+execution.status;
       pipe.innerHTML = items.map(it=>{
-        const glyph = it.status==="done"?"\u2713":(it.status==="error"?"\u2717":"\u25CC");
+        const glyph = it.status==="done"?"✓":(it.status==="error"?"✗":"◌");
         return "<div class='step "+it.status+"'>"+
           "<div class='node-glyph'>"+glyph+"</div>"+
           "<div class='step-label'><b>"+esc(it.label)+"</b>"+(it.sub?"<span class='sub'>"+esc(it.sub)+"</span>":"")+"</div>"+
