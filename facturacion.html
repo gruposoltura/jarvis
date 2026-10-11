@@ -56,6 +56,13 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .log-item{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:8px 10px;border-radius:7px;background:var(--ok-bg);color:var(--ok)}
 .log-item a{color:inherit}.log-item span:last-child{font-family:var(--f-num)}
 .confirm{border:1px solid var(--danger);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;font-size:13px}
+.login{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:16px}
+.login form{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.login h2{margin:0;font-size:20px}.login p{margin:0;color:var(--muted);font-size:13px}
+.login input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.login button{font:inherit;font-weight:700;padding:10px 12px;border:0;border-radius:8px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.login .lerr{color:var(--danger);font-size:13px;min-height:1em}.login .lnk{background:none;color:var(--muted);font-weight:500;padding:0;text-decoration:underline}
+.logout{font:inherit;font-size:13px;background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;color:var(--muted);cursor:pointer}
 .banner{max-width:1300px;margin:0 auto 12px;padding:10px 14px;border-radius:8px;background:var(--warn-bg);color:var(--warn);font-size:14px}
 [hidden]{display:none!important}
 .sheet-wrap{position:relative;width:100%}
@@ -109,8 +116,19 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 <body>
 <header class="top">
   <div class="brand"><b>Facturación</b><span>Grupo Soltura · werkplek Ingrid</span></div>
-  <span class="pill">Proefmodus</span>
+  <span><span class="pill">Proefmodus</span> <button type="button" class="logout" id="logoutBtn" hidden>Uitloggen</button></span>
 </header>
+<div class="login" id="login" hidden>
+  <form id="loginForm" autocomplete="on">
+    <h2>Facturación</h2>
+    <p>Log in met je account van The Bridge.</p>
+    <input type="email" id="lEmail" placeholder="E-mailadres" autocomplete="username" required>
+    <input type="password" id="lPass" placeholder="Wachtwoord" autocomplete="current-password" required>
+    <button type="submit" id="lBtn">Inloggen</button>
+    <div class="lerr" id="lErr"></div>
+    <button type="button" class="lnk" id="lForgot">Wachtwoord vergeten?</button>
+  </form>
+</div>
 <div class="banner" id="banner" hidden></div>
 
 <main class="wrap">
@@ -507,8 +525,45 @@ $("resetYes").onclick=async()=>{
   try{await call("reset");$("confirm").hidden=true;await loadConfig();resetForm(false);msg("Proefomgeving staat weer op nul.","ok")}
   catch(err){msg(err.message,"err")}finally{$("resetYes").disabled=false}
 };
+async function requireLogin(){
+  if(!SB) return;
+  let ok=!!(await authToken());
+  if(ok){$("logoutBtn").hidden=false;return}
+  $("login").hidden=false;
+  await new Promise(done=>{
+    $("loginForm").onsubmit=async e=>{
+      e.preventDefault();$("lErr").textContent="";$("lBtn").disabled=true;
+      try{
+        const {error}=await SB.auth.signInWithPassword({email:$("lEmail").value.trim(),password:$("lPass").value});
+        if(error) throw error;
+        $("login").hidden=true;$("logoutBtn").hidden=false;done();
+      }catch(err){$("lErr").textContent=/invalid/i.test(err.message||"")?"E-mailadres of wachtwoord klopt niet.":(err.message||"Inloggen mislukt.")}
+      finally{$("lBtn").disabled=false}
+    };
+  });
+}
+$("lForgot").onclick=async()=>{
+  const em=$("lEmail").value.trim();
+  if(!em){$("lErr").textContent="Vul eerst je e-mailadres in.";return}
+  try{const {error}=await SB.auth.resetPasswordForEmail(em,{redirectTo:location.origin+"/facturacion.html"});if(error)throw error;
+    $("lErr").textContent="Je krijgt een e-mail met een link om een nieuw wachtwoord in te stellen."}
+  catch(err){$("lErr").textContent=err.message}
+};
+// Link uit de 'wachtwoord vergeten'-mail: Supabase meldt PASSWORD_RECOVERY; vraag dan een nieuw wachtwoord.
+if(SB) SB.auth.onAuthStateChange(ev=>{
+  if(ev!=="PASSWORD_RECOVERY") return;
+  $("login").hidden=false;
+  $("loginForm").innerHTML='<h2>Nieuw wachtwoord</h2><p>Kies een nieuw wachtwoord (minstens 8 tekens).</p><input type="password" id="nPass" autocomplete="new-password" minlength="8" required><button type="submit" id="nBtn">Opslaan</button><div class="lerr" id="nErr"></div>';
+  $("loginForm").onsubmit=async e=>{
+    e.preventDefault();$("nBtn").disabled=true;
+    try{const {error}=await SB.auth.updateUser({password:$("nPass").value});if(error)throw error;location.replace("/facturacion.html")}
+    catch(err){$("nErr").textContent=err.message;$("nBtn").disabled=false}
+  };
+});
+$("logoutBtn").onclick=async()=>{try{await SB.auth.signOut()}catch(e){}location.reload()};
 (async()=>{
   $("date").value=today();
+  await requireLogin();
   try{await loadConfig()}catch(err){banner("Kan de facturatie-agent niet bereiken: "+err.message);return}
   resetForm(false);
   try{await loadAssets();render()}catch(err){banner("Logo's konden niet geladen worden; de PDF krijgt ze dan niet. ("+err.message+")")}
