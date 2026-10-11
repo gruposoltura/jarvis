@@ -180,7 +180,16 @@
 
   // ---------- three.js basis ----------
   const canvas = document.getElementById("c3d");
-  const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+  // Zonder WebGL (grafische versnelling uit of GPU-proces gecrasht) gooit three.js hier een fout
+  // en bleef de pagina op "Laden..." staan. Nu: lijst blijft werken, 3D valt weg met uitleg.
+  let renderer, NO_GL = false;
+  try{ renderer = new THREE.WebGLRenderer({canvas, antialias:true}); }
+  catch(e){
+    NO_GL = true;
+    renderer = { setPixelRatio(){}, setSize(){}, render(){}, shadowMap:{} };
+    const em = document.getElementById("empty");
+    if(em) em.innerHTML = "<div><b>3D-werkvloer niet beschikbaar</b>Deze browser kan nu geen WebGL starten. In Chrome: Instellingen &rarr; Systeem &rarr; 'Grafische versnelling gebruiken' aan, daarna Chrome herstarten. De afdelingen links werken wel.</div>";
+  }
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -369,7 +378,7 @@
   function selectDept(id){
     const d = DEPTS.find(x=>x.id===id); if(!d) return;
     current = d; renderRail(); buildRoom(d);
-    document.getElementById("empty").style.display = "none";
+    if(!NO_GL) document.getElementById("empty").style.display = "none";
     document.getElementById("roomhead").style.display = "block";
     document.getElementById("legend").style.display = "block";
     document.getElementById("rh-title").textContent = d.name; document.getElementById("rh-title").style.color = d.color;
