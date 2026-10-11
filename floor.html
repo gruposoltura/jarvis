@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Bridge - Floor</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="bridge-config.js"></script>
 <script src="bridge-frame.js"></script>
@@ -109,8 +109,11 @@
 (async function(){
   "use strict";
   const cfg = window.BRIDGE_CONFIG || {};
+  const fail = m => { const e=document.getElementById("err"); if(e){ e.style.display="block"; e.textContent=m; } const l=document.getElementById("dept-list"); if(l) l.innerHTML="<div style='padding:0 16px;color:var(--muted)'>Niet geladen</div>"; };
+  if(!window.supabase || !window.supabase.createClient){ fail("Supabase-bibliotheek niet geladen (CDN). Ververs de pagina."); return; }
   const sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
-  const { data: { session } } = await sb.auth.getSession();
+  let session = null;
+  try{ ({ data: { session } } = await sb.auth.getSession()); }catch(e){ fail("Sessie niet leesbaar: "+e.message); return; }
   if(!session){ location.href = "/"; return; }
 
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
