@@ -284,12 +284,12 @@
     s.tex.needsUpdate = true;
   }
 
-  // ---------- executies (echte nodes) via /api/agent-run ----------
+  // ---------- executies (echte nodes) via Supabase Edge Function agent-run (was /api/agent-run op Vercel) ----------
   async function apiGet(qs){
     const { data:{ session: live } } = await sb.auth.getSession();
     const token = live && live.access_token;
     if(!token){ location.href = "/"; throw new Error("sessie verlopen"); }
-    const r = await fetch("/api/agent-run?"+qs, { headers: { authorization: "Bearer "+token }});
+    const r = await fetch("https://wuvpbwowdycsdlrqkaoq.supabase.co/functions/v1/agent-run?"+qs, { headers: { authorization: "Bearer "+token }});
     if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || ("API "+r.status));
     return r.json();
   }

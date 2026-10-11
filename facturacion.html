@@ -8,6 +8,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="bridge-config.js"></script>
 <style>
 /* JARVIS-Finance-Invoicing (proef). Formulier links, factuur rechts in de huisstijl van 2026/0030. */
 :root{--bg:#eef1f3;--panel:#fff;--fg:#1b2731;--muted:#5d6b76;--line:#d6dde2;--accent:#c0392b;--accent-ink:#fff;--accent-soft:#fae8e6;
@@ -229,8 +231,17 @@ let CFG={services:[],invoices:[],next_no:"",last:null};
 let IMG={logo:"",api:"",gipe:"",cei:"",aipp:""};
 let seq=0,busy=false,crm=null,results=[],act=-1,searchT=null,lastIssued=null;
 
+// Login van The Bridge: de webhook weigert elke aanroep zonder geldige Supabase-sessie (401).
+// Token per aanroep vers ophalen (een vastgehouden token verloopt na ~1 uur).
+const SB=(window.supabase&&window.BRIDGE_CONFIG)?window.supabase.createClient(BRIDGE_CONFIG.SUPABASE_URL,BRIDGE_CONFIG.SUPABASE_ANON_KEY||BRIDGE_CONFIG.SUPABASE_ANON):null;
+async function authToken(){
+  if(!SB)return null;
+  try{const {data:{session}}=await SB.auth.getSession();return session?session.access_token:null}catch(e){return null}
+}
 async function call(action,extra){
-  const r=await fetch(HOOK,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(Object.assign({action},extra||{}))});
+  const tok=await authToken();
+  if(!tok){banner("Niet ingelogd. Log eerst in op The Bridge (dash.gruposoltura.com) en open Facturación daarna opnieuw.");throw new Error("Niet ingelogd")}
+  const r=await fetch(HOOK,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify(Object.assign({action},extra||{}))});
   let j=null;try{j=await r.json()}catch(e){}
   if(!r.ok||!j||j.ok===false)throw new Error((j&&j.error)||("Server gaf status "+r.status));
   return j;
