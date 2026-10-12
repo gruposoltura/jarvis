@@ -75,6 +75,17 @@
   .adt .win{color:var(--green);font-weight:600}
   .adt .lose{color:var(--red);font-weight:600}
   .adt .flat{color:var(--muted)}
+  /* ---- Video ads: watch-through per video (meta_ad_video_daily) ---- */
+  .vid-tabs{display:flex;gap:6px;margin:2px 0 12px}
+  .vid-tabs button{background:none;border:1px solid var(--line);color:var(--muted);
+    border-radius:6px;padding:4px 12px;cursor:pointer;font:inherit;font-size:12px;letter-spacing:.04em}
+  .vid-tabs button:hover{color:var(--text)}
+  .vid-tabs button.on{border-color:var(--z-ads);color:var(--z-ads)}
+  .vid-curve{display:inline-flex;align-items:flex-end;gap:3px;height:26px;vertical-align:middle}
+  .vid-curve i{display:block;width:9px;border-radius:2px 2px 0 0;background:var(--z-ads);min-height:2px}
+  .vid-curve i:nth-child(2){opacity:.8} .vid-curve i:nth-child(3){opacity:.62} .vid-curve i:nth-child(4){opacity:.45}
+  .adt td.vid-c{width:58px}
+  .vid-empty{color:var(--muted);font-size:12px;padding:6px 0}
 
   .chart{position:relative}
   .chart svg{display:block;width:100%;height:auto}
@@ -370,6 +381,18 @@
       <div class="nums" id="live-nums"></div>
       <div id="live-table"></div>
       <p id="live-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
+    </div>
+
+    <div class="card">
+      <h2><span class="dot" style="background:var(--z-ads)"></span>Video ads &mdash; watch-through
+        <span class="when" id="vid-when"></span></h2>
+      <div class="vid-tabs" id="vid-tabs">
+        <button data-days="7" class="on">7 days</button>
+        <button data-days="30">30 days</button>
+      </div>
+      <div class="nums" id="vid-nums"></div>
+      <div id="vid-body"><div class="vid-empty">loading&hellip;</div></div>
+      <p id="vid-foot" style="color:var(--muted);font-size:11px;margin:10px 0 0"></p>
     </div>
 
       </div>
@@ -1065,8 +1088,109 @@
     }catch(e){ el.innerHTML = '<p style="color:var(--muted)">Fout bij laden voorstellen.</p>'; }
   }
 
+  /* ================= Video ads: watch-through per video-ad =================
+     Bron: view bridge_ad_video_daily (over meta_ad_video_daily), gevuld door
+     JARVIS-Analytics-KpiSync-MetaAds (level=ad). Alleen ads met video-starts;
+     still ads komen er niet in, dus geen video-ads = leeg paneel.
+     Percentages zijn t.o.v. video-starts; over meerdere dagen gewogen naar starts. */
+  var vidState = { days: 7, rows: null, err: null };
+  function vidCutoff(days){
+    var iso = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+    var d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - (days - 1));
+    return d.toISOString().slice(0, 10);
+  }
+  function renderVideo(){
+    var body = $('vid-body'); if(!body) return;
+    if(vidState.err){
+      $('vid-when').textContent = ''; $('vid-nums').innerHTML = '';
+      body.innerHTML = '<div class="vid-empty">Video data could not be loaded: ' + esc(vidState.err.message || vidState.err) + '</div>';
+      $('vid-foot').textContent = ''; return;
+    }
+    if(!vidState.rows) return;
+    var since = vidCutoff(vidState.days);
+    var rows = vidState.rows.filter(function(r){ return String(r.kpi_date) >= since && Number(r.video_plays) > 0; });
+    var per = {}, maxDate = '';
+    rows.forEach(function(r){
+      var p = Number(r.video_plays || 0);
+      var a = per[r.ad_id] || (per[r.ad_id] = { name: r.ad_name, plays: 0, w25: 0, w50: 0, w75: 0, w100: 0, wAvg: 0, spend: 0, impr: 0, last: '' });
+      a.plays += p;
+      a.w25 += Number(r.pct_25 || 0) * p; a.w50 += Number(r.pct_50 || 0) * p;
+      a.w75 += Number(r.pct_75 || 0) * p; a.w100 += Number(r.pct_100 || 0) * p;
+      a.wAvg += Number(r.avg_watch_seconds || 0) * p;
+      a.spend += Number(r.spend || 0); a.impr += Number(r.impressions || 0);
+      if(String(r.kpi_date) > a.last){ a.last = String(r.kpi_date); if(r.ad_name) a.name = r.ad_name; }
+      if(String(r.kpi_date) > maxDate) maxDate = String(r.kpi_date);
+    });
+    var ads = Object.keys(per).map(function(k){
+      var a = per[k], p = a.plays || 1;
+      return { id: k, name: a.name, plays: a.plays, p25: a.w25 / p, p50: a.w50 / p, p75: a.w75 / p, p100: a.w100 / p,
+               avg: a.wAvg / p, spend: a.spend, impr: a.impr };
+    }).sort(function(a, b){ return b.plays - a.plays; });
+
+    $('vid-when').textContent = '\u2014 last ' + vidState.days + ' days' + (maxDate ? ', through ' + maxDate : '');
+    if(!ads.length){
+      $('vid-nums').innerHTML = '';
+      body.innerHTML = '<div class="vid-empty">No video ads with plays in this period.</div>';
+      $('vid-foot').textContent = '';
+      return;
+    }
+    var tPlays = ads.reduce(function(s, a){ return s + a.plays; }, 0);
+    var tw = function(f){ return ads.reduce(function(s, a){ return s + a[f] * a.plays; }, 0) / (tPlays || 1); };
+    var tSpend = ads.reduce(function(s, a){ return s + a.spend; }, 0);
+    var tImpr = ads.reduce(function(s, a){ return s + a.impr; }, 0);
+    var p1 = function(v){ return Number(v || 0).toFixed(1) + '%'; };
+    var cls100 = function(v){ return v >= 25 ? 'win' : (v >= 10 ? 'flat' : 'lose'); };
+    $('vid-nums').innerHTML =
+      num('video ads', fmt(ads.length), '') +
+      num('video starts', fmt(tPlays), '') +
+      num('start rate', tImpr ? p1(tPlays / tImpr * 100) : '\u2014', '') +
+      num('watched 50%', p1(tw('p50')), '') +
+      num('watched 100%', p1(tw('p100')), '', tw('p100') >= 25 ? 'goodval' : (tw('p100') >= 10 ? 'warnval' : 'badval')) +
+      num('avg watch time', tw('avg').toFixed(1) + ' s', '') +
+      num('cost / start', tPlays ? eur2(tSpend / tPlays) : '\u2014', '');
+    body.innerHTML = '<table class="adt"><thead><tr>'
+      + '<th>Video ad</th><th>Curve</th><th>Starts</th><th>25%</th><th>50%</th><th>75%</th><th>100%</th>'
+      + '<th>Avg watch</th><th>Spend</th><th>Cost / start</th>'
+      + '</tr></thead><tbody>' + ads.map(function(a){
+        var h = function(v){ return Math.max(2, Math.round(Math.min(100, v) / 100 * 26)); };
+        return '<tr>'
+          + '<td>' + esc(a.name || a.id) + '<span class="camp">' + esc(a.id) + '</span></td>'
+          + '<td class="vid-c"><span class="vid-curve" title="25% ' + p1(a.p25) + ' \u00b7 50% ' + p1(a.p50) + ' \u00b7 75% ' + p1(a.p75) + ' \u00b7 100% ' + p1(a.p100) + '">'
+          +   '<i style="height:' + h(a.p25) + 'px"></i><i style="height:' + h(a.p50) + 'px"></i>'
+          +   '<i style="height:' + h(a.p75) + 'px"></i><i style="height:' + h(a.p100) + 'px"></i></span></td>'
+          + '<td>' + fmt(a.plays) + '</td>'
+          + '<td>' + p1(a.p25) + '</td><td>' + p1(a.p50) + '</td><td>' + p1(a.p75) + '</td>'
+          + '<td class="' + cls100(a.p100) + '">' + p1(a.p100) + '</td>'
+          + '<td>' + a.avg.toFixed(1) + ' s</td>'
+          + '<td>' + eur2(a.spend) + '</td>'
+          + '<td>' + (a.plays ? eur2(a.spend / a.plays) : '\u2014') + '</td>'
+          + '</tr>';
+      }).join('') + '</tbody></table>';
+    $('vid-foot').textContent = 'Percentages are shares of video starts (of everyone who started the video, how many watched 25 / 50 / 75 / 100%), '
+      + 'weighted by starts across the period. Start rate = starts \u00f7 impressions. Only ads with video plays are shown; image ads are left out. '
+      + 'Source: bridge_ad_video_daily, filled by JARVIS-Analytics-KpiSync-MetaAds (4\u00d7 daily).';
+  }
+  async function loadVideo(){
+    try{
+      var r = await sb.from('bridge_ad_video_daily').select('*')
+        .gte('kpi_date', vidCutoff(30)).order('kpi_date', { ascending: true }).range(0, 9999);
+      vidState.rows = r.data || []; vidState.err = r.error || null;
+    }catch(e){ vidState.rows = []; vidState.err = e; }
+    renderVideo();
+  }
+  (function(){
+    var tabs = $('vid-tabs'); if(!tabs) return;
+    tabs.addEventListener('click', function(ev){
+      var b = ev.target.closest('button'); if(!b) return;
+      vidState.days = Number(b.dataset.days) || 7;
+      Array.prototype.forEach.call(tabs.querySelectorAll('button'), function(x){ x.classList.toggle('on', x === b); });
+      renderVideo();
+    });
+  })();
+
   /* ================= data laden ================= */
   async function load(){
+    loadVideo();   // eigen foutafhandeling; blokkeert de rest van de pagina niet
     var errEl = $('err'); errEl.textContent = '';
     try{
       var res = await Promise.all([
