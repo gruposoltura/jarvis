@@ -165,6 +165,33 @@ function breakdown(t){
   return `<div class="brk"><span class="brk-h">Grootste posten (USD)</span>${top.map(x=>`<div class="brk-r"><span>${esc(x.model)}</span><i style="width:${Math.max(2,Math.round(100*x.usd/tot))}%"></i><b>$${x.usd.toLocaleString("nl-NL",{minimumFractionDigits:2,maximumFractionDigits:2})}</b></div>`).join("")}</div>`;
 }
 
+// n8n: gefactureerd (trigger/webhook/retry) vs niet gefactureerd (subworkflow, handmatig, errorWorkflow) - raw van JARVIS-Infra-ToolUsage.
+const N8N_MODE = { trigger:"Schema / trigger", webhook:"Webhook", retry:"Retry", integrated:"Subworkflow", manual:"Handmatig (test)", error:"errorWorkflow", internal:"Intern", cli:"CLI" };
+const N8N_FREE = new Set(["integrated","manual","error","internal","cli"]);
+function n8nBreakdown(t){
+  const r = t.raw || {};
+  if(t.tool!=="n8n") return "";
+  if(r.method!=="modes"){
+    return `<div class="hint">Telling per mode ontbreekt; dit getal is de execution-id-teller en telt ook handmatige runs, subworkflows en errorWorkflow-runs mee (die n8n niet factureert).</div>`;
+  }
+  const modes = r.modes || {};
+  const tot = Number(r.total) || Object.values(modes).reduce((a,b)=>a+Number(b||0),0) || 1;
+  const nf = n => Number(n||0).toLocaleString("nl-NL");
+  const row = (label, n, cls) => `<div class="brk-r"><span>${esc(label)}</span><i style="width:${Math.max(2,Math.round(100*Number(n||0)/tot))}%;${cls==="free"?"background:var(--idle);":""}"></i><b>${nf(n)}</b></div>`;
+  const keys = Object.keys(modes).sort((a,b)=>Number(modes[b])-Number(modes[a]));
+  const bill = keys.filter(k=>!N8N_FREE.has(k)), free = keys.filter(k=>N8N_FREE.has(k));
+  const idNote = r.id_counter!==null && r.id_counter!==undefined
+    ? `<div class="legend"><span>Oude id-teller (alles): ${nf(r.id_counter)}</span><span>Gefactureerd: ${nf(r.billable)}</span></div>` : "";
+  return `<div class="brk">
+    <span class="brk-h">Gefactureerd deze maand · ${nf(r.billable)}</span>
+    ${bill.map(k=>row(N8N_MODE[k]||k, modes[k], "bill")).join("")}
+    <span class="brk-h" style="margin-top:6px">Niet gefactureerd · ${nf(r.not_billable)}</span>
+    ${free.map(k=>row(N8N_MODE[k]||k, modes[k], "free")).join("") || `<div class="brk-r"><span>–</span><i></i><b>0</b></div>`}
+    ${idNote}
+    <div class="legend"><span>n8n factureert alleen productie-runs; handmatige tests, subworkflows en errorWorkflow-runs tellen niet mee.</span></div>
+  </div>`;
+}
+
 function card(t, hist){
   const st = t.status||"nodata";
   const pct = t.pct_used!==null ? Number(t.pct_used) : null;
@@ -198,10 +225,10 @@ function card(t, hist){
     </div>`;
   return `<div class="card s-${st}">
     <div class="top">
-      <div><div class="name">${esc(t.label)}</div><div class="plan">${esc(t.plan_name||"plan onbekend")} · ${esc(unitWord(t.unit)||t.unit)}</div></div>
+      <div><div class="name">${esc(t.label)}</div><div class="plan">${esc(t.plan_name||"plan onbekend")} · ${esc(unitWord(t.unit)||t.unit)}${t.tool==="n8n"&&t.raw&&t.raw.method==="modes"?" (gefactureerd)":""}</div></div>
       <span class="pill ${st}">${esc(STATUS_LABEL[st]||st)}</span>
     </div>
-    ${big}${barHTML}${hint}${facts}${breakdown(t)}
+    ${big}${barHTML}${hint}${facts}${breakdown(t)}${n8nBreakdown(t)}
     ${spark(hist, t.unit)}
     <div class="foot"><span>Gemeten ${esc(ago(t.ok_at||t.captured_at))}</span>${t.manage_url?`<a href="${esc(t.manage_url)}" target="_blank" rel="noopener">Beheer ↗</a>`:""}</div>
   </div>`;
