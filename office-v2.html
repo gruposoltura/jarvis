@@ -28,8 +28,8 @@
   Brein: boven het brein-platform zweeft een levend 3D-brein (office-v2-assets/brain-core.mp4, 10 s loop,
   zwarte achtergrond) als HTML-<video> over de SVG met mix-blend-mode:screen, via placeBrainLive() op de
   onzichtbare .live-anchor. Reduced motion: alleen de poster (brain-core.webp).
-  Brein-platform: zolang office-v2-assets/brain.webp ontbreekt (BRAIN_SPRITE = false) tekent de pagina het
-  platform + lichtpilaar in SVG. Props (PROPS) idem: lege lijst tot prop-*.webp in de map staan.
+  Brein-platform: brain.webp (BRAIN_SPRITE = true); zonder dat bestand tekent brainBase() het platform in SVG.
+  Props: prop-*.webp, twee per afdeling langs de randen (PROPS leeg = geen props).
   Powerballen: een agent met een AI-tool (anthropic/openai volgens v_office_tools) stuurt bij elke NIEUWE run
   een gloeiende bal in de afdelingskleur langs pijp en lichtpilaar naar het brein; zolang hij 'working' is
   elke ~7 s een bal. Niet bij reduced motion of een verborgen tab.
@@ -508,8 +508,8 @@
   /* Props en brein-platform zijn optionele sprites. Zet ze aan zodra de bestanden in office-v2-assets/ staan
      (anders 404's in de console): PROPS = [["prop-rack",521],["prop-cabinet",371],["prop-plant",361],
      ["prop-board",429],["prop-lens",160]] en BRAIN_SPRITE = true. */
-  var PROPS = [];
-  var BRAIN_SPRITE = false;
+  var PROPS = [["prop-rack",521],["prop-cabinet",371],["prop-plant",361],["prop-board",429],["prop-lens",160]];
+  var BRAIN_SPRITE = true;
   /* Toolkleur + monogram. Merkkleur ter herkenning; géén nagetekend logo.
      Onbekende tool -> grijs tegeltje met de eerste twee letters. */
   var TOOL_META = {
