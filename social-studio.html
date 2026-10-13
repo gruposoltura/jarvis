@@ -149,6 +149,9 @@
   .ws-chip b{color:var(--text);font-weight:700}
   .ws-chip .cd{width:7px;height:7px;border-radius:50%;flex:none;background:var(--c)}
   .ws-foot{font-size:11px;color:var(--dim);margin:10px 2px 0}
+  .ws-chip.pl{border:1px dashed var(--c);background:transparent;color:var(--muted)}
+  .ws-chip.pl .ic{color:var(--c);font-size:12px;line-height:1}
+  .ws-chip .to{color:var(--dim)}
   @media(max-width:620px){.card{width:132px}}
 </style>
 </head>
@@ -338,21 +341,42 @@
     var colOf = function(r){ return r.lane==='stories' ? (VIDEO_STORY[r.pillar_hint]?SC.storyvid:SC.stories) : SC[r.lane]; };
     var dayT = function(d, t){ return DAYN[d-1].toLowerCase()+' '+t; };
     var okDay = function(d){ return d>=1 && d<=7; };
+    // BD-133: dagelijks aanvullen (build_daily) en een week vooruit bouwen (build_lead_days); zonder die kolommen = oud gedrag
+    var lead = function(r){ var n = Number(r.build_lead_days); return n>0 ? n : 0; };
+    var pipeTxt = function(r){
+      if(r.build_daily) return ' \u00b7 in de pijplijn via de dagelijkse run '+(r.build_time_hm||'?')+' ('+(r.build_by||'?')+(r.build_ahead?', houdt er '+r.build_ahead+' vooruit':'')+')';
+      if(okDay(r.build_dow_iso)) return ' \u00b7 in de pijplijn sinds '+dayT(r.build_dow_iso, r.build_time_hm)+(lead(r)>=7?' van de week ervoor':'')+' ('+(r.build_by||'?')+')';
+      return '';
+    };
+    lanes.forEach(function(l){
+      var lr = rows.filter(function(r){ return r.lane===l.key; }), bits = [];
+      if(lr.some(function(r){ return r.build_daily; })) bits.push('dagelijks bijgevuld');
+      if(lr.some(function(r){ return lead(r)>=7; })) bits.push('een week vooruit');
+      if(bits.length) l.sub = '\u2699 '+bits.join(' \u00b7 ');
+    });
     var items = [];
     // live = vaste publicatietijd op FB + Instagram
     rows.forEach(function(r){
       if(!L[r.lane] || !okDay(r.dow_iso)) return;
       var tip = r.label+' gaat live '+dayT(r.dow_iso, r.time_hm)+' op FB + Instagram'+
-        (okDay(r.build_dow_iso) ? ' \u00b7 in de pijplijn sinds '+dayT(r.build_dow_iso, r.build_time_hm)+' ('+(r.build_by||'?')+')' : '')+
+        pipeTxt(r)+
         (r.notes ? ' \u00b7 '+r.notes : '');
       items.push({lane:r.lane, d:r.dow_iso, t:r.time_hm, h:livePill(colOf(r), r.label, r.time_hm, tip)});
     });
     // pijplijn = moment dat de rij wordt aangemaakt (scout/builder); een bouwrun kan meerdere slots vullen
-    var runs = {}, rk = [];
+    var runs = {}, rk = [], daily = {}, dk = [];
     rows.forEach(function(r){
-      if(!L[r.lane] || !okDay(r.dow_iso) || !okDay(r.build_dow_iso) || !r.build_time_hm) return;
+      if(!L[r.lane] || !okDay(r.dow_iso)) return;
+      if(r.build_daily){
+        var q = r.lane+'|'+(r.build_time_hm||'')+'|'+(r.build_by||'');
+        if(!daily[q]){ daily[q] = {lane:r.lane, t:r.build_time_hm||'', by:r.build_by||'?', ahead:r.build_ahead, note:r.build_note, color:colOf(r), labels:[], to:[]}; dk.push(q); }
+        if(daily[q].labels.indexOf(r.label)<0) daily[q].labels.push(r.label);
+        daily[q].to.push({d:r.dow_iso, t:r.time_hm});
+        return;
+      }
+      if(!okDay(r.build_dow_iso) || !r.build_time_hm) return;
       var k = r.lane+'|'+r.build_dow_iso+'|'+r.build_time_hm+'|'+(r.build_by||'');
-      if(!runs[k]){ runs[k] = {lane:r.lane, d:r.build_dow_iso, t:r.build_time_hm, by:r.build_by||'?', note:r.build_note, color:colOf(r), labels:[], to:[]}; rk.push(k); }
+      if(!runs[k]){ runs[k] = {lane:r.lane, d:r.build_dow_iso, t:r.build_time_hm, by:r.build_by||'?', note:r.build_note, color:colOf(r), lead:lead(r), labels:[], to:[]}; rk.push(k); }
       if(runs[k].labels.indexOf(r.label)<0) runs[k].labels.push(r.label);
       runs[k].to.push({d:r.dow_iso, t:r.time_hm});
     });
@@ -360,14 +384,24 @@
       var x = runs[k];
       x.to.sort(function(a,b){ return ((a.d-x.d+7)%7)-((b.d-x.d+7)%7) || String(a.t).localeCompare(String(b.t)); });
       var to = x.to.map(function(o){ return dayT(o.d, o.t); }).join(' \u00b7 ');
-      var tip = x.by+' zet '+x.labels.join(' + ')+' '+dayT(x.d, x.t)+' in de pijplijn (gebouwd, wacht op QA en slot) \u00b7 live: '+to+(x.note ? ' \u00b7 '+x.note : '');
-      items.push({lane:x.lane, d:x.d, t:x.t, h:pipePill(x.color, x.labels.join(' + '), x.t, '\u2192 live '+to, tip)});
+      var wk = x.lead>=7;
+      var tip = x.by+' zet '+x.labels.join(' + ')+' '+dayT(x.d, x.t)+' in de pijplijn (gebouwd, wacht op QA en slot) \u00b7 live: '+(wk?'volgende week ':'')+to+(wk?' (+'+x.lead+' d)':'')+(x.note ? ' \u00b7 '+x.note : '');
+      items.push({lane:x.lane, d:x.d, t:x.t, h:pipePill(x.color, x.labels.join(' + '), x.t, '\u2192 live '+(wk?'volgende ':'')+to+(wk?' \u00b7 +'+x.lead+' d':''), tip)});
     });
     items.sort(function(a,b){ return String(a.t).localeCompare(String(b.t)); });
     items.forEach(function(it){ L[it.lane].cells[it.d-1].push(it.h); });
+    var dailyH = dk.map(function(q){
+      var x = daily[q];
+      x.to.sort(function(a,b){ return (a.d-b.d) || String(a.t).localeCompare(String(b.t)); });
+      var to = x.to.map(function(o){ return dayT(o.d, o.t); }).join(' \u00b7 ');
+      var tip = x.by+' draait elke dag '+x.t+' en vult de pijplijn aan'+(x.ahead?' tot '+x.ahead+' stuks':'')+' \u00b7 live-slots: '+to+(x.note?' \u00b7 '+x.note:'');
+      return "<span class='ws-chip pl' style='--c:"+x.color+"' title='"+esc(tip)+"'><span class='ic'>\u2699</span><b>"+esc(x.labels.join(' + '))+"</b>"+
+        ' \u00b7 elke dag '+esc(x.t)+(x.ahead?' \u00b7 houdt '+esc(x.ahead)+' vooruit':'')+"<span class='to'>\u2192 live "+esc(to)+"</span></span>";
+    }).join('');
     return "<section class='ws'>"+wsHead(SC.profiel,'Postschema &middot; social','vaste cadans &middot; Europe/Madrid',
-        'Gevulde pil \u25CF = het moment dat het live gaat op FB + Instagram. Gestippelde pil \u2699 = het moment dat het gebouwd wordt en in de pijplijn komt; de regel \u2192 live zegt wanneer dat stuk gepost wordt. Profiel strikt om en om reel/still (BD-063). Bron: content_calendar (live- en bouwmoment); wijzig het schema daar, niet hier.')+
+        'Gevulde pil \u25CF = het moment dat het live gaat op FB + Instagram. Gestippelde pil \u2699 = het moment dat het gebouwd wordt en in de pijplijn komt; de regel \u2192 live zegt wanneer dat stuk gepost wordt (reels: volgende week). Woning-kaarten (stories) en woning-stills worden elke dag aangevuld tot een vast aantal vooruit, zie Dagelijks onder het raster. Profiel strikt om en om reel/still (BD-063). Bron: content_calendar (live- en bouwmoment); wijzig het schema daar, niet hier.')+
       weekGrid(lanes)+
+      (dailyH ? "<div class='ws-k'>Dagelijks &middot; vult de pijplijn aan tot het aantal vooruit</div><div class='ws-chips'>"+dailyH+"</div>" : '')+
       "<div class='ws-legend'><span class='lv' style='--c:var(--text)'>gevuld = live op FB + Instagram</span>"+
       "<span class='pl' style='--c:var(--text)'>gestippeld \u2699 = in de pijplijn (gebouwd, wacht op QA en slot)</span>"+
       "<span style='--c:"+SC.profiel+"'>Profiel (still / collage)</span><span style='--c:"+SC.stories+"'>Story (kaart)</span>"+
