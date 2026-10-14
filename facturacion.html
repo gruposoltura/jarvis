@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Facturación · The Bridge</title>
+<title>Facturatie · The Bridge</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=1">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:wght@400;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -65,13 +65,22 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .logout{font:inherit;font-size:13px;background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;color:var(--muted);cursor:pointer}
 .banner{max-width:1300px;margin:0 auto 12px;padding:10px 14px;border-radius:8px;background:var(--warn-bg);color:var(--warn);font-size:14px}
 [hidden]{display:none!important}
+#printArea{display:none}
+@page{size:A4;margin:0}
+@media print{
+  html,body{margin:0!important;padding:0!important;background:#fff!important}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block!important}
+  #printArea .sheet{position:relative!important;transform:none!important;box-shadow:none!important;width:210mm!important;height:297mm!important;overflow:hidden}
+  #printArea .sheet *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 .sheet-wrap{position:relative;width:100%}
 .sheet{width:794px;height:1123px;background:#fff;color:var(--s-slate);font:11px/1.45 var(--f-doc);position:absolute;top:0;left:0;transform-origin:0 0;box-shadow:0 1px 4px rgba(0,0,0,.18);overflow:hidden}
 #capture{position:fixed;left:-2000px;top:0;box-shadow:none}
 .pg{position:absolute;inset:42px 42px 0 42px}
 .wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 120px/1 var(--f-doc);color:rgba(192,57,43,.07);transform:rotate(-28deg);letter-spacing:.12em;pointer-events:none}
 .hd{display:flex;justify-content:space-between;align-items:stretch;height:126px}
-.hd .logo{width:100px;height:100px;align-self:center;margin-left:14px;object-fit:contain}
+.hd .logo{height:126px;width:auto;max-width:200px;align-self:stretch;margin-left:0;object-fit:contain;object-position:left center}
 .hd .box{width:388px;background:var(--s-red);color:#fff;text-align:right;padding:28px 18px 0}
 .hd .box h1{font:700 33px/1 var(--f-doc);margin:0 0 10px}
 .hd .box .no{color:var(--s-gold);font-size:13px}.hd .box .dt{font-size:10px}
@@ -115,12 +124,12 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 </head>
 <body>
 <header class="top">
-  <div class="brand"><b>Facturación</b><span>Grupo Soltura · werkplek Ingrid</span></div>
+  <div class="brand"><b>Facturatie</b><span>Grupo Soltura · werkplek Ingrid</span></div>
   <span><span class="pill">Proefmodus</span> <button type="button" class="logout" id="logoutBtn" hidden>Uitloggen</button></span>
 </header>
 <div class="login" id="login" hidden>
   <form id="loginForm" autocomplete="on">
-    <h2>Facturación</h2>
+    <h2>Facturatie</h2>
     <p>Log in met je account van The Bridge.</p>
     <input type="email" id="lEmail" placeholder="E-mailadres" autocomplete="username" required>
     <input type="password" id="lPass" placeholder="Wachtwoord" autocomplete="current-password" required>
@@ -143,15 +152,15 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       <button type="button" class="btn ghost small" id="manual">+ Klant die niet in het CRM staat</button>
 
       <div class="drop" id="drop">
-        <span><b>Contract inlezen</b>: sleep de arras, escritura of nota simple hierheen, of kies een bestand. Claude vult NIE, adres, finca en ref. catastral in.</span>
+        <span><b>Contract inlezen</b>: sleep de arras, escritura of nota simple hierheen, of kies een bestand. Claude vult NIE, adres, finca en kadastrale referentie in.</span>
         <div><input type="file" id="file" accept="application/pdf,image/jpeg,image/png" hidden><button type="button" class="btn small" id="pickFile">Bestand kiezen</button></div>
         <div class="extract" id="extract" hidden></div>
       </div>
 
       <div id="clientForm" class="sec" hidden>
         <div class="row">
-          <label for="c-sal">Aanhef<select id="c-sal"><option>Don</option><option>Doña</option><option>Don y Doña</option><option value="">Empresa / geen</option></select></label>
-          <label for="c-lang">Taal klant<select id="c-lang"><option value="es">Español</option><option value="en">English</option><option value="nl">Nederlands</option><option value="fr">Français</option><option value="de">Deutsch</option></select></label>
+          <label for="c-sal">Aanhef<select id="c-sal"><option>Don</option><option>Doña</option><option>Don y Doña</option><option value="">Bedrijf / geen</option></select></label>
+          <label for="c-lang">Taal klant<select id="c-lang"><option value="es">Spaans</option><option value="en">Engels</option><option value="nl">Nederlands</option><option value="fr">Frans</option><option value="de">Duits</option></select></label>
         </div>
         <label for="c-name">Naam volgens contract<input id="c-name"></label>
         <div class="row">
@@ -169,7 +178,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       </div>
       <div class="lang">Taal omschrijving <span class="tag" id="langTag">ES</span>
         <select id="langOverride" aria-label="Taal van de omschrijving kiezen" style="width:auto">
-          <option value="">volgens klant</option><option value="es">Español</option><option value="en">English</option><option value="nl">Nederlands</option><option value="fr">Français</option><option value="de">Deutsch</option>
+          <option value="">volgens klant</option><option value="es">Spaans</option><option value="en">Engels</option><option value="nl">Nederlands</option><option value="fr">Frans</option><option value="de">Duits</option>
         </select><span class="hint" id="langWhy"></span>
       </div>
     </section>
@@ -178,35 +187,35 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       <h2>2 · Woning</h2>
       <label for="prop" id="propLbl" hidden>Woning van deze klant<select id="prop"></select></label>
       <div class="row">
-        <label for="finca">Número de finca<input id="finca"></label>
-        <label for="refcat">Ref. catastral<input id="refcat" class="mono"></label>
+        <label for="finca">Fincanummer<input id="finca"></label>
+        <label for="refcat">Kadastrale referentie<input id="refcat" class="mono"></label>
       </div>
       <p class="hint">Komt onder elke dienst die bij de woning hoort.</p>
     </section>
 
     <section class="sec">
-      <h2>3 · Servicios</h2>
+      <h2>3 · Diensten</h2>
       <div class="lines" id="lines"></div>
-      <button type="button" class="btn ghost small" id="addLine">+ Añadir servicio</button>
+      <button type="button" class="btn ghost small" id="addLine">+ Dienst toevoegen</button>
     </section>
 
     <section class="sec">
       <h2>4 · Controle</h2>
-      <label for="date">Fecha de factura<input id="date" type="date"></label>
+      <label for="date">Factuurdatum<input id="date" type="date"></label>
       <p class="hint" id="lastHint" hidden></p>
       <div class="sums" aria-live="polite">
-        <div><span>Base imponible</span><span id="sBase">0,00 €</span></div>
-        <div><span>IVA 21%</span><span id="sIva">0,00 €</span></div>
-        <div class="tot"><span>Total a pagar</span><span id="sTot">0,00 €</span></div>
+        <div><span>Bedrag excl. btw</span><span id="sBase">0,00 €</span></div>
+        <div><span>Btw 21%</span><span id="sIva">0,00 €</span></div>
+        <div class="tot"><span>Totaal te betalen</span><span id="sTot">0,00 €</span></div>
       </div>
       <div class="msg" id="msg" role="status"></div>
       <div class="actions">
-        <button type="submit" class="btn prim" id="emit">Emitir factura</button>
+        <button type="submit" class="btn prim" id="emit">Verstuur factuur</button>
         <button type="button" class="btn" id="newInv">Nieuwe factuur</button>
       </div>
       <div class="sendbox" id="sendbox" hidden>
         <span id="sendTxt"></span>
-        <div class="sendrow"><input id="sendTo" type="email" aria-label="E-mailadres ontvanger"><button type="button" class="btn prim" id="sendBtn">Enviar factura</button></div>
+        <div class="sendrow"><input id="sendTo" type="email" aria-label="E-mailadres ontvanger"><button type="button" class="btn prim" id="sendBtn">Mail naar klant</button></div>
         <p class="hint">Proefmodus: versturen kan alleen naar een @gruposoltura.com-adres.</p>
       </div>
       <p class="hint">Volgend proefnummer <span class="mono" id="nextNo">…</span>. De PDF komt in Drive-map Facturas PRUEBA. Er gaat niets naar het btw-rapport.</p>
@@ -221,6 +230,11 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
         <div class="actions"><button type="button" class="btn" id="resetNo">Annuleren</button><button type="button" class="btn prim" id="resetYes">Wissen</button></div>
       </div>
     </section>
+
+    <section class="sec">
+      <button type="button" class="btn" id="printBtn">Print factuur</button>
+      <p class="hint" id="printHint">Print de laatst verstuurde factuur, of het voorbeeld als je nog bezig bent.</p>
+    </section>
   </form>
 
   <section aria-label="Voorbeeld van de factuur">
@@ -228,6 +242,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
   </section>
 </main>
 <article class="sheet" id="capture" aria-hidden="true"></article>
+<div id="printArea" aria-hidden="true"><article class="sheet"></article></div>
 
 <script>
 const HOOK="https://gruposoltura.app.n8n.cloud/webhook/invoicing-test";
@@ -243,6 +258,8 @@ const toField=n=>isNaN(n)?"":Number(n).toFixed(2).replace(".",",");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fecha=d=>{const t=new Date(d+"T12:00:00");return t.getDate()+" de "+MESES[t.getMonth()]+" "+t.getFullYear()};
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const CAT={seller:"verkoper",buyer:"koper",suspect:"suspect",prospect:"prospect","suspect-seller":"mogelijke verkoper"};
+const catNl=c=>CAT[String(c||"").toLowerCase()]||c||"";
 const countryEs=c=>{const k=String(c||"").trim();return COUNTRY_ES[k.toLowerCase()]||k};
 
 let CFG={services:[],invoices:[],next_no:"",last:null};
@@ -258,7 +275,7 @@ async function authToken(){
 }
 async function call(action,extra){
   const tok=await authToken();
-  if(!tok){banner("Niet ingelogd. Log eerst in op The Bridge (dash.gruposoltura.com) en open Facturación daarna opnieuw.");throw new Error("Niet ingelogd")}
+  if(!tok){banner("Niet ingelogd. Log eerst in op The Bridge (dash.gruposoltura.com) en open Facturatie daarna opnieuw.");throw new Error("Niet ingelogd")}
   const r=await fetch(HOOK,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify(Object.assign({action},extra||{}))});
   let j=null;try{j=await r.json()}catch(e){}
   if(!r.ok||!j||j.ok===false)throw new Error((j&&j.error)||("Server gaf status "+r.status));
@@ -292,7 +309,7 @@ function showResults(){
   if(!results.length){box.innerHTML='<div class="res"><small>Niets gevonden. Gebruik "Klant die niet in het CRM staat" of lees het contract in.</small></div>';box.hidden=false;return}
   box.innerHTML=results.map((r,i)=>{
     const props=(r.properties||[]).map(p=>p.reference).filter(Boolean).join(", ");
-    return `<button type="button" class="res${i===act?" act":""}" role="option" data-i="${i}"><b>${esc(r.full_name||"(zonder naam)")}</b><span class="chip">${esc(r.category||"")}</span><small>${esc([r.email,r.city,props&&("woning "+props)].filter(Boolean).join(" · "))}</small></button>`}).join("");
+    return `<button type="button" class="res${i===act?" act":""}" role="option" data-i="${i}"><b>${esc(r.full_name||"(zonder naam)")}</b><span class="chip">${esc(catNl(r.category))}</span><small>${esc([r.email,r.city,props&&("woning "+props)].filter(Boolean).join(" · "))}</small></button>`}).join("");
   box.hidden=false;
   box.querySelectorAll(".res[data-i]").forEach(b=>b.onclick=()=>pick(results[+b.dataset.i]));
 }
@@ -318,7 +335,7 @@ function setForm(c){
 function pick(r){
   crm=r;$("results").hidden=true;$("q").value="";
   setForm(Object.assign({},r,{salutation:r.salutation??TITLE[String(r.title_raw||"").toLowerCase()]??"Don"}));
-  $("picked").hidden=false;$("pickedTxt").innerHTML=`<b>${esc(r.full_name)}</b><small>Uit het CRM · ${esc(r.category||"")}${r.enriched?" · eerder aangevuld":""}</small>`;
+  $("picked").hidden=false;$("pickedTxt").innerHTML=`<b>${esc(r.full_name)}</b><small>Uit het CRM · ${esc(catNl(r.category))}${r.enriched?" · eerder aangevuld":""}</small>`;
   $("clientForm").hidden=false;
   const ps=r.properties||[];
   $("propLbl").hidden=!ps.length;
@@ -377,7 +394,7 @@ function language(){
 }
 function addLine(code){
   const id=++seq,el=document.createElement("div");el.className="line";el.dataset.id=id;
-  el.innerHTML=`<div class="line-head"><select id="ls-${id}" aria-label="Servicio">${CFG.services.map(x=>`<option value="${x.code}" ${x.code===code?"selected":""}>${esc(x.desc_es)}</option>`).join("")}</select><button type="button" class="x" aria-label="Regel verwijderen">×</button></div>
+  el.innerHTML=`<div class="line-head"><select id="ls-${id}" aria-label="Dienst">${CFG.services.map(x=>`<option value="${x.code}" ${x.code===code?"selected":""}>${esc(x.desc_es)}</option>`).join("")}</select><button type="button" class="x" aria-label="Regel verwijderen">×</button></div>
   <div id="lp-${id}"></div>
   <label for="ld-${id}">Aanvulling op de omschrijving (optioneel)<input id="ld-${id}" placeholder="Bijv. Piscina, Ampliación"></label>
   <div class="calc"><span id="lc-${id}"></span><span class="ov" id="lo-${id}" hidden>Aangepast</span></div>`;
@@ -392,9 +409,9 @@ function pricing(id){
   const pct=Number(s.default_percent),min=Number(s.min_amount||0),amt=Number(s.default_amount);
   if(s.pricing_mode==="percent_of_price")h+=`<div class="row"><label for="lpr-${id}">${esc(s.basis_label||"Bedrag")}<input id="lpr-${id}" class="num" inputmode="decimal"></label><label for="lpc-${id}">Percentage<input id="lpc-${id}" class="num" inputmode="decimal" value="${String(pct).replace(".",",")}"></label></div>`;
   if(s.pricing_mode==="fixed")h+=`<label for="lq-${id}">Aantal<input id="lq-${id}" class="num" inputmode="numeric" value="1"></label>`;
-  const lbl=s.pricing_mode==="percent_of_price"?`Importe (${String(pct).replace(".",",")}%${min?", minimum "+eur(min):""} excl. IVA; mag je overschrijven)`:s.pricing_mode==="fixed"?`Importe (tarief ${eur(amt)} excl. IVA)`:"Importe (zelf invullen)";
+  const lbl=s.pricing_mode==="percent_of_price"?`Bedrag (${String(pct).replace(".",",")}%${min?", minimum "+eur(min):""} excl. btw; mag je overschrijven)`:s.pricing_mode==="fixed"?`Bedrag (tarief ${eur(amt)} excl. btw)`:"Bedrag (zelf invullen)";
   h+=`<label for="la-${id}">${lbl}<input id="la-${id}" class="num" inputmode="decimal" value="${s.pricing_mode==="fixed"?toField(amt):""}"></label>
-  <label class="chk" for="lg-${id}"><input type="checkbox" id="lg-${id}"> Afgesproken bedrag is inclusief IVA</label>`;
+  <label class="chk" for="lg-${id}"><input type="checkbox" id="lg-${id}"> Afgesproken bedrag is inclusief btw</label>`;
   $("lp-"+id).innerHTML=h;
   $("lp-"+id).querySelectorAll("input").forEach(i=>i.addEventListener("input",()=>{if(i.id.startsWith("la-"))i.dataset.touched="1";else if(!i.id.startsWith("lg-")&&!i.id.startsWith("lq-"))$("la-"+id).dataset.touched="";render()}));
 }
@@ -411,7 +428,7 @@ function lines(lang){
     }else if(s.pricing_mode==="fixed"){const d=Number(s.default_amount);ov=!isNaN(amt)&&Math.abs(amt-d)>.004;note="vast tarief "+eur(d);input={tariff:d}}
     else note="handmatig bedrag";
     let unit=amt;
-    if($("lg-"+id).checked&&!isNaN(amt)){unit=r2(amt/1.21);note+=` · ${eur(amt)} incl. IVA = base ${eur(unit)}`;input.incl_iva=amt}
+    if($("lg-"+id).checked&&!isNaN(amt)){unit=r2(amt/1.21);note+=` · ${eur(amt)} incl. btw = ${eur(unit)} excl. btw`;input.incl_iva=amt}
     const qe=$("lq-"+id),qty=qe?Math.max(1,Math.round(parseNum(qe.value)||1)):1,total=isNaN(unit)?NaN:r2(unit*qty);
     if(qty>1&&!isNaN(unit))note+=` · ${qty} × ${eur(unit)} = ${eur(total)}`;
     $("lc-"+id).textContent=note;$("lo-"+id).hidden=!ov;
@@ -423,7 +440,7 @@ function lines(lang){
 }
 function sheetHtml(o){
   const propHtml=(o.finca?`<div class="fn">Número de finca: ${esc(o.finca)}</div>`:"")+(o.ref?`<div class="rc">Ref.cat.: ${esc(o.ref)}</div>`:"");
-  const rows=o.lines.length?o.lines.map(l=>`<tr><td><div class="ds">${esc(l.desc)}${l.detail?" "+esc(l.detail):""}</div>${l.prop?propHtml:""}</td><td class="c">${isNaN(l.unit)?"":eur(l.unit)}</td><td class="t">${isNaN(l.total)?"":eur(l.total)}</td></tr>`).join(""):`<tr><td colspan="3" style="color:var(--s-grey)">Kies een servicio</td></tr>`;
+  const rows=o.lines.length?o.lines.map(l=>`<tr><td><div class="ds">${esc(l.desc)}${l.detail?" "+esc(l.detail):""}</div>${l.prop?propHtml:""}</td><td class="c">${isNaN(l.unit)?"":eur(l.unit)}</td><td class="t">${isNaN(l.total)?"":eur(l.total)}</td></tr>`).join(""):`<tr><td colspan="3" style="color:var(--s-grey)">Kies een dienst</td></tr>`;
   const c=o.client,name=c?[c.salutation,c.full_name].filter(Boolean).join(" "):"";
   const cl=c&&c.full_name?`<div class="pname">${esc(name)}</div>${c.address?`<p>${esc(c.address)}</p>`:""}${c.city?`<p>${esc(c.city)}</p>`:""}${c.address||c.city?`<p>${esc(countryEs(c.country)||"España")}</p>`:""}${c.id_number?`<p class="gap" style="font-size:12px">${esc(c.id_type||"NIE")}: ${esc(c.id_number)}</p>`:""}`:"";
   const img=(k,cls,alt)=>IMG[k]?`<img ${cls?`class="${cls}"`:""} src="${IMG[k]}" alt="${alt}">`:"";
@@ -452,7 +469,7 @@ function render(){
   $("langTag").textContent=o.lang.toUpperCase();$("langWhy").textContent=o.why;
   const c=o.client,miss=[];
   if(c){if(!c.id_number)miss.push("NIE/DNI");if(!c.address)miss.push("adres");if(!c.city)miss.push("postcode en plaats");if(!c.email)miss.push("e-mail")}
-  if(o.lines.some(l=>l.prop)){if(!o.finca)miss.push("finca");if(!o.ref)miss.push("ref. catastral")}
+  if(o.lines.some(l=>l.prop)){if(!o.finca)miss.push("finca");if(!o.ref)miss.push("kadastrale referentie")}
   $("missing").hidden=!miss.length;$("missing").textContent="Nog leeg: "+miss.join(", ")+". Vul aan of lees het contract in.";
   $("sBase").textContent=eur(o.base);$("sIva").textContent=eur(o.iva);$("sTot").textContent=eur(o.tot);$("nextNo").textContent=o.no;
   $("sheet").innerHTML=sheetHtml(o);fit();
@@ -476,8 +493,8 @@ $("frm").addEventListener("submit",async e=>{
   e.preventDefault();if(busy)return;
   const o=state(),c=o.client;
   if(!c||!c.full_name)return msg("Kies eerst een klant in het CRM, lees een contract in of vul een nieuwe klant in.","err");
-  if(!o.lines.length)return msg("Voeg minstens één servicio toe.","err");
-  if(o.lines.some(l=>isNaN(l.unit)||l.unit<=0))return msg("Elke servicio heeft een bedrag hoger dan nul nodig.","err");
+  if(!o.lines.length)return msg("Voeg minstens één dienst toe.","err");
+  if(o.lines.some(l=>isNaN(l.unit)||l.unit<=0))return msg("Elke dienst heeft een bedrag hoger dan nul nodig.","err");
   if(CFG.last&&o.date<CFG.last.issue_date)return msg(`Deze datum ligt vóór de vorige factuur (${CFG.last.invoice_no} van ${fecha(CFG.last.issue_date)}). Kies die datum of later.`,"err");
   const propSel=$("propLbl").hidden?"":$("prop").value,prop=crm&&(crm.properties||[]).find(p=>String(p.wp_id)===propSel);
   const payload={issue_date:o.date,language:o.lang,finca:o.finca,ref_catastral:o.ref,property_wp_id:prop?prop.wp_id:null,property_ref:prop?prop.reference:null,
@@ -493,7 +510,7 @@ $("frm").addEventListener("submit",async e=>{
     const surname=String(c.full_name).trim().split(/\s+/).pop();
     const s=await call("store_pdf",{invoice_id:inv.id,invoice_no:inv.invoice_no,client_name:c.full_name,file_title:(svc(o.lines[0].code).desc_es.replace(/\s*\(.*\)/,"")+" "+surname),pdf_base64:b64});
     msg(`Factuur ${inv.invoice_no} staat klaar in Drive: ${s.name}`,"ok");
-    lastIssued={id:inv.id,no:inv.invoice_no,url:s.url};
+    lastIssued={id:inv.id,no:inv.invoice_no,url:s.url,o:pdfO};
     $("sendTxt").innerHTML=`Factuur <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(inv.invoice_no)}</a> mailen naar de klant?`;
     $("sendTo").value=c.email||"";$("sendbox").hidden=false;
     await loadConfig();
@@ -517,6 +534,14 @@ function resetForm(keepMsg){
 }
 ["langOverride","finca","refcat","date","c-sal","c-lang","c-name","c-idt","c-idn","c-addr","c-city","c-country","c-mail"].forEach(i=>$(i).addEventListener("input",render));
 $("addLine").onclick=()=>addLine("CEE");
+$("printBtn").onclick=async()=>{
+  const cur=state();
+  const o=(!cur.client&&lastIssued&&lastIssued.o)?lastIssued.o:cur;
+  const sh=document.querySelector("#printArea .sheet");sh.innerHTML=sheetHtml(o);
+  await document.fonts.ready;
+  await Promise.all([...sh.querySelectorAll("img")].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r})));
+  window.print();
+};
 $("newInv").onclick=()=>resetForm(false);
 $("resetBtn").onclick=()=>{$("confirm").hidden=false};
 $("resetNo").onclick=()=>{$("confirm").hidden=true};
