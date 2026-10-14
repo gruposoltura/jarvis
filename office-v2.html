@@ -32,6 +32,11 @@
   Inrichting (14-10): twee glazen achterwanden per platform met een doorgang in het midden; langs de wanden
   boekenkasten, lockers, archiefkasten, dressoirs, printer, koffiehoek, waterkoeler (SVG) plus de gerenderde
   prop-cabinet/-rack/-board/-plant; planten en lampen in de hoeken en de strook rechts. Vaste seed per afdeling.
+  Motion (14-10): gaat een agent aan het werk (nieuwe run of net 'bezig', geen lege run), dan zoomt de camera
+  10 s in op zijn afdeling en daarna weer terug; meerdere afdelingen na elkaar (max 4 in de wachtrij). Niet als de
+  gebruiker iets gekozen heeft of < 30 s geleden zelf zoomde/sleepte/klikte; elke eigen actie breekt de rondleiding
+  af. Knop 'Motion' in de kop, keuze per browser in localStorage 'bridge.office2.motion' (standaard aan, uit bij
+  reduced motion).
   Dock: de hoek het dichtst bij het brein is het aansluitpunt van de datapijp (gloeiende ring); prop-lens vervalt.
   Powerballen: een agent met een AI-tool (anthropic/openai volgens v_office_tools) stuurt bij elke NIEUWE run
   een gloeiende bal in de afdelingskleur langs pijp en lichtpilaar naar het brein; zolang hij 'working' is
@@ -80,6 +85,24 @@
   .brand .sub{color:var(--dim);font-size:13px}
   .brand .ver{font:700 9.5px var(--mono);letter-spacing:.14em;color:var(--cyan);border:1px solid rgba(0,212,255,.4);border-radius:4px;padding:1px 5px;align-self:center}
   .spacer{flex:1}
+  .motion{appearance:none;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;border-radius:999px;cursor:pointer;
+    border:1px solid var(--line);background:rgba(7,11,18,.9);color:var(--dim);font:700 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase}
+  .motion i{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
+  .motion:hover{border-color:var(--cyan);color:var(--text)}
+  .motion.on{color:var(--cyan);border-color:rgba(0,212,255,.55)}
+  .motion.on i{background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:pulse 1.8s ease-in-out infinite}
+  .tourmsg{position:absolute;left:16px;top:14px;z-index:5;display:flex;align-items:center;gap:9px;max-width:calc(100% - 90px);
+    background:rgba(7,11,18,.92);border:1px solid var(--c,var(--cyan));border-radius:999px;padding:5px 13px 5px 10px;
+    font:600 12px var(--font);color:var(--text);box-shadow:0 0 18px -6px var(--c,var(--cyan));pointer-events:none;
+    opacity:0;transform:translateY(-6px);transition:opacity .35s,transform .35s}
+  .tourmsg.on{opacity:1;transform:none}
+  .tourmsg b{font:800 10px var(--mono);letter-spacing:.16em;color:var(--c,var(--cyan));text-transform:uppercase;white-space:nowrap}
+  .tourmsg span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tourmsg .bar{position:absolute;left:14px;right:14px;bottom:-1px;height:2px;border-radius:2px;background:var(--c,var(--cyan));transform-origin:left;transform:scaleX(0)}
+  .tourmsg.on .bar{animation:tourbar var(--td,10s) linear forwards}
+  @keyframes tourbar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+  .dept.tour .slab-top{stroke:var(--c);stroke-width:2.4}
+  .dept.tour .slab-glow{fill:color-mix(in srgb,var(--c) 20%,transparent)}
   .metrics{display:flex;gap:18px}
   .metric{text-align:right;line-height:1.1}
   .metric b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
@@ -401,10 +424,11 @@
     .panel{border-left:0;border-top:1px solid var(--line);padding-bottom:84px}
     .pgrip,.pz .pw{display:none}
     .metrics{gap:13px} .upd{display:none}
+    .motion{height:26px;padding:0 9px}
     .hint{display:none}
   }
   @media (prefers-reduced-motion:reduce){
-    #floor.intro .dept,#floor.intro .brain,.pipe-flow,.link.live,.brain .halo,.brain .beam,.bub .b-pop,.bub .b-in,.bub .dots circle,.ag .m-glow,.ag.s-error .m-screen,.ag.s-silent .m-screen,#wires path,.cursor::after,.ag .m-code .roll,.dock .d-core{animation:none}
+    #floor.intro .dept,#floor.intro .brain,.pipe-flow,.link.live,.brain .halo,.brain .beam,.bub .b-pop,.bub .b-in,.bub .dots circle,.ag .m-glow,.ag.s-error .m-screen,.ag.s-silent .m-screen,#wires path,.cursor::after,.ag .m-code .roll,.dock .d-core,.motion.on i,.tourmsg.on .bar{animation:none}
     .pcard{transition:none}
     .card:hover .pcard,.card:focus-visible .pcard,.dept.cur .card .pcard{transform:none}
     #wires path{stroke-dashoffset:0}
@@ -418,6 +442,7 @@
   <header>
     <div class="brand"><span class="dot" id="live"></span><span class="ttl">BRIDGE</span><span class="sub">Office</span><span class="ver">V2</span></div>
     <div class="spacer"></div>
+    <button type="button" class="motion" id="motion" aria-pressed="false" title="Automatisch inzoomen op een afdeling zodra daar een agent aan het werk gaat (10 s)"><i></i>Motion</button>
     <div class="pz" id="pz" role="group" aria-label="Paneel leesbaarheid">
       <span class="lb">Paneel</span>
       <button type="button" data-pz="-" title="Tekst kleiner" aria-label="Tekst kleiner">A−</button>
@@ -476,6 +501,7 @@
           <button type="button" data-cam="out" title="Uitzoomen">−</button>
           <button type="button" data-cam="fit" title="Alles in beeld">⤢</button>
         </div>
+        <div class="tourmsg" id="tourmsg" role="status" aria-live="polite"><b></b><span></span><i class="bar"></i></div>
         <div class="hint" id="hint">scroll = zoom · sleep = verschuif · klik = details</div>
       </div>
       <svg id="wires" aria-hidden="true"></svg>
@@ -709,11 +735,12 @@
             + "#" + S.depts.map(function (d) { return d.name + d.color + d.icon; }).join(";")
             + "#" + S.links.map(function (l) { return l.from_agent + ">" + l.to_agent; }).sort().join(";")
             + "#" + S.depts.map(function (d) { return d.name + ":" + panelRows(d).length; }).join(";");
-    if (sig !== S.sig) { S.sig = sig; layout(); renderFloor(); } else { carryLayout(oldById, oldDepts); patchAgents(); patchPipes(); patchCards(); }
+    if (sig !== S.sig) { S.sig = sig; layout(); renderFloor(); if (TOUR.cur) tourMark(TOUR.cur); } else { carryLayout(oldById, oldDepts); patchAgents(); patchPipes(); patchCards(); }
 
     S.loadedAt = new Date();
     queueBalls(prevRun);
     queueSubs(prevRun);
+    queueTour(prevRun);
     renderBubbles();
     renderHeader(); renderTools(); renderPanel(); applyFocus();
     if (S.focus && S.focus.type === "agent") loadRuns(S.byId[S.focus.id]);
@@ -1947,6 +1974,7 @@
   var drag = null;
   elScene.addEventListener("pointerdown", function (e) {
     if (e.button !== 0 && e.pointerType === "mouse") return;
+    userActed();
     if (closest(e.target, ".cam")) return;
     drag = { x: e.clientX, y: e.clientY, cam: S.cam ? S.cam.slice() : null, moved: false, id: e.pointerId };
   });
@@ -1973,6 +2001,7 @@
   elScene.addEventListener("pointercancel", endDrag);
   elScene.addEventListener("wheel", function (e) {
     e.preventDefault();
+    userActed();
     var r = elScene.getBoundingClientRect();
     var k = Math.pow(1.0015, -e.deltaY * (e.deltaMode === 1 ? 20 : 1));
     zoomBy(k, e.clientX - r.left, e.clientY - r.top);
@@ -1987,6 +2016,91 @@
     else setCam(S.fitBox, true);
   });
   setTimeout(function () { elHint.classList.add("off"); }, 9000);
+
+  /* --------------------------------------------------------------- motion (14-10)
+     Gaat een agent aan het werk, dan zoomt de camera 10 s in op zijn afdeling en daarna terug naar waar
+     hij stond. Aan het werk = een nieuwe run sinds de vorige verversing of net op 'bezig' gekomen, en
+     geen lege run (NOOP_RE). Verversing is 1x per minuut: nieuwe runs worden over die minuut verspreid. */
+  var TOUR_MS = 10000, TOUR_QUIET = 30000, TOUR_MAX = 4, MOTION_KEY = "bridge.office2.motion";
+  var TOUR = { q: [], busy: false, timer: null, home: null, cur: null, timers: [] };
+  var elMotion = $("motion"), elTourMsg = $("tourmsg");
+  S.userAt = 0; S.prevWorking = null;
+  var motionOn = !REDUCED;
+  try { var mv = localStorage.getItem(MOTION_KEY); if (mv === "on") motionOn = true; else if (mv === "off") motionOn = false; } catch (e) {}
+  function paintMotion() {
+    elMotion.classList.toggle("on", motionOn);
+    elMotion.setAttribute("aria-pressed", motionOn ? "true" : "false");
+  }
+  paintMotion();
+  elMotion.addEventListener("click", function () {
+    motionOn = !motionOn; paintMotion();
+    try { localStorage.setItem(MOTION_KEY, motionOn ? "on" : "off"); } catch (e) {}
+    if (!motionOn) tourStop(true);
+  });
+  function userActed() { S.userAt = Date.now(); if (TOUR.busy || TOUR.q.length) tourStop(false); }
+  function tourAllowed() {
+    return motionOn && !document.hidden && !S.focus && !(drag && drag.moved) && Date.now() - S.userAt > TOUR_QUIET;
+  }
+  function queueTour(prevRun) {
+    TOUR.timers.forEach(clearTimeout); TOUR.timers = [];
+    var wasWorking = S.prevWorking, now = {};
+    S.agents.forEach(function (a) { now[a.agent_id] = st(a) === "working"; });
+    S.prevWorking = now;
+    if (!motionOn) return;
+    S.agents.forEach(function (a) {
+      if (isNoop(a) || st(a) === "paused") return;
+      var fresh = prevRun && a.last_run_at && a.last_run_at !== (prevRun[a.agent_id] || "");
+      var started = now[a.agent_id] && !(wasWorking && wasWorking[a.agent_id]);
+      if (!fresh && !started) return;
+      /* nu bezig: meteen (na de intro); nieuwe run in de afgelopen minuut: ergens in de komende minuut */
+      var t = now[a.agent_id] ? (prevRun ? 600 : 2500) + Math.random() * 1500 : Math.random() * (REFRESH_MS - 12000);
+      TOUR.timers.push(setTimeout(function () { tourPush(a.agent_id); }, t));
+    });
+  }
+  function tourPush(id) {
+    var a = S.byId[id]; if (!a || !tourAllowed()) return;
+    if (TOUR.cur === a.dept_name || TOUR.q.some(function (x) { return x.dept === a.dept_name; })) return;
+    if (TOUR.q.length >= TOUR_MAX) return;
+    TOUR.q.push({ dept: a.dept_name, id: id });
+    if (!TOUR.busy) tourNext();
+  }
+  function tourMark(name) {
+    Array.prototype.forEach.call(elWorld.querySelectorAll(".dept.tour"), function (e) { e.classList.remove("tour"); });
+    if (name) { var g = elWorld.querySelector('.dept[data-dept="' + CSS.escape(name) + '"]'); if (g) g.classList.add("tour"); }
+  }
+  function tourNext() {
+    clearTimeout(TOUR.timer);
+    var it = null;
+    while (TOUR.q.length && !it) { var x = TOUR.q.shift(); if (deptByName(x.dept) && S.byId[x.id]) it = x; }
+    if (!it || !tourAllowed()) {
+      /* klaar: terug naar de camera van voor de rondleiding */
+      var home = TOUR.home;
+      TOUR.q = []; TOUR.busy = false; TOUR.cur = null; TOUR.home = null;
+      tourMark(null); elTourMsg.classList.remove("on");
+      if (home && tourAllowed()) setCam(home, true);
+      return;
+    }
+    var d = deptByName(it.dept), a = S.byId[it.id];
+    TOUR.busy = true; TOUR.cur = it.dept;
+    if (!TOUR.home) TOUR.home = (S.cam || S.fitBox).slice();
+    zoomToDept(d);
+    tourMark(d.name);
+    elTourMsg.style.setProperty("--c", d.color);
+    elTourMsg.style.setProperty("--td", TOUR_MS + "ms");
+    elTourMsg.querySelector("b").textContent = "Live · " + d.name;
+    elTourMsg.querySelector("span").textContent = a.agent_name + " gaat aan het werk";
+    elTourMsg.classList.remove("on"); void elTourMsg.offsetWidth; elTourMsg.classList.add("on");
+    TOUR.timer = setTimeout(tourNext, TOUR_MS);
+  }
+  /* back = ook terugzoomen (Motion uitgezet); bij een eigen actie blijft de camera waar de gebruiker hem neemt */
+  function tourStop(back) {
+    clearTimeout(TOUR.timer);
+    var home = TOUR.home;
+    TOUR.q = []; TOUR.busy = false; TOUR.cur = null; TOUR.home = null;
+    tourMark(null); elTourMsg.classList.remove("on");
+    if (back && home && !S.focus) setCam(home, true);
+  }
+  document.addEventListener("visibilitychange", function () { if (document.hidden && TOUR.busy) tourStop(false); });
 
   /* ------------------------------------------------------------------- kop */
   function counts(list) {
@@ -2021,6 +2135,7 @@
 
   /* ----------------------------------------------------------------- focus */
   function setFocus(f, noZoom) {
+    if (f) tourStop(false);
     S.focus = f; S.hoverTool = null;
     var u = new URL(location.href);
     if (f && f.type === "agent") u.searchParams.set("agent", f.id); else u.searchParams.delete("agent");
@@ -2313,6 +2428,8 @@
     return true;
   }
   elTools.addEventListener("click", toolClick);
+  elTools.addEventListener("pointerdown", userActed);
+  elPanel.addEventListener("pointerdown", userActed);
   function toolHover(on) {
     return function (e) {
       var b = closest(e.target, ".tool"); if (!b) return;
