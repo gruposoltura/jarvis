@@ -29,7 +29,10 @@
   zwarte achtergrond) als HTML-<video> over de SVG met mix-blend-mode:screen, via placeBrainLive() op de
   onzichtbare .live-anchor. Reduced motion: alleen de poster (brain-core.webp).
   Brein-platform: brain.webp (BRAIN_SPRITE = true); zonder dat bestand tekent brainBase() het platform in SVG.
-  Props: prop-*.webp, twee per afdeling langs de randen (PROPS leeg = geen props).
+  Inrichting (14-10): twee glazen achterwanden per platform met een doorgang in het midden; langs de wanden
+  boekenkasten, lockers, archiefkasten, dressoirs, printer, koffiehoek, waterkoeler (SVG) plus de gerenderde
+  prop-cabinet/-rack/-board/-plant; planten en lampen in de hoeken en de strook rechts. Vaste seed per afdeling.
+  Dock: de hoek het dichtst bij het brein is het aansluitpunt van de datapijp (gloeiende ring); prop-lens vervalt.
   Powerballen: een agent met een AI-tool (anthropic/openai volgens v_office_tools) stuurt bij elke NIEUWE run
   een gloeiende bal in de afdelingskleur langs pijp en lichtpilaar naar het brein; zolang hij 'working' is
   elke ~7 s een bal. Niet bij reduced motion of een verborgen tab.
@@ -155,7 +158,16 @@
   .ground-tex{opacity:.9}
   .grid{stroke:#0e1521;stroke-width:1}
   .slab-tex{opacity:.85}
-  .prop{opacity:.9;pointer-events:none}
+  .prop{pointer-events:none}
+  .prop polygon{stroke:#000;stroke-opacity:.28;stroke-width:.5;stroke-linejoin:round}
+  .prop .lamp-glow{opacity:.22;filter:url(#fSoft)}
+  .wall{fill:color-mix(in srgb,var(--c) 9%,rgba(140,190,220,.07));stroke:none}
+  .wall-cap{stroke:color-mix(in srgb,var(--c) 70%,#fff);stroke-opacity:.55;stroke-width:1.6;stroke-linecap:round}
+  .mull{stroke:#fff;stroke-opacity:.09;stroke-width:1}
+  .dock{pointer-events:none}
+  .dock .d-plate{stroke:color-mix(in srgb,var(--c) 60%,transparent);stroke-width:1}
+  .dock .d-ring{fill:none;stroke:var(--c);stroke-width:1.6;stroke-opacity:.85}
+  .dock .d-core{fill:var(--c);animation:pulse 2.4s ease-in-out infinite}
   .dept{--c:#8aa0b5}
   #floor.intro .dept,#floor.intro .brain{animation:rise .55s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i)*55ms)}
   @keyframes rise{from{opacity:0;transform:translateY(18px)}}
@@ -392,7 +404,7 @@
     .hint{display:none}
   }
   @media (prefers-reduced-motion:reduce){
-    #floor.intro .dept,#floor.intro .brain,.pipe-flow,.link.live,.brain .halo,.brain .beam,.bub .b-pop,.bub .b-in,.bub .dots circle,.ag .m-glow,.ag.s-error .m-screen,.ag.s-silent .m-screen,#wires path,.cursor::after,.ag .m-code .roll{animation:none}
+    #floor.intro .dept,#floor.intro .brain,.pipe-flow,.link.live,.brain .halo,.brain .beam,.bub .b-pop,.bub .b-in,.bub .dots circle,.ag .m-glow,.ag.s-error .m-screen,.ag.s-silent .m-screen,#wires path,.cursor::after,.ag .m-code .roll,.dock .d-core{animation:none}
     .pcard{transition:none}
     .card:hover .pcard,.card:focus-visible .pcard,.dept.cur .card .pcard{transform:none}
     #wires path{stroke-dashoffset:0}
@@ -508,7 +520,7 @@
   /* Props en brein-platform zijn optionele sprites. Zet ze aan zodra de bestanden in office-v2-assets/ staan
      (anders 404's in de console): PROPS = [["prop-rack",521],["prop-cabinet",371],["prop-plant",361],
      ["prop-board",429],["prop-lens",160]] en BRAIN_SPRITE = true. */
-  var PROPS = [["prop-rack",521],["prop-cabinet",371],["prop-plant",361],["prop-board",429],["prop-lens",160]];
+  var PROPS = [];   /* 14-10: vervangen door de inrichting (propList); prop-lens.webp wordt niet meer geladen */
   var BRAIN_SPRITE = true;
   /* Toolkleur + monogram. Merkkleur ter herkenning; géén nagetekend logo.
      Onbekende tool -> grijs tegeltje met de eerste twee letters. */
@@ -558,6 +570,7 @@
       + "</span>" + (count ? "<i>" + count + "</i>" : "") + "</button>";
   }
   var PROP_LANE = 1.0;                  /* vrije strook rechts op het platform, alleen voor props */
+  var WALL = 1.0, PADX = 0.45, PADY = 0.55;   /* 14-10: wandstrook achter voor meubels, daarna marge tot de bureaus */
   var STAGES = ["SCOUT", "COMPILE", "BUILD", "PUBLISH", "REVIEW"];
   var REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var IMG_RE = /https?:\/\/[^\s"'<>)]+?\.(?:png|jpe?g|webp|gif)(?:\?[^\s"'<>)]*)?|https?:\/\/res\.cloudinary\.com\/[^\s"'<>)]+/i;
@@ -736,14 +749,14 @@
       });
     });
     var gutter = maxLabel ? Math.min(3.6, Math.max(1.3, maxLabel * 5.7 / EDGE + 0.55)) : 0;
-    var cols = 0, y = PAD;
+    var cols = 0, y = WALL + PADY;
     lanes.forEach(function (l, i) {
       if (i) y += LANE_GAP;
       var n = l.agents.length, rows = Math.ceil(n / MAX_COLS), per = Math.ceil(n / rows);
       l.y0 = y;
       for (var r = 0; r < rows; r++) {
         l.agents.slice(r * per, (r + 1) * per).forEach(function (a, c) {
-          a._lx = PAD + gutter + c * AGENT_DX + AGENT_DX / 2; a._ly = y + AGENT_DY / 2;
+          a._lx = WALL + PADX + gutter + c * AGENT_DX + AGENT_DX / 2; a._ly = y + AGENT_DY / 2;
           cols = Math.max(cols, c + 1);
         });
         y += AGENT_DY;
@@ -751,8 +764,8 @@
       l.y1 = y;
     });
     d.lanes = lanes; d.gutter = gutter;
-    d.labelChars = Math.max(3, Math.floor((gutter - 0.5) * EDGE / 5.7));
-    d.w = Math.max(PAD * 2 + gutter + cols * AGENT_DX + PROP_LANE, 3);
+    d.labelChars = Math.max(3, Math.floor((gutter + PADX - 0.4) * EDGE / 5.7));
+    d.w = Math.max(WALL + PADX + gutter + cols * AGENT_DX + 0.3 + PROP_LANE, 3);
     d.d = y + PAD;
   }
   function overlaps(a, b, gap) {
@@ -813,8 +826,8 @@
       d.agents.forEach(function (a) { a._p = iso(d.x + a._lx, d.y + a._ly, SLAB); });
       var c = iso(d.x + d.w / 2, d.y + d.d / 2, 0);
       d._c = c;
-      /* aanhechtpunt van de pijp: het punt op de platformrand richting de Brain */
-      d._port = edgePoint(d, [0, 0]);
+      /* aanhechtpunt van de pijp: de hoek het dichtst bij het brein (dock) */
+      d._port = dockPoint(d);
     });
     /* tekenvolgorde van achter naar voor (op x+y van het middelpunt) */
     S.paint = S.depts.slice().sort(function (p, q) { return (p.x + p.w / 2 + p.y + p.d / 2) - (q.x + q.w / 2 + q.y + q.d / 2); });
@@ -834,7 +847,7 @@
   var DX0 = -DESK_W * DESK_AX, DY0 = -DESK_H * DESK_AY;
   /* Hoogte waarop het paneel boven de achter-linkerhoek van het dek hangt: zo hoog dat de
      bovenkant van de achterste bureausprite er altijd onder blijft (anders ligt het op de agents). */
-  var CARD_LIFT = Math.max(26, -((PAD + AGENT_DX / 2) + (PAD + AGENT_DY / 2)) * 13 - DY0 + 14);
+  var CARD_LIFT = Math.max(66, -((WALL + PADX + AGENT_DX / 2) + (WALL + PADY + AGENT_DY / 2)) * 13 - DY0 + 14);
   /* ---- avatars v3: inkleuren per afdelingskleur x haarkleur, gecachet ---- */
   var HAIR = ["#231c18", "#3a281d", "#5e3f2b", "#8a6240", "#c99b55", "#e3c482", "#8c3a1e", "#9c9c9c", "#d8d8d8"];
   var AV = { ready: false, walk: false, stand: false, cache: {}, img: {} };
@@ -1061,33 +1074,316 @@
       + '<ellipse class="bb-core" cx="' + f1(t[0]) + '" cy="' + f1(t[1]) + '" rx="' + f1(B * HW * 0.42) + '" ry="' + f1(B * HH * 0.42) + '"/>'
       + '<rect class="bb-beam" x="' + f1(t[0] - 22) + '" y="' + f1(y0) + '" width="44" height="' + f1(t[1] - y0) + '" fill="url(#gBeam)"/>';
   }
-  /* Twee vaste props per afdeling, gekozen op de naam zodat ze niet rondspringen. */
+  /* ======================================================================= inrichting (14-10)
+     Elk platform heeft twee glazen tussenwanden aan de achterkant (x = x0 en y = y0) met een
+     doorgang in het midden (daar loopt de agent naar een sub-afdeling). Langs die wanden staat het
+     meubilair: boekenkasten, lockers, archiefkasten, dressoirs, printer, koffiehoek, waterkoeler,
+     de gerenderde kast/serverrek/whiteboard en planten. Planten en lampen ook in de hoeken en in
+     de strook rechts. De hoek die het dichtst bij het brein ligt is het aansluitpunt van de
+     datapijp (dock); daar staat niets. Alles wordt gekozen met een vaste seed op de afdelingsnaam,
+     dus elke afdeling ziet er elke keer hetzelfde uit. */
   function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
-  /* Props staan langs de randen van het platform en worden alleen geplaatst waar ze op het scherm
-     geen enkel bureau raken; ze krijgen dezelfde dieptesleutel als de agents, anders tekenen ze
-     over de monitoren heen. Past er niets, dan krijgt die afdeling geen prop. */
-  function propList(d) {
-    var out = [], w = 30, M = 4;
-    if (d.d < 1.6 || !PROPS.length) return out;
-    var boxes = d.agents.map(function (a) {
-      return [a._p[0] + DX0 - M, a._p[1] + DY0 - M, a._p[0] + DX0 + DESK_W + M, a._p[1] + DY0 + DESK_H + M];
-    });
-    var cand = [], i, t;
-    for (t = 0.18; t <= 0.85; t += 0.16) cand.push([d.x + d.w - PAD - PROP_LANE / 2, d.y + PAD + t * (d.d - PAD * 2)]);   /* rechterrand */
-    for (t = 0.15; t <= 0.9; t += 0.2) cand.push([d.x + PAD + t * (d.w - PAD * 2), d.y + PAD * 0.45]);                     /* achterrand */
-    for (t = 0.15; t <= 0.9; t += 0.2) cand.push([d.x + PAD + t * (d.w - PAD * 2), d.y + d.d - PAD * 0.45]);               /* voorrand */
-    var hsh = hash(d.name), used = [];
-    for (i = 0; i < cand.length && out.length < 2; i++) {
-      var p = PROPS[((hsh >>> (out.length * 5 + 1)) + out.length * 3) % PROPS.length], hh = w * p[1] / 256;
-      var q = iso(cand[i][0], cand[i][1], SLAB);
-      var r = [q[0] - w / 2, q[1] - hh * 0.88, q[0] + w / 2, q[1] + hh * 0.12];
-      var clash = boxes.concat(used).some(function (b) { return r[0] < b[2] && b[0] < r[2] && r[1] < b[3] && b[1] < r[3]; });
-      if (clash) continue;
-      used.push([r[0] - 10, r[1] - 10, r[2] + 10, r[3] + 10]);
-      out.push({ k: (cand[i][0] - d.x) + (cand[i][1] - d.y),
-        h: '<image class="prop" href="' + ASSETS + p[0] + '.webp" x="' + f1(r[0]) + '" y="' + f1(r[1])
-           + '" width="' + w + '" height="' + f1(hh) + '" preserveAspectRatio="none"/>' });
+  function rngOf(seed) {
+    var a = seed >>> 0;
+    return function () { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  function shade(hex, f) {
+    var c = hexRgb(hex);
+    return "rgb(" + c.map(function (v) { return Math.max(0, Math.min(255, Math.round(v * f))); }).join(",") + ")";
+  }
+  function poly(p, fill, extra) { return '<polygon points="' + pts(p) + '" fill="' + fill + '"' + (extra || "") + "/>"; }
+  /* blok in wereldcoordinaten, z in px boven het platformdek */
+  function box(x, y, w, dd, z0, h, col, extra) {
+    var Z = SLAB + z0, H = Z + h;
+    return poly([iso(x, y + dd, H), iso(x + w, y + dd, H), iso(x + w, y + dd, Z), iso(x, y + dd, Z)], shade(col, 0.82), extra)
+      + poly([iso(x + w, y + dd, H), iso(x + w, y, H), iso(x + w, y, Z), iso(x + w, y + dd, Z)], shade(col, 0.6), extra)
+      + poly([iso(x, y, H), iso(x + w, y, H), iso(x + w, y + dd, H), iso(x, y + dd, H)], shade(col, 1.14), extra);
+  }
+  /* Frame F langs een wand: ax 'x' = langs de achterwand y = y0 (voorkant = vlak y + D),
+     ax 'y' = langs de wand x = x0 (voorkant = vlak x + D). u = 0..1 langs de wand (links -> rechts
+     op het scherm), v = 0..1 van de wand naar voren. */
+  function sub(F, u0, u1, v0, v1, z0, h, col, extra) {
+    if (F.ax === "x") return box(F.x + u0 * F.L, F.y + v0 * F.D, (u1 - u0) * F.L, (v1 - v0) * F.D, z0, h, col, extra);
+    return box(F.x + v0 * F.D, F.y + (1 - u1) * F.L, (v1 - v0) * F.D, (u1 - u0) * F.L, z0, h, col, extra);
+  }
+  function fpt(F, u, v, z) {
+    return F.ax === "x" ? iso(F.x + u * F.L, F.y + v * F.D, SLAB + z) : iso(F.x + v * F.D, F.y + (1 - u) * F.L, SLAB + z);
+  }
+  /* vlak op de voorkant (v = vf, standaard 1) */
+  function face(F, u0, u1, z0, z1, fill, vf, extra) {
+    var v = vf == null ? 1.004 : vf;
+    return poly([fpt(F, u0, v, z1), fpt(F, u1, v, z1), fpt(F, u1, v, z0), fpt(F, u0, v, z0)], fill, extra);
+  }
+  var BOOKS = ["#b8433a", "#2f6fa8", "#d9a441", "#3c8c5a", "#7a4fa0", "#e3ddcf", "#c2643a", "#1f8a8a", "#e8231a"];
+  var GREENS = ["#2f7a45", "#3f9455", "#56ad62", "#2a6b3e", "#4c9d4a"];
+  var POTS = ["#b5643c", "#d9dde3", "#2b3442", "#8a6a4a", "#c9b79a"];
+  var WOOD = ["#5b3e2a", "#6e4b31", "#4a3324", "#7b5a3c"];
+
+  /* ---- meubels tegen de wand ---- */
+  var FURN = {
+    shelf: { L: 1.05, D: 0.36, f: function (F, r) {
+      var h = 60, wood = WOOD[Math.floor(r() * WOOD.length)], s = sub(F, 0, 1, 0, 1, 0, h, wood);
+      s += face(F, 0.06, 0.94, 3, h - 3, "#18120d");
+      var n = 4, sh = (h - 6) / n;
+      for (var i = 0; i < n; i++) {
+        var z = 3 + i * sh;
+        s += face(F, 0.06, 0.94, z, z + 1.6, shade(wood, 1.2));
+        var u = 0.08;
+        while (u < 0.9) {
+          var bw = 0.035 + r() * 0.05;
+          if (r() < 0.14) { u += bw * 1.6; continue; }
+          var bh = sh * (0.5 + r() * 0.38), u1 = Math.min(u + bw, 0.92);
+          s += face(F, u, u1, z + 1.6, z + 1.6 + bh, BOOKS[Math.floor(r() * BOOKS.length)]);
+          u = u1 + 0.006;
+        }
+      }
+      return s;
+    } },
+    tallshelf: { L: 0.62, D: 0.34, f: function (F, r) {
+      var h = 70, s = sub(F, 0, 1, 0, 1, 0, h, "#d6d9de");
+      s += face(F, 0.08, 0.92, 3, h - 3, "#2a2f37");
+      for (var i = 0; i < 5; i++) {
+        var z = 3 + i * 13;
+        s += face(F, 0.08, 0.92, z, z + 1.4, "#eef0f3");
+        if (r() < 0.75) {
+          var c = BOOKS[Math.floor(r() * BOOKS.length)];
+          if (r() < 0.5) s += face(F, 0.16, 0.5 + r() * 0.3, z + 1.4, z + 9, c);           /* archiefdozen */
+          else s += face(F, 0.2, 0.42, z + 1.4, z + 6, "#e3ddcf") + face(F, 0.5, 0.8, z + 1.4, z + 9.5, c);
+        }
+      }
+      return s;
+    } },
+    locker: { L: 0.85, D: 0.42, f: function (F, r) {
+      var h = 62, col = ["#4b5b70", "#3f6a68", "#5a5f6e"][Math.floor(r() * 3)], s = sub(F, 0, 1, 0, 1, 0, h, col), n = 3;
+      for (var i = 0; i < n; i++) {
+        var a = i / n + 0.025, b = (i + 1) / n - 0.025;
+        s += face(F, a, b, 3, h - 3, shade(col, 0.95));
+        for (var k = 0; k < 3; k++) s += face(F, a + 0.05, b - 0.05, h - 10 - k * 3, h - 9 - k * 3, shade(col, 0.55));
+        s += face(F, b - 0.07, b - 0.04, h * 0.48, h * 0.48 + 7, "#c9d3df");
+      }
+      return s;
+    } },
+    filing: { L: 0.5, D: 0.46, f: function (F) {
+      var h = 38, col = "#6c7a8c", s = sub(F, 0, 1, 0, 1, 0, h, col);
+      for (var i = 0; i < 4; i++) {
+        var z = 2 + i * 9;
+        s += face(F, 0.07, 0.93, z, z + 7.6, shade(col, 0.97)) + face(F, 0.4, 0.6, z + 4.6, z + 6, "#d7dee7");
+      }
+      return s;
+    } },
+    credenza: { L: 1.25, D: 0.4, f: function (F, r) {
+      var h = 22, wood = WOOD[Math.floor(r() * WOOD.length)], s = sub(F, 0, 1, 0, 1, 0, h, wood);
+      for (var i = 0; i < 3; i++) {
+        var a = i / 3 + 0.02, b = (i + 1) / 3 - 0.02;
+        s += face(F, a, b, 3, h - 3, shade(wood, 0.92)) + face(F, b - 0.05, b - 0.03, h * 0.45, h * 0.45 + 5, "#d8c39a");
+      }
+      /* op het dressoir: stapel boeken + kleine plant + fotolijstje */
+      s += sub(F, 0.08, 0.26, 0.25, 0.75, h, 3, BOOKS[1]) + sub(F, 0.09, 0.25, 0.28, 0.72, h + 3, 3, BOOKS[2]);
+      var p = fpt(F, 0.72, 0.5, h);
+      s += sub(F, 0.65, 0.79, 0.3, 0.7, h, 7, POTS[1]) + bushTop(p[0], p[1] - 7, 0.55, r);
+      s += face(F, 0.42, 0.54, h, h + 9, "#20262e", 0.42) + face(F, 0.435, 0.525, h + 1.5, h + 7.5, "#8fb3cf", 0.415);
+      return s;
+    } },
+    printer: { L: 0.72, D: 0.5, f: function (F) {
+      var s = sub(F, 0, 1, 0, 1, 0, 17, "#3a4555");
+      s += face(F, 0.06, 0.94, 2, 15, "#333d4c") + face(F, 0.4, 0.6, 8, 9.4, "#a9b6c6");
+      s += sub(F, 0.06, 0.94, 0.08, 0.88, 17, 13, "#cfd5dd");
+      s += face(F, 0.12, 0.6, 20, 25, "#e7ebef", 0.884) + face(F, 0.72, 0.8, 25, 27, "#3ee08f", 0.884);
+      s += sub(F, 0.2, 0.8, 0.15, 0.6, 30, 1.6, "#fbfbf6");
+      return s;
+    } },
+    coffee: { L: 0.95, D: 0.46, f: function (F, r) {
+      var wood = WOOD[Math.floor(r() * WOOD.length)], s = sub(F, 0, 1, 0, 1, 0, 25, wood);
+      s += face(F, 0.04, 0.48, 3, 22, shade(wood, 0.92)) + face(F, 0.52, 0.96, 3, 22, shade(wood, 0.92));
+      s += sub(F, -0.02, 1.02, -0.02, 1.04, 25, 2, "#d9d4ca");
+      s += sub(F, 0.08, 0.4, 0.12, 0.78, 27, 20, "#22272e");
+      s += face(F, 0.14, 0.34, 32, 41, "#0f1216", 0.784) + face(F, 0.2, 0.28, 30, 32.5, "#f2efe8", 0.79);
+      s += face(F, 0.31, 0.34, 43, 45, "#ff5d5d", 0.784);
+      [[0.58, 0.55], [0.72, 0.42], [0.84, 0.62]].forEach(function (c) {
+        var p = fpt(F, c[0], c[1], 27);
+        s += '<rect x="' + f1(p[0] - 2.4) + '" y="' + f1(p[1] - 5) + '" width="4.8" height="5" rx="1.2" fill="#f4f1ea"/>'
+          + '<ellipse cx="' + f1(p[0]) + '" cy="' + f1(p[1] - 5) + '" rx="2.4" ry="1.1" fill="#6b4a33"/>';
+      });
+      return s;
+    } },
+    cooler: { L: 0.42, D: 0.42, f: function (F) {
+      var s = sub(F, 0.1, 0.9, 0.1, 0.9, 0, 27, "#dfe4ea");
+      s += face(F, 0.3, 0.45, 18, 21, "#2f6fa8", 0.904) + face(F, 0.55, 0.7, 18, 21, "#c0392b", 0.904);
+      s += sub(F, 0.2, 0.8, 0.2, 0.8, 27, 20, "#68bde8", ' fill-opacity=".82"');
+      var p = fpt(F, 0.5, 0.5, 47);
+      s += '<ellipse cx="' + f1(p[0]) + '" cy="' + f1(p[1]) + '" rx="4" ry="2" fill="#2f6fa8"/>';
+      return s;
+    } }
+  };
+  /* gerenderde sprites (zelfde stijl als bureaus); L = lengte langs de wand in cellen */
+  var SPRITES = { cabinet: [371, 0.78], rack: [521, 0.78], board: [429, 0.9] };
+  function spriteAt(name, hgt, cx, cy, w) {
+    var q = iso(cx, cy, SLAB), hh = w * hgt / 256;
+    return '<image href="' + ASSETS + "prop-" + name + '.webp" x="' + f1(q[0] - w / 2) + '" y="' + f1(q[1] - hh * 0.88)
+      + '" width="' + f1(w) + '" height="' + f1(hh) + '" preserveAspectRatio="none"/>';
+  }
+
+  /* ---- planten en lampen (vrij geplaatst op een punt) ---- */
+  function bushTop(x, y, sc, r) {
+    var s = "";
+    for (var i = 0; i < 7; i++) {
+      var a = i / 7 * Math.PI * 2, rr = (5 + r() * 3) * sc;
+      s += '<circle cx="' + f1(x + Math.cos(a) * 6 * sc) + '" cy="' + f1(y - 6 * sc + Math.sin(a) * 4 * sc) + '" r="' + f1(rr) + '" fill="' + GREENS[i % GREENS.length] + '"/>';
     }
+    return s + '<circle cx="' + f1(x) + '" cy="' + f1(y - 9 * sc) + '" r="' + f1(6 * sc) + '" fill="' + GREENS[2] + '"/>';
+  }
+  function pot(px, py, size, h, col) { return box(px - size / 2, py - size / 2, size, size, 0, h, col); }
+  var PLANTS = {
+    snake: function (px, py, r) {
+      var s = pot(px, py, 0.34, 12, POTS[Math.floor(r() * POTS.length)]), t = iso(px, py, SLAB + 12);
+      for (var i = 0; i < 7; i++) {
+        var dx = (i - 3) * 2.2, tip = 26 + r() * 18, lean = (i - 3) * 1.6, c = GREENS[i % GREENS.length];
+        s += '<path d="M' + f1(t[0] + dx - 1.8) + "," + f1(t[1]) + " Q" + f1(t[0] + dx + lean * 0.4) + "," + f1(t[1] - tip * 0.6) + " "
+          + f1(t[0] + dx + lean) + "," + f1(t[1] - tip) + " Q" + f1(t[0] + dx + lean * 0.4 + 2.4) + "," + f1(t[1] - tip * 0.55) + " "
+          + f1(t[0] + dx + 1.8) + "," + f1(t[1]) + 'Z" fill="' + c + '" stroke="#c9d36a" stroke-width=".5" stroke-opacity=".6"/>';
+      }
+      return s;
+    },
+    bush: function (px, py, r) {
+      var s = pot(px, py, 0.4, 13, POTS[Math.floor(r() * POTS.length)]), t = iso(px, py, SLAB + 13);
+      return s + bushTop(t[0], t[1] + 2, 1.15, r);
+    },
+    palm: function (px, py, r) {
+      var s = pot(px, py, 0.42, 15, POTS[Math.floor(r() * POTS.length)]), t = iso(px, py, SLAB + 15), top = [t[0], t[1] - 34];
+      s += '<path d="M' + f1(t[0]) + "," + f1(t[1]) + " L" + f1(top[0]) + "," + f1(top[1]) + '" stroke="#6b4a33" stroke-width="2.2"/>';
+      for (var i = 0; i < 8; i++) {
+        var a = -Math.PI + (i + 0.5) / 8 * Math.PI, len = 15 + r() * 6, ex = top[0] + Math.cos(a) * len, ey = top[1] + Math.sin(a) * len * 0.55 + 7;
+        s += '<path d="M' + f1(top[0]) + "," + f1(top[1]) + " Q" + f1((top[0] + ex) / 2) + "," + f1(Math.min(top[1], ey) - 7) + " "
+          + f1(ex) + "," + f1(ey) + '" stroke="' + GREENS[i % GREENS.length] + '" stroke-width="3.4" fill="none" stroke-linecap="round"/>';
+      }
+      return s;
+    },
+    cactus: function (px, py, r) {
+      var s = pot(px, py, 0.3, 10, POTS[Math.floor(r() * POTS.length)]), t = iso(px, py, SLAB + 10), g = GREENS[Math.floor(r() * 2) + 1];
+      s += '<rect x="' + f1(t[0] - 4) + '" y="' + f1(t[1] - 26) + '" width="8" height="27" rx="4" fill="' + g + '"/>'
+        + '<path d="M' + f1(t[0] - 3) + "," + f1(t[1] - 12) + " h-5 v-8" + '" stroke="' + g + '" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+        + '<path d="M' + f1(t[0] + 3) + "," + f1(t[1] - 16) + " h5 v-7" + '" stroke="' + g + '" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+        + '<circle cx="' + f1(t[0]) + '" cy="' + f1(t[1] - 26) + '" r="2" fill="#ff8fb3"/>';
+      return s;
+    },
+    leafy: function (px, py) {   /* gerenderde plant */
+      return spriteAt("plant", 361, px, py, 34);
+    },
+    lamp: function (px, py) {
+      var b = iso(px, py, SLAB), top = [b[0], b[1] - 56];
+      return '<ellipse cx="' + f1(b[0]) + '" cy="' + f1(b[1]) + '" rx="6" ry="3" fill="#20262e"/>'
+        + '<line x1="' + f1(b[0]) + '" y1="' + f1(b[1]) + '" x2="' + f1(top[0]) + '" y2="' + f1(top[1] + 4) + '" stroke="#2b333e" stroke-width="1.8"/>'
+        + '<circle class="lamp-glow" cx="' + f1(top[0]) + '" cy="' + f1(top[1] + 10) + '" r="16" fill="#ffd59a"/>'
+        + '<path d="M' + f1(top[0] - 9) + "," + f1(top[1] + 8) + " L" + f1(top[0] - 5) + "," + f1(top[1] - 4) + " L" + f1(top[0] + 5) + "," + f1(top[1] - 4)
+        + " L" + f1(top[0] + 9) + "," + f1(top[1] + 8) + 'Z" fill="#f4e3c3"/>'
+        + '<ellipse cx="' + f1(top[0]) + '" cy="' + f1(top[1] + 8) + '" rx="9" ry="2.4" fill="#ffe9b8"/>';
+    }
+  };
+  var WALL_PLANTS = ["leafy", "snake", "bush", "palm", "cactus"];
+  var WALL_FURN = ["shelf", "tallshelf", "locker", "filing", "credenza", "printer", "coffee", "cooler", "s:cabinet", "s:rack", "s:board"];
+  function itemLen(id) { return id.indexOf("s:") === 0 ? SPRITES[id.slice(2)][1] : FURN[id].L; }
+
+  /* aansluitpunt van de datapijp: de hoek die het dichtst bij het brein ligt, iets naar binnen */
+  function dockPoint(d) {
+    var cs = [[d.x, d.y, 1, 1], [d.x + d.w, d.y, -1, 1], [d.x + d.w, d.y + d.d, -1, -1], [d.x, d.y + d.d, 1, -1]], best = null;
+    cs.forEach(function (c) { var q = Math.hypot(c[0], c[1]); if (!best || q < best.q) best = { q: q, c: c }; });
+    var c = best.c;
+    return [c[0] + c[2] * 0.55, c[1] + c[3] * 0.55];
+  }
+  function dockInner(d) {
+    var p = d._port, c = iso(p[0], p[1], SLAB), R = 0.42;
+    return '<g class="dock"><title>Aansluiting datapijp naar het JARVIS-brein</title>'
+      + poly([iso(p[0] - R, p[1] - R, SLAB), iso(p[0] + R, p[1] - R, SLAB), iso(p[0] + R, p[1] + R, SLAB), iso(p[0] - R, p[1] + R, SLAB)], "#0c1320", ' class="d-plate"')
+      + '<ellipse class="d-ring" cx="' + f1(c[0]) + '" cy="' + f1(c[1]) + '" rx="' + f1(R * HW * 1.25) + '" ry="' + f1(R * HH * 1.25) + '"/>'
+      + '<ellipse class="d-core" cx="' + f1(c[0]) + '" cy="' + f1(c[1]) + '" rx="' + f1(R * HW * 0.55) + '" ry="' + f1(R * HH * 0.55) + '"/></g>';
+  }
+  /* doorgangen in de wanden: midden van elke achterwand (loopbrug naar een sub-afdeling) */
+  function doorX(d) { return d.x + d.w / 2; }   /* in de wand y = y0 */
+  function doorY(d) { return d.y + d.d / 2; }   /* in de wand x = x0 */
+  var WALL_H = 44, DOOR = 0.95;
+  function wallsInner(d) {
+    var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, Z = SLAB, H = SLAB + WALL_H, s = "", i;
+    function pane(a, b) { return '<polygon class="wall" points="' + pts([a(0), b(0), b(1), a(1)]) + '"/>'; }
+    var gx = doorX(d), gy = doorY(d);
+    /* wand y = y0 (rechtsachter op het scherm) */
+    [[x0, gx - DOOR / 2], [gx + DOOR / 2, x1]].forEach(function (seg) {
+      s += '<polygon class="wall" points="' + pts([iso(seg[0], y0, Z), iso(seg[1], y0, Z), iso(seg[1], y0, H), iso(seg[0], y0, H)]) + '"/>'
+        + '<line class="wall-cap" x1="' + f1(iso(seg[0], y0, H)[0]) + '" y1="' + f1(iso(seg[0], y0, H)[1]) + '" x2="' + f1(iso(seg[1], y0, H)[0]) + '" y2="' + f1(iso(seg[1], y0, H)[1]) + '"/>';
+      for (i = Math.ceil(seg[0] + 0.01); i < seg[1] - 0.01; i += 2) {
+        var a = iso(i, y0, Z), b = iso(i, y0, H);
+        s += '<line class="mull" x1="' + f1(a[0]) + '" y1="' + f1(a[1]) + '" x2="' + f1(b[0]) + '" y2="' + f1(b[1]) + '"/>';
+      }
+    });
+    /* wand x = x0 (linksachter op het scherm) */
+    [[y0, gy - DOOR / 2], [gy + DOOR / 2, y1]].forEach(function (seg) {
+      s += '<polygon class="wall" points="' + pts([iso(x0, seg[0], Z), iso(x0, seg[1], Z), iso(x0, seg[1], H), iso(x0, seg[0], H)]) + '"/>'
+        + '<line class="wall-cap" x1="' + f1(iso(x0, seg[0], H)[0]) + '" y1="' + f1(iso(x0, seg[0], H)[1]) + '" x2="' + f1(iso(x0, seg[1], H)[0]) + '" y2="' + f1(iso(x0, seg[1], H)[1]) + '"/>';
+      for (i = Math.ceil(seg[0] + 0.01); i < seg[1] - 0.01; i += 2) {
+        var a2 = iso(x0, i, Z), b2 = iso(x0, i, H);
+        s += '<line class="mull" x1="' + f1(a2[0]) + '" y1="' + f1(a2[1]) + '" x2="' + f1(b2[0]) + '" y2="' + f1(b2[1]) + '"/>';
+      }
+    });
+    return s;
+  }
+
+  function propList(d) {
+    var out = [], r = rngOf(hash(d.name) ^ 0x5eed);
+    if (!d._port) return out;
+    var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, port = d._port;
+    function nearDock(cx, cy, m) { return Math.hypot(cx - port[0], cy - port[1]) < (m || 1.05); }
+    function push(cx, cy, svg) { out.push({ k: (cx - x0) + (cy - y0), h: '<g class="prop">' + svg + "</g>" }); }
+    /* vaste volgorde per afdeling, door elkaar geschud: geen twee afdelingen gelijk */
+    var furn = WALL_FURN.slice().sort(function () { return r() - 0.5; }), fi = 0;
+    var plants = WALL_PLANTS.slice().sort(function () { return r() - 0.5; }), pi = 0;
+    function nextPlant() { return plants[pi++ % plants.length]; }
+    function placeWall(ax, from, to, door) {
+      var u = from, n = 0;
+      while (u < to - 0.35) {
+        var plantTurn = (n % 3 === 2) || r() < 0.18, id = plantTurn ? null : furn[fi % furn.length], L = id ? itemLen(id) : 0.5;
+        if (u + L > to) { id = null; L = 0.5; if (u + L > to) break; }
+        var mid = u + L / 2;
+        if (Math.abs(mid - door) < DOOR / 2 + L / 2 + 0.05) { u = door + DOOR / 2 + 0.1; continue; }   /* doorgang vrijhouden */
+        var cx = ax === "x" ? mid : x0 + 0.3, cy = ax === "x" ? y0 + 0.3 : mid;
+        if (nearDock(cx, cy, 1.0 + L / 2)) { u += L + 0.15; n++; continue; }
+        if (!id) push(cx, cy, PLANTS[nextPlant()](cx, cy, r));
+        else {
+          fi++;
+          if (id.indexOf("s:") === 0) push(cx, cy, spriteAt(id.slice(2), SPRITES[id.slice(2)][0], cx, cy, 32));
+          else {
+            var D = FURN[id].D, F = ax === "x" ? { ax: "x", x: u, y: y0 + 0.08, L: L, D: D } : { ax: "y", x: x0 + 0.08, y: u, L: L, D: D };
+            /* ax 'y': u loopt op het scherm van links naar rechts = van grote naar kleine y */
+            if (ax === "y") F.y = u;
+            push(cx, cy, FURN[id].f(F, r));
+          }
+        }
+        u += L + 0.08 + r() * 0.2; n++;
+      }
+    }
+    /* achterhoek: grote plant (tenzij daar het dock zit) */
+    if (!nearDock(x0 + 0.45, y0 + 0.45, 0.9)) push(x0 + 0.45, y0 + 0.45, PLANTS.leafy(x0 + 0.45, y0 + 0.45));
+    placeWall("x", x0 + WALL + 0.02, x1 - 0.1, doorX(d));
+    placeWall("y", y0 + WALL + 0.02, y1 - 0.15, doorY(d));
+
+    /* voorzijde: planten en lampen in de hoeken en in de vrije strook rechts; alleen waar ze geen bureau raken */
+    var boxes = d.agents.map(function (a) {
+      return [a._p[0] + DX0 + 14, a._p[1] + DY0 + 10, a._p[0] + DX0 + DESK_W - 14, a._p[1] + 4];
+    });
+    function freeAt(cx, cy, hgt) {
+      var q = iso(cx, cy, SLAB), rr = [q[0] - 12, q[1] - hgt, q[0] + 12, q[1] + 4];
+      return !boxes.some(function (b) { return rr[0] < b[2] && b[0] < rr[2] && rr[1] < b[3] && b[1] < rr[3]; });
+    }
+    var cand = [[x0 + 0.45, y1 - 0.4], [x1 - PROP_LANE / 2, y1 - 0.4]];
+    for (var t = y0 + WALL + 0.5; t < y1 - 1.2; t += 1.7 + r() * 0.6) {
+      if (Math.abs(t - doorY(d)) < 0.8) continue;   /* loopstrook naar de oostelijke loopbrug */
+      cand.push([x1 - PROP_LANE / 2, t]);
+    }
+    cand.forEach(function (c, i) {
+      if (nearDock(c[0], c[1])) return;
+      var kind = i < 2 ? nextPlant() : (r() < 0.3 ? "lamp" : nextPlant());
+      if (!freeAt(c[0], c[1], kind === "lamp" ? 60 : 40)) return;
+      push(c[0], c[1], PLANTS[kind](c[0], c[1], r));
+    });
     return out;
   }
   function brainSub() {
@@ -1133,16 +1429,18 @@
       h += '<polygon class="slab-tex" fill="url(#pTop)" points="' + topPoly + '"/>'
         + '<polygon class="slab-top" fill="none" points="' + topPoly + '"/>';
       h += '<polyline class="slab-lip" points="' + pts([iso(x0, y1, SLAB), iso(x1, y1, SLAB), iso(x1, y0, SLAB)]) + '"/>';
+      h += wallsInner(d);
       d.lanes.forEach(function (l) {
         if (d.lanes.length > 1) {
-          h += '<polygon class="band" points="' + pts([iso(x0 + 0.22, y0 + l.y0 + 0.05, SLAB), iso(x1 - 0.22, y0 + l.y0 + 0.05, SLAB), iso(x1 - 0.22, y0 + l.y1 - 0.05, SLAB), iso(x0 + 0.22, y0 + l.y1 - 0.05, SLAB)]) + '"/>';
+          h += '<polygon class="band" points="' + pts([iso(x0 + WALL, y0 + l.y0 + 0.05, SLAB), iso(x1 - 0.22, y0 + l.y0 + 0.05, SLAB), iso(x1 - 0.22, y0 + l.y1 - 0.05, SLAB), iso(x0 + WALL, y0 + l.y1 - 0.05, SLAB)]) + '"/>';
         }
         if (l.name) {
-          var lp = iso(x0 + 0.42, y0 + l.y0 + 0.62, SLAB), nm = l.name.toUpperCase();
+          var lp = iso(x0 + WALL + 0.2, y0 + l.y0 + 0.62, SLAB), nm = l.name.toUpperCase();
           if (nm.length > d.labelChars) nm = nm.slice(0, d.labelChars - 1) + "…";
           h += '<text class="lane" transform="matrix(.894,.447,-.894,.447,' + f1(lp[0]) + "," + f1(lp[1]) + ')">' + esc(nm) + "</text>";
         }
       });
+      h += dockInner(d);
       var pp = iso(x0 + 0.3, y1, 0);
       h += '<text class="plate" transform="matrix(.894,.447,0,1,' + f1(pp[0]) + "," + f1(pp[1] - 6.5) + ')">' + esc(d.name) + "</text>";
       h += "</g>";
@@ -1483,16 +1781,16 @@
        langs de rand (buiten de prop-plekken) -> brug -> naast de stoel op het sub-bureau ---- */
     /* vloer-voetafdruk van bureau + stoel t.o.v. het anker (gemeten uit desk-v3): x -0.95..0.75, y -1.41..0.59.
        Gangpad tussen kolommen = midden van de vrije strook daartussen, idem tussen rijen. */
-    var LX = fr._lx, LY = fr._ly, ER = 0.4;
+    var LX = fr._lx, LY = fr._ly, ER = PROP_LANE + 0.15;
     var ISLE = (0.75 + AGENT_DX - 0.95) / 2, ROWI = (0.59 + AGENT_DY - 1.41) / 2;
     var start = [d.x + LX + STAND_OFF[0], d.y + LY + STAND_OFF[1]];
     var ax = d.x + LX + ISLE, rowAisle = d.y + Math.min(d.d - 1.0, LY + ROWI);
     var R = [[start, SLAB], [[ax, start[1]], SLAB]];
     /* voor- en achterstrook: tussen de bureaus en de props op de rand */
     if (b.side === "S") R.push([[ax, d.y + d.d - 1.0], SLAB], [[mid[0], d.y + d.d - 1.0], SLAB], [[mid[0], d.y + d.d - 0.3], SLAB]);
-    if (b.side === "N") R.push([[ax, d.y + 0.62], SLAB], [[mid[0], d.y + 0.62], SLAB], [[mid[0], d.y + 0.3], SLAB]);
+    if (b.side === "N") R.push([[ax, d.y + WALL + 0.2], SLAB], [[doorX(d), d.y + WALL + 0.2], SLAB], [[doorX(d), d.y + 0.3], SLAB], [[mid[0], d.y + 0.3], SLAB]);
     if (b.side === "E") R.push([[ax, rowAisle], SLAB], [[d.x + d.w - ER, rowAisle], SLAB], [[d.x + d.w - ER, mid[1]], SLAB], [[d.x + d.w - 0.3, mid[1]], SLAB]);
-    if (b.side === "W") R.push([[ax, rowAisle], SLAB], [[d.x + ER, rowAisle], SLAB], [[d.x + ER, mid[1]], SLAB], [[d.x + 0.3, mid[1]], SLAB]);
+    if (b.side === "W") R.push([[ax, rowAisle], SLAB], [[d.x + WALL + 0.2, rowAisle], SLAB], [[d.x + WALL + 0.2, doorY(d)], SLAB], [[d.x + 0.3, doorY(d)], SLAB], [[d.x + 0.3, mid[1]], SLAB]);
     var seat = [desk[0] + STAND_OFF[0], desk[1] + STAND_OFF[1]];
     if (b.side === "E") R.push([[x0 + 0.3, mid[1]], SL], [[x0 + 0.3, y1 - 0.3], SL], [[seat[0], y1 - 0.3], SL]);
     if (b.side === "W") R.push([[x1 - 0.3, mid[1]], SL]);
