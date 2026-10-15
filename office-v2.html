@@ -47,8 +47,12 @@
   elke ~7 s een bal. Niet bij reduced motion of een verborgen tab.
   Sub-afdelingen: draait een afnemer (v_office_links) kort na zijn leverancier/trigger, dan klapt er aan de
   buitenkant van de afdeling van de leverancier tijdelijk een mini-platform met loopbrug uit; de leverancier
-  staat op, loopt erheen, werkt even aan het bureau van de afnemer en loopt terug. SUB_SKIP = helpers die
-  bijna iedereen aanroept en dus geen eigen platform krijgen.
+  staat op, loopt erheen, werkt even aan het bureau van de afnemer en loopt terug.
+  Subworkflows (15-10): een agent waarvan schedule_human 'subworkflow' / 'sub-workflow' noemt (Telegram Notify,
+  Internal Mail, Apify Run) heeft GEEN vast bureau. Bij elke nieuwe run zoekt callerOf() de aanroeper (uit de
+  run-samenvatting 'voor <run_token>' of '(<run_token>)', anders de agent die net daarvoor draaide); bij diens
+  afdeling klapt een extra werkplek uit, de aanroeper staat op, loopt erheen, doet het werk en loopt terug.
+  Elke aanroepende afdeling krijgt zo zijn eigen werkplek; de subworkflow zit nooit aan een vaste desk.
   Loper: walker-v4.webp + map (640 x 480 = 4 x 2 frames). Avatars: desk-v3 / desk-stand-v3 / walker-v4 met
   *-map.webp (R = schaduw, G = kleding, B = haar) worden per afdelingskleur x haarkleur ingekleurd (tinted()).
   desk-empty-v3.webp = leeg bureau (gepauzeerd / nooit gedraaid / agent is elders).
@@ -721,7 +725,7 @@
     var prevRun = S.prevRun || null; S.prevRun = {};
     agents.forEach(function (a) { S.prevRun[a.agent_id] = a.last_run_at || ""; });
     S.agents = agents; S.byId = {}; S.byWf = {};
-    agents.forEach(function (a) { S.byId[a.agent_id] = a; S.byWf[a.workflow_name] = a; });
+    agents.forEach(function (a) { a._sub = isSubflow(a); S.byId[a.agent_id] = a; S.byWf[a.workflow_name] = a; });
 
     var seen = {};
     S.depts = depts.map(function (d) { seen[d.dept_name] = 1; return { name: d.dept_name, color: d.dept_color || "#8aa0b5", icon: d.dept_icon || "", sort: d.dept_sort }; });
@@ -729,7 +733,8 @@
       if (!seen[a.dept_name]) { seen[a.dept_name] = 1; S.depts.push({ name: a.dept_name, color: a.dept_color || "#8aa0b5", icon: a.dept_icon || "", sort: a.dept_sort == null ? 999 : a.dept_sort }); }
     });
     S.depts.sort(function (x, y) { return (x.sort - y.sort) || String(x.name).localeCompare(String(y.name)); });
-    S.depts.forEach(function (d) { d.agents = agents.filter(function (a) { return a.dept_name === d.name; }); });
+    /* subworkflows krijgen geen vast bureau: ze werken op een tijdelijke werkplek bij de aanroeper */
+    S.depts.forEach(function (d) { d.agents = agents.filter(function (a) { return a.dept_name === d.name && !a._sub; }); });
     S.depts = S.depts.filter(function (d) { return d.agents.length; });
 
     if (tools) {
@@ -1703,7 +1708,29 @@
   }
 
   /* ------------------------------------------------- tijdelijke sub-afdelingen */
-  var SUB_SKIP = { "telegram-notify": 1, "internal-mail": 1 };
+  /* subworkflow = wordt alleen door andere workflows aangeroepen (registry: schedule_human) */
+  var SUBFLOW_RE = /\bsub-?workflow\b/i;
+  function isSubflow(a) { return SUBFLOW_RE.test(String(a.schedule_human || "")); }
+  function normKey(x) { return String(x || "").toLowerCase().replace(/[^a-z0-9]/g, ""); }
+  /* aanroeper van een subworkflow-run: naam uit de samenvatting ('... voor Reel-Publisher', 'ApifyRun x (AngleScout)'),
+     anders de agent met een vast bureau die vlak ervoor draaide */
+  function callerOf(sub) {
+    var s = String(sub.last_summary || ""), m = s.match(/\bvoor\s+([A-Za-z0-9_.-]+)/i) || s.match(/\(([A-Za-z0-9_.-]+)\)/), hit = null;
+    if (m) {
+      hit = S.byWf[m[1]];
+      if (hit && !hit._sub && hit.agent_id !== sub.agent_id) return hit;
+      hit = null; var k = normKey(m[1]);
+      S.agents.forEach(function (a) { if (!hit && !a._sub && (normKey(a.workflow_name) === k || normKey(a.agent_id) === k || normKey(a.agent_name) === k)) hit = a; });
+      if (hit) return hit;
+    }
+    var t = ms(sub.last_run_at), bg = Infinity;
+    S.agents.forEach(function (a) {
+      if (a._sub || !a.last_run_at || !deptOf(a)) return;
+      var g = t - ms(a.last_run_at);
+      if (g >= -60000 && g <= 5 * 60000 && Math.abs(g) < bg) { bg = Math.abs(g); hit = a; }
+    });
+    return hit;
+  }
   var SUB_WINDOW = 20 * 60000;      /* aanroeper moet binnen 20 min vóór de sub-run gedraaid hebben */
   var WALK = 3.4;                   /* loopsnelheid in cellen per seconde (vlot) */
   var SW = 2.6, SD = 2.3, SGAP = 1.1;   /* 13-10: iets ruimer, zodat er naast de stoel plek is om te staan */
@@ -1719,8 +1746,7 @@
     if (REDUCED) return;
     var best = {};
     S.links.forEach(function (l) {
-      if (SUB_SKIP[l.to_agent]) return;
-      var to = S.byId[l.to_agent], fr = S.byId[l.from_agent]; if (!to || !fr) return;
+      var to = S.byId[l.to_agent], fr = S.byId[l.from_agent]; if (!to || !fr || to._sub || fr._sub) return;
       var fresh = prevRun && to.last_run_at && to.last_run_at !== (prevRun[to.agent_id] || "");
       var working = st(to) === "working";
       if ((!fresh && !working) || isNoop(to) || isNoop(fr)) return;
@@ -1728,9 +1754,18 @@
       if (!(st(fr) === "working" || (gap >= -60000 && gap <= SUB_WINDOW))) return;
       if (!best[to.agent_id] || Math.abs(gap) < best[to.agent_id].gap) best[to.agent_id] = { fr: fr, to: to, gap: Math.abs(gap), working: working };
     });
+    /* subworkflows: elke nieuwe run = de aanroeper loopt naar een extra werkplek bij zijn eigen afdeling */
+    S.agents.forEach(function (to) {
+      if (!to._sub) return;
+      var fresh = prevRun && to.last_run_at && to.last_run_at !== (prevRun[to.agent_id] || "");
+      var working = st(to) === "working";
+      if ((!fresh && !(working && !prevRun)) || isNoop(to)) return;
+      var fr = callerOf(to); if (!fr || !deptOf(fr)) return;
+      best[to.agent_id + "@" + fr.agent_id] = { fr: fr, to: to, gap: 0, working: working };
+    });
     Object.keys(best).forEach(function (k) {
       var b = best[k];
-      if (S.subs.some(function (s) { return s.to === b.to.agent_id && s.live; })) return;   /* draait al */
+      if (S.subs.some(function (s) { return s.to === b.to.agent_id && s.from === b.fr.agent_id && s.live; })) return;   /* draait al */
       setTimeout(function () { runSub(b.fr.agent_id, b.to.agent_id, b.working); }, b.working ? 400 : Math.random() * (REFRESH_MS - 25000));
     });
   }
@@ -1788,11 +1823,11 @@
   function runSub(fromId, toId, working, tries) {
     if (document.hidden || REDUCED) return;
     var fr = S.byId[fromId], to = S.byId[toId], d = fr && deptOf(fr);
-    if (!fr || !to || !d || !d.agents) return;
+    if (!fr || !to || !d || !d.agents || fr._sub || fr._lx == null) return;
     /* één persoon, één plek: is de aanroeper al onderweg, dan straks opnieuw proberen */
     if (S.pose[fromId]) { if ((tries || 0) < 3) setTimeout(function () { runSub(fromId, toId, working, (tries || 0) + 1); }, 15000); return; }
     var b = subSpot(d); if (!b) return;
-    var ses = { to: toId, box: b, live: true }; S.subs.push(ses);
+    var ses = { to: toId, from: fromId, box: b, live: true }; S.subs.push(ses);
     var SL = Math.round(SLAB * 0.8), x0 = b.x, y0 = b.y, x1 = b.x + b.w, y1 = b.y + b.d;
     var mid = b.side === "E" || b.side === "W" ? [null, y0 + b.d / 2] : [x0 + b.w / 2, null];
     /* loopbrug tussen afdelingsrand en sub-platform */
@@ -2001,6 +2036,8 @@
     setCam(boxFor(p, 40), !instant);
   }
   function zoomToAgent(a, instant) {
+    /* subworkflow: naar de afdeling waar hij nu een werkplek heeft (anders de laatste aanroeper) */
+    if (a._sub) { var ss = S.subs.filter(function (s) { return s.live && s.to === a.agent_id; })[0], c = ss ? S.byId[ss.from] : callerOf(a); if (c && deptOf(c)) a = c; }
     var d = null; S.depts.forEach(function (x) { if (x.name === a.dept_name) d = x; });
     if (d) zoomToDept(d, instant);
   }
@@ -2083,7 +2120,7 @@
     S.prevWorking = now;
     if (!motionOn) return;
     S.agents.forEach(function (a) {
-      if (isNoop(a) || st(a) === "paused") return;
+      if (a._sub || isNoop(a) || st(a) === "paused") return;   /* subworkflow: de aanroeper zoomt al */
       var fresh = prevRun && a.last_run_at && a.last_run_at !== (prevRun[a.agent_id] || "");
       var started = now[a.agent_id] && !(wasWorking && wasWorking[a.agent_id]);
       if (!fresh && !started) return;
