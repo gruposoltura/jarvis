@@ -195,6 +195,11 @@
         + '<div class="al-list">' + quietF.map(rowHtml).join('') + '</div></details>';
     }
     box.innerHTML = h;
+    /* Health-pill (bridge-agents.js) telt mee uit dezelfde bron, zodat pill en Actielijst gelijk lopen */
+    try{
+      window.__bridgeActionCounts = { warn: nW, tasks: nT, stale: stale.length, quietWarn: qH, quietTasks: qP, at: Date.now() };
+      window.dispatchEvent(new CustomEvent('bridge:actions', { detail: window.__bridgeActionCounts }));
+    }catch(e){}
     var sd = $('al-staleD'); if(sd) sd.addEventListener('toggle', function(){ AL.staleOpen = sd.open; });
     var qd = $('al-quietD'); if(qd) qd.addEventListener('toggle', function(){ AL.quietOpen = qd.open; });
     Array.prototype.forEach.call(document.querySelectorAll('#actions .al-f button'), function(b){ b.classList.toggle('on', b.getAttribute('data-f') === AL.filter); });

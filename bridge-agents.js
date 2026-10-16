@@ -164,22 +164,44 @@
     document.head.appendChild(st);
   }
 
+  var LAST = null;
+  function pl(n, one, many){ return n + " " + (n === 1 ? one : many); }
+
+  /* Waarschuwingen en taken komen uit de Actielijst (bridge-actions.js, RPC
+     bridge_actielijst), zodat pill en Actielijst hetzelfde zeggen. Issues in
+     zelfherstel tellen niet als waarschuwing (BD-126). bridge_health levert
+     alleen nog stil/fouten (systeemgezondheid); zonder Actielijst-data (niet
+     ingelogd, andere pagina) valt de pill terug op bridge_health. */
   function render(d){
+    if(d !== undefined) LAST = d;
+    d = LAST;
     var pill = document.getElementById("jarvisHealthPill");
     if(!pill) return;
-    var m = MAP[d && d.overall] || MAP.green;
+    var a = window.__bridgeActionCounts || null;
+    var level, text;
+    if(a){
+      var hard = d ? ((d.error_count||0) + (d.silent_count||0)) : 0;
+      if(a.warn > 0){ level = "red"; text = pl(a.warn, "waarschuwing", "waarschuwingen"); }
+      else if(hard > 0){ level = "red"; text = (d && d.headline) ? String(d.headline) : MAP.red.t; }
+      else if(a.tasks > 0){ level = "amber"; text = pl(a.tasks, "taak", "taken"); }
+      else { level = "green"; text = MAP.green.t; }
+    } else {
+      level = (d && MAP[d.overall]) ? d.overall : "green";
+      text = (d && d.headline) ? String(d.headline) : MAP[level].t;
+    }
+    var m = MAP[level];
     pill.style.color = m.c;
     pill.style.background = m.bg;
-    pill.innerHTML = '<span class="hb-dot" style="background:' + m.c + '"></span>' +
-      ((d && d.headline) ? String(d.headline) : m.t);
+    pill.innerHTML = '<span class="hb-dot" style="background:' + m.c + '"></span>' + text;
     var when = (d && d.checked_at)
       ? new Date(d.checked_at).toLocaleString("nl-NL", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})
       : "";
-    pill.title = "Systems Roll Call" + (when ? (" \u00b7 " + when) : "") +
-      (d ? ("\n" + (d.silent_count||0) + " stil \u00b7 " + (d.error_count||0) + " fouten \u00b7 " +
-        (d.warn_count||0) + " warn \u00b7 " + (d.stale_count||0) + " stale \u00b7 " +
-        (d.memo_count||0) + " memo") : "");
+    pill.title = (a ? ("Actielijst: " + pl(a.warn, "waarschuwing", "waarschuwingen") + " met actie \u00b7 " +
+        pl(a.tasks, "taak", "taken") + " \u00b7 " + (a.quietWarn + a.quietTasks) + " in zelfherstel/gepland\n") : "") +
+      "Systems Roll Call" + (when ? (" \u00b7 " + when) : "") +
+      (d ? ("\n" + (d.silent_count||0) + " stil \u00b7 " + (d.error_count||0) + " fouten") : "");
   }
+  window.addEventListener("bridge:actions", function(){ render(); });
 
   function refresh(){
     try{
