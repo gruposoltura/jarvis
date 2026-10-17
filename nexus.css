@@ -214,3 +214,23 @@ pre.code{margin:0;padding:12px 14px;font:12px/1.5 ui-monospace,Menlo,monospace;c
 .ownerbox:hover{border-color:var(--c-ct)}
 .ownerbox .go{margin-left:auto;font-size:12px;color:var(--c-ct);font-weight:600;white-space:nowrap}
 .tab .cnt:empty{display:none}
+
+/* contactkop: prominente gegevens, aanbrenger, opt-ins */
+.cstrip{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.cpill{display:inline-flex;align-items:center;border:1px solid var(--line2);border-radius:10px;background:var(--bg2);overflow:hidden}
+.cpill a{padding:7px 12px;font-size:15px;font-weight:700;color:#fff;text-decoration:none;letter-spacing:.01em}
+.cpill a:hover{background:color-mix(in srgb,var(--acc) 20%,transparent)}
+.cpill a.wa{font-size:11px;font-weight:800;padding:7px 9px;color:#25d366;border-left:1px solid var(--line2)}
+.introbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;padding:8px 12px;border-radius:10px;font-size:13px;cursor:pointer;
+  border:1px solid color-mix(in srgb,var(--r-agent) 50%,transparent);background:color-mix(in srgb,var(--r-agent) 12%,transparent);color:var(--tx)}
+.introbar .go{margin-left:auto;color:#d8b4fe;font-weight:600;font-size:12px}
+.introbar:hover{border-color:var(--r-agent)}
+.mono{font-family:ui-monospace,Menlo,monospace;letter-spacing:.04em}
+.mpill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;background:var(--card2);color:var(--tx3)}
+.mpill.in{background:color-mix(in srgb,#22c55e 20%,transparent);color:#4ade80}
+.mpill.out{background:color-mix(in srgb,#ef4444 18%,transparent);color:#f87171}
+.alertbar{margin-bottom:12px;padding:10px 14px;border-radius:10px;border:1px solid color-mix(in srgb,#ef4444 45%,transparent);background:color-mix(in srgb,#ef4444 10%,transparent);font-size:13px}
+.mtable{width:100%;border-collapse:collapse;font-size:13px}
+.mtable th{text-align:left;font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3);padding:8px 14px;border-bottom:1px solid var(--line)}
+.mtable td{padding:7px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+.mtable tr:last-child td{border-bottom:0}
