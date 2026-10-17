@@ -855,11 +855,33 @@
     }
     return t0 < t1;
   }
+  /* 17-10: schermvlak van een afdeling (platform + hoge achterwanden). Pijpen liggen op de vloer en worden
+     onder alle afdelingen getekend: een pijp die op het scherm in dit vlak valt, lijkt door de muren te lopen. */
+  function footprint(d, m) {
+    var H = SLAB + WALL_H, x0 = d.x - m, y0 = d.y - m, x1 = d.x + d.w + m, y1 = d.y + d.d + m;
+    return [iso(x0, y1, 0), iso(x1, y1, 0), iso(x1, y0, 0), iso(x1, y0, H), iso(x0, y0, H), iso(x0, y1, H)];
+  }
+  function inPolyS(pt, Q) { var c = false; for (var i = 0, j = Q.length - 1; i < Q.length; j = i++) if (((Q[i][1] > pt[1]) !== (Q[j][1] > pt[1])) && (pt[0] < (Q[j][0] - Q[i][0]) * (pt[1] - Q[i][1]) / (Q[j][1] - Q[i][1]) + Q[i][0])) c = !c; return c; }
+  /* lengte (cellen) van polyline P die op het scherm onder afdeling d valt */
+  function coveredLen(P, d, m) {
+    var F = footprint(d, m || 0), L0 = 0;
+    for (var i = 1; i < P.length; i++) {
+      var L = Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]), n = Math.max(1, Math.ceil(L / 0.4));
+      for (var k = 0; k <= n; k++) {
+        var x = P[i - 1][0] + (P[i][0] - P[i - 1][0]) * k / n, y = P[i - 1][1] + (P[i][1] - P[i - 1][1]) * k / n;
+        if (inPolyS(iso(x, y, 0), F)) L0 += L / (n + 1);
+      }
+    }
+    return L0;
+  }
   /* geen pijp (brein -> dock) onder een andere afdeling door: de lopers volgen de pijpen */
   var PIPE_GAP = 0.9;
   function pipeClear(i) {
     var d = S.depts[i], pi = dockInfo(d).pipe;
-    function hits(P, e) { for (var k = 1; k < P.length; k++) if (segHitsRect(P[k - 1], P[k], e, PIPE_GAP)) return true; return false; }
+    function hits(P, e) {
+      for (var k = 1; k < P.length; k++) if (segHitsRect(P[k - 1], P[k], e, PIPE_GAP)) return true;
+      return coveredLen(P, e, 0.25) > 0;   /* ook niet op het scherm achter de muren van een andere afdeling */
+    }
     for (var j = 0; j < S.depts.length; j++) {
       if (j === i) continue;
       var e = S.depts[j];
@@ -1437,7 +1459,7 @@
       var walk = Math.min(p1.len + pen(p1), p2.len + pen(p2)) + (q.k === "C0" ? 60 : 0);
       var score = plen(P) + walk;
       if (best && score >= best.score) return;
-      score += 4 * hiddenLen(d, P);
+      score += 4 * hiddenLen(d, P) + 40 * coveredLen(P.slice(0, -1).concat([P[P.length - 1]]), d, -0.1);
       if (!best || score < best.score) { best = q; q.score = score; }
     });
     if (!best) best = c.filter(function (q) { return q.k === "C0"; })[0];
