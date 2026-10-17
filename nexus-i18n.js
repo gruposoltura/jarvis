@@ -83,7 +83,8 @@ window.NEXUS_I18N = {
     "cm.extra": "Extra", "cm.birthdays": "Verjaardag", "cm.reviewus": "Review-uitnodiging",
     "ext.open": "Open bij {a}", "ext.search": "Zoek bij partner", "ext.partner": "Partner-makelaar (XML-import)", "ext.theirref": "Hun referentie",
     "ext.nourl": "De feed levert geen directe link; de knop zoekt op makelaar + hun referentie.",
-    "k.map": "Kaart", "k.elements": "Catastro · bouwdelen", "k.eltype": "Soort", "k.floor": "Verdieping", "k.parcel": "Perceelreferentie", "k.unit": "Blok / trap / verdieping / deur", "k.landclass": "Grondklasse", "k.share": "Aandeel"
+    "k.map": "Kaart", "k.elements": "Catastro · bouwdelen", "k.eltype": "Soort", "k.floor": "Verdieping", "k.parcel": "Perceelreferentie", "k.unit": "Blok / trap / verdieping / deur", "k.landclass": "Grondklasse", "k.share": "Aandeel",
+    "ov.notaries": "Komende notaris afspraken", "ov.nonotaries": "Geen notarisafspraken gepland.", "nt.koper": "koper", "nt.verkoper": "verkoper", "nt.koper_en_verkoper": "koper + verkoper", "nt.onbekend": "rol onbekend"
   },
   en: {
     "login.lead": "One place for every contact, every property and every connection. Sign in with your <b>@gruposoltura.com</b> account.",
@@ -168,6 +169,7 @@ window.NEXUS_I18N = {
     "cm.extra": "Extra", "cm.birthdays": "Birthday", "cm.reviewus": "Review invitation",
     "ext.open": "Open at {a}", "ext.search": "Search at partner", "ext.partner": "Partner agency (XML import)", "ext.theirref": "Their reference",
     "ext.nourl": "The feed has no direct link; the button searches on agency + their reference.",
-    "k.map": "Map", "k.elements": "Catastro · building parts", "k.eltype": "Kind", "k.floor": "Floor", "k.parcel": "Parcel reference", "k.unit": "Block / stair / floor / door", "k.landclass": "Land class", "k.share": "Share"
+    "k.map": "Map", "k.elements": "Catastro · building parts", "k.eltype": "Kind", "k.floor": "Floor", "k.parcel": "Parcel reference", "k.unit": "Block / stair / floor / door", "k.landclass": "Land class", "k.share": "Share",
+    "ov.notaries": "Upcoming notary appointments", "ov.nonotaries": "No notary appointments scheduled.", "nt.koper": "buyer", "nt.verkoper": "seller", "nt.koper_en_verkoper": "buyer + seller", "nt.onbekend": "role unknown"
   }
 };
