@@ -10,211 +10,9 @@
 <meta name="theme-color" content="#0a0f1e">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/nexus.css?v=2">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-:root{
-  --bg:#0a0f1e; --bg2:#0f172a; --card:#111a2e; --card2:#16213a; --line:#1f2b45; --line2:#2a3858;
-  --tx:#e6ecf7; --tx2:#9fb0cc; --tx3:#6b7c99;
-  --c-ov:#14b8a6; --c-ct:#3b82f6; --c-pr:#f59e0b; --c-ac:#ec4899; --c-en:#a855f7;
-  --acc:var(--c-ov);
-  --r-suspect:#64748b; --r-prospect:#06b6d4; --r-seller:#f59e0b; --r-buyer:#22c55e; --r-agent:#a855f7; --r-suspect-seller:#f97316;
-  --hdr:58px; --tabs:46px;
-}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:14px/1.45 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-button,input,select{font:inherit;color:inherit}
-a{color:inherit}
-.hidden{display:none!important}
-
-/* ---------- login ---------- */
-#login{position:fixed;inset:0;display:grid;place-items:center;z-index:50;
-  background:radial-gradient(900px 500px at 15% 10%,rgba(20,184,166,.18),transparent 60%),
-             radial-gradient(800px 500px at 90% 90%,rgba(168,85,247,.16),transparent 60%),var(--bg)}
-.lg-box{width:min(400px,92vw);background:rgba(17,26,46,.85);border:1px solid var(--line2);border-radius:20px;padding:34px 30px;backdrop-filter:blur(10px);box-shadow:0 30px 80px rgba(0,0,0,.45)}
-.brand{display:flex;align-items:center;gap:12px}
-.brand-mark{width:38px;height:38px;flex:none}
-.brand h1{margin:0;font:700 22px/1 'Space Grotesk',sans-serif;letter-spacing:.14em}
-.brand small{display:block;color:var(--tx3);font-size:11px;letter-spacing:.12em;text-transform:uppercase;margin-top:4px}
-.lg-box p.lead{color:var(--tx2);margin:18px 0 22px}
-.fld{display:block;margin-bottom:14px}
-.fld span{display:block;font-size:12px;color:var(--tx2);margin-bottom:6px}
-.fld input{width:100%;padding:11px 13px;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;outline:none}
-.fld input:focus{border-color:var(--c-ov);box-shadow:0 0 0 3px rgba(20,184,166,.2)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:10px;border:1px solid var(--line2);background:var(--card2);cursor:pointer;font-weight:600}
-.btn.pri{width:100%;background:linear-gradient(135deg,#14b8a6,#3b82f6);border:0;color:#fff}
-.btn:disabled{opacity:.6;cursor:wait}
-.lg-links{display:flex;justify-content:space-between;margin-top:14px;font-size:12px}
-.lg-links a{color:var(--tx2);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
-.msg{margin-top:12px;font-size:13px;min-height:18px}
-.msg.err{color:#f87171}.msg.ok{color:#34d399}
-
-/* ---------- shell ---------- */
-header{position:sticky;top:0;z-index:20;height:var(--hdr);display:flex;align-items:center;gap:16px;padding:0 18px;
-  background:rgba(10,15,30,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-header .brand h1{font-size:18px}
-.search-g{flex:1;max-width:520px;position:relative;margin-left:12px}
-.search-g input{width:100%;padding:9px 12px 9px 36px;border-radius:999px;background:var(--bg2);border:1px solid var(--line2);outline:none}
-.search-g input:focus{border-color:var(--acc)}
-.search-g svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.6}
-.spacer{flex:1}
-.me{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--tx2)}
-.avatar{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#fff;font-size:13px}
-.me button{background:none;border:1px solid var(--line2);border-radius:8px;padding:5px 10px;cursor:pointer;color:var(--tx2);font-size:12px}
-
-nav.tabs{position:sticky;top:var(--hdr);z-index:19;height:var(--tabs);display:flex;gap:6px;padding:6px 18px 0;background:var(--bg);border-bottom:1px solid var(--line);overflow-x:auto}
-.tab{--c:var(--c-ov);display:flex;align-items:center;gap:8px;padding:0 16px;border-radius:12px 12px 0 0;border:1px solid transparent;border-bottom:0;
-  background:transparent;color:var(--tx2);cursor:pointer;font-weight:600;white-space:nowrap;position:relative}
-.tab i{width:9px;height:9px;border-radius:3px;background:var(--c);box-shadow:0 0 10px var(--c)}
-.tab .cnt{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--card2);color:var(--tx2)}
-.tab:hover{color:var(--tx)}
-.tab.on{color:#fff;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 28%,transparent),var(--card));border-color:color-mix(in srgb,var(--c) 50%,transparent)}
-.tab.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--c)}
-
-main{height:calc(100vh - var(--hdr) - var(--tabs));padding:14px 18px;overflow:hidden}
-.pane{height:100%}
-
-/* ---------- generic ---------- */
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
-.card h3{margin:0;font:600 12px/1 Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3)}
-.card .hd{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
-.scroll{overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
-.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);background:var(--bg2);color:var(--tx2);font-size:12px;cursor:pointer;white-space:nowrap}
-.chip.on{color:#fff;border-color:var(--cc,var(--acc));background:color-mix(in srgb,var(--cc,var(--acc)) 22%,transparent)}
-.chip b{font-weight:600;color:var(--tx3)}
-.role{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.02em;
-  color:var(--rc);background:color-mix(in srgb,var(--rc) 16%,transparent);border:1px solid color-mix(in srgb,var(--rc) 40%,transparent)}
-.muted{color:var(--tx3)} .sm{font-size:12px}
-.empty{padding:30px;text-align:center;color:var(--tx3)}
-.loader{padding:30px;text-align:center;color:var(--tx3)}
-.loader::before{content:"";display:inline-block;width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--acc);border-radius:50%;animation:sp 0.8s linear infinite;margin-right:8px;vertical-align:-2px}
-@keyframes sp{to{transform:rotate(360deg)}}
-.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line)}
-.toolbar input[type=search]{flex:1;min-width:140px;padding:7px 11px;border-radius:9px;background:var(--bg2);border:1px solid var(--line2);outline:none}
-.seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden}
-.seg button{background:var(--bg2);border:0;padding:6px 11px;cursor:pointer;color:var(--tx2);font-size:12px}
-.seg button.on{background:var(--acc);color:#fff}
-
-/* ---------- overzicht ---------- */
-.ov{display:grid;grid-template-columns:repeat(12,1fr);grid-template-rows:auto 1fr;gap:12px;height:100%}
-.kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
-.kpi{padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}
-.kpi:hover{transform:translateY(-2px);border-color:var(--kc)}
-.kpi::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--kc)}
-.kpi .v{font:700 28px/1.1 'Space Grotesk';margin-top:6px}
-.kpi .l{font-size:12px;color:var(--tx2)}
-.kpi .s{font-size:11px;color:var(--tx3);margin-top:4px}
-.ov-roles{grid-column:span 4;display:flex;flex-direction:column;min-height:0}
-.ov-act{grid-column:span 5;display:flex;flex-direction:column;min-height:0}
-.ov-side{grid-column:span 3;display:flex;flex-direction:column;gap:12px;min-height:0}
-.rolebar{display:grid;grid-template-columns:110px 1fr 54px;align-items:center;gap:10px;padding:7px 14px;cursor:pointer}
-.rolebar:hover{background:var(--card2)}
-.rolebar .bar{height:8px;border-radius:99px;background:var(--bg2);overflow:hidden}
-.rolebar .bar span{display:block;height:100%;border-radius:99px;background:var(--rc)}
-.rolebar .n{text-align:right;font-variant-numeric:tabular-nums;color:var(--tx2)}
-.spark{padding:10px 14px 14px}
-.spark svg{width:100%;height:70px;display:block}
-.feed .it{display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);cursor:pointer}
-.feed .it:hover{background:var(--card2)}
-.ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:13px;background:color-mix(in srgb,var(--ic) 18%,transparent);color:var(--ic)}
-.feed .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.feed .d{font-size:12px;color:var(--tx3)}
-
-/* ---------- split views ---------- */
-.split{display:grid;grid-template-columns:minmax(320px,400px) 1fr;gap:12px;height:100%}
-.list{display:flex;flex-direction:column;min-height:0}
-.list .rows{flex:1}
-.row{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
-.row:hover{background:var(--card2)}
-.row.sel{background:color-mix(in srgb,var(--acc) 14%,var(--card));box-shadow:inset 3px 0 0 var(--acc)}
-.row .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .sub{font-size:12px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ini{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff}
-.more{padding:10px;text-align:center}
-.detail{display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.dh{padding:16px 18px;display:flex;gap:16px;align-items:flex-start;border-bottom:1px solid var(--line);
-  background:linear-gradient(120deg,color-mix(in srgb,var(--acc) 14%,transparent),transparent 60%)}
-.dh .big{width:56px;height:56px;border-radius:16px;font-size:20px}
-.dh h2{margin:0;font:700 21px/1.2 'Space Grotesk'}
-.dh .meta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;color:var(--tx2);font-size:13px}
-.dh .meta a{text-decoration:none;color:var(--tx2)}.dh .meta a:hover{color:#fff}
-.dh .roles{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.dh .acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.dh .acts a{font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--line2);text-decoration:none;color:var(--tx2);background:var(--bg2)}
-.dh .acts a:hover{color:#fff;border-color:var(--acc)}
-.subtabs{display:flex;gap:4px;padding:8px 14px 0;border-bottom:1px solid var(--line)}
-.st{padding:8px 12px;border:0;background:none;color:var(--tx2);cursor:pointer;font-weight:600;font-size:13px;border-bottom:2px solid transparent}
-.st.on{color:#fff;border-bottom-color:var(--acc)}
-.st .cnt{font-size:11px;color:var(--tx3);margin-left:4px}
-.dbody{flex:1;padding:14px 18px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;padding:12px 14px;font-size:13px}
-.kv dt{color:var(--tx3)} .kv dd{margin:0;word-break:break-word}
-.note{white-space:pre-wrap;font-size:12.5px;color:var(--tx2);padding:12px 14px;max-height:180px;overflow:auto}
-.pcard{display:grid;grid-template-columns:92px 1fr;gap:12px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg2);cursor:pointer}
-.pcard:hover{border-color:var(--c-pr)}
-.pcard img,.pcard .ph{width:92px;height:68px;object-fit:cover;border-radius:8px;background:var(--card2)}
-.pcard .tt{font-weight:600}
-.pcard .pr{font:700 15px 'Space Grotesk';color:var(--c-pr)}
-.tl{position:relative;padding-left:22px}
-.tl::before{content:"";position:absolute;left:7px;top:4px;bottom:4px;width:2px;background:var(--line)}
-.tl .e{position:relative;padding:6px 0 12px}
-.tl .e::before{content:"";position:absolute;left:-19px;top:10px;width:10px;height:10px;border-radius:50%;background:var(--ec);box-shadow:0 0 0 3px var(--card)}
-.tl .e .h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
-.tl .e .k{font-weight:600}
-.tl .e .w{font-size:12px;color:var(--tx3)}
-.tl .e .x{font-size:12.5px;color:var(--tx2);margin-top:2px}
-.rel{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--bg2);cursor:pointer}
-.rel:hover{border-color:var(--c-ct)}
-.tag{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--card2);color:var(--tx2)}
-.bigtiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-.bt{padding:10px 12px;border-radius:12px;background:var(--bg2);border:1px solid var(--line)}
-.bt .v{font:700 19px 'Space Grotesk'} .bt .l{font-size:11px;color:var(--tx3);text-transform:uppercase;letter-spacing:.08em}
-.optins{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px}
-.on-y{color:#34d399}.on-n{color:#f87171}
-
-/* woningen */
-.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;padding:12px}
-.pc{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg2);cursor:pointer;transition:border-color .15s,transform .15s}
-.pc:hover{border-color:var(--c-pr);transform:translateY(-2px)}
-.pc.sel{border-color:var(--c-pr);box-shadow:0 0 0 2px color-mix(in srgb,var(--c-pr) 40%,transparent)}
-.pc .im{height:110px;background:var(--card2) center/cover no-repeat;position:relative}
-.pc .im .badge{position:absolute;top:8px;left:8px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(10,15,30,.8)}
-.pc .im .hot{position:absolute;top:8px;right:8px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:var(--c-ac);color:#fff}
-.pc .bd{padding:9px 11px}
-.pc .bd .p{font:700 15px 'Space Grotesk';color:var(--c-pr)}
-.pc .bd .t{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pc .bd .s{font-size:11.5px;color:var(--tx3)}
-.psplit{display:grid;grid-template-columns:1fr 440px;gap:12px;height:100%}
-.hero{height:170px;background:var(--card2) center/cover no-repeat;border-radius:12px;margin-bottom:12px;position:relative}
-.hero .pr{position:absolute;bottom:10px;left:12px;font:700 24px 'Space Grotesk';text-shadow:0 2px 12px rgba(0,0,0,.7)}
-.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-.facts div{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
-.facts b{display:block;font:700 16px 'Space Grotesk'} .facts span{font-size:11px;color:var(--tx3)}
-.src{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:5px;background:color-mix(in srgb,var(--c-en) 20%,transparent);color:#d8b4fe;margin-left:6px}
-
-/* verrijking */
-.en{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;height:100%}
-.srcrow{display:grid;grid-template-columns:28px 1fr 70px 110px;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
-.prio{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--bg2);border:1px solid var(--line2)}
-pre.code{margin:0;padding:12px 14px;font:12px/1.5 ui-monospace,Menlo,monospace;color:#c4b5fd;white-space:pre-wrap;background:var(--bg2);border-radius:10px}
-.layers{padding:14px;display:flex;flex-direction:column;gap:8px}
-.layer{padding:10px 12px;border-radius:10px;border:1px solid var(--line2);display:flex;justify-content:space-between;align-items:center}
-
-@media (max-width:1100px){
-  .kpis{grid-template-columns:repeat(3,1fr)}
-  .ov{grid-template-rows:auto}
-  .ov-roles,.ov-act,.ov-side{grid-column:1/-1}
-  main{height:auto;overflow:visible}
-  .split,.psplit,.en{grid-template-columns:1fr;height:auto}
-  .list .rows{max-height:50vh}
-  .detail{min-height:70vh}
-  .grid2,.grid3{grid-template-columns:1fr}
-  .bigtiles,.facts{grid-template-columns:repeat(2,1fr)}
-  .search-g{display:none}
-}
-@media (max-width:600px){ header{padding:0 12px} main{padding:10px 12px} .kpis{grid-template-columns:repeat(2,1fr)} .me span{display:none} }
-</style>
+<script src="/nexus-i18n.js?v=2"></script>
 </head>
 <body>
 
@@ -231,32 +29,33 @@ pre.code{margin:0;padding:12px 14px;font:12px/1.5 ui-monospace,Menlo,monospace;c
 
 <!-- ============ LOGIN ============ -->
 <div id="login">
+  <div class="lang lang-login" data-lang-switch><button data-l="nl">NL</button><button data-l="en">EN</button></div>
   <div class="lg-box">
     <div class="brand"><svg class="brand-mark"><use href="#mark"/></svg><div><h1>NEXUS</h1><small>Grupo Soltura · CPR v2</small></div></div>
     <form id="fLogin">
-      <p class="lead">Eén plek voor elk contact, elke woning en elk verband. Log in met je <b>@gruposoltura.com</b>-account.</p>
-      <label class="fld"><span>E-mail</span><input id="lgEmail" type="email" autocomplete="username" placeholder="naam@gruposoltura.com" required></label>
-      <label class="fld"><span>Wachtwoord</span><input id="lgPass" type="password" autocomplete="current-password" required></label>
-      <button class="btn pri" id="lgBtn" type="submit">Inloggen</button>
-      <div class="lg-links"><a data-mode="reset">Wachtwoord vergeten?</a><a data-mode="activate">Eerste keer? Account activeren</a></div>
+      <p class="lead" data-i18n-html="login.lead"></p>
+      <label class="fld"><span data-i18n="login.email"></span><input id="lgEmail" type="email" autocomplete="username" placeholder="naam@gruposoltura.com" required></label>
+      <label class="fld"><span data-i18n="login.password"></span><input id="lgPass" type="password" autocomplete="current-password" required></label>
+      <button class="btn pri" id="lgBtn" type="submit" data-i18n="login.submit"></button>
+      <div class="lg-links"><a data-mode="reset" data-i18n="login.forgot"></a><a data-mode="activate" data-i18n="login.first"></a></div>
     </form>
     <form id="fReset" class="hidden">
-      <p class="lead">Vul je e-mailadres in. Je krijgt een link om een (nieuw) wachtwoord in te stellen.</p>
-      <label class="fld"><span>E-mail</span><input id="rsEmail" type="email" required></label>
-      <button class="btn pri" type="submit">Stuur link</button>
-      <div class="lg-links"><a data-mode="login">← Terug naar inloggen</a></div>
+      <p class="lead" data-i18n="reset.lead"></p>
+      <label class="fld"><span data-i18n="login.email"></span><input id="rsEmail" type="email" required></label>
+      <button class="btn pri" type="submit" data-i18n="reset.submit"></button>
+      <div class="lg-links"><a data-mode="login" data-i18n="back"></a></div>
     </form>
     <form id="fActivate" class="hidden">
-      <p class="lead">Activeer je NEXUS-account. Alleen teamadressen van Grupo Soltura worden geaccepteerd.</p>
-      <label class="fld"><span>E-mail</span><input id="acEmail" type="email" required></label>
-      <label class="fld"><span>Kies een wachtwoord (min. 10 tekens)</span><input id="acPass" type="password" minlength="10" autocomplete="new-password" required></label>
-      <button class="btn pri" type="submit">Account activeren</button>
-      <div class="lg-links"><a data-mode="login">← Terug naar inloggen</a></div>
+      <p class="lead" data-i18n="act.lead"></p>
+      <label class="fld"><span data-i18n="login.email"></span><input id="acEmail" type="email" required></label>
+      <label class="fld"><span data-i18n="act.pass"></span><input id="acPass" type="password" minlength="10" autocomplete="new-password" required></label>
+      <button class="btn pri" type="submit" data-i18n="act.submit"></button>
+      <div class="lg-links"><a data-mode="login" data-i18n="back"></a></div>
     </form>
     <form id="fNewPass" class="hidden">
-      <p class="lead">Stel je nieuwe wachtwoord in.</p>
-      <label class="fld"><span>Nieuw wachtwoord (min. 10 tekens)</span><input id="npPass" type="password" minlength="10" autocomplete="new-password" required></label>
-      <button class="btn pri" type="submit">Opslaan en inloggen</button>
+      <p class="lead" data-i18n="np.lead"></p>
+      <label class="fld"><span data-i18n="np.pass"></span><input id="npPass" type="password" minlength="10" autocomplete="new-password" required></label>
+      <button class="btn pri" type="submit" data-i18n="np.submit"></button>
     </form>
     <div class="msg" id="lgMsg"></div>
   </div>
@@ -268,17 +67,18 @@ pre.code{margin:0;padding:12px 14px;font:12px/1.5 ui-monospace,Menlo,monospace;c
     <div class="brand"><svg class="brand-mark" style="width:32px;height:32px"><use href="#mark"/></svg><div><h1>NEXUS</h1><small>CPR v2</small></div></div>
     <div class="search-g">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="gSearch" type="search" placeholder="Zoek contact, e-mail, telefoon of referentie (bv. RH550)…">
+      <input id="gSearch" type="search" data-i18n-ph="search.global">
     </div>
     <div class="spacer"></div>
-    <div class="me"><span id="meName"></span><div class="avatar" id="meAv"></div><button id="logout">Uitloggen</button></div>
+    <div class="me"><div class="lang" data-lang-switch title="Taal / Language"><button data-l="nl">NL</button><button data-l="en">EN</button></div>
+      <span id="meName"></span><div class="avatar" id="meAv"></div><button id="logout" data-i18n="logout"></button></div>
   </header>
   <nav class="tabs" id="tabs">
-    <button class="tab on" data-tab="ov" style="--c:var(--c-ov)"><i></i>Overzicht</button>
-    <button class="tab" data-tab="ct" style="--c:var(--c-ct)"><i></i>Contacten <span class="cnt" id="cntCt"></span></button>
-    <button class="tab" data-tab="pr" style="--c:var(--c-pr)"><i></i>Woningen <span class="cnt" id="cntPr"></span></button>
-    <button class="tab" data-tab="ac" style="--c:var(--c-ac)"><i></i>Activiteit</button>
-    <button class="tab" data-tab="en" style="--c:var(--c-en)"><i></i>Verrijking</button>
+    <button class="tab on" data-tab="ov" style="--c:var(--c-ov)"><i></i><span data-i18n="tab.ov"></span></button>
+    <button class="tab" data-tab="ct" style="--c:var(--c-ct)"><i></i><span data-i18n="tab.ct"></span> <span class="cnt" id="cntCt"></span></button>
+    <button class="tab" data-tab="pr" style="--c:var(--c-pr)"><i></i><span data-i18n="tab.pr"></span> <span class="cnt" id="cntPr"></span></button>
+    <button class="tab" data-tab="ac" style="--c:var(--c-ac)"><i></i><span data-i18n="tab.ac"></span></button>
+    <button class="tab" data-tab="en" style="--c:var(--c-en)"><i></i><span data-i18n="tab.en"></span></button>
   </nav>
   <main>
     <section class="pane" id="p-ov"></section>
@@ -286,25 +86,26 @@ pre.code{margin:0;padding:12px 14px;font:12px/1.5 ui-monospace,Menlo,monospace;c
       <div class="split">
         <div class="card list">
           <div class="toolbar">
-            <input type="search" id="ctQ" placeholder="Naam, e-mail, telefoon, plaats…">
-            <div class="seg" id="ctScope"><button data-v="all" class="on">Alle</button><button data-v="mine">Mijn</button></div>
+            <input type="search" id="ctQ" data-i18n-ph="ct.search">
+            <div class="seg" id="ctScope"><button data-v="all" class="on" data-i18n="scope.all"></button><button data-v="mine" data-i18n="scope.mine"></button></div>
           </div>
           <div class="toolbar" id="ctRoles" style="padding-top:8px"></div>
           <div class="rows scroll" id="ctRows"></div>
         </div>
-        <div class="card detail" id="ctDetail"><div class="empty">Kies een contact links — of zoek bovenin.</div></div>
+        <div class="card detail" id="ctDetail"><div class="empty" data-i18n="ct.pick"></div></div>
       </div>
     </section>
     <section class="pane hidden" id="p-pr">
       <div class="psplit">
         <div class="card list">
           <div class="toolbar">
-            <input type="search" id="prQ" placeholder="Referentie, plaats, eigenaar…">
+            <input type="search" id="prQ" data-i18n-ph="pr.search">
+            <div class="seg" id="prBuild"></div>
           </div>
           <div class="toolbar" id="prStatus" style="padding-top:8px"></div>
           <div class="rows scroll" id="prRows"></div>
         </div>
-        <div class="card detail" id="prDetail"><div class="empty">Kies een woning.</div></div>
+        <div class="card detail" id="prDetail"><div class="empty" data-i18n="pr.pick"></div></div>
       </div>
     </section>
     <section class="pane hidden" id="p-ac"></section>
@@ -312,352 +113,6 @@ pre.code{margin:0;padding:12px 14px;font:12px/1.5 ui-monospace,Menlo,monospace;c
   </main>
 </div>
 
-<script>
-(function(){
-"use strict";
-const SB_URL="https://wuvpbwowdycsdlrqkaoq.supabase.co";
-const SB_KEY="sb_publishable_4FzuR1v2uE0VAAH75XgHIQ_o2qEH6n3";
-const sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,storageKey:"nexus-auth"}});
-const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
-const esc=v=>v==null?"":String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const eur=v=>v==null||v===""?"—":"€ "+Number(v).toLocaleString("nl-NL",{maximumFractionDigits:0});
-const num=v=>v==null?"—":Number(v).toLocaleString("nl-NL");
-const ROLE={suspect:["Suspect","--r-suspect"],prospect:["Prospect","--r-prospect"],seller:["Seller","--r-seller"],buyer:["Buyer","--r-buyer"],agent:["Agent","--r-agent"],"suspect-seller":["Suspect-Seller","--r-suspect-seller"]};
-const roleTag=r=>{const x=ROLE[r]||[r,"--tx3"];return `<span class="role" style="--rc:var(${x[1]})">${esc(x[0])}</span>`};
-const REPC={Rick:"#f97316",Marco:"#3b82f6",Ingrid:"#a855f7",Lisette:"#ec4899",Kantoor:"#475569"};
-function ago(ts){if(!ts)return"";const d=(Date.now()-new Date(ts))/1000;if(d<0){return new Date(ts).toLocaleDateString("nl-NL",{day:"numeric",month:"short"})}
-  if(d<3600)return Math.max(1,Math.round(d/60))+" min";if(d<86400)return Math.round(d/3600)+" u";if(d<86400*30)return Math.round(d/86400)+" d";
-  return new Date(ts).toLocaleDateString("nl-NL",{day:"numeric",month:"short",year:"2-digit"})}
-function fdate(ts){return ts?new Date(ts).toLocaleDateString("nl-NL",{day:"numeric",month:"short",year:"numeric"}):"—"}
-function initials(n){n=(n||"?").trim();const p=n.split(/\s+/);return ((p[0]||"")[0]||"?").toUpperCase()+((p.length>1?p[p.length-1][0]:"")||"").toUpperCase()}
-function hue(s){let h=0;for(const c of String(s||""))h=(h*31+c.charCodeAt(0))%360;return `hsl(${h} 55% 42%)`}
-async function rpc(fn,args){const {data,error}=await sb.rpc(fn,args||{});if(error){if(error.code==="42501"){noAccess();}throw error}return data}
-
-/* ================= AUTH ================= */
-const lgMsg=(t,ok)=>{const m=$("#lgMsg");m.textContent=t||"";m.className="msg "+(ok?"ok":"err")};
-function showForm(mode){["fLogin","fReset","fActivate","fNewPass"].forEach(id=>$("#"+id).classList.add("hidden"));
-  $({login:"#fLogin",reset:"#fReset",activate:"#fActivate",newpass:"#fNewPass"}[mode]).classList.remove("hidden");lgMsg("")}
-$$(".lg-links a").forEach(a=>a.onclick=()=>showForm(a.dataset.mode));
-$("#fLogin").onsubmit=async e=>{e.preventDefault();const b=$("#lgBtn");b.disabled=true;lgMsg("");
-  const {error}=await sb.auth.signInWithPassword({email:$("#lgEmail").value.trim(),password:$("#lgPass").value});
-  b.disabled=false;if(error)lgMsg(error.message==="Invalid login credentials"?"E-mail of wachtwoord klopt niet.":error.message);};
-$("#fReset").onsubmit=async e=>{e.preventDefault();
-  const {error}=await sb.auth.resetPasswordForEmail($("#rsEmail").value.trim(),{redirectTo:location.origin+location.pathname});
-  error?lgMsg(error.message):lgMsg("Als dit adres bekend is, staat de link in je inbox.",true)};
-$("#fActivate").onsubmit=async e=>{e.preventDefault();const em=$("#acEmail").value.trim().toLowerCase();
-  if(!/@gruposoltura\.com$/.test(em))return lgMsg("Alleen @gruposoltura.com-adressen.");
-  const {data:ok}=await sb.rpc("nexus_can_register",{p_email:em});
-  if(!ok)return lgMsg("Dit adres staat (nog) niet op de NEXUS-teamlijst. Vraag Rick om je toe te voegen.");
-  const {data,error}=await sb.auth.signUp({email:em,password:$("#acPass").value,options:{emailRedirectTo:location.origin+location.pathname}});
-  if(error){return lgMsg(/registered|exists/i.test(error.message)?"Dit account bestaat al. Gebruik ‘Wachtwoord vergeten’ als je het niet meer weet.":error.message)}
-  if(data.session)return; lgMsg("Bijna klaar: bevestig via de link in je mailbox en log daarna in.",true)};
-$("#fNewPass").onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.updateUser({password:$("#npPass").value});
-  if(error)return lgMsg(error.message);lgMsg("Wachtwoord opgeslagen.",true);history.replaceState(null,"",location.pathname);
-  if(booted){$("#login").classList.add("hidden");$("#app").classList.remove("hidden");route()}else boot()};
-$("#logout").onclick=async()=>{await sb.auth.signOut();location.hash="";location.reload()};
-function noAccess(){$("#app").classList.add("hidden");$("#login").classList.remove("hidden");showForm("login");
-  lgMsg("Je bent ingelogd, maar dit account heeft geen NEXUS-toegang.");sb.auth.signOut()}
-
-let ME=null, booted=false;
-sb.auth.onAuthStateChange((ev,session)=>{
-  if(ev==="PASSWORD_RECOVERY"){$("#login").classList.remove("hidden");$("#app").classList.add("hidden");showForm("newpass");return}
-  if(session&&!booted)boot();
-  if(!session&&ev==="SIGNED_OUT"){booted=false}
-});
-(async()=>{const {data}=await sb.auth.getSession();if(data.session&&!location.hash.includes("type=recovery"))boot()})();
-
-async function boot(){
-  if(booted)return;booted=true;
-  try{ME=await rpc("nexus_me")}catch(e){booted=false;return}
-  if(!ME){booted=false;return noAccess()}
-  $("#login").classList.add("hidden");$("#app").classList.remove("hidden");
-  $("#meName").textContent=ME.display_name;const av=$("#meAv");av.textContent=initials(ME.display_name);av.style.background=ME.color||"#14b8a6";
-  buildRoleChips();buildStatusChips();
-  route();
-}
-
-/* ================= TABS / ROUTING ================= */
-const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",ac:"--c-ac",en:"--c-en"};
-let curTab="ov";
-function setTab(t){curTab=t;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
-  $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t));
-  document.documentElement.style.setProperty("--acc",`var(${TABC[t]})`);
-  if(t==="ov"&&!ovLoaded)loadOverview();
-  if(t==="ct"&&!ctLoaded)loadContacts(true);
-  if(t==="pr"&&!prLoaded)loadProps(true);
-  if(t==="ac")loadActivity();
-  if(t==="en")loadEnrich();
-}
-$$(".tab").forEach(b=>b.onclick=()=>{location.hash=b.dataset.tab});
-window.addEventListener("hashchange",route);
-function route(){
-  if(!booted)return;const h=location.hash.replace(/^#/,"");
-  let m;
-  if((m=h.match(/^c\/(\d+)/))){setTab("ct");openContact(+m[1]);return}
-  if((m=h.match(/^p\/(\d+)/))){setTab("pr");openProp(+m[1]);return}
-  setTab(TABC[h]?h:"ov");
-}
-const go={c:id=>location.hash="c/"+id,p:id=>location.hash="p/"+id};
-document.addEventListener("click",e=>{const el=e.target.closest("[data-c],[data-p]");if(!el||e.target.closest("a[href]"))return;
-  if(el.dataset.c)go.c(el.dataset.c);else go.p(el.dataset.p)});
-
-/* global search -> contacts tab */
-let gT;$("#gSearch").addEventListener("input",e=>{clearTimeout(gT);gT=setTimeout(()=>{const v=e.target.value.trim();
-  if(/^[A-Za-z]{2,4}\d{2,4}$/.test(v)){location.hash="pr";$("#prQ").value=v;loadProps(true);return}
-  $("#ctQ").value=v;if(location.hash!=="#ct")location.hash="ct";loadContacts(true)},300)});
-
-/* ================= OVERZICHT ================= */
-let ovLoaded=false, OV=null;
-async function loadOverview(){
-  const p=$("#p-ov");p.innerHTML='<div class="loader">Overzicht laden…</div>';
-  try{OV=await rpc("nexus_overview")}catch(e){p.innerHTML=`<div class="empty">Fout: ${esc(e.message)}</div>`;return}
-  ovLoaded=true;const o=OV, pr=o.props||{}, roles=o.roles||{};
-  $("#cntCt").textContent=num(o.contacts_total);$("#cntPr").textContent=num(pr.current);
-  const kp=(v,l,s,c,act)=>`<div class="card kpi" style="--kc:var(${c})" data-go="${act}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
-  const maxR=Math.max(1,...Object.values(roles));
-  const order=["suspect","seller","buyer","suspect-seller","prospect","agent"];
-  const d=o.req_daily_30d||[], mx=Math.max(1,...d.map(x=>x.n));
-  const pts=d.map((x,i)=>`${(i/(d.length-1||1))*300},${66-(x.n/mx)*60}`).join(" ");
-  p.innerHTML=`<div class="ov">
-   <div class="kpis">
-    ${kp(num(o.contacts_total),"Contacten",`+${num(o.contacts_new_30d)} in 30 dagen`,"--c-ct","ct")}
-    ${kp(num(o.contacts_mine),"Mijn contacten",`toegewezen aan ${esc(ME.display_name)}`,"--c-ov","ct:mine")}
-    ${kp(num(pr.current),"Woningen in aanbod",`${num(pr.own)} eigen · ${num(pr.external)} extern`,"--c-pr","pr")}
-    ${kp(num(pr.under_offer),"Onder bod",`${num(pr.sold)} verkocht in CPR`,"--c-pr","pr:under_offer")}
-    ${kp(num(o.requests_7d),"Aanvragen 7 dgn",`${num(o.requests_30d)} in 30 dagen · ${num(o.leads_7d)} leads`,"--c-ac","ac")}
-    ${kp(num(o.viewings_upcoming),"Bezichtigingen",`gepland · ${num(o.hot_pending)} hot leads wachten`,"--c-ac","ac")}
-   </div>
-   <div class="card ov-roles"><div class="hd"><h3>Rollen in de CPR</h3><span class="sm muted">klik = filter</span></div>
-     <div class="scroll" style="flex:1;padding:6px 0">${order.map(r=>`<div class="rolebar" data-role="${r}" style="--rc:var(${(ROLE[r]||[])[1]})">
-       <span>${roleTag(r)}</span><div class="bar"><span style="width:${((roles[r]||0)/maxR*100).toFixed(1)}%"></span></div><span class="n">${num(roles[r]||0)}</span></div>`).join("")}
-     <div class="hd" style="border-top:1px solid var(--line);margin-top:6px"><h3>Aanvragen · 30 dagen</h3><span class="sm muted">max ${mx}/dag</span></div>
-     <div class="spark"><svg viewBox="0 0 300 70" preserveAspectRatio="none"><defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ec4899" stop-opacity=".45"/><stop offset="1" stop-color="#ec4899" stop-opacity="0"/></linearGradient></defs>
-       <polygon points="0,70 ${pts} 300,70" fill="url(#sg)"/><polyline points="${pts}" fill="none" stroke="#ec4899" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
-       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${(o.req_types_30d||[]).map(t=>`<span class="tag">${esc(t.t)} · ${t.n}</span>`).join("")}</div></div>
-     </div></div>
-   <div class="card ov-act"><div class="hd"><h3>Laatste activiteit</h3><a class="sm muted" href="#ac">alles →</a></div>
-     <div class="scroll feed" style="flex:1">${feedHtml(o.activity)}</div></div>
-   <div class="ov-side">
-     <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0"><div class="hd"><h3>Komende bezichtigingen</h3></div>
-       <div class="scroll feed" style="flex:1">${(o.viewings||[]).length?o.viewings.map(v=>`<div class="it" style="cursor:default"><div class="ic" style="--ic:#22c55e">◉</div>
-         <div><div class="t">${esc(v.ref||"—")} · ${esc(v.client||"")}</div><div class="d">${fdate(v.date)} ${esc(v.time||"")} · ${esc(v.agent||"")}</div></div><span></span></div>`).join(""):'<div class="empty">Geen geplande bezichtigingen.</div>'}</div></div>
-     <div class="card"><div class="hd"><h3>Verrijking</h3><a class="sm muted" href="#en">bronnen →</a></div>
-       <div style="padding:12px 14px;font-size:13px;color:var(--tx2)">${num(o.enrich.props_enriched)} woningen en ${num(o.enrich.contacts_enriched)} contacten verrijkt uit externe bronnen
-       (${num(o.enrich.rows)} velden).</div></div>
-   </div></div>`;
-  p.querySelectorAll("[data-go]").forEach(k=>k.onclick=()=>{const [t,a]=k.dataset.go.split(":");
-    if(t==="ct"){ctScope=a==="mine"?"mine":"all";$$("#ctScope button").forEach(b=>b.classList.toggle("on",b.dataset.v===ctScope));ctLoaded=false}
-    if(t==="pr"&&a){prStatus=a;buildStatusChips();prLoaded=false}
-    location.hash=t;});
-  p.querySelectorAll("[data-role]").forEach(r=>r.onclick=()=>{ctRole=r.dataset.role;buildRoleChips();ctLoaded=false;location.hash="ct"});
-}
-function feedHtml(list){
-  const IC={request:["#ec4899","✉"],lead:["#f59e0b","★"],viewing:["#22c55e","◉"]};
-  if(!list||!list.length)return'<div class="empty">Nog geen activiteit.</div>';
-  return list.map(a=>{const ic=IC[a.kind]||IC.request;return `<div class="it" ${a.contact_wp_id?`data-c="${a.contact_wp_id}"`:""}>
-    <div class="ic" style="--ic:${ic[0]}">${ic[1]}</div>
-    <div style="min-width:0"><div class="t">${esc(a.name||"Onbekend")}</div><div class="d">${esc(a.type)}${a.ref?" · "+esc(a.ref):""} · <span style="color:${REPC[a.rep]||"#64748b"}">${esc(a.rep||"")}</span></div></div>
-    <span class="sm muted">${ago(a.ts)}</span></div>`}).join("")}
-
-/* ================= CONTACTEN ================= */
-let ctLoaded=false, ctRole="", ctScope="all", ctOff=0, ctSel=null;
-function buildRoleChips(){const order=["","suspect","seller","buyer","suspect-seller","prospect","agent"];
-  $("#ctRoles").innerHTML=order.map(r=>`<span class="chip ${ctRole===r?"on":""}" data-r="${r}" style="--cc:var(${r?ROLE[r][1]:"--c-ct"})">${r?ROLE[r][0]:"Alle rollen"}${OV&&r&&OV.roles?` <b>${num(OV.roles[r]||0)}</b>`:""}</span>`).join("");
-  $$("#ctRoles .chip").forEach(c=>c.onclick=()=>{ctRole=c.dataset.r;buildRoleChips();loadContacts(true)})}
-$$("#ctScope button").forEach(b=>b.onclick=()=>{ctScope=b.dataset.v;$$("#ctScope button").forEach(x=>x.classList.toggle("on",x===b));loadContacts(true)});
-let cT;$("#ctQ").addEventListener("input",()=>{clearTimeout(cT);cT=setTimeout(()=>loadContacts(true),280)});
-async function loadContacts(reset){
-  const box=$("#ctRows");if(reset){ctOff=0;box.innerHTML='<div class="loader">Zoeken…</div>'}
-  let r;try{r=await rpc("nexus_search",{p_q:$("#ctQ").value,p_role:ctRole||null,p_scope:ctScope,p_limit:50,p_offset:ctOff})}catch(e){box.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
-  ctLoaded=true;
-  const html=r.rows.map(c=>`<div class="row ${ctSel===c.wp_id?"sel":""}" data-c="${c.wp_id}">
-     <div class="ini" style="background:${hue(c.name||c.email)}">${esc(initials(c.name||c.email))}</div>
-     <div style="min-width:0"><div class="nm">${esc(c.name||c.email||"(naamloos)")}</div>
-       <div class="sub">${(c.roles||[]).map(roleTag).join(" ")} <span>${esc([c.city,c.country].filter(Boolean).join(", ")||c.email||"")}</span></div></div>
-     <div style="text-align:right"><div class="sm" style="color:${REPC[c.rep]||"#64748b"}">${esc(c.rep)}</div><div class="sm muted">${c.last?ago(c.last):""}</div></div></div>`).join("");
-  if(reset)box.innerHTML=html||'<div class="empty">Geen contacten gevonden.</div>';else{box.querySelector(".more")?.remove();box.insertAdjacentHTML("beforeend",html)}
-  ctOff+=r.rows.length;
-  if(ctOff<r.total){box.insertAdjacentHTML("beforeend",`<div class="more"><button class="btn" id="ctMore">Meer laden (${num(r.total-ctOff)})</button></div>`);$("#ctMore").onclick=()=>loadContacts(false)}
-  box.insertAdjacentHTML("afterbegin",reset?`<div class="sub muted sm" style="padding:6px 12px">${num(r.total)} contacten</div>`:"");
-}
-let ctSub="profiel", CT=null;
-async function openContact(id){
-  ctSel=id;$$("#ctRows .row").forEach(r=>r.classList.toggle("sel",+r.dataset.c===id));
-  if(!ctLoaded)loadContacts(true);
-  const d=$("#ctDetail");d.innerHTML='<div class="loader">Contact laden…</div>';
-  try{CT=await rpc("nexus_contact",{p_wp_id:id})}catch(e){d.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
-  if(!CT){d.innerHTML='<div class="empty">Contact niet gevonden.</div>';return}
-  renderContact();
-  if(innerWidth<1100)d.scrollIntoView({behavior:"smooth",block:"start"});
-}
-function renderContact(){
-  const c=CT.contact, raw=CT.raw||{}, d=$("#ctDetail");
-  const name=c.full_name||[raw.first_name,raw.last_name].filter(Boolean).join(" ")||c.email;
-  const tabs=[["profiel","Profiel"],["woningen","Woningen",(CT.properties||[]).length+(CT.interests||[]).length],["tijdlijn","Tijdlijn",(CT.timeline||[]).length],["relaties","Relaties",(CT.relations||[]).length+(CT.interested_in_mine||[]).length],["verrijking","Verrijking",(CT.enrichment||[]).length]];
-  const tel=(c.phone||"").replace(/[^\d+]/g,"");
-  d.innerHTML=`<div class="dh"><div class="ini big" style="background:${hue(name)}">${esc(initials(name))}</div>
-    <div style="min-width:0"><h2>${esc(name)}</h2>
-      <div class="meta">${c.email?`<a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a>`:""}${c.phone?`<a href="tel:${esc(tel)}">☎ ${esc(c.phone)}</a>`:""}
-        ${c.language?`<span>🌐 ${esc(c.language)}</span>`:""}<span>👤 <b style="color:${REPC[c.rep]||"#94a3b8"}">${esc(c.rep)}</b></span><span class="muted">#${c.wp_id}</span></div>
-      <div class="roles">${(c.roles||[]).map(roleTag).join("")}</div></div>
-    <div class="acts">${tel?`<a href="https://wa.me/${esc(tel.replace(/^\+/,"").replace(/^00/,""))}" target="_blank" rel="noopener">WhatsApp</a>`:""}
-      ${raw.cpr_link?`<a href="${esc(raw.cpr_link)}" target="_blank" rel="noopener">Open in CPR ↗</a>`:""}
-      <a href="https://gruposoltura.com/wp-admin/post.php?post=${c.wp_id}&action=edit" target="_blank" rel="noopener">Bewerken ↗</a></div></div>
-   <div class="subtabs">${tabs.map(t=>`<button class="st ${ctSub===t[0]?"on":""}" data-s="${t[0]}">${t[1]}${t[2]!=null?`<span class="cnt">${t[2]}</span>`:""}</button>`).join("")}</div>
-   <div class="dbody scroll" id="ctBody"></div>`;
-  d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{ctSub=b.dataset.s;renderContact()});
-  const B=$("#ctBody");
-  if(ctSub==="profiel")B.innerHTML=ctProfile(c,raw);
-  if(ctSub==="woningen")B.innerHTML=ctProps();
-  if(ctSub==="tijdlijn")B.innerHTML=timeline(CT.timeline);
-  if(ctSub==="relaties")B.innerHTML=ctRelations(c);
-  if(ctSub==="verrijking")B.innerHTML=enrichList(CT.enrichment,"contact");
-}
-function kv(pairs){const f=pairs.filter(p=>p[1]!=null&&p[1]!=="");return f.length?`<dl class="kv">${f.map(p=>`<dt>${p[0]}</dt><dd>${p[2]?p[1]:esc(p[1])}</dd>`).join("")}</dl>`:'<div class="empty sm">Geen gegevens.</div>'}
-function ctProfile(c,raw){
-  const ip=CT.interest||{}, m=CT.matches||{}, fb=CT.feedback||{};
-  const addr=[raw.street,[raw.postcode,raw.city].filter(Boolean).join(" "),raw.suburb,raw.state,raw.country].filter(Boolean).join(", ");
-  const budget=ip.declared_budget_min||ip.declared_budget_max?`${eur(ip.declared_budget_min)} – ${eur(ip.declared_budget_max)}`:(ip.price_min?`${eur(ip.price_min)} – ${eur(ip.price_max)} (gedrag)`:raw.sd_budget);
-  const opt=CT.optins||{};
-  return `<div class="bigtiles">
-     <div class="bt"><div class="l">Aanvragen</div><div class="v">${num(ip.total_requests||0)}</div></div>
-     <div class="bt"><div class="l">Woningen bekeken</div><div class="v">${num(ip.distinct_properties_viewed||0)}</div></div>
-     <div class="bt"><div class="l">Matches verstuurd</div><div class="v">${num(m.sent||0)}</div></div>
-     <div class="bt"><div class="l">Engagement</div><div class="v">${ip.engagement_score!=null?Number(ip.engagement_score).toFixed(0):"—"}</div></div></div>
-   <div class="grid2">
-    <div class="card"><div class="hd"><h3>Persoon</h3></div>${kv([["Aanhef",raw.title],["Adres",addr],["Geboren",raw.birthday&&raw.birthday!=="0000-00-00"?raw.birthday:null],["Burg. staat",raw.marital_status],["NIE",raw.nie_masked],["Bedrijf",raw.company],["Website",raw.website],["Herkomst",raw.referred_by],["Sleutelhouder",raw.keyholder],["In CPR sinds",raw.created_wp?fdate(raw.created_wp):null],["Laatst gewijzigd",c.wp_modified?fdate(c.wp_modified):null]])}</div>
-    <div class="card"><div class="hd"><h3>Zoekprofiel</h3><span class="tag">${esc(ip.data_confidence||"—")}</span></div>${kv([["Budget",budget],["Type",ip.declared_property_type||raw.sd_type||(ip.preferred_categories?Object.keys(ip.preferred_categories).slice(0,3).join(", "):null)],["Slaapkamers",ip.declared_bedrooms_min?"≥ "+ip.declared_bedrooms_min:null],["Gebieden",ip.declared_areas?[].concat(ip.declared_areas).join(", "):null],["Must-haves",ip.declared_must_haves?[].concat(ip.declared_must_haves).join(", "):null],["Termijn",ip.declared_period||raw.sd_period],["Eerste/laatste",ip.first_request_at?`${fdate(ip.first_request_at)} → ${fdate(ip.last_request_at)}`:null],["Match-feedback",Object.keys(fb).length?Object.entries(fb).map(([k,v])=>k+": "+v).join(" · "):null],["Verkoopstatus",raw.sales_status],["Waarde (CPR)",raw.sales_value&&raw.sales_value!=="0"?eur(raw.sales_value):null]])}</div>
-   </div>
-   <div class="grid2" style="margin-top:12px">
-    <div class="card"><div class="hd"><h3>Interne notities (CPR)</h3></div><div class="note">${raw.internal_comments?esc(raw.internal_comments.replace(/<br\s*\/?>/gi,"\n")):'<span class="muted">Geen notities.</span>'}</div></div>
-    <div class="card"><div class="hd"><h3>Mailings</h3><span class="tag">opt-in ${c.opt_in?'<span class="on-y">ja</span>':'<span class="on-n">nee</span>'}</span></div>
-      <div class="optins">${Object.keys(opt).length?Object.entries(opt).map(([k,v])=>`<span class="tag">${v?'<span class="on-y">●</span>':'<span class="on-n">○</span>'} ${esc(k)}</span>`).join(""):'<span class="muted sm">Geen voorkeuren vastgelegd.</span>'}</div></div>
-   </div>`;
-}
-function propCard(p,extra){return `<div class="pcard" data-p="${p.wp_id||""}">${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="">`:'<div class="ph"></div>'}
-  <div style="min-width:0"><div class="tt">${esc(p.reference||"?")} · ${esc(p.title||"")}</div><div class="pr">${eur(p.price)}</div>
-  <div class="sm muted">${esc(p.town||"")} · ${esc(p.status||"")}${p.under_offer?" · onder bod":""}</div>${extra||""}</div></div>`}
-function ctProps(){
-  const own=CT.properties||[], it=CT.interests||[];
-  return `<div class="hd" style="padding:0 0 8px"><h3>Eigendom / betrokken (${own.length})</h3></div>
-   ${own.length?`<div class="grid2">${own.map(p=>propCard(p,`<div style="margin-top:4px"><span class="role" style="--rc:var(${p.relation==="koper"?"--r-buyer":p.relation==="eigenaar"?"--r-seller":"--r-agent"})">${esc(p.relation)}</span></div>`)).join("")}</div>`:'<div class="empty sm">Geen gekoppelde woningen.</div>'}
-   <div class="hd" style="padding:16px 0 8px"><h3>Interesse in (${it.length})</h3></div>
-   ${it.length?`<div class="grid2">${it.map(p=>propCard(p,`<div class="sm" style="margin-top:4px">${p.n}× · ${esc((p.types||[]).join(", "))} · ${ago(p.last)}</div>`)).join("")}</div>`:'<div class="empty sm">Nog geen interesse getoond.</div>'}`}
-function timeline(list){
-  const C={request:"#ec4899",viewing:"#22c55e",mail:"#3b82f6",lead:"#f59e0b",hot:"#ef4444"},L={request:"Aanvraag",viewing:"Bezichtiging",mail:"Mail",lead:"Lead",hot:"Hot lead"};
-  if(!list||!list.length)return'<div class="empty">Geen tijdlijn.</div>';
-  return `<div class="tl">${list.map(e=>`<div class="e" style="--ec:${C[e.kind]||"#64748b"}"><div class="h"><span class="k">${esc(L[e.kind]||e.kind)} · ${esc(e.title||"")}</span>${e.ref?`<span class="tag">${esc(e.ref)}</span>`:""}<span class="w">${fdate(e.ts)} · ${ago(e.ts)}</span></div>${e.text?`<div class="x">${esc(e.text)}</div>`:""}</div>`).join("")}</div>`}
-function ctRelations(c){
-  const r=CT.relations||[], im=CT.interested_in_mine||[];
-  const rel=x=>`<div class="rel" data-c="${x.wp_id}"><div class="ini" style="background:${hue(x.name||x.email)};width:32px;height:32px;font-size:12px">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${esc(x.why||"")}</div></div></div>`;
-  return `<div class="hd" style="padding:0 0 8px"><h3>Begeleid door</h3></div>
-    <div class="rel" style="cursor:default;max-width:320px"><div class="avatar" style="background:${REPC[c.rep]||"#475569"}">${esc(initials(c.rep))}</div><div><b>${esc(c.rep)}</b><div class="sm muted">Grupo Soltura</div></div></div>
-    <div class="hd" style="padding:16px 0 8px"><h3>Verbonden contacten (${r.length})</h3></div>
-    ${r.length?`<div class="grid2">${r.map(rel).join("")}</div>`:'<div class="empty sm">Geen directe verbanden gevonden.</div>'}
-    ${im.length?`<div class="hd" style="padding:16px 0 8px"><h3>Geïnteresseerd in zijn/haar woning(en) (${im.length})</h3></div><div class="grid2">${im.map(x=>rel({...x,why:x.ref+" · "+x.n+"× aanvraag"})).join("")}</div>`:""}`}
-function enrichList(list,kind){
-  if(!list||!list.length)return `<div class="empty">Nog geen externe verrijking voor dit ${kind==="contact"?"contact":"object"}.<br><span class="sm">Scrapers (Catastro, Idealista, …) vullen dit automatisch aan zodra ze draaien.</span></div>`;
-  const by={};list.forEach(e=>{(by[e.field]=by[e.field]||[]).push(e)});
-  return `<div class="card">${Object.entries(by).map(([f,arr])=>`<dl class="kv" style="border-bottom:1px solid var(--line)"><dt>${esc(f)}</dt><dd>${arr.map((e,i)=>`<div style="${i?"opacity:.55;font-size:12px":""}">${esc(typeof e.value==="object"?JSON.stringify(e.value):e.value)}<span class="src">${esc(e.label||e.source)}</span>${e.url?` <a href="${esc(e.url)}" target="_blank" rel="noopener" class="sm muted">↗</a>`:""} <span class="sm muted">${ago(e.at)}</span></div>`).join("")}</dd></dl>`).join("")}</div>`}
-
-/* ================= WONINGEN ================= */
-let prLoaded=false, prStatus="current", prOff=0, prSel=null, PR=null, prSub="kenmerken";
-function buildStatusChips(){const S=[["current","In aanbod"],["under_offer","Onder bod"],["own","Eigen"],["withdrawn","Ingetrokken"],["sold","Verkocht"],["all","Alles"]];
-  $("#prStatus").innerHTML=S.map(s=>`<span class="chip ${prStatus===s[0]?"on":""}" data-s="${s[0]}" style="--cc:var(--c-pr)">${s[1]}</span>`).join("");
-  $$("#prStatus .chip").forEach(c=>c.onclick=()=>{prStatus=c.dataset.s;buildStatusChips();loadProps(true)})}
-let pT;$("#prQ").addEventListener("input",()=>{clearTimeout(pT);pT=setTimeout(()=>loadProps(true),280)});
-async function loadProps(reset){
-  const box=$("#prRows");if(reset){prOff=0;box.innerHTML='<div class="loader">Woningen laden…</div>'}
-  let r;try{r=await rpc("nexus_properties",{p_q:$("#prQ").value,p_status:prStatus,p_limit:48,p_offset:prOff})}catch(e){box.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
-  prLoaded=true;
-  const html=r.rows.map(p=>`<div class="pc ${prSel===p.wp_id?"sel":""}" data-p="${p.wp_id}"><div class="im" style="${p.image?`background-image:url('${esc(p.image)}')`:""}">
-     <span class="badge">${esc(p.reference||"")}</span>${p.req30>0?`<span class="hot">${p.req30}× 30d</span>`:""}</div>
-     <div class="bd"><div class="p">${eur(p.price)}${p.previous_price&&p.previous_price>p.price?` <span class="sm muted" style="text-decoration:line-through">${eur(p.previous_price)}</span>`:""}</div>
-     <div class="t">${esc(p.title||"")}</div><div class="s">${esc([p.suburb,p.town].filter(Boolean).join(", "))} · ${p.bedrooms??"?"} slpk${p.build?` · ${p.build} m²`:""}</div>
-     <div class="s">${p.is_external?esc(p.agency||"extern"):"eigen"}${p.under_offer?' · <b style="color:var(--c-ac)">onder bod</b>':""}${p.n_enrich?` · <span style="color:#d8b4fe">${p.n_enrich} verrijkt</span>`:""}</div></div></div>`).join("");
-  if(reset)box.innerHTML=`<div class="sub muted sm" style="padding:8px 12px 0">${num(r.total)} woningen</div><div class="pgrid" id="pgrid">${html}</div>`;
-  else{box.querySelector(".more")?.remove();$("#pgrid").insertAdjacentHTML("beforeend",html)}
-  prOff+=r.rows.length;
-  if(prOff<r.total){box.insertAdjacentHTML("beforeend",`<div class="more"><button class="btn" id="prMore">Meer laden (${num(r.total-prOff)})</button></div>`);$("#prMore").onclick=()=>loadProps(false)}
-}
-async function openProp(id){
-  prSel=id;$$("#prRows .pc").forEach(r=>r.classList.toggle("sel",+r.dataset.p===id));
-  if(!prLoaded)loadProps(true);
-  const d=$("#prDetail");d.innerHTML='<div class="loader">Woning laden…</div>';
-  try{PR=await rpc("nexus_property",{p_wp_id:id})}catch(e){d.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
-  if(!PR){d.innerHTML='<div class="empty">Woning niet gevonden.</div>';return}
-  renderProp();
-  if(innerWidth<1100)d.scrollIntoView({behavior:"smooth",block:"start"});
-}
-function renderProp(){
-  const p=PR.property, raw=PR.raw||{}, d=$("#prDetail");
-  const tabs=[["kenmerken","Kenmerken"],["contacten","Contacten",(PR.interested||[]).length+(PR.owner?1:0)+(PR.buyer?1:0)],["verrijking","Verrijking",(PR.enrichment||[]).length+(PR.catastro&&PR.catastro.cadastral_ref?1:0)+(PR.price_m2?1:0)]];
-  d.innerHTML=`<div class="dh" style="--acc:var(--c-pr)"><div style="min-width:0"><h2>${esc(p.reference)} · ${esc(p.title||"")}</h2>
-     <div class="meta"><span>📍 ${esc([p.suburb,p.town,p.province].filter(Boolean).join(", "))}</span><span>👤 <b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(p.rep)}</b></span><span>${esc(p.status)}${p.under_offer?" · onder bod":""}</span></div></div>
-     <div class="acts">${raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">Website ↗</a>`:""}<a href="https://gruposoltura.com/wp-admin/post.php?post=${p.wp_id}&action=edit" target="_blank" rel="noopener">CPR ↗</a>${raw.external_url?`<a href="${esc(raw.external_url)}" target="_blank" rel="noopener">Bron ↗</a>`:""}</div></div>
-   <div class="subtabs" style="--acc:var(--c-pr)">${tabs.map(t=>`<button class="st ${prSub===t[0]?"on":""}" data-s="${t[0]}">${t[1]}${t[2]!=null?`<span class="cnt">${t[2]}</span>`:""}</button>`).join("")}</div>
-   <div class="dbody scroll" id="prBody"></div>`;
-  d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{prSub=b.dataset.s;renderProp()});
-  const B=$("#prBody"), m=PR.matches||{};
-  if(prSub==="kenmerken")B.innerHTML=`<div class="hero" style="${raw.image?`background-image:url('${esc(raw.image)}')`:""}"><span class="pr">${eur(p.price)}</span></div>
-    <div class="facts"><div><b>${p.bedrooms??"—"}</b><span>slaapkamers</span></div><div><b>${p.bathrooms??"—"}</b><span>badkamers</span></div><div><b>${p.build_area?num(p.build_area)+" m²":"—"}</b><span>woonopp.</span></div><div><b>${p.plot_area?num(p.plot_area)+" m²":"—"}</b><span>perceel</span></div>
-      <div><b>${num(raw.hits_total)}</b><span>views totaal</span></div><div><b>${raw.hits_today??"—"}</b><span>views vandaag</span></div><div><b>${num(m.sent||0)}</b><span>matches gemaild</span></div><div><b>${num(m.converted||0)}</b><span>conversies</span></div></div>
-    <div class="card">${kv([["Type",p.property_type],["Nieuwbouw",p.is_newbuild?"ja":null],["Bouwjaar",raw.year_built&&raw.year_built!=="0"?raw.year_built:null],["Energielabel",raw.energy_label],["Zicht",raw.view],["Oriëntatie",raw.orientation],["Zwembad",raw.pool],["Afstand zee",raw.distance_sea?num(raw.distance_sea)+" m":null],["Adres",[raw.street,raw.postal_code].filter(Boolean).join(", ")],["Sleutels",raw.keydetails],["Mandaat",raw.authority],["Aanbieder",p.is_external?(p.external_agency||"extern")+(raw.external_refnr?" · "+raw.external_refnr:""):"Grupo Soltura (eigen)"],["Contact bron",[raw.external_phone,raw.external_email].filter(Boolean).join(" · ")],["Vorige prijs",p.previous_price&&p.previous_price!=p.price?eur(p.previous_price)+" ("+fdate(p.price_changedate)+")":null],["Notaris (verkocht)",raw.sold_notary],["Kosten",[raw.fee_notary&&"notaris "+eur(raw.fee_notary),raw.fee_registry&&"register "+eur(raw.fee_registry),raw.fee_legal&&"advocaat "+eur(raw.fee_legal)].filter(Boolean).join(" · ")],["Op de markt",p.list_date?fdate(p.list_date):null]])}</div>
-    ${raw.changelog?`<div class="card" style="margin-top:12px"><div class="hd"><h3>Wijzigingslog (CPR)</h3></div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div></div>`:""}`;
-  if(prSub==="contacten"){const one=(x,w,rc)=>x?`<div class="rel" data-c="${x.wp_id}"><div class="ini" style="background:${hue(x.name)};width:32px;height:32px;font-size:12px">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm">${roleTag(rc)} <span class="muted">${esc(w)}</span></div></div></div>`:"";
-    const it=PR.interested||[], vw=PR.viewings||[];
-    B.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${one(PR.owner,PR.owner&&PR.owner.is_agent?"aanbiedend makelaar":"eigenaar / verkoper",PR.owner&&PR.owner.is_agent?"agent":"seller")}${one(PR.buyer,"koper","buyer")}</div>
-      ${vw.length?`<div class="hd" style="padding:16px 0 8px"><h3>Bezichtigingen (${vw.length})</h3></div>${vw.map(v=>`<div class="sm" style="padding:4px 0">${fdate(v.date)} ${esc(v.time||"")} · ${esc(v.client||"")} · <span class="muted">${esc(v.agent||"")}</span></div>`).join("")}`:""}
-      <div class="hd" style="padding:16px 0 8px"><h3>Geïnteresseerden (${it.length})</h3></div>
-      ${it.length?`<div style="display:flex;flex-direction:column;gap:6px">${it.map(x=>`<div class="rel" data-c="${x.wp_id}"><div class="ini" style="background:${hue(x.name||x.email)};width:30px;height:30px;font-size:11px">${esc(initials(x.name||x.email))}</div><div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${x.n}× · ${esc((x.types||[]).join(", "))}</div></div><span class="sm muted">${ago(x.last)}</span></div>`).join("")}</div>`:'<div class="empty sm">Nog geen aanvragen.</div>'}`}
-  if(prSub==="verrijking"){const k=PR.catastro, pm=PR.price_m2;
-    const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.match_quality||k.match_method||"")} · ${ago(k.checked_at)}</span></div>${kv([["Ref. catastral",k.cadastral_ref],["Adres (Catastro)",[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],["Gebruik",k.use_class],["Bouwjaar",k.year_built],["Bebouwd",k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(CPR: ${num(p.build_area)} m²)</span>`:""):null,1],["Wonen / terras",[k.living_area_m2&&num(k.living_area_m2)+" m² wonen",k.terrace_area_m2&&num(k.terrace_area_m2)+" m² terras",k.pool_area_m2&&num(k.pool_area_m2)+" m² zwembad"].filter(Boolean).join(" · ")],["Perceel",k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],["Gebouw",k.building_dwellings?`${k.building_dwellings} woningen · ${k.building_floors_above||"?"} verd.`:null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
-      :(k?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.status||"niet gevonden")}</span></div><div class="note">${esc(k.error||"Geen eenduidige match.")}</div></div>`:"");
-    const pc=pm?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Prijs per m² vs. markt</h3><span class="tag">${esc(pm.town||"")} · ${esc(pm.segment||"")}</span></div>
-      <div class="facts" style="padding:12px 14px 0"><div><b>${eur(pm.ask_m2_cat||pm.ask_m2_wp)}</b><span>vraag / m²</span></div><div><b>${eur(pm.market_median_m2)}</b><span>markt mediaan</span></div><div><b style="color:${pm.deviation_pct>10?"#f87171":pm.deviation_pct<-10?"#34d399":"inherit"}">${pm.deviation_pct!=null?(pm.deviation_pct>0?"+":"")+Number(pm.deviation_pct).toFixed(1)+"%":"—"}</b><span>afwijking</span></div><div><b>${num(pm.market_n)}</b><span>vergelijkbaar</span></div></div>
-      <div class="sm muted" style="padding:0 14px 12px">Bandbreedte ${eur(pm.market_p25_m2)} – ${eur(pm.market_p75_m2)} per m² · basis ${esc(pm.market_basis||"")} · ${fdate(pm.period)}</div></div>`:"";
-    B.innerHTML=kc+pc+((PR.enrichment||[]).length||(!kc&&!pc)?enrichList(PR.enrichment,"property"):"");}
-}
-
-/* ================= ACTIVITEIT ================= */
-async function loadActivity(){
-  const p=$("#p-ac");if(!OV){p.innerHTML='<div class="loader">Laden…</div>';try{OV=await rpc("nexus_overview")}catch(e){p.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}}
-  p.innerHTML=`<div class="split" style="grid-template-columns:1fr 1fr">
-    <div class="card list"><div class="hd"><h3>Aanvragen & leads · nieuwste eerst</h3><span class="sm muted">${num(OV.requests_7d)} in 7 dagen</span></div><div class="rows scroll feed">${feedHtml(OV.activity)}</div></div>
-    <div class="card list"><div class="hd"><h3>Bezichtigingen</h3><span class="sm muted">${num(OV.viewings_upcoming)} gepland</span></div><div class="rows scroll feed">${(OV.viewings||[]).length?OV.viewings.map(v=>`<div class="it" style="cursor:default"><div class="ic" style="--ic:#22c55e">◉</div><div><div class="t">${esc(v.ref||"—")} · ${esc(v.client||"")}</div><div class="d">${fdate(v.date)} ${esc(v.time||"")} · ${esc(v.agent||"")}</div></div><span></span></div>`).join(""):'<div class="empty">Geen geplande bezichtigingen.</div>'}
-    <div class="hd" style="border-top:1px solid var(--line)"><h3>Aanvraagtypes · 30 dagen</h3></div><div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:6px">${(OV.req_types_30d||[]).map(t=>`<span class="tag">${esc(t.t)} · ${t.n}</span>`).join("")}</div></div></div></div>`;
-}
-
-/* ================= VERRIJKING ================= */
-async function loadEnrich(){
-  const p=$("#p-en");if(!OV){p.innerHTML='<div class="loader">Laden…</div>';try{OV=await rpc("nexus_overview")}catch(e){return}}
-  const e=OV.enrich||{};
-  p.innerHTML=`<div class="en">
-   <div class="card list"><div class="hd"><h3>Bronnen · voorrang</h3><span class="sm muted">lager = wint bij conflict</span></div>
-    <div class="rows scroll">${(e.sources||[]).map(s=>`<div class="srcrow"><div class="prio">${s.priority}</div><div><b>${esc(s.label)}</b><div class="sm muted">${esc(s.source)} · ${esc(s.kind)}</div></div><div class="sm" style="text-align:right">${num(s.rows)} velden</div><div class="sm muted" style="text-align:right">${s.last?ago(s.last):"nog niet gedraaid"}</div></div>`).join("")}</div></div>
-   <div class="card list"><div class="hd"><h3>Eén backend, drie lagen</h3></div><div class="rows scroll">
-    <div class="layers">
-     <div class="sm muted">Scrapers live</div>
-     <div class="layer"><span><b>Catastro</b><div class="sm muted">property_catastro</div></span><span class="tag">${num((e.catastro||{}).matched)} / ${num((e.catastro||{}).checked)} gematcht · ${(e.catastro||{}).last?ago(e.catastro.last):"nog niet gedraaid"}</span></div>
-     <div class="layer"><span><b>Prijs per m²</b><div class="sm muted">property_price_m2 · market_price_m2</div></span><span class="tag">${num((e.price_m2||{}).props)} woningen · ${(e.price_m2||{}).last?ago(e.price_m2.last):"nog niet gedraaid"}</span></div>
-     <div class="layer"><span><b>Idealista</b><div class="sm muted">idealista_listings</div></span><span class="tag">${num((e.idealista||{}).listings)} advertenties · ${(e.idealista||{}).last?ago(e.idealista.last):"nog niet gedraaid"}</span></div>
-     <div class="sm muted" style="margin-top:6px">Opbouw</div>
-     <div class="layer" style="border-color:var(--c-ct)"><span><b>1 · CPR / WordPress</b><div class="sm muted">bron van waarheid — sync-agents</div></span><span class="tag">contacts · properties · requests</span></div>
-     <div class="layer" style="border-color:var(--c-ov)"><span><b>2 · RAW-laag</b><div class="sm muted">volledige WP-payload, ontsloten via trigger</div></span><span class="tag">wp_raw → nexus_*_raw</span></div>
-     <div class="layer" style="border-color:var(--c-en)"><span><b>3 · Verrijking</b><div class="sm muted">${num(e.props_enriched)} woningen · ${num(e.contacts_enriched)} contacten</div></span><span class="tag">nexus_enrichment</span></div>
-    </div>
-    <div style="padding:0 14px 14px"><div class="sm muted" style="margin-bottom:8px">Contract voor scrapers (n8n, service-role) — één rij per veld, upsert:</div>
-<pre class="code">insert into nexus_enrichment
-  (entity_type, entity_wp_id, reference, source, field, value, source_url, scraper)
-values
-  ('property', 231492, 'RH550', 'catastro', 'ref_catastral',
-   '"0123456XH9102S0001AB"', 'https://www1.sedecatastro.gob.es/…', 'JARVIS-Research-Catastro')
-on conflict (entity_type, coalesce(entity_wp_id,-1), coalesce(reference,''), source, field)
-do update set value = excluded.value, fetched_at = now();</pre>
-    <div class="sm muted" style="margin-top:10px">Velden die NEXUS herkent: <span class="tag">ref_catastral</span> <span class="tag">superficie_construida</span> <span class="tag">ano_construccion</span> <span class="tag">uso</span> <span class="tag">idealista_url</span> <span class="tag">idealista_price</span> <span class="tag">days_on_market</span> <span class="tag">other_agencies</span> — elk ander veld wordt ook getoond.</div></div>
-   </div></div></div>`;
-}
-})();
-</script>
+<script src="/nexus-app.js?v=2"></script>
 </body>
 </html>
