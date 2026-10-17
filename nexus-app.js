@@ -1,4 +1,4 @@
-/* NEXUS · CPR v2 — app. Alleen-lezen; alle data via nexus_* RPC's (team-gate in de database). */
+/* NEXUS — app. Alleen-lezen (Admin-tab: invoerschermen, nog zonder opslaan); alle data via nexus_* RPC's (team-gate in de database). */
 (function(){
 "use strict";
 const SB_URL="https://wuvpbwowdycsdlrqkaoq.supabase.co";
@@ -35,6 +35,7 @@ function rerender(){
   if(PR&&$("#prBody"))renderProp();
   if(mpData)renderMap();
   if(curTab==="ac")loadActivity();
+  if(window.NEXUS_ADMIN)NEXUS_ADMIN.rerender();
 }
 
 const eur=v=>v==null||v===""?"—":"€ "+Number(v).toLocaleString(LOC(),{maximumFractionDigits:0});
@@ -109,11 +110,13 @@ async function boot(){
   $("#login").classList.add("hidden");$("#app").classList.remove("hidden");
   $("#meName").textContent=ME.display_name;const av=$("#meAv");av.textContent=initials(ME.display_name);av.style.background=ME.color||"#14b8a6";
   buildRoleChips();buildStatusChips();buildBuildSeg();
+  /* Admin (invoerschermen, nog niet gekoppeld): voorlopig alleen voor de rol admin */
+  $("#tabAd").classList.toggle("hidden",ME.role!=="admin");
   route();
 }
 
 /* ================= TABS / ROUTING ================= */
-const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac"};
+const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",ad:"--c-ad"};
 let curTab="ov";
 function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t_));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
@@ -123,6 +126,7 @@ function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.da
   if(t_==="pr"&&!prLoaded)loadProps(true);
   if(t_==="mp")loadMap();
   if(t_==="ac")loadActivity();
+  if(t_==="ad"&&window.NEXUS_ADMIN)NEXUS_ADMIN.open($("#p-ad"),{rpc,t,lang:()=>LANG,me:()=>ME,esc});
 }
 $$(".tab").forEach(b=>b.onclick=()=>{location.hash=b.dataset.tab});
 window.addEventListener("hashchange",route);
@@ -131,6 +135,7 @@ function route(){
   let m;
   if((m=h.match(/^c\/(\d+)/))){setTab("ct");openContact(+m[1]);return}
   if((m=h.match(/^p\/(\d+)/))){setTab("pr");openProp(+m[1]);return}
+  if(h==="ad"&&ME.role!=="admin")return setTab("ov");
   setTab(TABC[h]?h:"ov");
 }
 const go={c:id=>location.hash="c/"+id,p:id=>location.hash="p/"+id};
