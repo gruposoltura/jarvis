@@ -80,7 +80,10 @@ window.NEXUS_I18N = {
     "mt.review_viewing": "Review na bezichtiging", "mt.weekly_news": "Wekelijks nieuws", "mt.monthly_matches": "Maandelijkse matches", "mt.price_reduced": "Prijsverlagingen (wekelijks)", "mt.market_report": "Marktbericht (wekelijks)",
     "cm.newlistings": "Nieuwe woningen", "cm.featuredlistings": "Uitgelichte woningen", "cm.reducedlistings": "Prijsverlagingen", "cm.bargain": "Koopje (los)", "cm.bargains": "Koopjeslijst",
     "cm.hottop10": "Hot Top 10", "cm.underoffer": "Onder bod", "cm.newsletters": "Nieuwsbrieven", "cm.news": "Nieuws", "cm.matches": "Matches", "cm.adhocmails": "Ad-hoc mails",
-    "cm.extra": "Extra", "cm.birthdays": "Verjaardag", "cm.reviewus": "Review-uitnodiging"
+    "cm.extra": "Extra", "cm.birthdays": "Verjaardag", "cm.reviewus": "Review-uitnodiging",
+    "ext.open": "Open bij {a}", "ext.search": "Zoek bij partner", "ext.partner": "Partner-makelaar (XML-import)", "ext.theirref": "Hun referentie",
+    "ext.nourl": "De feed levert geen directe link; de knop zoekt op makelaar + hun referentie.",
+    "k.map": "Kaart", "k.elements": "Catastro · bouwdelen", "k.eltype": "Soort", "k.floor": "Verdieping", "k.parcel": "Perceelreferentie", "k.unit": "Blok / trap / verdieping / deur", "k.landclass": "Grondklasse", "k.share": "Aandeel"
   },
   en: {
     "login.lead": "One place for every contact, every property and every connection. Sign in with your <b>@gruposoltura.com</b> account.",
@@ -162,6 +165,9 @@ window.NEXUS_I18N = {
     "mt.review_viewing": "Review after viewing", "mt.weekly_news": "Weekly news", "mt.monthly_matches": "Monthly matches", "mt.price_reduced": "Price reductions (weekly)", "mt.market_report": "Market report (weekly)",
     "cm.newlistings": "New listings", "cm.featuredlistings": "Featured listings", "cm.reducedlistings": "Price reductions", "cm.bargain": "Bargain (single)", "cm.bargains": "Bargains list",
     "cm.hottop10": "Hot Top 10", "cm.underoffer": "Under offer", "cm.newsletters": "Newsletters", "cm.news": "News", "cm.matches": "Matches", "cm.adhocmails": "Ad-hoc emails",
-    "cm.extra": "Extra", "cm.birthdays": "Birthday", "cm.reviewus": "Review invitation"
+    "cm.extra": "Extra", "cm.birthdays": "Birthday", "cm.reviewus": "Review invitation",
+    "ext.open": "Open at {a}", "ext.search": "Search at partner", "ext.partner": "Partner agency (XML import)", "ext.theirref": "Their reference",
+    "ext.nourl": "The feed has no direct link; the button searches on agency + their reference.",
+    "k.map": "Map", "k.elements": "Catastro · building parts", "k.eltype": "Kind", "k.floor": "Floor", "k.parcel": "Parcel reference", "k.unit": "Block / stair / floor / door", "k.landclass": "Land class", "k.share": "Share"
   }
 };
