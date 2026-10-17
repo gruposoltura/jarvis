@@ -235,7 +235,8 @@ async function openContact(id){
 function renderContact(){
   const c=CT.contact, raw=CT.raw||{}, d=$("#ctDetail");
   const name=c.full_name||[raw.first_name,raw.last_name].filter(Boolean).join(" ")||c.email;
-  const tabs=[["profiel",t("st.profile")],["woningen",t("st.props"),(CT.properties||[]).length+(CT.interests||[]).length],["tijdlijn",t("st.timeline"),(CT.timeline||[]).length],["relaties",t("st.relations"),(CT.relations||[]).length+(CT.interested_in_mine||[]).length],["mailings",t("st.mailings")],["verrijking",t("st.enrich"),(CT.enrichment||[]).length]];
+  const tabs=[["profiel",t("st.profile")],["woningen",t("st.props"),(CT.properties||[]).length+(CT.interests||[]).length],["tijdlijn",t("st.timeline"),(CT.timeline||[]).length],["relaties",t("st.relations"),(CT.relations||[]).length+(CT.interested_in_mine||[]).length],["mailings",t("st.mailings")]];
+  if(!tabs.some(x=>x[0]===ctSub))ctSub="profiel";
   const D=CT.details||{};
   const phones=(D.phones&&D.phones.length?D.phones.map(x=>x.value):[c.phone]).filter(Boolean);
   const emails=(D.emails&&D.emails.length?D.emails.map(x=>x.value):[c.email]).filter(Boolean);
@@ -257,7 +258,6 @@ function renderContact(){
   if(ctSub==="tijdlijn")B.innerHTML=timeline(CT.timeline);
   if(ctSub==="relaties")B.innerHTML=ctRelations(c);
   if(ctSub==="mailings")B.innerHTML=ctMailings(c);
-  if(ctSub==="verrijking")B.innerHTML=enrichList(CT.enrichment,"contact");
 }
 function kv(pairs){const f=pairs.filter(p=>p[1]!=null&&p[1]!=="");return f.length?`<dl class="kv">${f.map(p=>`<dt>${p[0]}</dt><dd>${p[2]?p[1]:esc(p[1])}</dd>`).join("")}</dl>`:`<div class="empty sm">${t("nodata")}</div>`}
 function salesStatus(v){if(v==null||v==="")return null;return v==="0"?"Unqualified":v}
