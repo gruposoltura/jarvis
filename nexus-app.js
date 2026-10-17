@@ -59,6 +59,11 @@ function why(s){if(!s)return"";let m;
   if(s==="zelfde adres/telefoon")return t("why.household");return s}
 const relT=r=>r==="koper"?t("rel.koper"):r==="eigenaar"?t("rel.eigenaar"):r==="aanbiedend makelaar"?t("rel.agent"):r;
 const tlTitle=s=>s==="bezichtiging"?t("tl.viewing"):s;
+/* link naar de woning bij de partner-makelaar; zonder URL in de feed: zoeken op agency + hun referentie */
+function extLink(agency,url,ref){if(url)return{href:url,exact:true};
+  if(!agency&&!ref)return null;return{href:"https://www.google.com/search?q="+encodeURIComponent([agency,ref].filter(Boolean).join(" ")),exact:false}}
+const catUrl=r=>"https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCListaBienes.aspx?rc1="+encodeURIComponent(String(r).slice(0,7))+"&rc2="+encodeURIComponent(String(r).slice(7,14));
+const catMap=r=>"https://www1.sedecatastro.gob.es/Cartografia/mapa.aspx?refcat="+encodeURIComponent(String(r).slice(0,14));
 
 async function rpc(fn,args){const {data,error}=await sb.rpc(fn,args||{});if(error){if(error.code==="42501"){noAccess();}throw error}return data}
 
@@ -340,10 +345,11 @@ async function loadProps(reset){
   let r;try{r=await rpc("nexus_properties",{p_q:$("#prQ").value,p_status:prStatus+(prBuild?":"+prBuild:""),p_limit:48,p_offset:prOff})}catch(e){box.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   prLoaded=true;
   const html=r.rows.map(p=>`<div class="pc ${prSel===p.wp_id?"sel":""}" data-p="${p.wp_id}"><div class="im" style="${p.image?`background-image:url('${esc(p.image)}')`:""}">
-     <span class="badge">${esc(p.reference||"")}</span>${p.req30>0?`<span class="hot">${p.req30}× 30d</span>`:""}</div>
+     <span class="badge">${esc(p.reference||"")}</span>${p.cat_ref?`<span class="catb" title="Catastro ${esc(p.cat_ref)}">CAT</span>`:""}${p.req30>0?`<span class="hot">${p.req30}× 30d</span>`:""}</div>
      <div class="bd"><div class="p">${eur(p.price)}${p.previous_price&&p.previous_price>p.price?` <span class="sm muted" style="text-decoration:line-through">${eur(p.previous_price)}</span>`:""}</div>
      <div class="t">${esc(p.title||"")}</div><div class="s">${esc([p.suburb,p.town].filter(Boolean).join(", "))} · ${p.bedrooms??"?"} ${t("beds.short")}${p.build?` · ${p.build} m²`:""}</div>
-     <div class="s">${p.is_external?esc(p.agency||t("external")):t("own")}${p.under_offer?` · <b style="color:var(--c-ac)">${t("underoffer")}</b>`:""}${p.n_enrich?` · <span style="color:#d8b4fe">${t("enriched",{n:p.n_enrich})}</span>`:""}</div>
+     <div class="s">${p.is_external?t("external"):t("own")}${p.under_offer?` · <b style="color:var(--c-ac)">${t("underoffer")}</b>`:""}${p.n_enrich?` · <span style="color:#d8b4fe">${t("enriched",{n:p.n_enrich})}</span>`:""}</div>
+     ${p.is_external?(()=>{const L=extLink(p.agency,p.ext_url,p.ext_ref);return L?`<a class="ext-l" href="${esc(L.href)}" target="_blank" rel="noopener" title="${esc(L.exact?t("ext.open",{a:p.agency||t("external")}):t("ext.search"))}">${L.exact?"🔗":"🔎"} ${esc(p.agency||t("external"))}${p.ext_ref?" · "+esc(p.ext_ref):""} ↗</a>`:""})():""}
      ${p.owner_wp_id&&p.owner?`<span class="own-l" data-c="${p.owner_wp_id}" title="${t("p.openowner")}">👤 ${esc(p.owner)}</span>`:""}</div></div>`).join("");
   if(reset)box.innerHTML=`<div class="sub muted sm" style="padding:8px 12px 0">${t("n.props",{n:num(r.total)})}</div><div class="pgrid" id="pgrid">${html}</div>`;
   else{box.querySelector(".more")?.remove();$("#pgrid").insertAdjacentHTML("beforeend",html)}
@@ -365,20 +371,44 @@ function ownerBox(o){
   return `<div class="ownerbox" data-c="${o.wp_id}"><div class="ini" style="background:${hue(o.name||o.email)};width:38px;height:38px">${esc(initials(o.name||o.email))}</div>
     <div style="min-width:0"><div class="sm muted">${lbl}</div><div style="font-weight:700">${esc(o.name||o.email)}</div>
     <div class="sm muted">${[o.email,o.phone].filter(Boolean).map(esc).join(" · ")}</div></div><span class="go">${t("p.openowner")}</span></div>`}
+function extBox(p,raw,L){
+  const phone=raw.external_phone, mail=raw.external_email;
+  return `<div class="extbox"><div style="min-width:0"><div class="sm muted">${t("ext.partner")}</div><div style="font-weight:700;font-size:15px">${esc(p.external_agency||t("external"))}</div>
+    <div class="sm">${raw.external_refnr?`${t("ext.theirref")}: <b class="mono">${esc(raw.external_refnr)}</b>`:""}${phone?` · <a href="tel:${esc(String(phone).replace(/[^\d+]/g,""))}">☎ ${esc(phone)}</a>`:""}${mail?` · <a href="mailto:${esc(mail)}">✉ ${esc(mail)}</a>`:""}</div>
+    ${L&&!L.exact?`<div class="sm muted" style="margin-top:3px">${t("ext.nourl")}</div>`:""}</div>
+    ${L?`<a class="go-ext" href="${esc(L.href)}" target="_blank" rel="noopener">${L.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div>`}
+function catSummary(k,p){
+  if(!k)return "";
+  if(!k.cadastral_ref)return `<div class="catbox off"><b>Catastro</b> <span class="sm muted">· ${esc(k.status==="not_found"?t("k.notfound"):k.status||"")}${k.error?" · "+esc(k.error):""}${k.checked_at?" · "+ago(k.checked_at):""}</span></div>`;
+  const diff=k.build_area_m2!=null&&p.build_area?Math.round((p.build_area-k.build_area_m2)/k.build_area_m2*100):null;
+  return `<div class="catbox"><div class="cat-h"><b>Catastro</b><span class="tag">${esc(k.match_quality||k.match_method||"")}</span>
+      <a class="mono cat-ref" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener" title="Sede Electrónica del Catastro">${esc(k.cadastral_ref)} ↗</a>
+      <a class="sm" href="${esc(catMap(k.cadastral_ref))}" target="_blank" rel="noopener">${t("k.map")} ↗</a></div>
+    <div class="facts" style="margin:10px 0 0">
+      <div><b>${k.build_area_m2!=null?num(k.build_area_m2)+" m²":"—"}</b><span>${t("k.built")}${diff!=null&&Math.abs(diff)>=5?` · <span style="color:${diff>0?"#f87171":"#34d399"}">CPR ${diff>0?"+":""}${diff}%</span>`:""}</span></div>
+      <div><b>${k.living_area_m2!=null?num(k.living_area_m2)+" m²":"—"}</b><span>${t("k.living.w")}</span></div>
+      <div><b>${k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":"—"}</b><span>${t("k.plot")}</span></div>
+      <div><b>${k.year_built||"—"}</b><span>${t("k.year")}</span></div></div>
+    <div class="sm muted" style="margin-top:8px">${[k.use_class,[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", "),k.checked_at?ago(k.checked_at):""].filter(Boolean).map(esc).join(" · ")}</div></div>`}
+function catElements(k){const el=Array.isArray(k&&k.elements)?k.elements:[];if(!el.length)return "";
+  return `<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${t("k.elements")}</h3></div><div class="scroll"><table class="mtable"><thead><tr><th>${t("k.use")}</th><th>${t("k.eltype")}</th><th>${t("k.floor")}</th><th style="text-align:right">m²</th></tr></thead><tbody>${el.map(e=>`<tr><td>${esc(e.use||"")}</td><td class="muted">${esc(e.type||"")}</td><td>${esc(e.pt??"")}</td><td style="text-align:right">${num(e.m2)}</td></tr>`).join("")}</tbody></table></div></div>`}
 function renderProp(){
-  const p=PR.property, raw=PR.raw||{}, d=$("#prDetail"), o=PR.owner;
+  const p=PR.property, raw=PR.raw||{}, d=$("#prDetail"), o=PR.owner, K=PR.catastro;
+  const XL=p.is_external?extLink(p.external_agency,raw.external_url,raw.external_refnr):null;
   const tabs=[["kenmerken",t("st.features")],["contacten",t("st.contacts"),(PR.interested||[]).length+(o?1:0)+(PR.buyer?1:0)],["verrijking",t("st.enrich"),(PR.enrichment||[]).length+(PR.catastro&&PR.catastro.cadastral_ref?1:0)+(PR.price_m2?1:0)]];
   d.innerHTML=`<div class="dh" style="--acc:var(--c-pr)"><div style="min-width:0"><h2>${esc(p.reference)} · ${esc(p.title||"")}</h2>
      <div class="meta"><span>📍 ${esc([p.suburb,p.town,p.province].filter(Boolean).join(", "))}</span>
        ${o?`<a class="ownerlink" data-c="${o.wp_id}">👤 ${esc(o.name||o.email)}</a>`:""}
        <span>🏷 <b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b></span><span>${esc(DICT.nl["ps."+p.status]?t("ps."+p.status):p.status)}${p.under_offer?" · "+t("underoffer"):""}${p.is_newbuild?" · "+t("pb.new"):""}</span></div></div>
-     <div class="acts">${raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">${t("act.site")}</a>`:""}<a href="https://gruposoltura.com/wp-admin/post.php?post=${p.wp_id}&action=edit" target="_blank" rel="noopener">CPR ↗</a>${raw.external_url?`<a href="${esc(raw.external_url)}" target="_blank" rel="noopener">${t("act.source")}</a>`:""}</div></div>
+     <div class="acts">${raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">${t("act.site")}</a>`:""}<a href="https://gruposoltura.com/wp-admin/post.php?post=${p.wp_id}&action=edit" target="_blank" rel="noopener">CPR ↗</a>${p.is_external&&XL?`<a class="act-ext" href="${esc(XL.href)}" target="_blank" rel="noopener">${XL.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div></div>
    <div class="subtabs" style="--acc:var(--c-pr)">${tabs.map(x=>`<button class="st ${prSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
    <div class="dbody scroll" id="prBody"></div>`;
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{prSub=b.dataset.s;renderProp()});
   const B=$("#prBody"), m=PR.matches||{};
   if(prSub==="kenmerken")B.innerHTML=`<div class="hero" style="${raw.image?`background-image:url('${esc(raw.image)}')`:""}"><span class="pr">${eur(p.price)}</span></div>
+    ${p.is_external?extBox(p,raw,XL):""}
     ${ownerBox(o)}
+    ${catSummary(K,p)}
     <div class="facts"><div><b>${p.bedrooms??"—"}</b><span>${t("fa.beds")}</span></div><div><b>${p.bathrooms??"—"}</b><span>${t("fa.baths")}</span></div><div><b>${p.build_area?num(p.build_area)+" m²":"—"}</b><span>${t("fa.build")}</span></div><div><b>${p.plot_area?num(p.plot_area)+" m²":"—"}</b><span>${t("fa.plot")}</span></div>
       <div><b>${num(raw.hits_total)}</b><span>${t("fa.hits")}</span></div><div><b>${raw.hits_today??"—"}</b><span>${t("fa.today")}</span></div><div><b>${num(m.sent||0)}</b><span>${t("fa.mailed")}</span></div><div><b>${num(m.converted||0)}</b><span>${t("fa.conv")}</span></div></div>
     <div class="card">${kv([[t("p.type"),p.property_type],[t("p.newbuild"),p.is_newbuild?t("yes"):null],[t("p.year"),raw.year_built&&raw.year_built!=="0"?raw.year_built:null],[t("p.energy"),raw.energy_label],[t("p.view"),raw.view],[t("p.orient"),raw.orientation],[t("p.pool"),raw.pool],[t("p.sea"),raw.distance_sea?num(raw.distance_sea)+" m":null],[t("p.address"),[raw.street,raw.postal_code].filter(Boolean).join(", ")],[t("p.keys"),raw.keydetails],[t("p.mandate"),raw.authority],[t("p.offeredby"),p.is_external?(p.external_agency||t("external"))+(raw.external_refnr?" · "+raw.external_refnr:""):t("p.owngs")],[t("p.srccontact"),[raw.external_phone,raw.external_email].filter(Boolean).join(" · ")],[t("p.prevprice"),p.previous_price&&p.previous_price!=p.price?eur(p.previous_price)+" ("+fdate(p.price_changedate)+")":null],[t("p.notary"),raw.sold_notary],[t("p.costs"),[raw.fee_notary&&t("c.notary")+" "+eur(raw.fee_notary),raw.fee_registry&&t("c.registry")+" "+eur(raw.fee_registry),raw.fee_legal&&t("c.legal")+" "+eur(raw.fee_legal)].filter(Boolean).join(" · ")],[t("p.listed"),p.list_date?fdate(p.list_date):null]])}</div>
@@ -390,12 +420,12 @@ function renderProp(){
       <div class="hd" style="padding:16px 0 8px"><h3>${t("h.interested",{n:it.length})}</h3></div>
       ${it.length?`<div style="display:flex;flex-direction:column;gap:6px">${it.map(x=>`<div class="rel" data-c="${x.wp_id}"><div class="ini" style="background:${hue(x.name||x.email)};width:30px;height:30px;font-size:11px">${esc(initials(x.name||x.email))}</div><div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${x.n}× · ${esc((x.types||[]).join(", "))}</div></div><span class="sm muted">${ago(x.last)}</span></div>`).join("")}</div>`:`<div class="empty sm">${t("norequests")}</div>`}`}
   if(prSub==="verrijking"){const k=PR.catastro, pm=PR.price_m2;
-    const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.match_quality||k.match_method||"")} · ${ago(k.checked_at)}</span></div>${kv([[t("k.cadref"),k.cadastral_ref],[t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.year"),k.year_built],[t("k.built"),k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(CPR: ${num(p.build_area)} m²)</span>`:""):null,1],[t("k.living"),[k.living_area_m2&&num(k.living_area_m2)+" m² "+t("k.living.w"),k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],[t("k.plot"),k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],[t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
+    const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.match_quality||k.match_method||"")} · ${ago(k.checked_at)}</span></div>${kv([[t("k.cadref"),`<a class="mono" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener">${esc(k.cadastral_ref)} ↗</a>`,1],[t("k.parcel"),k.parcel_ref],[t("k.unit"),[k.cat_block&&"bl. "+k.cat_block,k.cat_stair&&"esc. "+k.cat_stair,k.cat_floor&&"pl. "+k.cat_floor,k.cat_door&&"pta. "+k.cat_door].filter(Boolean).join(" · ")],[t("k.landclass"),k.land_class],[t("k.share"),k.participation_pct!=null?k.participation_pct+" %":null],[t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.year"),k.year_built],[t("k.built"),k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(CPR: ${num(p.build_area)} m²)</span>`:""):null,1],[t("k.living"),[k.living_area_m2&&num(k.living_area_m2)+" m² "+t("k.living.w"),k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],[t("k.plot"),k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],[t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
       :(k?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.status||t("k.notfound"))}</span></div><div class="note">${esc(k.error||t("k.nomatch"))}</div></div>`:"");
     const pc=pm?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${t("m.title")}</h3><span class="tag">${esc(pm.town||"")} · ${esc(pm.segment||"")}</span></div>
       <div class="facts" style="padding:12px 14px 0"><div><b>${eur(pm.ask_m2_cat||pm.ask_m2_wp)}</b><span>${t("m.ask")}</span></div><div><b>${eur(pm.market_median_m2)}</b><span>${t("m.median")}</span></div><div><b style="color:${pm.deviation_pct>10?"#f87171":pm.deviation_pct<-10?"#34d399":"inherit"}">${pm.deviation_pct!=null?(pm.deviation_pct>0?"+":"")+Number(pm.deviation_pct).toFixed(1)+"%":"—"}</b><span>${t("m.dev")}</span></div><div><b>${num(pm.market_n)}</b><span>${t("m.n")}</span></div></div>
       <div class="sm muted" style="padding:0 14px 12px">${t("m.range",{a:eur(pm.market_p25_m2),b:eur(pm.market_p75_m2),c:esc(pm.market_basis||""),d:fdate(pm.period)})}</div></div>`:"";
-    B.innerHTML=kc+pc+((PR.enrichment||[]).length||(!kc&&!pc)?enrichList(PR.enrichment,"property"):"");}
+    B.innerHTML=kc+catElements(k)+pc+((PR.enrichment||[]).length||(!kc&&!pc)?enrichList(PR.enrichment,"property"):"");}
 }
 
 /* ================= ACTIVITEIT ================= */
