@@ -86,11 +86,11 @@ window.NEXUS_I18N = {
     "k.map": "Kaart", "k.elements": "Catastro · bouwdelen", "k.eltype": "Soort", "k.floor": "Verdieping", "k.parcel": "Perceelreferentie", "k.unit": "Blok / trap / verdieping / deur", "k.landclass": "Grondklasse", "k.share": "Aandeel",
     "ov.notaries": "Komende notaris afspraken", "ov.nonotaries": "Geen notarisafspraken gepland.", "nt.koper": "koper", "nt.verkoper": "verkoper", "nt.koper_en_verkoper": "koper + verkoper", "nt.onbekend": "rol onbekend",
     "tab.mp": "Map", "mp.title": "Eigen woningen in aanbod", "mp.onmap": "{a} van {b} op de kaart", "mp.located": "Op de kaart ({n})",
-    "mp.nolocation": "Zonder exacte locatie ({n})", "mp.nolocation.s": "Vul in CPR bij Adres de coördinaten in, dan verschijnt de pin na de volgende sync.",
+    "mp.nolocation": "Zonder exacte locatie ({n})", "mp.nolocation.s": "Vul in CPR bij Adres de coördinaten in, dan verschijnt de pin na de volgende sync. Externe woningen tonen we alleen op hun opgeslagen coördinaten.",
     "mp.hover": "Beweeg over een pin om de locatie te kopiëren", "mp.copylink": "Kopieer Google-pin", "mp.copycoord": "Kopieer coördinaten",
     "mp.copied": "✓ Gekopieerd", "mp.copyfail": "Kopiëren lukte niet", "mp.gmaps": "Google Maps ↗", "mp.open": "Open woning →",
     "mp.src.wp": "Locatie uit CPR", "mp.src.catastro": "Benadering via Catastro-adres (gestippelde pin)", "mp.street": "Kaart", "mp.sat": "Satelliet",
-    "mp.none": "Geen eigen woningen in aanbod.", "mp.noleaflet": "Kaartbibliotheek kon niet laden. Herlaad de pagina."
+    "mp.none": "Geen woningen in aanbod.", "mp.s.own": "Eigen", "mp.s.ext": "Extern", "mp.s.all": "Alles", "mp.own": "Eigen", "mp.ext": "Extern", "mp.title.own": "Eigen woningen in aanbod", "mp.title.external": "Externe woningen in aanbod", "mp.title.all": "Alle woningen in aanbod", "mp.located.own": "Eigen op de kaart ({n})", "mp.located.ext": "Extern op de kaart ({n})", "mp.src.null": "Locatie uit opgeslagen coördinaten", "mp.noleaflet": "Kaartbibliotheek kon niet laden. Herlaad de pagina."
   },
   en: {
     "login.lead": "One place for every contact, every property and every connection. Sign in with your <b>@gruposoltura.com</b> account.",
@@ -178,10 +178,10 @@ window.NEXUS_I18N = {
     "k.map": "Map", "k.elements": "Catastro · building parts", "k.eltype": "Kind", "k.floor": "Floor", "k.parcel": "Parcel reference", "k.unit": "Block / stair / floor / door", "k.landclass": "Land class", "k.share": "Share",
     "ov.notaries": "Upcoming notary appointments", "ov.nonotaries": "No notary appointments scheduled.", "nt.koper": "buyer", "nt.verkoper": "seller", "nt.koper_en_verkoper": "buyer + seller", "nt.onbekend": "role unknown",
     "tab.mp": "Map", "mp.title": "Own properties for sale", "mp.onmap": "{a} of {b} on the map", "mp.located": "On the map ({n})",
-    "mp.nolocation": "No exact location ({n})", "mp.nolocation.s": "Enter the coordinates under Address in the CPR; the pin appears after the next sync.",
+    "mp.nolocation": "No exact location ({n})", "mp.nolocation.s": "Enter the coordinates under Address in the CPR; the pin appears after the next sync. External properties are only shown at their stored coordinates.",
     "mp.hover": "Hover over a pin to copy its location", "mp.copylink": "Copy Google pin", "mp.copycoord": "Copy coordinates",
     "mp.copied": "✓ Copied", "mp.copyfail": "Copy failed", "mp.gmaps": "Google Maps ↗", "mp.open": "Open property →",
     "mp.src.wp": "Location from CPR", "mp.src.catastro": "Approximate via Catastro address (dashed pin)", "mp.street": "Map", "mp.sat": "Satellite",
-    "mp.none": "No own properties for sale.", "mp.noleaflet": "Map library failed to load. Reload the page."
+    "mp.none": "No properties for sale.", "mp.s.own": "Own", "mp.s.ext": "External", "mp.s.all": "All", "mp.own": "Own", "mp.ext": "External", "mp.title.own": "Own properties for sale", "mp.title.external": "External properties for sale", "mp.title.all": "All properties for sale", "mp.located.own": "Own on the map ({n})", "mp.located.ext": "External on the map ({n})", "mp.src.null": "Location from stored coordinates", "mp.noleaflet": "Map library failed to load. Reload the page."
   }
 };
