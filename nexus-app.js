@@ -33,6 +33,7 @@ function rerender(){
   if(prLoaded)loadProps(true);
   if(CT&&$("#ctBody"))renderContact();
   if(PR&&$("#prBody"))renderProp();
+  if(mpData)renderMap();
   if(curTab==="ac")loadActivity();
 }
 
@@ -112,7 +113,7 @@ async function boot(){
 }
 
 /* ================= TABS / ROUTING ================= */
-const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",ac:"--c-ac"};
+const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac"};
 let curTab="ov";
 function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t_));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
@@ -120,6 +121,7 @@ function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.da
   if(t_==="ov"&&!ovLoaded)loadOverview();
   if(t_==="ct"&&!ctLoaded)loadContacts(true);
   if(t_==="pr"&&!prLoaded)loadProps(true);
+  if(t_==="mp")loadMap();
   if(t_==="ac")loadActivity();
 }
 $$(".tab").forEach(b=>b.onclick=()=>{location.hash=b.dataset.tab});
@@ -430,6 +432,77 @@ function renderProp(){
       <div class="facts" style="padding:12px 14px 0"><div><b>${eur(pm.ask_m2_cat||pm.ask_m2_wp)}</b><span>${t("m.ask")}</span></div><div><b>${eur(pm.market_median_m2)}</b><span>${t("m.median")}</span></div><div><b style="color:${pm.deviation_pct>10?"#f87171":pm.deviation_pct<-10?"#34d399":"inherit"}">${pm.deviation_pct!=null?(pm.deviation_pct>0?"+":"")+Number(pm.deviation_pct).toFixed(1)+"%":"—"}</b><span>${t("m.dev")}</span></div><div><b>${num(pm.market_n)}</b><span>${t("m.n")}</span></div></div>
       <div class="sm muted" style="padding:0 14px 12px">${t("m.range",{a:eur(pm.market_p25_m2),b:eur(pm.market_p75_m2),c:esc(pm.market_basis||""),d:fdate(pm.period)})}</div></div>`:"";
     B.innerHTML=kc+catElements(k)+pc+((PR.enrichment||[]).length||(!kc&&!pc)?enrichList(PR.enrichment,"property"):"");}
+}
+
+/* ================= MAP ================= */
+/* Eigen woningen in aanbod. Locatie: CPR-coördinaten, anders de Google-geocode van het Catastro-adres (benadering). */
+let mpData=null, mpMap=null, mpLayer=null, mpMarkers={}, mpHideT=null;
+const gPin=(lat,lng)=>`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+async function copyTxt(txt){
+  try{await navigator.clipboard.writeText(txt);return true}catch(e){
+    const ta=document.createElement("textarea");ta.value=txt;ta.style.cssText="position:fixed;opacity:0";document.body.appendChild(ta);ta.select();
+    let ok=false;try{ok=document.execCommand("copy")}catch(_){}ta.remove();return ok}}
+async function loadMap(){
+  if(!window.L){$("#mpList").innerHTML=`<div class="empty">${t("mp.noleaflet")}</div>`;return}
+  if(!mpMap){
+    mpMap=L.map("mpMap",{zoomControl:true,attributionControl:true}).setView([38.07,-0.72],12);
+    const street=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{maxZoom:20,subdomains:"abcd",attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO'});
+    const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Imagery &copy; Esri"});
+    street.addTo(mpMap);
+    mpMap._lc=L.control.layers({[t("mp.street")]:street,[t("mp.sat")]:sat},null,{position:"topright"}).addTo(mpMap);
+    mpLayer=L.layerGroup().addTo(mpMap);
+    mpMap.on("popupopen",e=>wirePopup(e.popup));
+  }
+  setTimeout(()=>mpMap.invalidateSize(),60);
+  if(mpData)return;
+  try{mpData=await rpc("nexus_map")}catch(e){$("#mpList").innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
+  renderMap(true);
+}
+function popupHtml(p){
+  return `<div class="mpp">${p.image?`<div class="im" style="background-image:url('${esc(p.image)}')"></div>`:""}<div class="bd">
+    <div class="rf">${esc(p.reference)} · <span class="muted">${esc([p.suburb,p.town].filter(Boolean).join(", "))}</span></div>
+    <div class="pr">${eur(p.price)}${p.under_offer?` <span class="sm" style="color:var(--c-ac)">· ${t("underoffer")}</span>`:""}</div>
+    <div class="ll">${p.lat}, ${p.lng}</div><div class="sm muted">${t("mp.src."+p.src)}</div>
+    <div class="btns"><button class="pri" data-cp="link">📍 ${t("mp.copylink")}</button>
+      <div class="row2"><button data-cp="coord">${t("mp.copycoord")}</button><a class="b" href="${esc(gPin(p.lat,p.lng))}" target="_blank" rel="noopener">${t("mp.gmaps")}</a></div>
+      <button data-open="${p.wp_id}">${t("mp.open")}</button></div></div></div>`}
+function wirePopup(pp){
+  const el=pp.getElement(), p=pp._nx;if(!el||!p)return;
+  el.onmouseenter=()=>clearTimeout(mpHideT);
+  el.onmouseleave=()=>{if(pp._hover)mpHideT=setTimeout(()=>mpMap.closePopup(pp),350)};
+  el.querySelectorAll("[data-cp]").forEach(b=>b.onclick=async ev=>{ev.preventDefault();ev.stopPropagation();
+    const txt=b.dataset.cp==="link"?gPin(p.lat,p.lng):`${p.lat}, ${p.lng}`, orig=b.innerHTML;
+    const ok=await copyTxt(txt);b.innerHTML=ok?t("mp.copied"):t("mp.copyfail");b.classList.toggle("ok",ok);
+    pp._hover=false;setTimeout(()=>{b.innerHTML=orig;b.classList.remove("ok")},1600)});
+  const o=el.querySelector("[data-open]");if(o)o.onclick=ev=>{ev.stopPropagation();go.p(o.dataset.open)};
+}
+function renderMap(fit){
+  const rows=mpData.rows||[], on=rows.filter(r=>r.lat!=null), off=rows.filter(r=>r.lat==null);
+  $("#cntMp").textContent=num(on.length);
+  $("#mpCount").textContent=t("mp.onmap",{a:num(on.length),b:num(rows.length)});
+  if(mpMap&&mpLayer){
+    mpLayer.clearLayers();mpMarkers={};
+    on.forEach(p=>{
+      const icon=L.divIcon({className:"",iconSize:null,iconAnchor:[0,0],
+        html:`<div class="mp-pin ${p.src==="catastro"?"approx":""}" style="--pc:${p.under_offer?"#ec4899":"#22c55e"};transform:translate(-50%,-100%)"><b>${esc(p.reference)}</b><i></i></div>`});
+      const m=L.marker([p.lat,p.lng],{icon,title:p.reference,riseOnHover:true}).addTo(mpLayer);
+      const pp=L.popup({offset:[0,-26],autoPan:true,closeButton:true,maxWidth:280,minWidth:260}).setContent(popupHtml(p));pp._nx=p;
+      m.bindPopup(pp);
+      m.on("mouseover",()=>{clearTimeout(mpHideT);pp._hover=true;if(!m.isPopupOpen())m.openPopup()});
+      m.on("mouseout",()=>{if(pp._hover)mpHideT=setTimeout(()=>{if(pp._hover)mpMap.closePopup(pp)},350)});
+      m.on("click",()=>{pp._hover=false;clearTimeout(mpHideT);m.openPopup()});
+      mpMarkers[p.wp_id]=m;
+    });
+    if(fit&&on.length){mpMap.fitBounds(L.latLngBounds(on.map(p=>[p.lat,p.lng])).pad(0.25),{maxZoom:15})}
+  }
+  const it=(p,extra,attr)=>`<div class="mp-it" ${attr}><div class="th" style="${p.image?`background-image:url('${esc(p.image)}')`:""}"></div>
+    <div style="min-width:0"><div class="t">${esc(p.reference)} · ${eur(p.price)}</div><div class="d">${extra}</div></div><span class="sm muted">${p.under_offer?"●":""}</span></div>`;
+  $("#mpList").innerHTML=(rows.length?"":`<div class="empty">${t("mp.none")}</div>`)
+    +(on.length?`<div class="mp-sec">${t("mp.located",{n:on.length})}</div>`+on.map(p=>it(p,esc([p.suburb,p.town].filter(Boolean).join(", "))+(p.src==="catastro"?" · ≈":""),`data-fly="${p.wp_id}"`)).join(""):"")
+    +(off.length?`<div class="mp-sec">${t("mp.nolocation",{n:off.length})}</div><div class="sm muted" style="padding:8px 12px">${t("mp.nolocation.s")}</div>`
+      +off.map(p=>it(p,esc([p.street||p.cat_address,p.suburb,p.town].filter(Boolean).join(", ")),`data-p="${p.wp_id}"`)).join(""):"");
+  $$("#mpList [data-fly]").forEach(r=>r.onclick=()=>{const m=mpMarkers[r.dataset.fly];if(!m)return;
+    mpMap.flyTo(m.getLatLng(),Math.max(mpMap.getZoom(),16),{duration:.6});setTimeout(()=>{m.getPopup()._hover=false;m.openPopup()},650)});
 }
 
 /* ================= ACTIVITEIT ================= */

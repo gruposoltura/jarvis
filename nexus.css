@@ -1,7 +1,7 @@
 :root{
   --bg:#0a0f1e; --bg2:#0f172a; --card:#111a2e; --card2:#16213a; --line:#1f2b45; --line2:#2a3858;
   --tx:#e6ecf7; --tx2:#9fb0cc; --tx3:#6b7c99;
-  --c-ov:#14b8a6; --c-ct:#3b82f6; --c-pr:#f59e0b; --c-ac:#ec4899; --c-en:#a855f7;
+  --c-ov:#14b8a6; --c-ct:#3b82f6; --c-pr:#f59e0b; --c-ac:#ec4899; --c-en:#a855f7; --c-mp:#22c55e;
   --acc:var(--c-ov);
   --r-suspect:#64748b; --r-prospect:#06b6d4; --r-seller:#f59e0b; --r-buyer:#22c55e; --r-agent:#a855f7; --r-suspect-seller:#f97316;
   --hdr:58px; --tabs:46px;
@@ -249,3 +249,35 @@ pre.code{margin:0;padding:12px 14px;font:12px/1.5 ui-monospace,Menlo,monospace;c
 .catbox .cat-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .catbox a{color:#d8b4fe;text-decoration:none}.catbox a:hover{text-decoration:underline}
 .catbox .cat-ref{font-weight:700;color:#e9d5ff}
+
+/* MAP: eigen woningen in aanbod */
+.msplit{display:grid;grid-template-columns:1fr 340px;gap:12px;height:100%}
+.mapcard{position:relative;overflow:hidden;min-height:0}
+#mpMap{position:absolute;inset:0;background:var(--bg2)}
+.mp-hint{position:absolute;left:12px;bottom:12px;z-index:500;padding:5px 10px;border-radius:8px;background:rgba(10,15,30,.85);color:var(--tx2);pointer-events:none}
+.mp-pin{display:flex;flex-direction:column;align-items:center}
+.mp-pin b{padding:3px 8px;border-radius:7px;background:var(--pc);color:#111;font:800 11px/1.2 Inter;letter-spacing:.03em;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.35)}
+.mp-pin i{width:0;height:0;border:6px solid transparent;border-top:8px solid var(--pc);margin-top:-1px}
+.mp-pin.approx b{border-style:dashed;border-color:#111}
+.leaflet-popup-content-wrapper{background:var(--card);color:var(--tx);border:1px solid var(--line2);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.leaflet-popup-tip{background:var(--card);border:1px solid var(--line2)}
+.leaflet-popup-content{margin:0;width:260px!important;font:13px/1.4 Inter,system-ui,sans-serif}
+.leaflet-container a.leaflet-popup-close-button{color:var(--tx2)}
+.leaflet-container{font-family:Inter,system-ui,sans-serif}
+.leaflet-control-layers,.leaflet-bar a{background:var(--card)!important;color:var(--tx)!important;border-color:var(--line2)!important}
+.mpp .im{height:110px;background:var(--card2) center/cover no-repeat;border-radius:12px 12px 0 0}
+.mpp .bd{padding:10px 12px 12px}
+.mpp .rf{font-weight:700}.mpp .pr{font:700 16px 'Space Grotesk';color:var(--c-pr)}
+.mpp .ll{font:12px ui-monospace,Menlo,monospace;color:var(--tx2);margin:4px 0 2px}
+.mpp .btns{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.mpp button,.mpp a.b{display:block;width:100%;text-align:center;padding:8px 10px;border-radius:9px;border:1px solid var(--line2);background:var(--bg2);color:var(--tx);cursor:pointer;font-weight:600;font-size:12.5px;text-decoration:none}
+.mpp button.pri{background:var(--c-mp);border-color:var(--c-mp);color:#06210f}
+.mpp button.ok{background:#14532d;border-color:#22c55e;color:#bbf7d0}
+.mpp .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mp-it{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.mp-it:hover{background:var(--card2)}
+.mp-it .th{width:52px;height:40px;border-radius:7px;background:var(--card2) center/cover no-repeat}
+.mp-it .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-it .d{font-size:12px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-sec{padding:10px 12px 6px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);border-bottom:1px solid var(--line)}
+@media (max-width:1100px){.msplit{grid-template-columns:1fr;height:auto}.mapcard{height:62vh}}

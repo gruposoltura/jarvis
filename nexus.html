@@ -10,9 +10,11 @@
 <meta name="theme-color" content="#0a0f1e">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/nexus.css?v=4">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="/nexus.css?v=5">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/nexus-i18n.js?v=6"></script>
+<script src="/nexus-i18n.js?v=7"></script>
 </head>
 <body>
 
@@ -77,6 +79,7 @@
     <button class="tab on" data-tab="ov" style="--c:var(--c-ov)"><i></i><span data-i18n="tab.ov"></span></button>
     <button class="tab" data-tab="ct" style="--c:var(--c-ct)"><i></i><span data-i18n="tab.ct"></span> <span class="cnt" id="cntCt"></span></button>
     <button class="tab" data-tab="pr" style="--c:var(--c-pr)"><i></i><span data-i18n="tab.pr"></span> <span class="cnt" id="cntPr"></span></button>
+    <button class="tab" data-tab="mp" style="--c:var(--c-mp)"><i></i><span data-i18n="tab.mp"></span> <span class="cnt" id="cntMp"></span></button>
     <button class="tab" data-tab="ac" style="--c:var(--c-ac)"><i></i><span data-i18n="tab.ac"></span></button>
   </nav>
   <main>
@@ -107,10 +110,16 @@
         <div class="card detail" id="prDetail"><div class="empty" data-i18n="pr.pick"></div></div>
       </div>
     </section>
+    <section class="pane hidden" id="p-mp">
+      <div class="msplit">
+        <div class="card mapcard"><div id="mpMap"></div><div class="mp-hint sm" data-i18n="mp.hover"></div></div>
+        <div class="card list"><div class="hd"><h3 data-i18n="mp.title"></h3><span class="sm muted" id="mpCount"></span></div><div class="rows scroll" id="mpList"><div class="loader" data-i18n="loading"></div></div></div>
+      </div>
+    </section>
     <section class="pane hidden" id="p-ac"></section>
   </main>
 </div>
 
-<script src="/nexus-app.js?v=6"></script>
+<script src="/nexus-app.js?v=7"></script>
 </body>
 </html>
