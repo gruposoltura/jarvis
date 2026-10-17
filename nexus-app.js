@@ -162,7 +162,7 @@ function renderOverview(){
   $("#cntCt").textContent=num(o.contacts_total);$("#cntPr").textContent=num(pr.current);
   const kp=(v,l,s,c,act)=>`<div class="card kpi" style="--kc:var(${c})" data-go="${act}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
   const maxR=Math.max(1,...Object.values(roles));
-  const order=["suspect","seller","buyer","suspect-seller","prospect","agent"];
+  const order=["suspect","seller","buyer","suspect-seller","agent"];
   const d=o.req_daily_30d||[], mx=Math.max(1,...d.map(x=>x.n));
   const pts=d.map((x,i)=>`${(i/(d.length-1||1))*300},${66-(x.n/mx)*60}`).join(" ");
   p.innerHTML=`<div class="ov">
@@ -214,7 +214,7 @@ function feedHtml(list){
 
 /* ================= CONTACTEN ================= */
 let ctLoaded=false, ctRole="", ctScope="all", ctOff=0, ctSel=null;
-function buildRoleChips(){const order=["","suspect","seller","buyer","suspect-seller","prospect","agent"];
+function buildRoleChips(){const order=["","suspect","seller","buyer","suspect-seller","agent"];
   $("#ctRoles").innerHTML=order.map(r=>`<span class="chip ${ctRole===r?"on":""}" data-r="${r}" style="--cc:var(${r?ROLE[r][1]:"--c-ct"})">${r?ROLE[r][0]:t("allroles")}${OV&&r&&OV.roles?` <b>${num(OV.roles[r]||0)}</b>`:""}</span>`).join("");
   $$("#ctRoles .chip").forEach(c=>c.onclick=()=>{ctRole=c.dataset.r;buildRoleChips();loadContacts(true)})}
 $$("#ctScope button").forEach(b=>b.onclick=()=>{ctScope=b.dataset.v;$$("#ctScope button").forEach(x=>x.classList.toggle("on",x===b));loadContacts(true)});

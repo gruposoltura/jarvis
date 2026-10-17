@@ -17,8 +17,8 @@ const DRAFT_KEY="nexus-admin-draft-v1";
 /* ================= REFERENTIELIJSTEN ================= */
 const TEAM=[{wp:2,name:"Rick",email:"rick@gruposoltura.com",c:"#f97316"},{wp:3,name:"Marco",email:"marco@gruposoltura.com",c:"#3b82f6"},
   {wp:4,name:"Ingrid",email:"ingrid@gruposoltura.com",c:"#a855f7"},{wp:6,name:"Lisette",email:"lisette@gruposoltura.com",c:"#ec4899"}];
-const ROLES=[["suspect","Suspect","--r-suspect"],["prospect","Prospect","--r-prospect"],["seller","Seller","--r-seller"],["buyer","Buyer","--r-buyer"],
-  ["suspect_seller","Suspect-Seller","--r-suspect-seller"],["agent","Agent","--r-agent"],["partner",["Partner","Partner"],"--c-en"],["keyholder",["Sleutelhouder","Keyholder"],"--c-mp"]];
+/* Contactlabels = CPR-taxonomie cpr_contact_tag; alleen deze vijf bestaan (Rick, 17-10-2026) */
+const ROLES=[["suspect","Suspect","--r-suspect"],["seller","Seller","--r-seller"],["buyer","Buyer","--r-buyer"],["suspect_seller","Suspect-Seller","--r-suspect-seller"],["agent","Agent","--r-agent"]];
 const LANGS=[["nl","Nederlands","Dutch"],["en","Engels","English"],["es","Spaans","Spanish"],["de","Duits","German"],["fr","Frans","French"],
   ["sv","Zweeds","Swedish"],["no","Noors","Norwegian"],["da","Deens","Danish"],["fi","Fins","Finnish"],["ru","Russisch","Russian"],["other","Anders","Other"]];
 const SOURCES=[["website","Website"],["phone",["Telefoon","Phone"]],["email","E-mail"],["walkin",["Binnenloper","Walk-in"]],["agent",["Partnermakelaar","Partner agent"]],
@@ -77,7 +77,7 @@ const REF_PFX=["RH","BE","QU","LM","LP","PL","PB","DP","FO","AL","PR","SB","SR",
 /* ================= STATE ================= */
 const blankContact=()=>({title:"",first_name:"",last_name:"",company:"",language:"",country:"",state:"",city:"",postcode:"",street:"",street_number:"",
   birthday:"",website:"",referred_by:"",owner:"",source:"",roles:[],emails:[{email:"",kind:""}],phones:[{phone:"",kind:"mobile"}],
-  mailing_optin:false,prefs:[],search:{budget:"",property_type:"",period:""},internal_comments:""});
+  keyholder:false,mailing_optin:false,prefs:[],search:{budget:"",property_type:"",period:""},internal_comments:""});
 const blankProp=()=>({status:"draft",published:false,category:"",build_type:"resale",own_listing_type:"direct",reference:"",year_built:"",listed_at:new Date().toISOString().slice(0,10),
   dossier_complete:false,listing_agent:"",
   price:"",price_text:"",price_original:"",price_temp:"",price_temp_until:"",price_hidden:false,price_fixed:false,price_from:false,price_on_request:false,price_coming_soon:false,
@@ -97,7 +97,7 @@ function blank(){return{flow:"wizard",step:1,agentMode:"none",agent:null,newAgen
   wp:{owner:null,p:blankProp()},lk:{contact:null,prop:null,rel:"owner"}};}
 let S=blank(), MEDIA=[], WP_MEDIA=[], txLang="nl";
 function load(){try{const d=JSON.parse(localStorage.getItem(DRAFT_KEY)||"null");if(d){S=Object.assign(blank(),d);
-  S.c=Object.assign(blankContact(),d.c);S.p=Object.assign(blankProp(),d.p);S.wp.p=Object.assign(blankProp(),(d.wp||{}).p)}}catch(e){}}
+  S.c=Object.assign(blankContact(),d.c);S.c.roles=(S.c.roles||[]).filter(r=>ROLES.some(x=>x[0]===r));S.p=Object.assign(blankProp(),d.p);S.wp.p=Object.assign(blankProp(),(d.wp||{}).p)}}catch(e){}}
 let saveT;function persist(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(DRAFT_KEY,JSON.stringify(S));stamp()}catch(e){}},250)}
 function stamp(){const el=ROOT&&ROOT.querySelector("#adStamp");if(el)el.textContent=tr(["Concept bewaard in deze browser · ","Draft kept in this browser · "])+new Date().toLocaleTimeString(X.lang()==="en"?"en-GB":"nl-NL",{hour:"2-digit",minute:"2-digit"})}
 const getP=(o,path)=>path.split(".").reduce((a,k)=>a==null?a:a[k],o);
@@ -206,7 +206,7 @@ function stepContact(){
        inp("c.first_name",["Voornaam","First name"],{req:"save",ac:"off"}),inp("c.last_name",["Achternaam","Last name"],{ac:"off"}),inp("c.company",["Bedrijf","Company"]))
      +row(sel("c.language",["Correspondentietaal","Correspondence language"],LANGS.map(l=>[l[0],[l[1],l[2]]]),{req:"save"}),inp("c.birthday",["Geboortedatum","Birthday"],{type:"date"}),
        sel("c.owner",["Verantwoordelijk teamlid","Responsible team member"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}),sel("c.source",["Bron","Source"],SOURCES,{req:"save"}))
-     +`<small class="muted">${esc(tr(["Voornaam óf bedrijf is genoeg.","First name or company is enough."]))}</small>`)}
+     +chk("c.keyholder",["Sleutelhouder (wij hebben de sleutel)","Keyholder (we hold the key)"])+`<small class="muted">${esc(tr(["Voornaam óf bedrijf is genoeg.","First name or company is enough."]))}</small>`)}
   ${sec(["E-mail en telefoon","E-mail and phone"],`
     <div class="ad-list">${c.emails.map((e,i)=>`<div class="ad-row">${inp(`c.emails.${i}.email`,i?["Extra e-mail","Extra e-mail"]:"E-mail",{type:"email",w:3,req:i?"":"save",ac:"off"})}${sel(`c.emails.${i}.kind`,["Soort","Kind"],EMAIL_KINDS,{empty:false})}
       ${i?`<button class="ad-x" data-rm="emails" data-i="${i}" title="×">×</button>`:""}</div>`).join("")}<button class="btn sm" data-add="emails">+ ${esc(tr(["e-mail","e-mail"]))}</button></div>
@@ -215,7 +215,7 @@ function stepContact(){
     <small class="muted">${esc(tr(["Minstens één e-mailadres of telefoonnummer.","At least one e-mail address or phone number."]))}</small>`)}
   ${sec(["Adres","Address"],row(inp("c.street",["Straat","Street"],{w:2}),inp("c.street_number",["Nr.","No."]),inp("c.postcode",["Postcode","Postcode"]))
      +row(inp("c.city",["Plaats","City"],{w:2}),inp("c.state",["Provincie / regio","Province / region"]),inp("c.country",["Land","Country"],{list:"adCountries"})))}
-  ${c.roles.some(r=>r==="buyer"||r==="suspect"||r==="prospect")?sec(["Zoekprofiel","Search profile"],row(inp("c.search.budget",["Budget","Budget"],{ph:["bijv. 200-300k","e.g. 200-300k"]}),
+  ${c.roles.some(r=>r==="buyer"||r==="suspect")?sec(["Zoekprofiel","Search profile"],row(inp("c.search.budget",["Budget","Budget"],{ph:["bijv. 200-300k","e.g. 200-300k"]}),
      sel("c.search.property_type",["Woningtype","Property type"],CATS),inp("c.search.period",["Wanneer kopen","When to buy"],{ph:["bijv. binnen 6 maanden","e.g. within 6 months"]}),inp("c.website","Website"))):""}
   ${sec(["Mailings","Mailings"],`${chk("c.mailing_optin",["Toestemming voor mailings (opt-in)","Consent to mailings (opt-in)"])}${S.c.mailing_optin?multi("c.prefs",MAILINGS,{cols:3}):""}`)}
   ${sec(["Interne opmerking","Internal note"],row(area("c.internal_comments",["Alleen zichtbaar voor het team","Only visible to the team"],{rows:3})))}`}
@@ -435,7 +435,7 @@ function payload(flow){
   if(S.contactMode==="existing")out["core.contacts"]={bestaand:S.existing?`legacy_map contact wp_id ${S.existing.wp_id}`:null,roles_toevoegen:c.roles};
   else{out["core.contacts"]={title:c.title||null,first_name:c.first_name||null,last_name:c.last_name||null,company:c.company||null,language:c.language||null,country:c.country||null,state:c.state||null,
       city:c.city||null,postcode:c.postcode||null,street:c.street||null,street_number:c.street_number||null,birthday:c.birthday||null,website:c.website||null,referred_by:c.referred_by||null,
-      owner_id:teamName(c.owner),mailing_optin:c.mailing_optin,mailing_prefs:Object.fromEntries((c.mailing_optin?c.prefs:[]).map(k=>[k,{on:true}])),
+      owner_id:teamName(c.owner),keyholder:!!c.keyholder,mailing_optin:c.mailing_optin,mailing_prefs:Object.fromEntries((c.mailing_optin?c.prefs:[]).map(k=>[k,{on:true}])),
       search_profile:Object.fromEntries(Object.entries(c.search).filter(([,v])=>v)),internal_comments:c.internal_comments||null,source:"nexus:"+(c.source||"?")};
     out["core.contact_emails"]=c.emails.filter(e=>e.email).map((e,i)=>({email:e.email.trim().toLowerCase(),kind:e.kind||null,is_primary:i===0}));
     out["core.contact_phones"]=c.phones.filter(p=>p.phone).map((p,i)=>({phone:p.phone.trim(),kind:p.kind,is_primary:i===0}));
