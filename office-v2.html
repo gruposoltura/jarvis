@@ -858,11 +858,12 @@
   /* geen pijp (brein -> dock) onder een andere afdeling door: de lopers volgen de pijpen */
   var PIPE_GAP = 0.9;
   function pipeClear(i) {
-    var d = S.depts[i], pi = dockPoint(d);
+    var d = S.depts[i], pi = dockInfo(d).pipe;
+    function hits(P, e) { for (var k = 1; k < P.length; k++) if (segHitsRect(P[k - 1], P[k], e, PIPE_GAP)) return true; return false; }
     for (var j = 0; j < S.depts.length; j++) {
       if (j === i) continue;
       var e = S.depts[j];
-      if (segHitsRect([0, 0], pi, e, PIPE_GAP) || segHitsRect([0, 0], dockPoint(e), d, PIPE_GAP)) return false;
+      if (hits(pi, e) || hits(dockInfo(e).pipe, d)) return false;
     }
     return true;
   }
@@ -917,7 +918,7 @@
       var c = iso(d.x + d.w / 2, d.y + d.d / 2, 0);
       d._c = c;
       /* aanhechtpunt van de pijp: de hoek het dichtst bij het brein (dock) */
-      d._port = dockPoint(d);
+      d._port = dockPoint(d); d._pipe = dockInfo(d).pipe;
     });
     /* tekenvolgorde van achter naar voor (op x+y van het middelpunt) */
     S.paint = S.depts.slice().sort(function (p, q) { return (p.x + p.w / 2 + p.y + p.d / 2) - (q.x + q.w / 2 + q.y + q.d / 2); });
@@ -1128,13 +1129,13 @@
   function stColor(k) { return { working: "#00d4ff", ok: "#3ee08f", error: "#ff5d5d", silent: "#ffb547", paused: "#8aa0b5", idle: "#3a4a5c" }[k] || "#8aa0b5"; }
 
   function pipeInner(d) {
-    var a = iso(0, 0, 0), b = iso(d._port[0], d._port[1], 0);
+    var P = (d._pipe || [[0, 0], d._port]).map(function (p) { return iso(p[0], p[1], 0); });
     var s = deptStats(d), t = Math.max(1.6, Math.min(10, 10 - Math.log10(1 + s.runs) * 3.2));
-    var ln = 'x1="' + f1(a[0]) + '" y1="' + f1(a[1]) + '" x2="' + f1(b[0]) + '" y2="' + f1(b[1]) + '"';
-    return '<line class="pipe-base" ' + ln + "/>"
-      + '<line class="pipe-edge" ' + ln + "/>"
-      + '<line class="pipe-core" ' + ln + "/>"
-      + '<line class="pipe-flow' + (s.runs ? "" : " quiet") + '" style="--t:' + t.toFixed(1) + 's" ' + ln + "/>";
+    var ln = 'points="' + pts(P) + '" stroke-linejoin="round"';
+    return '<polyline class="pipe-base" ' + ln + "/>"
+      + '<polyline class="pipe-edge" ' + ln + "/>"
+      + '<polyline class="pipe-core" ' + ln + "/>"
+      + '<polyline class="pipe-flow' + (s.runs ? "" : " quiet") + '" style="--t:' + t.toFixed(1) + 's" ' + ln + "/>";
   }
 
   /* Brain = gerenderde sprite (platform + lichtpilaar); de ademende halo eromheen blijft code zodat hij
@@ -1390,13 +1391,61 @@
   var WALL_FURN = ["shelf", "tallshelf", "locker", "filing", "credenza", "printer", "coffee", "cooler", "s:cabinet", "s:rack", "s:board"];
   function itemLen(id) { return id.indexOf("s:") === 0 ? SPRITES[id.slice(2)][1] : FURN[id].L; }
 
-  /* aansluitpunt van de datapijp: de hoek die het dichtst bij het brein ligt, iets naar binnen */
-  function dockPoint(d) {
-    var cs = [[d.x, d.y, 1, 1], [d.x + d.w, d.y, -1, 1], [d.x + d.w, d.y + d.d, -1, -1], [d.x, d.y + d.d, 1, -1]], best = null;
-    cs.forEach(function (c) { var q = Math.hypot(c[0], c[1]); if (!best || q < best.q) best = { q: q, c: c }; });
-    var c = best.c;
-    return [c[0] + c[2] * 0.55, c[1] + c[3] * 0.55];
+  /* 17-10: aansluitpunt van de datapijp. Lopers volgen de pijp en gaan via de voordeur naar binnen, dus de
+     pijp sluit bij voorkeur aan aan de zichtbare kant: naast de voordeur (y1) of de zijdeur (x1), anders een
+     zijhoek; de achterhoek alleen als niets anders kan. Kandidaat telt alleen als de pijp (brein -> buitenpunt)
+     niet door de eigen afdeling loopt. Score = pijplengte + looppad langs de omtrek naar de voordeur,
+     met een grote straf voor een pad achter de hoge achtermuren langs. */
+  /* lengte (cellen) van een looppad dat achter de hoge achterwanden van afdeling d verdwijnt */
+  function hiddenLen(d, P) {
+    var H = SLAB + WALL_H, W1 = [iso(d.x, d.y, 0), iso(d.x + d.w, d.y, 0), iso(d.x + d.w, d.y, H), iso(d.x, d.y, H)],
+        W2 = [iso(d.x, d.y, 0), iso(d.x, d.y + d.d, 0), iso(d.x, d.y + d.d, H), iso(d.x, d.y, H)], hid = 0;
+    function inPoly(pt, Q) { var c = false; for (var i = 0, j = Q.length - 1; i < Q.length; j = i++) if (((Q[i][1] > pt[1]) !== (Q[j][1] > pt[1])) && (pt[0] < (Q[j][0] - Q[i][0]) * (pt[1] - Q[i][1]) / (Q[j][1] - Q[i][1]) + Q[i][0])) c = !c; return c; }
+    for (var i = 1; i < P.length; i++) {
+      var L = Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]), n = Math.max(1, Math.ceil(L / 0.4));
+      for (var k = 0; k < n; k++) {
+        var x = P[i - 1][0] + (P[i][0] - P[i - 1][0]) * k / n, y = P[i - 1][1] + (P[i][1] - P[i - 1][1]) * k / n;
+        if (x >= d.x + d.w || y >= d.y + d.d) continue;
+        var sp = iso(x, y, 0), head = [sp[0], sp[1] - 50];
+        if (inPoly(head, W1) || inPoly(head, W2)) hid += L / n;
+      }
+    }
+    return hid;
   }
+  function plen(P) { var L = 0; for (var i = 1; i < P.length; i++) L += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]); return L; }
+  function dockInfo(d) {
+    var key = [d.x, d.y, d.w, d.d].map(function (v) { return v.toFixed(3); }).join(",");
+    if (d._dk && d._dkk === key) return d._dk;
+    var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, I = 0.55, O = OUT || 0.65;
+    var fx = frontDoorX(d), gy = doorY(d), sh = DOOR / 2 + 0.7, c = [];
+    [fx + sh, fx - sh].forEach(function (sx) { if (sx > x0 + 0.8 && sx < x1 - 0.8) c.push({ p: [sx, y1 - I], out: [sx, y1 + O], k: "S" }); });
+    [gy + sh, gy - sh].forEach(function (sy) { if (sy > y0 + 0.8 && sy < y1 - 0.8) c.push({ p: [x1 - I, sy], out: [x1 + O, sy], k: "E" }); });
+    c.push({ p: [x1 - I, y1 - I], out: [x1 + O, y1 + O], k: "C2" }, { p: [x0 + I, y1 - I], out: [x0 - O, y1 + O], k: "C3" },
+           { p: [x1 - I, y0 + I], out: [x1 + O, y0 - O], k: "C1" }, { p: [x0 + I, y0 + I], out: [x0 - O, y0 - O], k: "C0" });
+    /* zijhoek via een knik: eerst (boven de achtermuur langs) tot naast de zijwand, dan recht naar de hoek */
+    var aim = x0 + y0 - (SLAB + WALL_H + 14) / HH;
+    [["C3", (x0 - O) - (y1 + O) - 0.3], ["C1", (x1 + O) - (y0 - O) + 0.3]].forEach(function (v) {
+      var base = c.filter(function (q) { return q.k === v[0]; })[0], Q = [(aim + v[1]) / 2, (aim - v[1]) / 2];
+      c.push({ p: base.p, out: base.out, k: v[0] + "v", via: [Q] });
+    });
+    var pm = perim(outRect(d)), sF = pS(pm, [fx, y1 + O]), best = null;
+    c.forEach(function (q) {
+      var P = [[0, 0]].concat(q.via || []).concat([q.out]);
+      for (var i = 1; i < P.length; i++) if (segHitsRect(P[i - 1], P[i], d, -0.05)) return;   /* pijp zou door de eigen afdeling lopen */
+      var sA = pS(pm, q.out), p1 = pPath(pm, sA, sF, 1), p2 = pPath(pm, sA, sF, -1);
+      var pen = function (p) { return p.corners.indexOf(0) >= 0 ? 60 : 0; };
+      var walk = Math.min(p1.len + pen(p1), p2.len + pen(p2)) + (q.k === "C0" ? 60 : 0);
+      var score = plen(P) + walk;
+      if (best && score >= best.score) return;
+      score += 4 * hiddenLen(d, P);
+      if (!best || score < best.score) { best = q; q.score = score; }
+    });
+    if (!best) best = c.filter(function (q) { return q.k === "C0"; })[0];
+    best.pipe = [[0, 0]].concat(best.via || []).concat([best.p]);
+    d._dk = best; d._dkk = key;
+    return best;
+  }
+  function dockPoint(d) { return dockInfo(d).p; }
   function dockInner(d) {
     var p = d._port, c = iso(p[0], p[1], SLAB), R = 0.42;
     return '<g class="dock"><title>Aansluiting datapijp naar het JARVIS-brein</title>'
@@ -1866,7 +1915,8 @@
     if (document.hidden) return;
     var a = S.byId[id], d = a && deptOf(a); if (!a || !d || !a._p || !d._port) return;
     var c = iso(0, 0, 0), ps = iso(d._port[0], d._port[1], SLAB), pf = iso(d._port[0], d._port[1], 0);
-    var pts = [[a._p[0], a._p[1] - 30], [a._p[0], a._p[1] - 6], ps, pf, [c[0], c[1] - 20], [c[0], c[1] - LIVE_LIFT - LIVE_H * 0.42]];
+    var via = (d._pipe || []).slice(1, -1).reverse().map(function (p) { return iso(p[0], p[1], 0); });
+    var pts = [[a._p[0], a._p[1] - 30], [a._p[0], a._p[1] - 6], ps, pf].concat(via).concat([[c[0], c[1] - 20], [c[0], c[1] - LIVE_LIFT - LIVE_H * 0.42]]);
     var segs = [], tot = 0;
     for (var i = 1; i < pts.length; i++) { var l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push(l); tot += l; }
     var NS = "http://www.w3.org/2000/svg", g = document.createElementNS(NS, "g");
@@ -2140,19 +2190,29 @@
       var ax = d.x + a._lx + ISLE, row = d.y + Math.min(d.d - 1.0, a._ly + ROWI), axT = d.x + t._lx + ISLE;
       return cleanRoute([[start, SLAB], [[ax, start[1]], SLAB], [[ax, row], SLAB], [[axT, row], SLAB], [[axT, vis[1]], SLAB], [vis, SLAB]]);
     }
-    var pm = perim(outRect(d)), sC = pm.cs[dockCorner(d)], Cs = pP(pm, sC), best = null;
+    var dkS = dockInfo(d), pm = perim(outRect(d)), Cs = dkS.out, sC = pS(pm, Cs), best = null;
     ["N", "W", "S", "E"].forEach(function (sd) {
-      var R0 = routeOut(d, a, sd), sA = pS(pm, R0[R0.length - 1][0]), p1 = pPath(pm, sA, sC, 1), p2 = pPath(pm, sA, sC, -1), pp = p1.len <= p2.len ? p1 : p2;
-      var L = routeLen(R0) + pp.len;
-      if (!best || L < best.L) best = { L: L, R: R0, P: pp.pts };
+      /* deur en richting om de afdeling: kort, en zo min mogelijk achter de hoge achtermuren langs */
+      var R0 = routeOut(d, a, sd), e0 = R0[R0.length - 1][0], sA = pS(pm, e0);
+      [pPath(pm, sA, sC, 1), pPath(pm, sA, sC, -1)].forEach(function (pp) {
+        var L = routeLen(R0) + pp.len + 4 * hiddenLen(d, [e0].concat(pp.pts));
+        if (!best || L < best.L) best = { L: L, R: R0, P: pp.pts };
+      });
     });
     var R = best.R.slice();
     best.P.forEach(function (p) { R.push([p, 0]); });
-    var pmT = perim(outRect(dt)), sCt = pmT.cs[dockCorner(dt)], Ct = pP(pmT, sCt), ring = perim([-RING, -RING, RING, RING]);
+    var dkT = dockInfo(dt), pmT = perim(outRect(dt)), Ct = dkT.out, sCt = pS(pmT, Ct), ring = perim([-RING, -RING, RING, RING]);
     function onRing(c) { var m = RING / Math.max(Math.abs(c[0]), Math.abs(c[1]), 1e-6); return [c[0] * m, c[1] * m]; }
     function beside(c) { var L = Math.hypot(c[0], c[1]) || 1, n = [-c[1] / L, c[0] / L]; if (n[0] + n[1] < 0) n = [-n[0], -n[1]]; return [n[0] * 0.3, n[1] * 0.3]; }
-    var As = onRing(Cs), At = onRing(Ct), ns = beside(Cs), nt = beside(Ct);
-    R.push([[Cs[0] + ns[0], Cs[1] + ns[1]], 0], [[As[0] + ns[0], As[1] + ns[1]], 0], [As, 0]);
+    /* langs de pijp (met knik als die er is): buitenpunt -> knikpunten -> ring om het brein, 0,3 cel ernaast */
+    function alongPipe(dk) {
+      var first = (dk.via && dk.via[0]) || dk.out, n = beside(first), Rg = onRing(first);
+      var P = [dk.out].concat((dk.via || []).slice().reverse()).concat([Rg]);
+      return P.map(function (p) { return [p[0] + n[0], p[1] + n[1]]; }).concat([Rg]);
+    }
+    var srcPipe = alongPipe(dkS), dstPipe = alongPipe(dkT).reverse();
+    var As = srcPipe[srcPipe.length - 1], At = dstPipe[0], nt = beside((dkT.via && dkT.via[0]) || Ct);
+    R.push([Cs, 0]); srcPipe.forEach(function (p) { R.push([p, 0]); });
     var sA = pS(ring, As), sB = pS(ring, At), r1 = pPath(ring, sA, sB, 1), r2 = pPath(ring, sA, sB, -1);
     function front(p) { return p.corners.indexOf(2) >= 0; }
     var rp = front(r1) && !front(r2) && r1.len <= r2.len * 1.7 ? r1 : front(r2) && !front(r1) && r2.len <= r1.len * 1.7 ? r2 : (r1.len <= r2.len ? r1 : r2);
@@ -2161,10 +2221,10 @@
     var sF = pS(pmT, inR[0][0]), q1 = pPath(pmT, sCt, sF, 1), q2 = pPath(pmT, sCt, sF, -1);
     function back(p) { return p.corners.indexOf(0) >= 0; }
     var qp = back(q1) && !back(q2) ? q2 : back(q2) && !back(q1) ? q1 : (q1.len <= q2.len ? q1 : q2);
-    var tail = [[At[0] + nt[0], At[1] + nt[1]], [Ct[0] + nt[0], Ct[1] + nt[1]], Ct].concat(qp.pts);
+    var tail = dstPipe.slice(1).concat([Ct]).concat(qp.pts);
     /* zit de pijp aan de achterhoek (achter de hoge muren), dan halverwege de pijp afbuigen naar een
        zijhoek, zodat de loper zichtbaar langs de voorkant naar de voordeur loopt */
-    if (pmT.cs.indexOf(sCt) === 0 || back(qp)) {
+    if (dkT.k === "C0" || back(qp)) {
       /* afbuigpunt op de pijp zo hoog op het scherm dat de loper boven de hoge achtermuur langs loopt */
       var r = pmT.r, sAt = At[0] + At[1], sCt2 = Ct[0] + Ct[1], aim = dt.x + dt.y - (SLAB + WALL_H + 12) / HH;
       var tb = sCt2 !== sAt ? Math.max(0.15, Math.min(0.6, (aim - sAt) / (sCt2 - sAt))) : 0.5;
@@ -2238,11 +2298,8 @@
   /* ---- subworkflow: extra werkplek volledig buiten de afdeling, via een deur en een loopbrug ---- */
   function pipeHits(b) {
     return S.depts.some(function (q) {
-      if (!q._port) return false;
-      for (var i = 0; i <= 30; i++) {
-        var t = i / 30, x = q._port[0] * t, y = q._port[1] * t;
-        if (x > b.x - 0.3 && x < b.x + b.w + 0.3 && y > b.y - 0.3 && y < b.y + b.d + 0.3) return true;
-      }
+      var P = q._pipe || (q._port ? [[0, 0], q._port] : null); if (!P) return false;
+      for (var k = 1; k < P.length; k++) if (segHitsRect(P[k - 1], P[k], b, 0.3)) return true;
       return false;
     });
   }
