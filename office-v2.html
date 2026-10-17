@@ -1430,12 +1430,12 @@
   function wallPlan(d) {
     var key = [d.x, d.y, d.w, d.d].map(function (v) { return v.toFixed(2); }).join(",");
     if (d._wp && d._wpk === key) return d._wp;
-    var r = rngOf(hash(d.name) ^ 0xa11ce), plan = { x: [], y: [] }, budget = 1 + Math.floor(r() * 3);
+    var r = rngOf(hash(d.name) ^ 0xa11ce), plan = { x: [], y: [] }, budget = Math.floor(r() * 3);   /* 17-10: hooguit 2 dingen aan de muur per afdeling */
     [["x", d.x, d.x + d.w, doorX(d)], ["y", d.y, d.y + d.d, doorY(d)]].forEach(function (W) {
       var A = W[1], B = W[2], g = W[3];
       var busy = [[A - 1, A + 0.4], [g - DOOR / 2 - 0.25, g + DOOR / 2 + 0.25], [B - 0.2, B + 1]];
       function free(a, b) { return a >= A + 0.35 && b <= B - 0.2 && !busy.some(function (q) { return a < q[1] && q[0] < b; }); }
-      var nWin = 1 + Math.floor(r() * 3), k = 0, t;
+      var nWin = 1 + Math.floor(r() * 2), k = 0, t;
       for (t = 0; t < 40 && k < nWin; t++) {
         var wide = r() < 0.5, L = wide ? 1.2 + r() * 0.9 : 0.4 + r() * 0.24;
         var a = A + 0.35 + r() * Math.max(0, B - A - 0.55 - L), b = a + L;
@@ -1591,11 +1591,18 @@
     var furn = WALL_FURN.slice().sort(function () { return r() - 0.5; }), fi = 0;
     var plants = WALL_PLANTS.slice().sort(function () { return r() - 0.5; }), pi = 0;
     function nextPlant() { return plants[pi++ % plants.length]; }
+    /* 17-10: rustiger wanden. Niets voor een raam of iets dat aan de muur hangt, ruime tussenruimte
+       en hooguit één meubel per ~2,2 cel wand. */
+    var wplan = wallPlan(d);
     function placeWall(ax, from, to, door) {
-      var u = from, n = 0;
-      while (u < to - 0.35) {
+      var u = from, n = 0, placed = 0, maxItems = Math.max(2, Math.floor((to - from) / 2.2));
+      var free = wplan[ax].map(function (it) { return [it.a - 0.25, it.b + 0.25]; });
+      while (u < to - 0.35 && placed < maxItems) {
         var plantTurn = (n % 3 === 2) || r() < 0.18, id = plantTurn ? null : furn[fi % furn.length], L = id ? itemLen(id) : 0.5;
         if (u + L > to) { id = null; L = 0.5; if (u + L > to) break; }
+        var blk = null;
+        free.forEach(function (q) { if (u < q[1] && q[0] < u + L && (!blk || q[1] > blk[1])) blk = q; });
+        if (blk) { u = blk[1] + 0.02; continue; }   /* raam of wanddecoratie vrijhouden */
         var mid = u + L / 2;
         if (Math.abs(mid - door) < DOOR / 2 + L / 2 + 0.45) { u = door + DOOR / 2 + 0.5; continue; }   /* doorgang + open deur vrijhouden */
         var cx = ax === "x" ? mid : x0 + 0.3, cy = ax === "x" ? y0 + 0.3 : mid;
@@ -1611,7 +1618,7 @@
             push(cx, cy, FURN[id].f(F, r));
           }
         }
-        u += L + 0.08 + r() * 0.2; n++;
+        u += L + 0.45 + r() * 0.7; n++; placed++;
       }
     }
     /* achterhoek: grote plant (tenzij daar het dock zit) */
