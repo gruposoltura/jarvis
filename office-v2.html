@@ -844,6 +844,28 @@
     var cw = cardWidth(d) / 2;
     return [Math.min(a[0], t[0] - cw), t[1] - CARD_LIFT - cardHeight(d), Math.max(b[0], t[0] + cw), u[1] + 8];
   }
+  /* 17-10: snijdt het lijnstuk p -> q de rechthoek van afdeling d (met marge g)? (Liang-Barsky) */
+  function segHitsRect(p, q, d, g) {
+    var x0 = d.x - g, y0 = d.y - g, x1 = d.x + d.w + g, y1 = d.y + d.d + g, dx = q[0] - p[0], dy = q[1] - p[1], t0 = 0, t1 = 1;
+    var P = [-dx, dx, -dy, dy], Q = [p[0] - x0, x1 - p[0], p[1] - y0, y1 - p[1]];
+    for (var i = 0; i < 4; i++) {
+      if (P[i] === 0) { if (Q[i] < 0) return false; continue; }
+      var r = Q[i] / P[i];
+      if (P[i] < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; }
+    }
+    return t0 < t1;
+  }
+  /* geen pijp (brein -> dock) onder een andere afdeling door: de lopers volgen de pijpen */
+  var PIPE_GAP = 0.9;
+  function pipeClear(i) {
+    var d = S.depts[i], pi = dockPoint(d);
+    for (var j = 0; j < S.depts.length; j++) {
+      if (j === i) continue;
+      var e = S.depts[j];
+      if (segHitsRect([0, 0], pi, e, PIPE_GAP) || segHitsRect([0, 0], dockPoint(e), d, PIPE_GAP)) return false;
+    }
+    return true;
+  }
   function sOverlap(p, q, gap) { return p[0] < q[2] + gap && q[0] < p[2] + gap && p[1] < q[3] + gap && q[1] < p[3] + gap; }
   /* Radiaal: afdelingen op een schermellips rond de Brain (0,0), hoekbreedte naar schermbreedte;
      de straal groeit tot geen platform of kaartje een ander raakt. */
@@ -870,6 +892,7 @@
       for (var i = 0; i < n && ok; i++) {
         if (overlaps(S.depts[i], brain, DEPT_GAP) || sOverlap(S.depts[i]._sb, bsb, 6)) ok = false;
         for (var j = i + 1; j < n && ok; j++) if (overlaps(S.depts[i], S.depts[j], DEPT_GAP) || sOverlap(S.depts[i]._sb, S.depts[j]._sb, 10)) ok = false;
+        if (ok && guard < 300 && !pipeClear(i)) ok = false;
       }
       if (!ok) R += 6;
     }
@@ -879,7 +902,7 @@
       var d = S.depts[i];
       if (overlaps(d, brain, DEPT_GAP) || sOverlap(d._sb, bsb, 6)) return false;
       for (var j = 0; j < n; j++) if (j !== i && (overlaps(d, S.depts[j], DEPT_GAP * 0.6) || sOverlap(d._sb, S.depts[j]._sb, 6))) return false;
-      return true;
+      return pipeClear(i);
     }
     function placeAt(d, cx, cy) { var w = unIso(cx, cy); d.x = w[0] - d.w / 2; d.y = w[1] - d.d / 2; d._sc = [cx, cy]; d._sb = screenBoxOf(d); }
     var order = S.depts.map(function (d, i) { return i; }).sort(function (a, b) { return (S.depts[b].w * S.depts[b].d) - (S.depts[a].w * S.depts[a].d); });
@@ -2157,13 +2180,7 @@
     tail.forEach(function (p) { R.push([p, 0]); });
     return cleanRoute(R.concat(inR));
   }
-  function segHitsDept(p, q) {
-    for (var i = 1; i < 20; i++) {
-      var t = i / 20, x = p[0] + (q[0] - p[0]) * t, y = p[1] + (q[1] - p[1]) * t;
-      if (S.depts.some(function (d) { return x > d.x - 0.2 && x < d.x + d.w + 0.2 && y > d.y - 0.2 && y < d.y + d.d + 0.2; })) return true;
-    }
-    return false;
-  }
+  function segHitsDept(p, q) { return S.depts.some(function (d) { return segHitsRect(p, q, d, 0.3); }); }
   function busyAgent(id) { return S.subs.some(function (s) { return s.live && (s.from === id || (s.visit && s.to === id)); }); }
 
   /* ---- overleg tussen agents (sub-workflow-boog): de aanroeper loopt naar het bureau van de ander ---- */
