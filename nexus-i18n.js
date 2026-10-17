@@ -68,7 +68,19 @@ window.NEXUS_I18N = {
     "en.known": "Velden die NEXUS herkent:", "en.other": "— elk ander veld wordt ook getoond.",
     "why.buyer": "koper van {r}", "why.seller": "verkoper van {r}", "why.owner": "eigenaar van {r}", "why.offerer": "aanbieder van {r}", "why.household": "zelfde adres/telefoon",
     "tl.viewing": "bezichtiging", "Kantoor": "Kantoor",
-    "p.owner": "Eigenaar", "p.agentc": "Aanbiedend makelaar", "p.noowner": "Geen eigenaar gekoppeld in CPR", "p.openowner": "Open eigenaar →", "lang": "Taal"
+    "p.owner": "Eigenaar", "p.agentc": "Aanbiedend makelaar", "p.noowner": "Geen eigenaar gekoppeld in CPR", "p.openowner": "Open eigenaar →", "lang": "Taal",
+    "nocontactdata": "Geen telefoon of e-mail bekend", "intro.by": "Aangebracht door agent", "intro.open": "Open agent →", "st.mailings": "Opt-ins / opt-outs",
+    "f.first": "Voornaam", "f.last": "Achternaam", "f.homeaddr": "Adres (thuisland)", "f.passport": "Paspoort", "f.language": "Taal", "f.jobtitle": "Functie",
+    "f.socials": "Social media", "f.custom": "Extra veld", "f.introducer": "Aangebracht door", "h.cpr": "CPR-gegevens",
+    "ml.master": "Mailing opt-in (CPR)", "ml.delivered": "Mails afgeleverd", "ml.opened": "Geopend", "ml.clicked": "Geklikt", "ml.lastmail": "Laatste mail",
+    "ml.unsub": "Afgemeld op", "ml.bounce": "Bounce", "ml.jarvis": "JARVIS / Brevo-mailings", "ml.changed": "laatst gewijzigd", "ml.type": "Mailing", "ml.status": "Status",
+    "ml.source": "Bron", "ml.optin": "Opt-in", "ml.optout": "Opt-out", "ml.updated": "Bijgewerkt", "ml.in": "aan", "ml.out": "uit", "ml.default": "standaard",
+    "ml.legacy": "Oudere opt-outs", "ml.cpr": "CPR-mailings (WordPress)", "ml.lastsent": "Laatst verstuurd", "ml.scheduled": "gepland",
+    "mt.new_listing": "Nieuwe woning", "mt.welcome_seller": "Welkom verkoper", "mt.review_invite": "Google review-uitnodiging", "mt.reserved": "Opvolging gereserveerd",
+    "mt.review_viewing": "Review na bezichtiging", "mt.weekly_news": "Wekelijks nieuws", "mt.monthly_matches": "Maandelijkse matches", "mt.price_reduced": "Prijsverlagingen (wekelijks)", "mt.market_report": "Marktbericht (wekelijks)",
+    "cm.newlistings": "Nieuwe woningen", "cm.featuredlistings": "Uitgelichte woningen", "cm.reducedlistings": "Prijsverlagingen", "cm.bargain": "Koopje (los)", "cm.bargains": "Koopjeslijst",
+    "cm.hottop10": "Hot Top 10", "cm.underoffer": "Onder bod", "cm.newsletters": "Nieuwsbrieven", "cm.news": "Nieuws", "cm.matches": "Matches", "cm.adhocmails": "Ad-hoc mails",
+    "cm.extra": "Extra", "cm.birthdays": "Verjaardag", "cm.reviewus": "Review-uitnodiging"
   },
   en: {
     "login.lead": "One place for every contact, every property and every connection. Sign in with your <b>@gruposoltura.com</b> account.",
@@ -138,6 +150,18 @@ window.NEXUS_I18N = {
     "en.known": "Fields NEXUS recognises:", "en.other": "— any other field is shown too.",
     "why.buyer": "buyer of {r}", "why.seller": "seller of {r}", "why.owner": "owner of {r}", "why.offerer": "listed by agent for {r}", "why.household": "same address/phone",
     "tl.viewing": "viewing", "Kantoor": "Office",
-    "p.owner": "Owner", "p.agentc": "Listing agent", "p.noowner": "No owner linked in CPR", "p.openowner": "Open owner →", "lang": "Language"
+    "p.owner": "Owner", "p.agentc": "Listing agent", "p.noowner": "No owner linked in CPR", "p.openowner": "Open owner →", "lang": "Language",
+    "nocontactdata": "No phone or email known", "intro.by": "Introduced by agent", "intro.open": "Open agent →", "st.mailings": "Opt-ins / opt-outs",
+    "f.first": "First name", "f.last": "Last name", "f.homeaddr": "Address (home country)", "f.passport": "Passport", "f.language": "Language", "f.jobtitle": "Job title",
+    "f.socials": "Social media", "f.custom": "Custom field", "f.introducer": "Introduced by", "h.cpr": "CPR data",
+    "ml.master": "Mailing opt-in (CPR)", "ml.delivered": "Emails delivered", "ml.opened": "Opened", "ml.clicked": "Clicked", "ml.lastmail": "Last email",
+    "ml.unsub": "Unsubscribed on", "ml.bounce": "Bounce", "ml.jarvis": "JARVIS / Brevo mailings", "ml.changed": "last changed", "ml.type": "Mailing", "ml.status": "Status",
+    "ml.source": "Source", "ml.optin": "Opt-in", "ml.optout": "Opt-out", "ml.updated": "Updated", "ml.in": "on", "ml.out": "off", "ml.default": "default",
+    "ml.legacy": "Older opt-outs", "ml.cpr": "CPR mailings (WordPress)", "ml.lastsent": "Last sent", "ml.scheduled": "scheduled",
+    "mt.new_listing": "New listing", "mt.welcome_seller": "Seller welcome", "mt.review_invite": "Google review invitation", "mt.reserved": "Reserved follow-up",
+    "mt.review_viewing": "Review after viewing", "mt.weekly_news": "Weekly news", "mt.monthly_matches": "Monthly matches", "mt.price_reduced": "Price reductions (weekly)", "mt.market_report": "Market report (weekly)",
+    "cm.newlistings": "New listings", "cm.featuredlistings": "Featured listings", "cm.reducedlistings": "Price reductions", "cm.bargain": "Bargain (single)", "cm.bargains": "Bargains list",
+    "cm.hottop10": "Hot Top 10", "cm.underoffer": "Under offer", "cm.newsletters": "Newsletters", "cm.news": "News", "cm.matches": "Matches", "cm.adhocmails": "Ad-hoc emails",
+    "cm.extra": "Extra", "cm.birthdays": "Birthday", "cm.reviewus": "Review invitation"
   }
 };

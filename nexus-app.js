@@ -230,16 +230,19 @@ async function openContact(id){
 function renderContact(){
   const c=CT.contact, raw=CT.raw||{}, d=$("#ctDetail");
   const name=c.full_name||[raw.first_name,raw.last_name].filter(Boolean).join(" ")||c.email;
-  const tabs=[["profiel",t("st.profile")],["woningen",t("st.props"),(CT.properties||[]).length+(CT.interests||[]).length],["tijdlijn",t("st.timeline"),(CT.timeline||[]).length],["relaties",t("st.relations"),(CT.relations||[]).length+(CT.interested_in_mine||[]).length],["verrijking",t("st.enrich"),(CT.enrichment||[]).length]];
-  const tel=(c.phone||"").replace(/[^\d+]/g,"");
+  const tabs=[["profiel",t("st.profile")],["woningen",t("st.props"),(CT.properties||[]).length+(CT.interests||[]).length],["tijdlijn",t("st.timeline"),(CT.timeline||[]).length],["relaties",t("st.relations"),(CT.relations||[]).length+(CT.interested_in_mine||[]).length],["mailings",t("st.mailings")],["verrijking",t("st.enrich"),(CT.enrichment||[]).length]];
+  const D=CT.details||{};
+  const phones=(D.phones&&D.phones.length?D.phones.map(x=>x.value):[c.phone]).filter(Boolean);
+  const emails=(D.emails&&D.emails.length?D.emails.map(x=>x.value):[c.email]).filter(Boolean);
+  const cleanTel=v=>String(v).replace(/[^\d+]/g,""), waNum=v=>cleanTel(v).replace(/^\+/,"").replace(/^00/,"");
+  const intro=D.introducer;
   d.innerHTML=`<div class="dh"><div class="ini big" style="background:${hue(name)}">${esc(initials(name))}</div>
-    <div style="min-width:0"><h2>${esc(name)}</h2>
-      <div class="meta">${c.email?`<a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a>`:""}${c.phone?`<a href="tel:${esc(tel)}">☎ ${esc(c.phone)}</a>`:""}
-        ${c.language?`<span>🌐 ${esc(c.language)}</span>`:""}<span>👤 <b style="color:${REPC[c.rep]||"#94a3b8"}">${esc(rep(c.rep))}</b></span><span class="muted">#${c.wp_id}</span></div>
-      <div class="roles">${(c.roles||[]).map(roleTag).join("")}</div></div>
-    <div class="acts">${tel?`<a href="https://wa.me/${esc(tel.replace(/^\+/,"").replace(/^00/,""))}" target="_blank" rel="noopener">WhatsApp</a>`:""}
-      ${raw.cpr_link?`<a href="${esc(raw.cpr_link)}" target="_blank" rel="noopener">${t("act.cpr")}</a>`:""}
-      <a href="https://gruposoltura.com/wp-admin/post.php?post=${c.wp_id}&action=edit" target="_blank" rel="noopener">${t("act.edit")}</a></div></div>
+    <div style="min-width:0;flex:1"><h2>${esc(name)}</h2>
+      <div class="roles">${(c.roles||[]).map(roleTag).join("")}<span class="sm muted" style="margin-left:6px">👤 <b style="color:${REPC[c.rep]||"#94a3b8"}">${esc(rep(c.rep))}</b> · #${c.wp_id}${c.language?" · 🌐 "+esc(c.language):""}</span></div>
+      <div class="cstrip">${phones.map(p=>`<span class="cpill"><a href="tel:${esc(cleanTel(p))}">☎ ${esc(p)}</a><a class="wa" href="https://wa.me/${esc(waNum(p))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${emails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}${!phones.length&&!emails.length?`<span class="muted sm">${t("nocontactdata")}</span>`:""}</div>
+      ${intro?`<div class="introbar" data-c="${intro.wp_id}">🤝 ${t("intro.by")} <b>${esc(intro.name||intro.email)}</b>${intro.phone?` · ${esc(intro.phone)}`:""}${intro.email?` · ${esc(intro.email)}`:""}<span class="go">${t("intro.open")}</span></div>`:""}</div>
+    <div class="acts">${raw.cpr_link?`<a href="${esc(raw.cpr_link)}" target="_blank" rel="noopener">${t("act.cpr")}</a>`:""}
+      <a href="https://gruposoltura.com/wp-admin/admin.php?page=cpr-contacts&view=overview&id=${c.wp_id}" target="_blank" rel="noopener">${t("act.edit")}</a></div></div>
    <div class="subtabs">${tabs.map(x=>`<button class="st ${ctSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
    <div class="dbody scroll" id="ctBody"></div>`;
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{ctSub=b.dataset.s;renderContact()});
@@ -248,28 +251,54 @@ function renderContact(){
   if(ctSub==="woningen")B.innerHTML=ctProps();
   if(ctSub==="tijdlijn")B.innerHTML=timeline(CT.timeline);
   if(ctSub==="relaties")B.innerHTML=ctRelations(c);
+  if(ctSub==="mailings")B.innerHTML=ctMailings(c);
   if(ctSub==="verrijking")B.innerHTML=enrichList(CT.enrichment,"contact");
 }
 function kv(pairs){const f=pairs.filter(p=>p[1]!=null&&p[1]!=="");return f.length?`<dl class="kv">${f.map(p=>`<dt>${p[0]}</dt><dd>${p[2]?p[1]:esc(p[1])}</dd>`).join("")}</dl>`:`<div class="empty sm">${t("nodata")}</div>`}
+function salesStatus(v){if(v==null||v==="")return null;return v==="0"?"Unqualified":v}
 function ctProfile(c,raw){
-  const ip=CT.interest||{}, m=CT.matches||{}, fb=CT.feedback||{};
-  const addr=[raw.street,[raw.postcode,raw.city].filter(Boolean).join(" "),raw.suburb,raw.state,raw.country].filter(Boolean).join(", ");
+  const ip=CT.interest||{}, m=CT.matches||{}, fb=CT.feedback||{}, D=CT.details||{};
+  const addr=[D.street,[D.postcode,D.city].filter(Boolean).join(" "),D.suburb,D.state,D.country].filter(Boolean).map(esc).join("<br>");
   const budget=ip.declared_budget_min||ip.declared_budget_max?`${eur(ip.declared_budget_min)} – ${eur(ip.declared_budget_max)}`:(ip.price_min?`${eur(ip.price_min)} – ${eur(ip.price_max)} (${t("behaviour")})`:raw.sd_budget);
-  const opt=CT.optins||{};
+  const link=(u,l)=>u?`<a href="${esc(/^https?:/.test(u)?u:"https://"+u)}" target="_blank" rel="noopener">${esc(l||u)}</a>`:null;
+  const socials=[D.facebook&&link(D.facebook,"Facebook"),D.instagram&&link(D.instagram,"Instagram"),D.linkedin&&link(D.linkedin,"LinkedIn"),D.twitter&&link(D.twitter,"X/Twitter")].filter(Boolean).join(" · ");
   return `<div class="bigtiles">
      <div class="bt"><div class="l">${t("t.requests")}</div><div class="v">${num(ip.total_requests||0)}</div></div>
      <div class="bt"><div class="l">${t("t.viewed")}</div><div class="v">${num(ip.distinct_properties_viewed||0)}</div></div>
      <div class="bt"><div class="l">${t("t.matches")}</div><div class="v">${num(m.sent||0)}</div></div>
      <div class="bt"><div class="l">${t("t.engagement")}</div><div class="v">${ip.engagement_score!=null?Number(ip.engagement_score).toFixed(0):"—"}</div></div></div>
    <div class="grid2">
-    <div class="card"><div class="hd"><h3>${t("h.person")}</h3></div>${kv([[t("f.title"),raw.title],[t("f.address"),addr],[t("f.born"),raw.birthday&&raw.birthday!=="0000-00-00"?raw.birthday:null],[t("f.marital"),raw.marital_status],[t("f.nie"),raw.nie_masked],[t("f.company"),raw.company],[t("f.website"),raw.website],[t("f.referred"),raw.referred_by],[t("f.keyholder"),raw.keyholder],[t("f.since"),raw.created_wp?fdate(raw.created_wp):null],[t("f.modified"),c.wp_modified?fdate(c.wp_modified):null]])}</div>
-    <div class="card"><div class="hd"><h3>${t("h.search")}</h3><span class="tag">${esc(ip.data_confidence||"—")}</span></div>${kv([[t("f.budget"),budget],[t("f.type"),ip.declared_property_type||raw.sd_type||(ip.preferred_categories?Object.keys(ip.preferred_categories).slice(0,3).join(", "):null)],[t("f.beds"),ip.declared_bedrooms_min?"≥ "+ip.declared_bedrooms_min:null],[t("f.areas"),ip.declared_areas?[].concat(ip.declared_areas).join(", "):null],[t("f.musthaves"),ip.declared_must_haves?[].concat(ip.declared_must_haves).join(", "):null],[t("f.period"),ip.declared_period||raw.sd_period],[t("f.firstlast"),ip.first_request_at?`${fdate(ip.first_request_at)} → ${fdate(ip.last_request_at)}`:null],[t("f.feedback"),Object.keys(fb).length?Object.entries(fb).map(([k,v])=>k+": "+v).join(" · "):null],[t("f.salesstatus"),raw.sales_status],[t("f.value"),raw.sales_value&&raw.sales_value!=="0"?eur(raw.sales_value):null]])}</div>
+    <div class="card"><div class="hd"><h3>${t("h.person")}</h3></div>${kv([[t("f.title"),D.title],[t("f.first"),D.first_name],[t("f.last"),D.last_name],[t("f.homeaddr"),addr||null,1],[t("f.born"),D.birthday],[t("f.marital"),D.marital],[t("f.nie"),D.nie?`<b class="mono">${esc(D.nie)}</b>`:null,1],[t("f.passport"),D.passport?`<b class="mono">${esc(D.passport)}</b>`:null,1],[t("f.language"),D.language],[t("f.company"),D.company],[t("f.jobtitle"),D.jobtitle],[t("f.website"),link(D.website),1],[t("f.socials"),socials||null,1],[t("f.custom")+" 1",D.custom_1],[t("f.custom")+" 2",D.custom_2]])}</div>
+    <div class="card"><div class="hd"><h3>${t("h.cpr")}</h3></div>${kv([[t("f.introducer"),D.introducer?`<a class="ownerlink" data-c="${D.introducer.wp_id}">${esc(D.introducer.name||D.introducer.email)}</a>`:null,1],[t("f.referred"),D.referred_by],[t("f.keyholder"),D.keyholder],[t("f.salesstatus"),salesStatus(D.sales_status)],[t("f.value"),D.sales_value?eur(D.sales_value):null],[t("f.since"),raw.created_wp?fdate(raw.created_wp):null],[t("f.modified"),c.wp_modified?fdate(c.wp_modified):null]])}
+      <div class="hd" style="border-top:1px solid var(--line)"><h3>${t("h.search")}</h3><span class="tag">${esc(ip.data_confidence||"—")}</span></div>${kv([[t("f.budget"),budget],[t("f.type"),ip.declared_property_type||raw.sd_type||(ip.preferred_categories?Object.keys(ip.preferred_categories).slice(0,3).join(", "):null)],[t("f.beds"),ip.declared_bedrooms_min?"≥ "+ip.declared_bedrooms_min:null],[t("f.areas"),ip.declared_areas?[].concat(ip.declared_areas).join(", "):null],[t("f.musthaves"),ip.declared_must_haves?[].concat(ip.declared_must_haves).join(", "):null],[t("f.period"),ip.declared_period||raw.sd_period],[t("f.firstlast"),ip.first_request_at?`${fdate(ip.first_request_at)} → ${fdate(ip.last_request_at)}`:null],[t("f.feedback"),Object.keys(fb).length?Object.entries(fb).map(([k,v])=>k+": "+v).join(" · "):null]])}</div>
    </div>
-   <div class="grid2" style="margin-top:12px">
-    <div class="card"><div class="hd"><h3>${t("h.notes")}</h3></div><div class="note">${raw.internal_comments?esc(raw.internal_comments.replace(/<br\s*\/?>/gi,"\n")):`<span class="muted">${t("nonotes")}</span>`}</div></div>
-    <div class="card"><div class="hd"><h3>${t("h.mailings")}</h3><span class="tag">opt-in ${c.opt_in?`<span class="on-y">${t("yes")}</span>`:`<span class="on-n">${t("no")}</span>`}</span></div>
-      <div class="optins">${Object.keys(opt).length?Object.entries(opt).map(([k,v])=>`<span class="tag">${v?'<span class="on-y">●</span>':'<span class="on-n">○</span>'} ${esc(k)}</span>`).join(""):`<span class="muted sm">${t("noprefs")}</span>`}</div></div>
-   </div>`;
+   <div class="card" style="margin-top:12px"><div class="hd"><h3>${t("h.notes")}</h3></div><div class="note">${raw.internal_comments?esc(raw.internal_comments.replace(/<br\s*\/?>/gi,"\n")):`<span class="muted">${t("nonotes")}</span>`}</div></div>`;
+}
+function cprDate(v){if(!v)return null;let m;
+  if((m=String(v).match(/^SCHEDULED-(\d{4})(\d{2})(\d{2})/)))return t("ml.scheduled")+" "+fdate(`${m[1]}-${m[2]}-${m[3]}`);
+  if((m=String(v).match(/^(\d{4})(\d{2})(\d{2})\d{0,6}$/))&&+m[1]>2000)return fdate(`${m[1]}-${m[2]}-${m[3]}`);
+  return "#"+v}
+function ctMailings(c){
+  const M=(CT.details||{}).mailing||{}, jin=M.jarvis_optin||{}, jout=M.jarvis_optout||{}, ev=M.events||{};
+  const pill=(on,txtOn,txtOff)=>on==null?`<span class="mpill">—</span>`:`<span class="mpill ${on?"in":"out"}">${on?txtOn:txtOff}</span>`;
+  const masterOn=M.master_optin==="yes"||(M.master_optin==null&&M.synced_opt_in);
+  const types=(M.types||[]).map(tp=>{const i=jin[tp.slug], o=jout[tp.slug];
+    let st=tp.opted_in, src="Supabase";
+    if(st==null&&(i||o)){st=!o||(!!i&&i>o);src="JARVIS"} if(st==null){st=tp.default;src=t("ml.default")}
+    return `<tr><td>${esc(t("mt."+tp.slug)!=="mt."+tp.slug?t("mt."+tp.slug):tp.label)}</td><td>${pill(st,t("ml.in"),t("ml.out"))}</td><td class="muted">${esc(src)}</td><td>${i?fdate(i):"—"}</td><td>${o?fdate(o):"—"}</td><td>${tp.updated?fdate(tp.updated):"—"}</td></tr>`}).join("");
+  const legacy=Object.keys(jout).filter(k=>!(M.types||[]).some(x=>x.slug===k));
+  const cpr=(M.cpr||[]).map(x=>`<tr><td>${esc(t("cm."+x.key)!=="cm."+x.key?t("cm."+x.key):x.key)}</td><td>${pill(x.on==="yes",t("ml.in"),t("ml.out"))}</td><td>${cprDate(x.last)||"—"}</td></tr>`).join("");
+  return `<div class="bigtiles">
+     <div class="bt"><div class="l">${t("ml.master")}</div><div class="v">${pill(masterOn,t("yes"),t("no"))}</div></div>
+     <div class="bt"><div class="l">${t("ml.delivered")}</div><div class="v">${num(ev.delivered||0)}</div></div>
+     <div class="bt"><div class="l">${t("ml.opened")} / ${t("ml.clicked")}</div><div class="v">${num(ev.opened||0)} / ${num(ev.clicked||0)}</div></div>
+     <div class="bt"><div class="l">${t("ml.lastmail")}</div><div class="v" style="font-size:15px">${ev.last_delivered?fdate(ev.last_delivered):"—"}</div></div></div>
+   ${ev.unsubscribed||ev.hard_bounce||ev.spam||(M.bounces||[]).length?`<div class="alertbar">${ev.unsubscribed?`⛔ ${t("ml.unsub")} ${fdate(ev.unsubscribed)} `:""}${ev.hard_bounce?`· ⚠ hard bounce ${fdate(ev.hard_bounce)} `:""}${ev.spam?`· 🚫 spam ${fdate(ev.spam)} `:""}${(M.bounces||[]).map(b=>`· ${t("ml.bounce")} ${fdate(b.at)} (${esc(b.reason||b.action||"")})`).join(" ")}</div>`:""}
+   <div class="card"><div class="hd"><h3>${t("ml.jarvis")}</h3><span class="sm muted">${M.optout_changed?t("ml.changed")+" "+fdate(M.optout_changed):""}</span></div>
+     <div class="scroll"><table class="mtable"><thead><tr><th>${t("ml.type")}</th><th>${t("ml.status")}</th><th>${t("ml.source")}</th><th>${t("ml.optin")}</th><th>${t("ml.optout")}</th><th>${t("ml.updated")}</th></tr></thead><tbody>${types}</tbody></table></div>
+     ${legacy.length?`<div class="sm muted" style="padding:8px 14px">${t("ml.legacy")}: ${legacy.map(k=>esc(k)+" ("+fdate(jout[k])+")").join(", ")}</div>`:""}</div>
+   <div class="card" style="margin-top:12px"><div class="hd"><h3>${t("ml.cpr")}</h3></div>
+     <div class="scroll"><table class="mtable"><thead><tr><th>${t("ml.type")}</th><th>${t("ml.status")}</th><th>${t("ml.lastsent")}</th></tr></thead><tbody>${cpr||`<tr><td colspan="3" class="muted">—</td></tr>`}</tbody></table></div></div>`;
 }
 function propCard(p,extra){return `<div class="pcard" data-p="${p.wp_id||""}">${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="">`:'<div class="ph"></div>'}
   <div style="min-width:0"><div class="tt">${esc(p.reference||"?")} · ${esc(p.title||"")}</div><div class="pr">${eur(p.price)}</div>
