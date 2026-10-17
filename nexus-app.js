@@ -34,7 +34,6 @@ function rerender(){
   if(CT&&$("#ctBody"))renderContact();
   if(PR&&$("#prBody"))renderProp();
   if(curTab==="ac")loadActivity();
-  if(curTab==="en")loadEnrich();
 }
 
 const eur=v=>v==null||v===""?"—":"€ "+Number(v).toLocaleString(LOC(),{maximumFractionDigits:0});
@@ -113,7 +112,7 @@ async function boot(){
 }
 
 /* ================= TABS / ROUTING ================= */
-const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",ac:"--c-ac",en:"--c-en"};
+const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",ac:"--c-ac"};
 let curTab="ov";
 function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t_));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
@@ -122,7 +121,6 @@ function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.da
   if(t_==="ct"&&!ctLoaded)loadContacts(true);
   if(t_==="pr"&&!prLoaded)loadProps(true);
   if(t_==="ac")loadActivity();
-  if(t_==="en")loadEnrich();
 }
 $$(".tab").forEach(b=>b.onclick=()=>{location.hash=b.dataset.tab});
 window.addEventListener("hashchange",route);
@@ -180,10 +178,10 @@ function renderOverview(){
    <div class="card ov-act"><div class="hd"><h3>${t("ov.activity")}</h3><a class="sm muted" href="#ac">${t("ov.all")}</a></div>
      <div class="scroll feed" style="flex:1">${feedHtml(o.activity)}</div></div>
    <div class="ov-side">
-     <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0"><div class="hd"><h3>${t("ov.viewings")}</h3></div>
+     <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0"><div class="hd"><h3>${t("ov.viewings")}</h3><span class="sm muted">${(o.viewings||[]).length||""}</span></div>
        <div class="scroll feed" style="flex:1">${viewingsHtml(o.viewings)}</div></div>
-     <div class="card"><div class="hd"><h3>${t("ov.enrich")}</h3><a class="sm muted" href="#en">${t("ov.sources")}</a></div>
-       <div style="padding:12px 14px;font-size:13px;color:var(--tx2)">${t("ov.enrich.txt",{a:num(o.enrich.props_enriched),b:num(o.enrich.contacts_enriched),c:num(o.enrich.rows)})}</div></div>
+     <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0"><div class="hd"><h3>${t("ov.notaries")}</h3><span class="sm muted">${(o.notaries||[]).length||""}</span></div>
+       <div class="scroll feed" style="flex:1">${notariesHtml(o.notaries)}</div></div>
    </div></div>`;
   p.querySelectorAll("[data-go]").forEach(k=>k.onclick=()=>{const [tb,a]=k.dataset.go.split(":");
     if(tb==="ct"){ctScope=a==="mine"?"mine":"all";$$("#ctScope button").forEach(b=>b.classList.toggle("on",b.dataset.v===ctScope));ctLoaded=false}
@@ -191,8 +189,14 @@ function renderOverview(){
     location.hash=tb;});
   p.querySelectorAll("[data-role]").forEach(r=>r.onclick=()=>{ctRole=r.dataset.role;buildRoleChips();ctLoaded=false;location.hash="ct"});
 }
-function viewingsHtml(v){return (v||[]).length?v.map(x=>`<div class="it" style="cursor:default"><div class="ic" style="--ic:#22c55e">◉</div>
-  <div><div class="t">${esc(x.ref||"—")} · ${esc(x.client||"")}</div><div class="d">${fdate(x.date)} ${esc(x.time||"")} · ${esc(x.agent||"")}</div></div><span></span></div>`).join(""):`<div class="empty">${t("ov.noviewings")}</div>`}
+/* komende afspraken uit nexus_agenda (agenda-scans van ViewingLogger en ModeloReminder) */
+const ownerName=e=>{const m=String(e||"").match(/^([a-z]+)@gruposoltura\.com$/i);return m?m[1][0].toUpperCase()+m[1].slice(1):(e||"")};
+const agWhen=x=>`${fdate(x.date)}${x.time?" · "+esc(x.time)+(x.end?"–"+esc(x.end):""):""}`;
+function viewingsHtml(v){return (v||[]).length?v.map(x=>`<div class="it" ${x.prop_wp_id?`data-p="${x.prop_wp_id}"`:'style="cursor:default"'}><div class="ic" style="--ic:#22c55e">◉</div>
+  <div style="min-width:0"><div class="t">${esc(x.ref||"—")}${x.client?" · "+esc(x.client):""}</div><div class="d">${agWhen(x)}${x.owner?` · <span style="color:${REPC[ownerName(x.owner)]||"#64748b"}">${esc(ownerName(x.owner))}</span>`:""}</div>${x.title?`<div class="d" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.title)}</div>`:""}</div><span></span></div>`).join(""):`<div class="empty">${t("ov.noviewings")}</div>`}
+function notariesHtml(v){return (v||[]).length?v.map(x=>`<div class="it" ${x.prop_wp_id?`data-p="${x.prop_wp_id}"`:'style="cursor:default"'}><div class="ic" style="--ic:#a855f7">⚖</div>
+  <div style="min-width:0"><div class="t">${esc(x.client||x.title||"—")}</div><div class="d">${agWhen(x)}${x.role?` · ${esc(t("nt."+x.role)!=="nt."+x.role?t("nt."+x.role):x.role)}`:""}${x.ref?" · "+esc(x.ref):""}${x.owner?` · <span style="color:${REPC[ownerName(x.owner)]||"#64748b"}">${esc(ownerName(x.owner))}</span>`:""}</div>
+  ${(x.modelos||[]).length?`<div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">${x.modelos.map(m=>`<span class="tag">Modelo ${esc(m)}</span>`).join("")}</div>`:""}</div><span></span></div>`).join(""):`<div class="empty">${t("ov.nonotaries")}</div>`}
 function feedHtml(list){
   const IC={request:["#ec4899","✉"],lead:["#f59e0b","★"],viewing:["#22c55e","◉"]};
   if(!list||!list.length)return`<div class="empty">${t("noactivity")}</div>`;
@@ -434,37 +438,8 @@ async function loadActivity(){
   p.innerHTML=`<div class="split" style="grid-template-columns:1fr 1fr">
     <div class="card list"><div class="hd"><h3>${t("ac.req")}</h3><span class="sm muted">${t("ac.7d",{n:num(OV.requests_7d)})}</span></div><div class="rows scroll feed">${feedHtml(OV.activity)}</div></div>
     <div class="card list"><div class="hd"><h3>${t("ac.view")}</h3><span class="sm muted">${t("ac.planned",{n:num(OV.viewings_upcoming)})}</span></div><div class="rows scroll feed">${viewingsHtml(OV.viewings)}
+    <div class="hd" style="border-top:1px solid var(--line)"><h3>${t("ov.notaries")}</h3></div>${notariesHtml(OV.notaries)}
     <div class="hd" style="border-top:1px solid var(--line)"><h3>${t("ac.types")}</h3></div><div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:6px">${(OV.req_types_30d||[]).map(x=>`<span class="tag">${esc(x.t)} · ${x.n}</span>`).join("")}</div></div></div></div>`;
 }
 
-/* ================= VERRIJKING ================= */
-async function loadEnrich(){
-  const p=$("#p-en");if(!OV){p.innerHTML=`<div class="loader">${t("loading")}</div>`;try{OV=await rpc("nexus_overview")}catch(e){return}}
-  const e=OV.enrich||{}, ka=e.catastro||{}, pm=e.price_m2||{}, id=e.idealista||{};
-  const never=t("en.never");
-  p.innerHTML=`<div class="en">
-   <div class="card list"><div class="hd"><h3>${t("en.sources")}</h3><span class="sm muted">${t("en.lower")}</span></div>
-    <div class="rows scroll">${(e.sources||[]).map(s=>`<div class="srcrow"><div class="prio">${s.priority}</div><div><b>${esc(s.label)}</b><div class="sm muted">${esc(s.source)} · ${esc(s.kind)}</div></div><div class="sm" style="text-align:right">${t("en.fields",{n:num(s.rows)})}</div><div class="sm muted" style="text-align:right">${s.last?ago(s.last):never}</div></div>`).join("")}</div></div>
-   <div class="card list"><div class="hd"><h3>${t("en.layers")}</h3></div><div class="rows scroll">
-    <div class="layers">
-     <div class="sm muted">${t("en.live")}</div>
-     <div class="layer"><span><b>Catastro</b><div class="sm muted">property_catastro</div></span><span class="tag">${t("en.matched",{a:num(ka.matched),b:num(ka.checked)})} · ${ka.last?ago(ka.last):never}</span></div>
-     <div class="layer"><span><b>${LANG==="en"?"Price per m²":"Prijs per m²"}</b><div class="sm muted">property_price_m2 · market_price_m2</div></span><span class="tag">${t("en.nprops",{n:num(pm.props)})} · ${pm.last?ago(pm.last):never}</span></div>
-     <div class="layer"><span><b>Idealista</b><div class="sm muted">idealista_listings</div></span><span class="tag">${t("en.nads",{n:num(id.listings)})} · ${id.last?ago(id.last):never}</span></div>
-     <div class="sm muted" style="margin-top:6px">${t("en.build")}</div>
-     <div class="layer" style="border-color:var(--c-ct)"><span><b>${t("en.l1t")}</b><div class="sm muted">${t("en.l1")}</div></span><span class="tag">contacts · properties · requests</span></div>
-     <div class="layer" style="border-color:var(--c-ov)"><span><b>${t("en.l2t")}</b><div class="sm muted">${t("en.l2")}</div></span><span class="tag">wp_raw → nexus_*_raw</span></div>
-     <div class="layer" style="border-color:var(--c-en)"><span><b>${t("en.l3t")}</b><div class="sm muted">${t("en.l3",{a:num(e.props_enriched),b:num(e.contacts_enriched)})}</div></span><span class="tag">nexus_enrichment</span></div>
-    </div>
-    <div style="padding:0 14px 14px"><div class="sm muted" style="margin-bottom:8px">${t("en.contract")}</div>
-<pre class="code">insert into nexus_enrichment
-  (entity_type, entity_wp_id, reference, source, field, value, source_url, scraper)
-values
-  ('property', 231492, 'RH550', 'catastro', 'ref_catastral',
-   '"0123456XH9102S0001AB"', 'https://www1.sedecatastro.gob.es/…', 'JARVIS-Research-Catastro')
-on conflict (entity_type, coalesce(entity_wp_id,-1), coalesce(reference,''), source, field)
-do update set value = excluded.value, fetched_at = now();</pre>
-    <div class="sm muted" style="margin-top:10px">${t("en.known")} <span class="tag">ref_catastral</span> <span class="tag">superficie_construida</span> <span class="tag">ano_construccion</span> <span class="tag">uso</span> <span class="tag">idealista_url</span> <span class="tag">idealista_price</span> <span class="tag">days_on_market</span> <span class="tag">other_agencies</span> ${t("en.other")}</div></div>
-   </div></div></div>`;
-}
 })();
