@@ -287,15 +287,42 @@ async function quickStatus(ctx,id,ref,status,base){X=ctx;
   const r=await ctx.rpc("nexus_property_save",{p_id:id,p_patch:{status},p_texts:{},p_base:base});return r}
 
 /* ---------- contact bewerken (compact) ---------- */
-const CFIELDS=[["title",["Aanhef","Title"]],["first_name",["Voornaam","First name"]],["last_name",["Achternaam","Last name"]],["company",["Bedrijf","Company"]],
+/* Alle bewerkbare contactvelden (core.contacts). Rick 18-10-2026: bij wijzigen moeten alle velden zichtbaar zijn, ook de lege. */
+const CPERSON=[["title",["Aanhef","Title"]],["first_name",["Voornaam","First name"]],["last_name",["Achternaam","Last name"]],["company",["Bedrijf","Company"]],
   ["nie","NIE"],["passport",["Paspoortnummer","Passport number"]],["birthday",["Geboortedatum","Birthday"],"date"],["language",["Taal (nl/en/es…)","Language (nl/en/es…)"]],
-  ["street",["Straat","Street"]],["street_number",["Nr.","No."]],["postcode",["Postcode","Postcode"]],["city",["Plaats","City"]],["suburb",["Wijk","Area"]],["state",["Provincie","Province"]],
+  ["marital",["Burgerlijke staat","Marital status"]],["jobtitle",["Functie","Job title"]]];
+const CADDR=[["street",["Straat","Street"]],["street_number",["Nr.","No."]],["postcode",["Postcode","Postcode"]],["city",["Plaats","City"]],["suburb",["Wijk","Area"]],["state",["Provincie","Province"]],
   ["country",["Land","Country"]],["website","Website"],["referred_by",["Verwezen door","Referred by"]]];
+const CEXTRA=[["facebook","Facebook"],["instagram","Instagram"],["linkedin","LinkedIn"],["twitter","X / Twitter"],["custom_1",["Vrij veld 1","Custom field 1"]],["custom_2",["Vrij veld 2","Custom field 2"]]];
+const CFIELDS=[...CPERSON,...CADDR,...CEXTRA];
+const CEDIT=["keyholder","internal_comments","owner_id","source","sales_status","sales_value","mailing_optin"].concat(CFIELDS.map(f=>f[0]));
+/* Nieuwsbrieven = slugs uit mailing_types (gelijk aan nexus-admin.js). market_report alleen bij expliciete opt-in. */
+const CMAILS=[["weekly_news",["Wekelijks nieuws (vrijdag)","Weekly news (Friday)"]],["price_reduced",["Prijsverlagingen (woensdag)","Price reductions (Wednesday)"]],
+  ["monthly_matches",["Maandelijkse woningmatches","Monthly property matches"]],["new_listing",["Nieuwe woning","New listing"]],
+  ["market_report",["Marktbericht (alleen met expliciete opt-in)","Market report (explicit opt-in only)"]]];
+const CMAIL_DEF=["weekly_news","price_reduced","monthly_matches","new_listing"];
+const SP_BUDGET=[["",""],["100k","€ 100k"],["150k","€ 150k"],["250k","€ 250k"],["more",["Meer","More"]]];
+const SP_PERIOD=[["",""],["0-3",["0-3 maanden","0-3 months"]],["3-6",["3-6 maanden","3-6 months"]],["longer",["Langer","Longer"]]];
+const SALES_ST=[["0","0 · Unqualified"],["10","10"],["90","90"],["94","94"],["97","97"],["98","98"],["99","99"]];
 async function openContact(key,ctx){X=ctx;
   ROOT=document.getElementById("pe");if(!ROOT){ROOT=document.createElement("div");ROOT.id="pe";document.body.appendChild(ROOT);bind()}
   ROOT.className="pe";document.body.classList.add("pe-open");ROOT.innerHTML=`<div class="pe-box pe-small"><div class="pe-load">${esc(tr(["Contact laden…","Loading contact…"]))}</div></div>`;
   let C;try{C=await X.rpc("nexus_contact_by_key",{p_key:String(key)})}catch(e){ROOT.querySelector(".pe-box").innerHTML=`<div class="pe-load">${esc(e.message)} <button class="btn" data-act="cclose">×</button></div>`;return}
   const o=C.core||{}, v=JSON.parse(JSON.stringify(o));
+  /* zoekprofiel en mailings: eigen staat naast de kolommen */
+  const spClean=x=>Object.fromEntries(Object.entries(x||{}).filter(([,w])=>Array.isArray(w)?w.length:(w!=null&&String(w).trim()!=="")).map(([k,w])=>[k,Array.isArray(w)?[...w].sort():(k==="bedrooms_min"?Number(w):String(w).trim())]));
+  const SP0=spClean(C.search_profile||{}), SP=JSON.parse(JSON.stringify(C.search_profile||{}));
+  const spChanged=()=>JSON.stringify(Object.entries(spClean(SP)).sort())!==JSON.stringify(Object.entries(SP0).sort());
+  const mp0=C.mailing_prefs||{}, MS0={};
+  CMAILS.forEach(([sl])=>{const x=mp0[sl];MS0[sl]=x&&x.on!=null?!!x.on:(!!o.mailing_optin&&CMAIL_DEF.includes(sl))});
+  const MS=Object.assign({},MS0);
+  const msChanged=()=>CMAILS.some(([sl])=>MS[sl]!==MS0[sl]);
+  const optSel=(attr,k,opts,cur)=>{const has=opts.some(x=>x[0]===String(cur??""));return `<select ${attr}="${k}">${has?"":`<option value="${esc(cur)}" selected>${esc(cur)}</option>`}${opts.map(x=>`<option value="${esc(x[0])}" ${String(cur??"")===x[0]?"selected":""}>${esc(tr(x[1]))}</option>`).join("")}</select>`};
+  const cats=()=>[["",""]].concat((L().CATS||[["apartment",["Appartement","Apartment"]],["villa","Villa"],["other",["Overig","Other"]]]));
+  const mailRows=()=>`<label class="ad-c"><input type="checkbox" data-cf="mailing_optin" ${v.mailing_optin?"checked":""}><span><b>${esc(tr(["Toestemming voor mailings (opt-in)","Consent to mailings (opt-in)"]))}</b></span></label>
+       <div class="ad-row" style="margin-top:8px">${CMAILS.map(([sl,lab])=>`<label class="ad-c ${sl==="market_report"?"w2":""}"><input type="checkbox" data-ms="${sl}" ${MS[sl]?"checked":""} ${v.mailing_optin?"":"disabled"}><span>${esc(tr(lab))}</span></label>`).join("")}</div>
+       <small class="muted">${esc(tr(["Zonder toestemming gaat er geen enkele nieuwsbrief uit. Transactionele mails (review, welkom verkoper, opvolging) vallen hier niet onder.","Without consent no newsletter is sent. Transactional mails (review, seller welcome, follow-up) are not covered here."]))}</small>`;
+  const cfIn=f=>`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" type="${f[2]||"text"}" value="${esc(v[f[0]]??"")}"></label>`;
   /* labels: aan/uit; bij Seller/Suspect-Seller aan verschijnt de optie om meteen een woning aan te maken */
   const RL=[["suspect","Suspect"],["seller","Seller"],["buyer","Buyer"],["suspect_seller","Suspect-Seller"],["agent","Agent"]];
   const r0=new Set((C.contact.roles||[]).map(x=>String(x).replace(/-/g,"_")).filter(x=>RL.some(r=>r[0]===x)));
@@ -319,11 +346,29 @@ async function openContact(key,ctx){X=ctx;
      <section class="ad-sec"><h4>${esc(tr(["Labels","Labels"]))}</h4><div class="pe-roles">${RL.map(r=>`<button type="button" class="pe-role ${rs.has(r[0])?"on":""}" data-role="${r[0]}" style="--rc:var(--r-${r[0].replace("_","-")})">${r[1]}</button>`).join("")}</div>
        <small class="muted">${esc(tr(["Een contact kan op elk moment een ander label krijgen. Minstens één label.","A contact can get another label at any time. At least one label."]))}</small><div id="peProp">${propOpt()}</div></section>
      <section class="ad-sec"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
-       <div class="ad-row">${CFIELDS.slice(0,8).map(f=>`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" type="${f[2]||"text"}" value="${esc(v[f[0]]??"")}"></label>`).join("")}</div>
+       <div class="ad-row">${CPERSON.map(cfIn).join("")}</div>
 </section>
      <section class="ad-sec"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
-       <div class="ad-row">${CFIELDS.slice(8).map(f=>`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" value="${esc(v[f[0]]??"")}"></label>`).join("")}</div>
+       <div class="ad-row">${CADDR.map(cfIn).join("")}</div>
        <label class="ad-f w4"><span>${esc(tr(["Interne opmerking","Internal note"]))}</span><textarea data-cf="internal_comments" rows="4">${esc(v.internal_comments||"")}</textarea></label></section>
+     <section class="ad-sec"><h4>${esc(tr(["Zoekprofiel","Search profile"]))}</h4>
+       <div class="ad-row">
+         <label class="ad-f"><span>${esc(tr(["Budget","Budget"]))}</span>${optSel("data-sp","budget",SP_BUDGET,SP.budget)}</label>
+         <label class="ad-f"><span>${esc(tr(["Woningtype","Property type"]))}</span>${optSel("data-sp","property_type",cats(),SP.property_type)}</label>
+         <label class="ad-f"><span>${esc(tr(["Wanneer kopen","When to buy"]))}</span>${optSel("data-sp","period",SP_PERIOD,SP.period)}</label>
+         <label class="ad-f"><span>${esc(tr(["Min. slaapkamers","Min. bedrooms"]))}</span><input data-sp="bedrooms_min" type="number" min="0" value="${esc(SP.bedrooms_min??"")}"></label>
+         <label class="ad-f w2"><span>${esc(tr(["Gewenste gebieden","Preferred areas"]))}</span><input data-sp="areas" value="${esc(SP.areas??"")}" placeholder="${esc(tr(["bijv. Rojales, Ciudad Quesada","e.g. Rojales, Ciudad Quesada"]))}"></label>
+         <label class="ad-f w2"><span>${esc(tr(["Must-haves","Must-haves"]))}</span><input data-sp="must_haves" value="${esc(SP.must_haves??"")}" placeholder="${esc(tr(["bijv. zwembad, zeezicht","e.g. pool, sea view"]))}"></label></div>
+       <div class="ad-row">${[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]].map(b=>`<label class="ad-c"><input type="checkbox" data-spb="${b[0]}" ${(SP.build||[]).includes(b[0])?"checked":""}><span>${esc(tr(b[1]))}</span></label>`).join("")}</div></section>
+     <section class="ad-sec"><h4>${esc(tr(["Mailings","Mailings"]))}</h4><div id="peMail">${mailRows()}</div></section>
+     <section class="ad-sec"><h4>${esc(tr(["CPR en verkoop","CPR and sales"]))}</h4>
+       <div class="ad-row">
+         <label class="ad-f"><span>${esc(tr(["Bron","Source"]))}</span><input data-cf="source" value="${esc(v.source??"")}"></label>
+         <label class="ad-f"><span>${esc(tr(["Verkoopstatus (CPR-code)","Sales status (CPR code)"]))}</span>${optSel("data-cf","sales_status",[["",""]].concat(SALES_ST),v.sales_status)}</label>
+         <label class="ad-f"><span>${esc(tr(["Verkoopwaarde (€)","Sales value (€)"]))}</span><input data-cf="sales_value" type="number" min="0" step="1000" value="${esc(v.sales_value??"")}"></label>
+         <label class="ad-c" style="align-self:center"><input type="checkbox" data-cf="keyholder" ${v.keyholder?"checked":""}><span>${esc(tr(["Sleutelhouder","Keyholder"]))}</span></label></div></section>
+     <section class="ad-sec"><h4>${esc(tr(["Online en vrije velden","Online and custom fields"]))}</h4>
+       <div class="ad-row">${CEXTRA.map(cfIn).join("")}</div></section>
      <section class="ad-sec"><h4>${esc(tr(["E-mail en telefoon","E-mail and phone"]))}</h4>
        <div class="pe-chs" id="peEm">${chRows(EM,"em",EK,"naam@voorbeeld.com")}</div>
        <div class="pe-chs" id="pePh" style="margin-top:10px">${chRows(PH,"ph",PK,"+34 …")}</div>
@@ -332,9 +377,16 @@ async function openContact(key,ctx){X=ctx;
      </div>
      <footer class="pe-ft"><span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
-    const diff=()=>{const d={};for(const k in v){if(["keyholder","internal_comments","owner_id"].concat(CFIELDS.map(f=>f[0])).includes(k)){const a=v[k]===""?null:v[k],b=o[k]===""?null:o[k];if(JSON.stringify(a)!==JSON.stringify(b))d[k]=a}}return d};
-    const up=()=>{const n=Object.keys(diff()).length+(rolesChanged()?1:0)+(chChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
-    ROOT.querySelectorAll("[data-cf]").forEach(el=>el.oninput=el.onchange=()=>{v[el.dataset.cf]=el.type==="checkbox"?el.checked:el.value;up()});
+    const diff=()=>{const d={};for(const k of CEDIT){if(!(k in v))continue;const a=v[k]===""?null:v[k],b=o[k]===""?null:o[k];if(String(a??"")!==String(b??""))d[k]=a}return d};
+    const anyDirty=()=>Object.keys(diff()).length||rolesChanged()||chChanged()||spChanged()||msChanged();
+    const up=()=>{const n=Object.keys(diff()).length+(rolesChanged()?1:0)+(chChanged()?1:0)+(spChanged()?1:0)+(msChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
+    const wireMail=()=>{ROOT.querySelectorAll("#peMail [data-cf],[data-cf]").forEach(el=>el.oninput=el.onchange=()=>{v[el.dataset.cf]=el.type==="checkbox"?el.checked:el.value;
+        if(el.dataset.cf==="mailing_optin"){if(!el.checked)CMAILS.forEach(([sl])=>MS[sl]=false);else if(!CMAILS.some(([sl])=>MS[sl]))CMAIL_DEF.forEach(sl=>MS[sl]=true);
+          ROOT.querySelector("#peMail").innerHTML=mailRows();wireMail()}up()});
+      ROOT.querySelectorAll("[data-ms]").forEach(el=>el.onchange=()=>{MS[el.dataset.ms]=el.checked;up()})};
+    wireMail();
+    ROOT.querySelectorAll("[data-sp]").forEach(el=>el.oninput=el.onchange=()=>{SP[el.dataset.sp]=el.value;up()});
+    ROOT.querySelectorAll("[data-spb]").forEach(el=>el.onchange=()=>{const a=new Set(SP.build||[]);el.checked?a.add(el.dataset.spb):a.delete(el.dataset.spb);SP.build=[...a];up()});
     const wireCh=()=>{
       ROOT.querySelectorAll("[data-ch]").forEach(el=>el.oninput=el.onchange=()=>{const arr=el.dataset.ch==="em"?EM:PH, i=+el.dataset.i, f=el.dataset.f;
         if(f==="is_primary"){arr.forEach((x,j)=>x.is_primary=j===i)}else arr[i][f]=el.value;up()});
@@ -352,8 +404,8 @@ async function openContact(key,ctx){X=ctx;
       b.classList.toggle("on",rs.has(r));if(!isSell(rs))mkProp=false;
       ROOT.querySelector("#peProp").innerHTML=propOpt();wireProp();up()});
     wireProp();
-    ROOT.querySelectorAll('[data-act="cclose"]').forEach(b=>b.onclick=()=>{if((Object.keys(diff()).length||rolesChanged()||chChanged())&&!confirm(tr(["Niet-opgeslagen wijzigingen. Toch sluiten?","Unsaved changes. Close anyway?"])))return;ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")});
-    ROOT.querySelector('[data-act="csave"]').onclick=async()=>{const d=diff();if(!Object.keys(d).length&&!rolesChanged()&&!chChanged())return;
+    ROOT.querySelectorAll('[data-act="cclose"]').forEach(b=>b.onclick=()=>{if(anyDirty()&&!confirm(tr(["Niet-opgeslagen wijzigingen. Toch sluiten?","Unsaved changes. Close anyway?"])))return;ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")});
+    ROOT.querySelector('[data-act="csave"]').onclick=async()=>{const d=diff();if(spChanged())d.search_profile=spClean(SP);if(msChanged())d.mailing_prefs=Object.assign({},MS);if(!anyDirty())return;
       const badE=EM.map(x=>(x.email||"").trim()).filter(e=>e&&!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(e));
       if(badE.length){ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(tr(["Ongeldig e-mailadres: ","Invalid e-mail: "])+badE.join(", "))}</div>`;return}const b=ROOT.querySelector("#peSave");b.disabled=true;b.textContent=tr(["Opslaan…","Saving…"]);
       try{if(Object.keys(d).length)await X.rpc("nexus_contact_save",{p_id:o.id,p_patch:d});
