@@ -608,12 +608,11 @@ function propFeatures(p,raw,o,K,XL,m){
       [L2("Finca / registro","Finca / registry"),[D.finca_number&&"finca "+D.finca_number,D.registry_name].filter(Boolean).join(" · ")],
       [t("p.keys"),raw.keydetails],
       [L2("Interne notities","Internal notes"),raw.internal_notes?`<div class="pk-notes">${esc(raw.internal_notes)}</div>`:null,1]])}</div>
-    ${fees.some(x=>x[1]!=null)||costs.some(x=>x[1]!=null)?`<div class="card pk-card"><div class="hd"><h3>${L2("Kosten","Costs")}</h3>${feeSum?`<span class="tag">${L2("koperskosten","buyer costs")} ${eur(feeSum)}</span>`:""}</div>${kv(fees.concat(costs).map(x=>[x[0],x[1]!=null?eur(x[1]):null]))}</div>`:""}
     ${catSummary(K,p)}
     ${propExtData(p)}
   </div></div>
   <aside class="pk-photos" id="pkPhotos" aria-label="${L2("Foto's","Photos")}"><div class="pk-ph-h">${L2("Foto's","Photos")}</div><div class="pk-ph-list"><div class="loader sm">…</div></div></aside>
-  ${raw.changelog?`<div class="card pk-wide"><div class="hd"><h3>${t("h.changelog")}</h3></div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div></div>`:""}
+  <div class="card pk-wide" id="pkLog"><div class="hd"><h3>${L2("Wijzigingslog","Change log")}</h3></div><div class="pk-log-nx"><div class="loader sm">…</div></div>${raw.changelog?`<div class="sm muted" style="margin-top:10px">${L2("Historie uit CPR (tot 18 okt 2026)","History from CPR (until 18 Oct 2026)")}</div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div>`:""}</div>
   </div>`;
 }
 const FEAT={pool:["Zwembad","Pool"],communal_pool:["Gemeenschappelijk zwembad","Communal pool"],air_conditioning:["Airco","Air conditioning"],air_conditioning_preinstalled:["Airco voorbereid","A/C pre-installed"],split_aircon:["Split-airco","Split A/C"],ducted_cooling:["Kanaalkoeling","Ducted cooling"],ducted_heating:["Kanaalverwarming","Ducted heating"],central_heating:["Centrale verwarming","Central heating"],gas_heating:["Gasverwarming","Gas heating"],split_heating:["Split-verwarming","Split heating"],underfloor_heating:["Vloerverwarming","Underfloor heating"],fireplace:["Open haard","Fireplace"],furnished:["Gemeubileerd","Furnished"],semi_furnished:["Deels gemeubileerd","Semi-furnished"],secure_parking:["Afgesloten parkeren","Secure parking"],remote_garage:["Garage met afstandsbediening","Remote garage"],fully_fenced:["Volledig omheind","Fully fenced"],security_system:["Alarmsysteem","Security system"],intercom:["Intercom","Intercom"],solarium:["Solarium","Solarium"],courtyard:["Binnenplaats","Courtyard"],outdoor_entertaining:["Buitenleven","Outdoor entertaining"],basement:["Kelder","Basement"],storage_shed:["Berging","Storage shed"],study:["Studeerkamer","Study"],workshop:["Werkplaats","Workshop"]};
@@ -627,6 +626,12 @@ function propFeatureList(D){
     ${g.length?`<dl class="kv" style="grid-template-columns:110px 1fr">${g.map(k=>`<dt>${esc(FOG[k]?L2(...FOG[k]):cap(k))}</dt><dd><div class="pk-chips">${o[k].map(v=>`<span class="pk-chip">${esc(cap(String(v)))}</span>`).join("")}</div></dd>`).join("")}</dl>`:""}</div>`}
 /* alle foto's van de woning als verticale strip; klik = grote foto bovenaan, klik op de grote foto = volle grootte */
 const PHOTO_CACHE={};
+/* wijzigingslog: live uit core.audit_log via nexus_property_edit (zelfde bron als Historie in het bewerkscherm) */
+async function loadPropLog(p){const box=document.querySelector("#pkLog .pk-log-nx");if(!box||!p.reference)return;
+  try{const d=await rpc("nexus_property_edit",{p_ref:p.reference});const a=(d&&d.audit)||[];
+    box.innerHTML=a.length?a.map(x=>`<div><b>${new Date(x.at).toLocaleString("nl-NL",{day:"numeric",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"})}</b> · ${esc(x.who||L2("systeem","system"))} <span class="muted">· ${esc((x.fields||[]).join(", "))}</span></div>`).join("")
+      :`<div class="sm muted">${L2("Nog geen wijzigingen via NEXUS.","No changes via NEXUS yet.")}</div>`}
+  catch(e){box.innerHTML=`<div class="sm muted">${L2("Log niet beschikbaar.","Log unavailable.")}</div>`}}
 async function loadPropPhotos(p,raw){
   const box=$("#pkPhotos .pk-ph-list"); if(!box||!p.id)return;
   let urls=PHOTO_CACHE[p.id];
@@ -720,7 +725,7 @@ function renderProp(){
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{prSub=b.dataset.s;renderProp()});
   wirePropEdit(d,p);
   const B=$("#prBody"), m=PR.matches||{};
-  if(prSub==="kenmerken"){B.innerHTML=propFeatures(p,raw,o,K,XL,m);loadPropPhotos(p,raw)}
+  if(prSub==="kenmerken"){B.innerHTML=propFeatures(p,raw,o,K,XL,m);loadPropPhotos(p,raw);loadPropLog(p)}
   if(prSub==="contacten"){const one=(x,w,rc)=>x?`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm">${roleTag(rc)} <span class="muted">${esc(w)}</span></div></div></div>`:"";
     const it=PR.interested||[], vw=PR.viewings||[];
     B.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${one(o,o&&o.is_agent?t("o.agent"):t("o.owner"),o&&o.is_agent?"agent":"seller")}${one(PR.buyer,t("o.buyer"),"buyer")}</div>
