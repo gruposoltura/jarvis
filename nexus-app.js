@@ -35,6 +35,13 @@ function applyFs(){document.documentElement.style.setProperty("--fs",FS[fsIdx]);
   setTimeout(()=>{try{if(mpMap)mpMap.invalidateSize()}catch(e){}},50)}
 $$("[data-fs-switch] button").forEach(b=>b.onclick=()=>{fsIdx=Math.max(0,Math.min(FS.length-1,fsIdx+(b.dataset.fs==="+"?1:-1)));applyFs()});
 applyFs();
+/* dag/nacht (per gebruiker, in deze browser) */
+function applyTheme(th){const light=th==="light";if(light)document.documentElement.setAttribute("data-theme","light");else document.documentElement.removeAttribute("data-theme");
+  try{localStorage.setItem("nexus-theme",light?"light":"dark")}catch(e){}
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=light?"#f3f5fa":"#0a0f1e";
+  $$("[data-theme-toggle]").forEach(b=>{b.textContent=light?"☾":"☀";b.title=light?t("th.dark"):t("th.light")})}
+$$("[data-theme-toggle]").forEach(b=>b.onclick=()=>applyTheme(document.documentElement.getAttribute("data-theme")==="light"?"dark":"light"));
+applyTheme(document.documentElement.getAttribute("data-theme")==="light"?"light":"dark");
 function rerender(){
   if(ovLoaded&&OV)renderOverview();
   if(ctLoaded)loadContacts(true);
@@ -266,10 +273,11 @@ function renderContact(){
       <div class="roles">${(c.roles||[]).map(roleTag).join("")}<span class="sm muted" style="margin-left:6px">👤 <b style="color:${REPC[c.rep]||"#94a3b8"}">${esc(rep(c.rep))}</b> ${c.wp_id?" · #"+c.wp_id:""}${c.language?" · 🌐 "+esc(c.language):""}</span></div>
       <div class="cstrip">${phones.map(p=>`<span class="cpill"><a href="tel:${esc(cleanTel(p))}">☎ ${esc(p)}</a><a class="wa" href="https://wa.me/${esc(waNum(p))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${emails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}${!phones.length&&!emails.length?`<span class="muted sm">${t("nocontactdata")}</span>`:""}</div>
       ${intro?`<div class="introbar" data-c="${esc(intro.key||intro.wp_id)}">🤝 ${t("intro.by")} <b>${esc(intro.name||intro.email)}</b>${intro.phone?` · ${esc(intro.phone)}`:""}${intro.email?` · ${esc(intro.email)}`:""}<span class="go">${t("intro.open")}</span></div>`:""}</div>
-    <div class="acts">${c.wp_id?`<a href="https://gruposoltura.com/wp-admin/admin.php?page=cpr-contacts&view=overview&id=${c.wp_id}" target="_blank" rel="noopener" title="${esc(t("act.cprold"))}">CPR ↗</a>`:""}</div></div>
+    <div class="acts"><a class="act-edit" data-cedit="1">✎ ${t("act.pedit")}</a>${c.wp_id?`<a href="https://gruposoltura.com/wp-admin/admin.php?page=cpr-contacts&view=overview&id=${c.wp_id}" target="_blank" rel="noopener" title="${esc(t("act.cprold"))}">CPR ↗</a>`:""}</div></div>
    <div class="subtabs">${tabs.map(x=>`<button class="st ${ctSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
    <div class="dbody scroll" id="ctBody"></div>`;
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{ctSub=b.dataset.s;renderContact()});
+  const ce=d.querySelector("[data-cedit]");if(ce)ce.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.openContact(c.key||c.id||c.wp_id,{sb,rpc,lang:()=>LANG,me:()=>ME,onSaved:()=>{openContact(ctSel);loadContacts(true)}});
   const B=$("#ctBody");
   if(ctSub==="profiel")B.innerHTML=ctProfile(c,raw);
   if(ctSub==="woningen")B.innerHTML=ctProps();
