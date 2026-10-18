@@ -4,8 +4,10 @@
 // Geldt voor alle date-, datetime-local-, month- en time-velden, ook die later dynamisch worden toegevoegd.
 (() => {
   const SEL = 'input[type="date"],input[type="datetime-local"],input[type="month"],input[type="time"]';
+  let last = 0;
   const open = el => {
     if (!el || el.disabled || el.readOnly || typeof el.showPicker !== 'function') return;
+    if (Date.now() - last < 400) return; last = Date.now();
     try { el.showPicker(); } catch (_) { /* sommige browsers staan het niet toe; dan werkt het icoontje zoals altijd */ }
   };
   document.addEventListener('click', e => { const el = e.target.closest && e.target.closest(SEL); if (el) open(el); });
