@@ -488,3 +488,14 @@ html[data-theme="light"] .tab i{box-shadow:none}
 html[data-theme="light"] .pc .im .badge{color:#fff}
 html[data-theme="light"] .hero .pr{color:#fff}
 .cpill.nophone{border-style:dashed;background:transparent}.cpill.nophone a{color:var(--tx3);font-weight:600;cursor:pointer}.cpill.nophone a b{color:var(--acc)}
+/* woning volledig scherm (geopend vanuit een contact e.d.) */
+.focusbar{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.focusbar .fb-sp{flex:1}
+.focusbar .btn{padding:8px 14px;font-size:calc(14px*var(--fs,1))}
+.focusbar #prBack{border-color:var(--c-pr)}
+.psplit.focus{grid-template-columns:1fr}
+.psplit.focus > .list{display:none}
+.psplit.focus #prBody{max-width:1200px;width:100%;margin:0 auto}
+.psplit.focus #prBody .hero{height:clamp(260px,42vh,520px)}
+#p-pr:not(.hidden){display:flex;flex-direction:column}
+#p-pr > .psplit{flex:1;min-height:0}
