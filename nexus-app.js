@@ -577,7 +577,7 @@ function wirePropEdit(d,p){
 function renderProp(){
   const p=PR.property, raw=PR.raw||{}, d=$("#prDetail"), o=PR.owner, K=PR.catastro;
   const XL=p.is_external?extLink(p.external_agency,raw.external_url,raw.external_refnr):null;
-  const tabs=[["kenmerken",t("st.features")],["contacten",t("st.contacts"),(PR.interested||[]).length+(o?1:0)+(PR.buyer?1:0)],["verrijking",t("st.enrich"),(PR.enrichment||[]).length+(PR.catastro&&PR.catastro.cadastral_ref?1:0)+(PR.price_m2?1:0)]];
+  const tabs=[["kenmerken",t("st.features")],["contacten",t("st.contacts"),(PR.interested||[]).length+(o?1:0)+(PR.buyer?1:0)],["verrijking",t("st.enrich"),(PR.enrichment||[]).length+(PR.catastro&&PR.catastro.cadastral_ref?1:0)+(PR.price_m2?1:0)],["website",L2("Website","Website")]];
   d.innerHTML=`<div class="dh" style="--acc:var(--c-pr)"><div style="min-width:0"><h2>${esc(p.reference)} · ${esc(p.title||"")}</h2>
      <div class="meta"><span>📍 ${esc([p.suburb,p.town,p.province].filter(Boolean).join(", "))}</span>
        ${o?`<a class="ownerlink" data-c="${esc(o.id||o.wp_id)}">👤 ${esc(o.name||o.email)}</a>`:""}
@@ -604,6 +604,22 @@ function renderProp(){
       <div class="facts" style="padding:12px 14px 0"><div><b>${eur(pm.ask_m2_cat||pm.ask_m2_wp)}</b><span>${t("m.ask")}</span></div><div><b>${eur(pm.market_median_m2)}</b><span>${t("m.median")}</span></div><div><b style="color:${pm.deviation_pct>10?"#f87171":pm.deviation_pct<-10?"#34d399":"inherit"}">${pm.deviation_pct!=null?(pm.deviation_pct>0?"+":"")+Number(pm.deviation_pct).toFixed(1)+"%":"—"}</b><span>${t("m.dev")}</span></div><div><b>${num(pm.market_n)}</b><span>${t("m.n")}</span></div></div>
       <div class="sm muted" style="padding:0 14px 12px">${t("m.range",{a:eur(pm.market_p25_m2),b:eur(pm.market_p75_m2),c:esc(pm.market_basis||""),d:fdate(pm.period)})}</div></div>`:"";
     B.innerHTML=kc+catElements(k)+pc+((PR.enrichment||[]).length||(!kc&&!pc)?enrichList(PR.enrichment,"property"):"");}
+  if(prSub==="website")renderPropWeb(p,B);
+}
+/* ---------- woning: websitestatistiek (eigen meting gruposoltura.com, web_events) ---------- */
+async function renderPropWeb(p,B){
+  B.innerHTML=`<div class="loader">${t("loading")}</div>`;
+  let w;try{w=await rpc("nexus_property_web_stats",{p_id:p.id})}catch(e){B.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
+  if(PR.property.id!==p.id||prSub!=="website")return;
+  w=w||{};const dl=w.daily||[],mx=Math.max(1,...dl.map(x=>x.n));
+  const bw=600/Math.max(1,dl.length);
+  const bars=dl.map((x,i)=>`<rect x="${(i*bw+1).toFixed(1)}" y="${(70-x.n/mx*62).toFixed(1)}" width="${Math.max(1,bw-2).toFixed(1)}" height="${(x.n/mx*62).toFixed(1)}" rx="1.5" fill="var(--c-pr)" opacity="${x.n?0.9:0.15}"><title>${fdate(x.d)}: ${x.n}</title></rect>`).join("");
+  const f=(v,l)=>`<div><b>${num(v||0)}</b><span>${l}</span></div>`;
+  B.innerHTML=`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${L2("Bezoek op gruposoltura.com","Visits on gruposoltura.com")}</h3><span class="tag">${w.last_view?L2("laatst bekeken ","last viewed ")+ago(w.last_view):L2("nog niet bekeken","not viewed yet")}</span></div>
+    <div class="facts" style="padding:12px 14px 0">${f(w.views_7d,L2("bekeken · 7 dagen","views · 7 days"))}${f(w.views_30d,L2("bekeken · 30 dagen","views · 30 days"))}${f(w.sessions_30d,L2("sessies · 30 dagen","sessions · 30 days"))}${f(w.returning_visitors,L2("terugkerende bezoekers","returning visitors"))}${f(w.favorites,L2("keer bewaard","times saved"))}${f(w.contact_intents,L2("contactintenties","contact intents"))}${f(w.leads,L2("aanvragen via de site","requests via the site"))}${f(w.views_all,L2("bekeken · totaal","views · total"))}</div>
+    <div style="padding:6px 14px 4px"><svg viewBox="0 0 600 72" preserveAspectRatio="none" style="width:100%;height:72px;display:block">${bars}</svg>
+      <div class="sm muted" style="display:flex;justify-content:space-between"><span>${dl.length?fdate(dl[0].d):""}</span><span>${L2("bekeken per dag, 30 dagen","views per day, 30 days")}</span><span>${dl.length?fdate(dl[dl.length-1].d):""}</span></div></div>
+    <div class="sm muted" style="padding:6px 14px 12px">${L2("Eigen meting van de website (anoniem). Terugkerend = bezoeker met cookietoestemming die deze woning op meer dan één dag bekeek. Contactintenties = WhatsApp, bellen, kostenoverzicht, bezichtigingsformulier geopend. Telling sinds 18-10-2026.","Own website measurement (anonymous). Returning = visitor with cookie consent who viewed this home on more than one day. Contact intents = WhatsApp, call, cost overview, viewing form opened. Counted since 18 Oct 2026.")}</div></div>`;
 }
 
 /* ================= MAP ================= */

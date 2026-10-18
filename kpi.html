@@ -57,6 +57,11 @@
   @media (max-width:1100px){ .row2{grid-template-columns:1fr} }
 
   .nums{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:10px}
+  .web-sub{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:2px 0 6px}
+  .web-sub span{text-transform:none;letter-spacing:0}
+  .web-gap{margin:0 0 10px;padding:8px 10px;border-radius:8px;font-size:12.5px;border:1px solid rgba(255,93,93,.45);background:rgba(255,93,93,.08);color:var(--red)}
+  #site-top{margin-top:12px}
+  #site-top h3{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 6px;letter-spacing:.04em;text-transform:uppercase}
   .num .v{font-size:25px;font-weight:800;line-height:1.05}
   .num .l{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
   .d{font-size:11px;font-weight:700;margin-left:4px}
@@ -304,12 +309,17 @@
       <div class="zone-body">
 
     <div class="card">
-      <h2><span class="dot" style="background:var(--cyan)"></span>Website (GA4)
+      <h2><span class="dot" style="background:var(--cyan)"></span>Website (GA4 + eigen meting)
         <span class="when" id="web-when"></span></h2>
       <div class="nums" id="web-nums"></div>
+      <div class="web-sub">Eigen meting gruposoltura.com <span id="site-when"></span></div>
+      <div class="nums" id="site-nums"></div>
+      <div class="web-gap" id="web-gap" hidden></div>
       <div class="chart" id="web-chart"></div>
-      <div class="legend"><span><i style="background:var(--cyan)"></i>Sessies</span>
-        <span><i style="background:var(--orange)"></i>Gebruikers</span></div>
+      <div class="legend"><span><i style="background:var(--cyan)"></i>Sessies GA4</span>
+        <span><i style="background:var(--orange)"></i>Gebruikers GA4</span>
+        <span><i style="background:var(--green)"></i>Sessies eigen meting</span></div>
+      <div id="site-top"></div>
     </div>
 
     <div class="row2">
@@ -1097,7 +1107,11 @@
         sb.from('bridge_brevo_campaign_daily').select('*'),
         // video watch-through per ad per dag (res[8]); verrijkt de regel in Actieve advertenties.
         // Mag falen: dan staan de advertenties er gewoon zonder video-regel.
-        sb.from('bridge_ad_video_daily').select('*').order('kpi_date', { ascending: true }).range(0, 9999)
+        sb.from('bridge_ad_video_daily').select('*').order('kpi_date', { ascending: true }).range(0, 9999),
+        // eigen websitemeting (web_events) per dag en top-woningen 7 dagen (res[9], res[10]).
+        // Mag falen: dan toont de Website-kaart alleen GA4.
+        sb.from('bridge_site_daily').select('*').order('day', { ascending: true }),
+        sb.from('bridge_site_top_properties').select('*').order('views', { ascending: false }).limit(8)
       ]);
       if(res[0].error) throw res[0].error;
       var kpi = res[0].data || [],
@@ -1113,15 +1127,68 @@
         num('weergaven', fmt(wl.last.pageviews||0), delta(wl.last.pageviews, wl.prev.pageviews)) +
         num('engagement', (wl.last.engagement_rate||0) + '%', delta(wl.last.engagement_rate, wl.prev.engagement_rate)) +
         num('nieuwe gebruikers', fmt(wl.last.new_users||0), '');
-      $('web-chart').innerHTML = lineChart(wd, [
-        { values: vals(web, wd, 'sessions'), color: CLR.cyan, fill: true },
-        { values: vals(web, wd, 'users'), color: CLR.orange }
+      /* ---- eigen meting (web_events): aanvulling op GA4, met terugkerende bezoekers en woningen ---- */
+      var siteRows = (res[9] && !res[9].error) ? (res[9].data || []) : [];
+      var site = {};
+      siteRows.forEach(function(r){ site[r.day] = r; });
+      var todayIso = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Madrid' });
+      var siteDays = Object.keys(site).sort().filter(function(d){ return d < todayIso; });
+      var sY = site[siteDays[siteDays.length-1]] || null, sP = site[siteDays[siteDays.length-2]] || null, sT = site[todayIso] || null;
+      function sv(r, k){ return r ? Number(r[k]||0) : 0; }
+      if(sY || sT){
+        $('site-when').textContent = '\u2014 ' + (sY ? 'gisteren (' + siteDays[siteDays.length-1] + ')' : '') + (sT ? ' \u00b7 vandaag tot nu ' + fmt(sv(sT,'sessions')) + ' sessies' : '');
+        $('site-nums').innerHTML =
+          num('sessies', fmt(sv(sY,'sessions')), delta(sv(sY,'sessions'), sv(sP,'sessions'))) +
+          num('bezoekers', fmt(sv(sY,'visitors')), delta(sv(sY,'visitors'), sv(sP,'visitors'))) +
+          num('terugkerend', fmt(sv(sY,'returning_visitors')), '') +
+          num('woningen bekeken', fmt(sv(sY,'property_views')), delta(sv(sY,'property_views'), sv(sP,'property_views'))) +
+          num('contactintenties', fmt(sv(sY,'contact_intents')), '') +
+          num('leads', fmt(sv(sY,'leads')), '', sv(sY,'leads') ? 'goodval' : '');
+      } else {
+        $('site-nums').innerHTML = '<div class="num"><div class="l">nog geen eigen meting</div></div>';
+      }
+      // signaal: GA4 mist hits terwijl de eigen meting wel bezoek ziet (tag weg, consent-fout, filter)
+      var gaY = wl.lastDate && site[wl.lastDate] ? Number(wl.last.sessions||0) : null;
+      var ownY = wl.lastDate && site[wl.lastDate] ? Number(site[wl.lastDate].sessions||0) : 0;
+      var gapEl = $('web-gap');
+      if(gaY !== null && ownY >= 20 && gaY < ownY * 0.2){
+        gapEl.hidden = false;
+        gapEl.textContent = 'GA4 telde op ' + wl.lastDate + ' ' + fmt(gaY) + ' sessies tegen ' + fmt(ownY)
+          + ' in de eigen meting. GA4 ontvangt (bijna) geen hits: controleer de Google-tag op de site.';
+      } else { gapEl.hidden = true; }
+
+      // grafiek: datum-as = unie van GA4 en eigen meting (laatste 28 dagen)
+      var webDays = Object.keys(web).concat(Object.keys(site))
+        .filter(function(d, i, a){ return a.indexOf(d) === i; }).sort().slice(-28);
+      var ownSess = webDays.map(function(d){ return site[d] ? Number(site[d].sessions||0) : 0; });
+      $('web-chart').innerHTML = lineChart(webDays, [
+        { values: vals(web, webDays, 'sessions'), color: CLR.cyan, fill: true },
+        { values: vals(web, webDays, 'users'), color: CLR.orange },
+        { values: ownSess, color: CLR.green }
       ], 250);
-      hookHover($('web-chart'), wd, [
-        { label: 'Sessies', values: vals(web, wd, 'sessions'), color: CLR.cyan },
-        { label: 'Gebruikers', values: vals(web, wd, 'users'), color: CLR.orange },
-        { label: 'Weergaven', values: vals(web, wd, 'pageviews'), color: CLR.muted }
+      hookHover($('web-chart'), webDays, [
+        { label: 'Sessies GA4', values: vals(web, webDays, 'sessions'), color: CLR.cyan },
+        { label: 'Gebruikers GA4', values: vals(web, webDays, 'users'), color: CLR.orange },
+        { label: 'Weergaven GA4', values: vals(web, webDays, 'pageviews'), color: CLR.muted },
+        { label: 'Sessies eigen', values: ownSess, color: CLR.green },
+        { label: 'Terugkerend eigen', values: webDays.map(function(d){ return site[d] ? Number(site[d].returning_visitors||0) : 0; }), color: CLR.green },
+        { label: 'Woningen bekeken', values: webDays.map(function(d){ return site[d] ? Number(site[d].property_views||0) : 0; }), color: CLR.muted }
       ]);
+
+      // top-woningen afgelopen 7 dagen (eigen meting); klik = woning in NEXUS
+      var topRows = (res[10] && !res[10].error) ? (res[10].data || []) : [];
+      $('site-top').innerHTML = !topRows.length ? '' :
+        '<h3>Meest bekeken woningen \u00b7 7 dagen</h3><table class="adt"><thead><tr><th>Woning</th><th>Plaats</th>'
+        + '<th>Bekeken</th><th>Sessies</th><th>Terugkerend</th><th>Bewaard</th><th>Contact</th><th>Leads</th></tr></thead><tbody>'
+        + topRows.map(function(r){
+            var ref = String(r.reference||'').replace(/[^A-Za-z0-9_-]/g, '');
+            return '<tr><td><a href="/nexus.html#p/' + encodeURIComponent(ref) + '" target="_blank" rel="noopener">' + ref + '</a>'
+              + (r.is_own ? '' : ' <span style="color:var(--muted);font-size:11px">partner</span>') + '</td>'
+              + '<td>' + String(r.town||'').replace(/[<>&]/g,'') + '</td>'
+              + '<td>' + fmt(r.views||0) + '</td><td>' + fmt(r.sessions||0) + '</td>'
+              + '<td>' + fmt(r.returning_visitors||0) + '</td><td>' + fmt(r.favorites||0) + '</td>'
+              + '<td>' + fmt(r.contact_intents||0) + '</td><td>' + fmt(r.leads||0) + '</td></tr>';
+          }).join('') + '</tbody></table>';
 
       /* ---- MAIL (Brevo): campagnes op de linkeras, transactioneel op de rechteras ----
          De twee bronnen verschillen een factor 50 in volume (campagnes ~2.400 per
