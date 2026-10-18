@@ -406,6 +406,80 @@ async function openProp(id){
   renderProp();
   if(innerWidth<1100)d.scrollIntoView({behavior:"smooth",block:"start"});
 }
+/* ---------- woning: kenmerken (zelfsprekend, breed in 2 kolommen, smal in 1) ---------- */
+const L2=(nl,en)=>LANG==="en"?en:nl;
+const cap=x=>x?String(x).charAt(0).toUpperCase()+String(x).slice(1):x;
+const ENERGY={A:"#0a8a3a",B:"#3aa335",C:"#a6c739",D:"#f4e02a",E:"#f2b12a",F:"#ec6a24",G:"#e1251b"};
+function energyHtml(v){
+  const x=String(v||"").trim().toUpperCase();
+  if(!x)return `<span class="muted">${L2("Niet ingevuld","Not filled in")}</span>`;
+  if(ENERGY[x])return `<span class="elabel" style="--ec:${ENERGY[x]}">${x}</span> <span class="muted sm">${L2("energielabel "+x,"energy rating "+x)}</span>`;
+  if(x==="R")return `<span class="elabel pend">…</span> ${L2("In aanvraag","Applied for")} <span class="muted sm">${L2("(certificaat nog niet afgegeven; code R)","(certificate not issued yet; code R)")}</span>`;
+  if(x==="X")return `<span class="elabel none">—</span> ${L2("Vrijgesteld / niet verplicht","Exempt / not required")} <span class="muted sm">(code X)</span>`;
+  return esc(v);
+}
+const ORI={north:["Noord","North"],south:["Zuid","South"],east:["Oost","East"],west:["West","West"],northeast:["Noordoost","North-east"],northwest:["Noordwest","North-west"],southeast:["Zuidoost","South-east"],southwest:["Zuidwest","South-west"]};
+const ORI_SUN={south:["zon het grootste deel van de dag","sun most of the day"],southwest:["middag- en avondzon","afternoon and evening sun"],west:["middag- en avondzon","afternoon and evening sun"],southeast:["ochtend- en middagzon","morning and midday sun"],east:["ochtendzon","morning sun"],northeast:["ochtendzon, koeler","morning sun, cooler"],northwest:["late avondzon, koeler","late evening sun, cooler"],north:["weinig directe zon, koel in de zomer","little direct sun, cool in summer"]};
+function orientHtml(v){const k=String(v||"").toLowerCase().replace(/[\s-]/g,"");if(!k)return null;const n=ORI[k];if(!n)return esc(v);
+  const sun=ORI_SUN[k];return `${L2(n[0],n[1])}${sun?` <span class="muted sm">· ${L2(sun[0],sun[1])}</span>`:""}`}
+const VIEW={sea:["zee","sea"],mountain:["bergen","mountains"],country:["landelijk","countryside"],panoramic:["panorama","panoramic"],golf:["golfbaan","golf course"],green:["groen","greenery"],lake:["meer (zoutmeren)","lake (salt lakes)"],residential:["woonwijk","residential"]};
+const viewHtml=v=>v?String(v).split(",").map(x=>{const n=VIEW[x.trim()];return n?L2(n[0],n[1]):esc(x)}).join(", "):null;
+const MANDATE={multilist:["Multilist (via meerdere makelaars)","Multilist (several agents)"],open:["Open (niet exclusief)","Open (not exclusive)"],exclusive:["Exclusief bij Grupo Soltura","Exclusive to Grupo Soltura"]};
+const days=ts=>ts?Math.max(0,Math.round((Date.now()-new Date(ts))/864e5)):null;
+function since(ts){const d=days(ts);if(d==null)return "";if(d<60)return L2(d+" dagen",d+" days");const mo=Math.round(d/30.4);return mo<24?L2(mo+" maanden",mo+" months"):L2((d/365).toFixed(1).replace(".",",")+" jaar",(d/365).toFixed(1)+" years")}
+function propFeatures(p,raw,o,K,XL,m){
+  const price=p.price, prev=p.previous_price&&p.previous_price!=p.price?Number(p.previous_price):null;
+  const chg=prev&&price?Math.round((price-prev)/prev*100):null;
+  const m2=price&&p.build_area?Math.round(price/p.build_area):null;
+  const sea=raw.distance_sea&&Number(raw.distance_sea)!==7000?num(raw.distance_sea)+" m":null;
+  const yr=raw.year_built&&raw.year_built!=="0"?raw.year_built:null;
+  const age=yr&&/^\d{4}$/.test(yr)?new Date().getFullYear()-Number(yr):null;
+  const pool=raw.pool==="yes"?L2("Ja","Yes"):raw.pool==="no"?L2("Nee","No"):null;
+  const offered=p.is_external?(p.external_agency||t("external"))+(raw.external_refnr?" · "+raw.external_refnr:""):t("p.owngs");
+  const tile=(ic,val,lbl)=>`<div><span class="fi">${ic}</span><b>${val}</b><span>${lbl}</span></div>`;
+  return `<div class="pk">
+  <div class="pk-main">
+    <div class="hero" style="${raw.image?`background-image:url('${esc(raw.image)}')`:""}"><span class="pr">${eur(price)}</span></div>
+    <div class="pricebox">
+      <div class="pb-now"><span class="lbl">${L2("Huidige vraagprijs","Current asking price")}</span><b>${eur(price)}</b>
+        ${prev?`<span class="pb-prev"><s>${eur(prev)}</s> <span class="pb-chg ${chg<0?"down":"up"}">${chg>0?"+":""}${chg}%</span> <span class="muted">${L2("sinds","since")} ${fdate(p.price_changedate)}</span></span>`:""}</div>
+      <div class="pb-side">
+        ${m2?`<div><b>${eur(m2)}</b><span>${L2("per m² woonoppervlak","per m² living area")}</span></div>`:""}
+        ${p.list_date?`<div><b>${since(p.list_date)}</b><span>${L2("op de markt, sinds","on the market, since")} ${fdate(p.list_date)}</span></div>`:""}
+      </div>
+    </div>
+    <div class="facts big">${tile("🛏",p.bedrooms??"—",t("fa.beds"))}${tile("🛁",p.bathrooms??"—",t("fa.baths"))}${tile("📐",p.build_area?num(p.build_area)+" m²":"—",t("fa.build"))}${tile("🌳",p.plot_area?num(p.plot_area)+" m²":"—",t("fa.plot"))}</div>
+    <div class="pk-sub">${L2("Belangstelling","Interest")}</div>
+    <div class="facts">${tile("👁",num(raw.hits_total),t("fa.hits"))}${tile("⚡",raw.hits_today??"—",t("fa.today"))}${tile("✉",num(m.sent||0),t("fa.mailed"))}${tile("✓",num(m.converted||0),t("fa.conv"))}</div>
+  </div>
+  <div class="pk-side">
+    ${p.is_external?extBox(p,raw,XL):""}
+    ${ownerBox(o)}
+    <div class="card pk-card"><div class="hd"><h3>${L2("Aanbod","Listing")}</h3></div>${kv([
+      [t("p.offeredby"),offered],
+      [L2("Huidige prijs","Current price"),`<b class="pk-price">${eur(price)}</b>${p.price_from?` <span class="muted sm">(${L2("vanafprijs","from-price")})</span>`:""}`,1],
+      [t("p.prevprice"),prev?`${eur(prev)} <span class="muted sm">· ${L2("gewijzigd","changed")} ${fdate(p.price_changedate)}${chg!=null?` · ${chg>0?"+":""}${chg}%`:""}</span>`:null,1],
+      [t("p.mandate"),raw.authority?(MANDATE[raw.authority]?L2(...MANDATE[raw.authority]):raw.authority):null],
+      [t("p.listed"),p.list_date?`${fdate(p.list_date)} <span class="muted sm">· ${since(p.list_date)}</span>`:null,1],
+      [t("p.srccontact"),[raw.external_phone,raw.external_email].filter(Boolean).join(" · ")],
+      [t("p.notary"),raw.sold_notary]])}</div>
+    <div class="card pk-card"><div class="hd"><h3>${L2("Woning","Property")}</h3></div>${kv([
+      [t("p.type"),p.property_type?cap(p.property_type):null],
+      [t("p.newbuild"),p.is_newbuild?t("yes"):null],
+      [t("p.year"),yr?`${esc(yr)}${age!=null&&age>=0?` <span class="muted sm">· ${L2(age+" jaar oud",age+" years old")}</span>`:""}`:null,1],
+      [t("p.energy"),energyHtml(raw.energy_label),1],
+      [t("p.pool"),pool],
+      [t("p.orient"),orientHtml(raw.orientation),1],
+      [t("p.view"),viewHtml(raw.view),1],
+      [t("p.sea"),sea||(raw.distance_sea?`<span class="muted">${L2("Niet gemeten (standaardwaarde 7 km)","Not measured (default 7 km)")}</span>`:null),1]])}</div>
+    <div class="card pk-card"><div class="hd"><h3>${L2("Adres & toegang","Address & access")}</h3></div>${kv([
+      [t("p.address"),[raw.street,raw.postal_code].filter(Boolean).join(", ")||null],
+      [t("p.keys"),raw.keydetails]])}</div>
+    ${catSummary(K,p)}
+  </div>
+  ${raw.changelog?`<div class="card pk-wide"><div class="hd"><h3>${t("h.changelog")}</h3></div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div></div>`:""}
+  </div>`;
+}
 function ownerBox(o){
   if(!o)return `<div class="ownerbox" style="cursor:default;border-style:dashed"><span class="muted sm">${t("p.noowner")}</span></div>`;
   const lbl=o.is_agent?t("p.agentc"):t("p.owner");
@@ -465,14 +539,7 @@ function renderProp(){
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{prSub=b.dataset.s;renderProp()});
   wirePropEdit(d,p);
   const B=$("#prBody"), m=PR.matches||{};
-  if(prSub==="kenmerken")B.innerHTML=`<div class="hero" style="${raw.image?`background-image:url('${esc(raw.image)}')`:""}"><span class="pr">${eur(p.price)}</span></div>
-    ${p.is_external?extBox(p,raw,XL):""}
-    ${ownerBox(o)}
-    ${catSummary(K,p)}
-    <div class="facts"><div><b>${p.bedrooms??"—"}</b><span>${t("fa.beds")}</span></div><div><b>${p.bathrooms??"—"}</b><span>${t("fa.baths")}</span></div><div><b>${p.build_area?num(p.build_area)+" m²":"—"}</b><span>${t("fa.build")}</span></div><div><b>${p.plot_area?num(p.plot_area)+" m²":"—"}</b><span>${t("fa.plot")}</span></div>
-      <div><b>${num(raw.hits_total)}</b><span>${t("fa.hits")}</span></div><div><b>${raw.hits_today??"—"}</b><span>${t("fa.today")}</span></div><div><b>${num(m.sent||0)}</b><span>${t("fa.mailed")}</span></div><div><b>${num(m.converted||0)}</b><span>${t("fa.conv")}</span></div></div>
-    <div class="card">${kv([[t("p.type"),p.property_type],[t("p.newbuild"),p.is_newbuild?t("yes"):null],[t("p.year"),raw.year_built&&raw.year_built!=="0"?raw.year_built:null],[t("p.energy"),raw.energy_label],[t("p.view"),raw.view],[t("p.orient"),raw.orientation],[t("p.pool"),raw.pool],[t("p.sea"),raw.distance_sea?num(raw.distance_sea)+" m":null],[t("p.address"),[raw.street,raw.postal_code].filter(Boolean).join(", ")],[t("p.keys"),raw.keydetails],[t("p.mandate"),raw.authority],[t("p.offeredby"),p.is_external?(p.external_agency||t("external"))+(raw.external_refnr?" · "+raw.external_refnr:""):t("p.owngs")],[t("p.srccontact"),[raw.external_phone,raw.external_email].filter(Boolean).join(" · ")],[t("p.prevprice"),p.previous_price&&p.previous_price!=p.price?eur(p.previous_price)+" ("+fdate(p.price_changedate)+")":null],[t("p.notary"),raw.sold_notary],[t("p.costs"),[raw.fee_notary&&t("c.notary")+" "+eur(raw.fee_notary),raw.fee_registry&&t("c.registry")+" "+eur(raw.fee_registry),raw.fee_legal&&t("c.legal")+" "+eur(raw.fee_legal)].filter(Boolean).join(" · ")],[t("p.listed"),p.list_date?fdate(p.list_date):null]])}</div>
-    ${raw.changelog?`<div class="card" style="margin-top:12px"><div class="hd"><h3>${t("h.changelog")}</h3></div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div></div>`:""}`;
+  if(prSub==="kenmerken")B.innerHTML=propFeatures(p,raw,o,K,XL,m);
   if(prSub==="contacten"){const one=(x,w,rc)=>x?`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm">${roleTag(rc)} <span class="muted">${esc(w)}</span></div></div></div>`:"";
     const it=PR.interested||[], vw=PR.viewings||[];
     B.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${one(o,o&&o.is_agent?t("o.agent"):t("o.owner"),o&&o.is_agent?"agent":"seller")}${one(PR.buyer,t("o.buyer"),"buyer")}</div>
