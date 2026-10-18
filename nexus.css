@@ -712,3 +712,23 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .pw-wrap input{padding-right:44px}
 .pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:none;border:0;border-radius:8px;color:var(--tx2);cursor:pointer;padding:0}
 .pw-eye:hover{color:var(--tx);background:var(--bg3,rgba(127,127,127,.12))}
+/* woning: blok Markt */
+.pk-mk{padding:10px 14px 12px;display:flex;flex-direction:column;gap:14px}
+.mk-row{display:flex;flex-direction:column;gap:6px}
+.mk-row+.mk-row{border-top:1px solid var(--line);padding-top:12px}
+.mk-h{font-weight:600;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.mk-lbl{margin-left:auto;font-size:calc(11px*var(--fs,1));font-weight:700;color:var(--mc);border:1px solid var(--mc);border-radius:999px;padding:1px 8px}
+.mk-nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:6px}
+.mk-nums div{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:6px 9px}
+.mk-nums b{display:block;font:700 calc(15px*var(--fs,1)) 'Space Grotesk'}
+.mk-nums span{font-size:calc(11px*var(--fs,1));color:var(--tx3)}
+.mk-bar{position:relative;height:14px;margin:6px 2px 0;background:var(--bg2);border:1px solid var(--line);border-radius:7px}
+.mk-band{position:absolute;top:2px;bottom:2px;background:var(--c-pr);opacity:.28;border-radius:5px}
+.mk-med{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--tx3)}
+.mk-me{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--mc);border:2px solid var(--bg)}
+.mk-axis{display:flex;justify-content:space-between}
+.mk-dyn{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between}
+.mk-big b{font:700 calc(17px*var(--fs,1)) 'Space Grotesk'}
+.mk-sp{min-width:150px;flex:0 1 180px}
+.mk-spark{width:100%;height:36px;display:block;overflow:visible}
+.mk-src{font-size:calc(10.5px*var(--fs,1));color:var(--tx3);border-top:1px solid var(--line);padding-top:8px}

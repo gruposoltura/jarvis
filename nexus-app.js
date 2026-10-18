@@ -711,13 +711,62 @@ function wirePropEdit(d,p){
     }catch(err){b.disabled=false;alert(err.code==="40001"?t("qs.conflict"):(err.message||String(err)));if(err.code==="40001")openProp(p.reference)}});
 }
 /* kadaster- en marktgegevens: staan bij de kenmerken (besluit Rick 18-10), niet op foto's of in een aparte tab */
-function propExtData(p){const k=PR.catastro, pm=PR.price_m2;
+function propExtData(p){const k=PR.catastro;
     const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${L2("Kadastergegevens","Cadastral details")}</h3><span class="tag">Catastro · ${ago(k.checked_at)}</span></div>${kv([[t("k.cadref"),`<a class="mono" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener">${esc(k.cadastral_ref)} ↗</a>`,1],[t("k.parcel"),k.parcel_ref],[t("k.unit"),[k.cat_block&&"bl. "+k.cat_block,k.cat_stair&&"esc. "+k.cat_stair,k.cat_floor&&"pl. "+k.cat_floor,k.cat_door&&"pta. "+k.cat_door].filter(Boolean).join(" · ")],[t("k.landclass"),k.land_class],[t("k.share"),k.participation_pct!=null?k.participation_pct+" %":null],[t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.year"),k.year_built],[t("k.built"),k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(CPR: ${num(p.build_area)} m²)</span>`:""):null,1],[t("k.living"),[k.living_area_m2&&num(k.living_area_m2)+" m² "+t("k.living.w"),k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],[t("k.plot"),k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],[t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
       :"";
-    const pc=pm?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${t("m.title")}</h3><span class="tag">${esc(pm.town||"")} · ${esc(pm.segment||"")}</span></div>
-      <div class="facts" style="padding:12px 14px 0"><div><b>${eur(pm.ask_m2_cat||pm.ask_m2_wp)}</b><span>${t("m.ask")}</span></div><div><b>${eur(pm.market_median_m2)}</b><span>${t("m.median")}</span></div><div><b style="color:${pm.deviation_pct>10?"#f87171":pm.deviation_pct<-10?"#34d399":"inherit"}">${pm.deviation_pct!=null?(pm.deviation_pct>0?"+":"")+Number(pm.deviation_pct).toFixed(1)+"%":"—"}</b><span>${t("m.dev")}</span></div><div><b>${num(pm.market_n)}</b><span>${t("m.n")}</span></div></div>
-      <div class="sm muted" style="padding:0 14px 12px">${t("m.range",{a:eur(pm.market_p25_m2),b:eur(pm.market_p75_m2),c:esc(pm.market_basis||""),d:fdate(pm.period)})}</div></div>`:"";
+    const pc=`<div class="card" id="pkMarket" style="margin-bottom:12px"><div class="hd"><h3>${L2("Markt","Market")}</h3></div><div class="pk-mk"><div class="loader sm">…</div></div></div>`;
     return kc+catElements(k)+pc+((PR.enrichment||[]).length?enrichList(PR.enrichment,"property"):"");}
+/* ---------- woning: blok Markt (alleen NEXUS, nooit op de publieke site) ----------
+   Bron: rpc nexus_property_market. Rij 1 prijspositie t.o.v. Idealista-vraagprijzen in de plaats,
+   rij 2 officiële verkopen in de gemeente (MIVAU) met sparkline, rij 3 taxatiewaarde (alleen gemeenten >25.000 inw.).
+   Ontbreekt een onderdeel, dan wordt die rij weggelaten. */
+const MK_CACHE={};
+async function loadPropMarket(p){const box=document.querySelector("#pkMarket .pk-mk");if(!box||!p.id)return;
+  let m=MK_CACHE[p.id];
+  if(m===undefined){try{m=await rpc("nexus_property_market",{p_id:p.id})}catch(e){m=null}MK_CACHE[p.id]=m}
+  const cur=document.querySelector("#pkMarket .pk-mk");if(!cur||!PR||PR.property.id!==p.id)return;
+  const html=m?marketHtml(m):"";
+  if(!html){document.getElementById("pkMarket").remove();return}
+  cur.innerHTML=html}
+function marketHtml(m){
+  const I=m.idealista, O=m.official, S=m.series||[], rows=[];
+  const pct=v=>v==null?"":(v>0?"+":v<0?"−":"±")+Math.abs(Number(v)).toLocaleString(LOC(),{maximumFractionDigits:1})+"%";
+  const qtr=d=>{const x=new Date(d);return "Q"+(Math.floor(x.getUTCMonth()/3)+1)+" "+x.getUTCFullYear()};
+  const mon=d=>new Date(d).toLocaleDateString(LOC(),{month:"long",year:"numeric",timeZone:"UTC"});
+  const SEG={apartment:["appartementen","apartments"],bungalow:["bungalows","bungalows"],penthouse:["penthouses","penthouses"],townhouse:["geschakelde woningen","townhouses"],villa:["villa's","villas"],all:["alle woningen","all homes"]};
+  const segL=s=>SEG[s]?L2(...SEG[s]):s;
+  /* rij 1: prijspositie */
+  if(I&&I.median_m2){
+    const lo=Math.min(I.p25,m.ask_m2||I.p25), hi=Math.max(I.p75,m.ask_m2||I.p75), pad=(hi-lo)*0.12||100, a=lo-pad, b=hi+pad, x=v=>((v-a)/(b-a)*100).toFixed(1);
+    const pos={below:[L2("onder markt","below market"),"#34d399"],in:[L2("in markt","in market"),"#94a3b8"],above:[L2("boven markt","above market"),"#f87171"]}[I.position];
+    rows.push(`<div class="mk-row"><div class="mk-h">${L2("Prijspositie","Price position")} <span class="muted">· ${esc(I.town||m.town||"")} · ${esc(segL(I.segment))}</span>${pos?`<span class="mk-lbl" style="--mc:${pos[1]}">${pos[0]}</span>`:""}</div>
+      <div class="mk-nums"><div><b>${eur(m.ask_m2)}</b><span>${L2("vraagprijs / m²","asking / m²")}${m.ask_m2_basis?` · ${m.ask_m2_basis==="catastro"?"Catastro":L2("eigen","own")} ${num(m.area_m2)} m²`:""}</span></div>
+        <div><b>${eur(I.median_m2)}</b><span>${L2("mediaan Idealista","Idealista median")}</span></div>
+        ${I.deviation_pct!=null?`<div><b style="color:${pos?pos[1]:"inherit"}">${pct(I.deviation_pct)}</b><span>${L2("t.o.v. mediaan","vs. median")}</span></div>`:""}
+        <div><b>${num(I.n)}</b><span>${L2("vergelijkbaar","comparables")}</span></div></div>
+      <div class="mk-bar"><div class="mk-band" style="left:${x(I.p25)}%;width:${(x(I.p75)-x(I.p25)).toFixed(1)}%"></div><div class="mk-med" style="left:${x(I.median_m2)}%"></div>${m.ask_m2?`<div class="mk-me" style="left:${x(m.ask_m2)}%;--mc:${pos?pos[1]:"var(--c-pr)"}" title="${L2("deze woning","this property")}"></div>`:""}</div>
+      <div class="mk-axis sm muted"><span>p25 ${eur(I.p25)}</span><span>p75 ${eur(I.p75)}</span></div>
+      ${I.basis==="all"?`<div class="sm muted">${L2("Te weinig vergelijkbare woningen in dit segment; vergeleken met alle woningen in de plaats.","Too few comparables in this segment; compared with all homes in the town.")}</div>`:""}
+      ${I.newbuild_vs_resale?`<div class="sm muted">${L2("Nieuwbouw, vergeleken met vraagprijzen van bestaande bouw.","New build, compared with resale asking prices.")}</div>`:""}</div>`)}
+  /* rij 2: marktdynamiek gemeente */
+  if(O&&O.tx_12m!=null){
+    const vals=S.map(x=>Number(x.v)), mx=Math.max(...vals,1), mn=Math.min(...vals), w=160, h=36, st=S.length>1?w/(S.length-1):0;
+    const pts=S.map((x,i)=>[(i*st).toFixed(1),(h-2-(Number(x.v)-mn)/(mx-mn||1)*(h-6)).toFixed(1)]);
+    const spark=S.length>1?`<svg class="mk-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="var(--c-pr)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i===pts.length-1?2.6:1.4}" fill="${S[i].prov?"var(--bg)":"var(--c-pr)"}" stroke="var(--c-pr)" stroke-width="1"><title>${qtr(S[i].q)}: ${num(S[i].v)}${S[i].prov?L2(" (voorlopig)"," (provisional)"):""}</title></circle>`).join("")}</svg>`:"";
+    const ch=O.tx_12m_change_pct;
+    rows.push(`<div class="mk-row"><div class="mk-h">${L2("Marktdynamiek","Market activity")} <span class="muted">· ${L2("gemeente","municipality")} ${esc(O.municipality||m.municipality||"")}</span></div>
+      <div class="mk-dyn"><div><div class="mk-big"><b>${num(O.tx_12m)}</b> ${L2("verkopen afgelopen 12 maanden","sales in the last 12 months")}${ch!=null?` <span style="color:${ch>0?"#34d399":ch<0?"#f87171":"inherit"}">(${pct(ch)})</span>`:""}</div>
+        ${O.tx_nueva_12m!=null||O.tx_segunda_mano_12m!=null?`<div class="sm muted">${L2("nieuwbouw","new build")} ${num(O.tx_nueva_12m)} · ${L2("bestaande bouw","resale")} ${num(O.tx_segunda_mano_12m)}</div>`:""}
+        <div class="sm muted">${L2("t/m","through")} ${qtr(O.tx_last_quarter)}${O.tx_last_provisional?L2(" (voorlopig)"," (provisional)"):""}</div></div>
+        ${spark?`<div class="mk-sp">${spark}<div class="sm muted">${L2("verkopen per kwartaal","sales per quarter")}, ${S.length} ${L2("kwartalen","quarters")}</div></div>`:""}</div></div>`)}
+  /* rij 3: taxatiewaarde */
+  if(O&&O.vt_m2!=null){const c=O.vt_change_pct;
+    rows.push(`<div class="mk-row"><div class="mk-h">${L2("Taxatiewaarde","Appraised value")} <span class="muted">· ${qtr(O.vt_period)}</span></div>
+      <div class="mk-big"><b>${Number(O.vt_m2).toLocaleString(LOC(),{style:"currency",currency:"EUR",minimumFractionDigits:1,maximumFractionDigits:1})}</b> / m²${c!=null?` <span style="color:${c>0?"#34d399":c<0?"#f87171":"inherit"}">(${pct(c)} ${L2("jaar-op-jaar","year on year")})</span>`:""}</div></div>`)}
+  if(!rows.length)return "";
+  const src=[O?"Ministerio de Vivienda y Agenda Urbana":null,I?L2("Idealista (vraagprijzen, eigen analyse)","Idealista (asking prices, own analysis)"):null].filter(Boolean).join("; ");
+  const per=[I&&I.period?"Idealista "+mon(I.period):null,O&&O.tx_last_quarter?"MIVAU "+L2("t/m ","through ")+qtr(O.tx_last_quarter):null].filter(Boolean).join(" · ");
+  return rows.join("")+`<div class="mk-src">${L2("Bron","Source")}: ${esc(src)}${per?` · ${esc(per)}`:""}</div>`}
 function renderProp(){
   if(prSub==="verrijking")prSub="kenmerken";
   const p=PR.property, raw=PR.raw||{}, d=$("#prDetail"), o=PR.owner, K=PR.catastro;
@@ -736,7 +785,7 @@ function renderProp(){
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{prSub=b.dataset.s;renderProp()});
   wirePropEdit(d,p);
   const B=$("#prBody"), m=PR.matches||{};
-  if(prSub==="kenmerken"){B.innerHTML=propFeatures(p,raw,o,K,XL,m);loadPropPhotos(p,raw);loadPropLog(p)}
+  if(prSub==="kenmerken"){B.innerHTML=propFeatures(p,raw,o,K,XL,m);loadPropPhotos(p,raw);loadPropLog(p);loadPropMarket(p)}
   if(prSub==="contacten"){const one=(x,w,rc)=>x?`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm">${roleTag(rc)} <span class="muted">${esc(w)}</span></div></div></div>`:"";
     const it=PR.interested||[], vw=PR.viewings||[];
     B.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${one(o,o&&o.is_agent?t("o.agent"):t("o.owner"),o&&o.is_agent?"agent":"seller")}${one(PR.buyer,t("o.buyer"),"buyer")}</div>
