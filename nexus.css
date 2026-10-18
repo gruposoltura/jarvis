@@ -179,7 +179,7 @@ main{height:calc(100vh - var(--hdr) - var(--tabs));padding:14px 18px;overflow:hi
 .facts b{display:block;font:700 calc(16px*var(--fs,1)) 'Space Grotesk'} .facts span{font-size:calc(11px*var(--fs,1));color:var(--tx3)}
 .src{display:inline-block;font-size:calc(10.5px*var(--fs,1));padding:1px 7px;border-radius:5px;background:color-mix(in srgb,var(--c-en) 20%,transparent);color:#d8b4fe;margin-left:6px}
 
-/* verrijking */
+/* externe bronnen */
 .en{display:grid;grid-template-columns:1.1fr 1fr;gap:12px;height:100%}
 .srcrow{display:grid;grid-template-columns:28px 1fr 70px 110px;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
 .prio{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:calc(12px*var(--fs,1));font-weight:700;background:var(--bg2);border:1px solid var(--line2)}
@@ -236,7 +236,6 @@ pre.code{margin:0;padding:12px 14px;font:calc(12px*var(--fs,1))/1.5 ui-monospace
 .mtable tr:last-child td{border-bottom:0}
 
 /* partner-makelaar + Catastro bij de woning */
-.pc .im .catb{position:absolute;bottom:8px;left:8px;font-size:calc(10px*var(--fs,1));font-weight:800;letter-spacing:.06em;padding:2px 6px;border-radius:5px;background:rgba(168,85,247,.85);color:#fff}
 .pc .ext-l{display:block;font-size:calc(11.5px*var(--fs,1));color:#fbbf24;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .pc .ext-l:hover{text-decoration:underline}
 .dh .acts a.act-ext{background:var(--c-pr);border-color:var(--c-pr);color:#111;font-weight:700}

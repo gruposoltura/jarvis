@@ -7,7 +7,7 @@ let X=null;                               // {sb,rpc,lang,me,onSaved}
 const tr=v=>Array.isArray(v)?(X&&X.lang()==="en"?v[1]:v[0]):v;
 const L=()=>window.NEXUS_LISTS||{};
 
-const STATUS=[["available",["Actief","Active"],"#22c55e"],["under_offer",["Onder bod / gereserveerd","Under offer / reserved"],"#ec4899"],["reserved",["Gereserveerd","Reserved"],"#f43f5e"],["sold",["Verkocht","Sold"],"#a855f7"],
+const STATUS=[["available",["Actief","Active"],"#22c55e"],["under_offer",["Gereserveerd","Reserved"],"#ec4899"],["reserved",["Gereserveerd","Reserved"],"#f43f5e"],["sold",["Verkocht","Sold"],"#a855f7"],
   ["withdrawn",["Ingetrokken","Withdrawn"],"#64748b"],["draft",["Concept","Draft"],"#f59e0b"],["off_market",["Off-market","Off-market"],"#475569"]];
 /* Besluit Rick 18-10: Gereserveerd = Onder bod. De database kent sinds 18-10 ook "reserved" (nieuwe site);
    die knop verschijnt alleen als een woning al op reserved staat. Zet SHOW_RESERVED op true om hem altijd te tonen. */

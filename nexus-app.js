@@ -411,10 +411,10 @@ async function loadProps(reset){
   let r;try{r=await rpc("nexus_properties",{p_q:$("#prQ").value,p_status:prStatus+(prBuild?":"+prBuild:""),p_limit:48,p_offset:prOff})}catch(e){box.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   prLoaded=true;
   const html=r.rows.map(p=>`<div class="pc ${prSel===p.reference?"sel":""}" data-p="${esc(p.reference)}"><div class="im" style="${p.image?`background-image:url('${esc(p.image)}')`:""}">
-     <span class="badge">${esc(p.reference||"")}</span>${stBadge(p.core_status)}${p.cat_ref?`<span class="catb" title="Catastro ${esc(p.cat_ref)}">CAT</span>`:""}${p.req30>0?`<span class="hot">${p.req30}× 30d</span>`:""}</div>
+     <span class="badge">${esc(p.reference||"")}</span>${stBadge(p.core_status)}${p.req30>0?`<span class="hot">${p.req30}× 30d</span>`:""}</div>
      <div class="bd"><div class="p">${eur(p.price)}${p.previous_price&&p.previous_price>p.price?` <span class="sm muted" style="text-decoration:line-through">${eur(p.previous_price)}</span>`:""}</div>
      <div class="t">${esc(p.title||"")}</div><div class="s">${esc([p.suburb,p.town].filter(Boolean).join(", "))} · ${p.bedrooms??"?"} ${t("beds.short")}${p.build?` · ${p.build} m²`:""}</div>
-     <div class="s">${p.is_external?t("external"):t("own")}${p.n_enrich?` · <span style="color:#d8b4fe">${t("enriched",{n:p.n_enrich})}</span>`:""}</div>
+     <div class="s">${p.is_external?t("external"):t("own")}</div>
      ${p.is_external?(()=>{const L=extLink(p.agency,p.ext_url,p.ext_ref);return L?`<a class="ext-l" href="${esc(L.href)}" target="_blank" rel="noopener" title="${esc(L.exact?t("ext.open",{a:p.agency||t("external")}):t("ext.search"))}">${L.exact?"🔗":"🔎"} ${esc(p.agency||t("external"))}${p.ext_ref?" · "+esc(p.ext_ref):""} ↗</a>`:""})():""}
      ${(p.owner_id||p.owner_wp_id)&&p.owner?`<span class="own-l" data-c="${esc(p.owner_id||p.owner_wp_id)}" title="${t("p.openowner")}">👤 ${esc(p.owner)}</span>`:""}</div></div>`).join("");
   if(reset)box.innerHTML=`<div class="sub muted sm" style="padding:8px 12px 0">${t("n.props",{n:num(r.total)})}</div><div class="pgrid" id="pgrid">${html}</div>`;
@@ -502,6 +502,7 @@ function propFeatures(p,raw,o,K,XL,m){
       [t("p.keys"),raw.keydetails],
       [L2("Interne notities","Internal notes"),raw.internal_notes?`<div class="pk-notes">${esc(raw.internal_notes)}</div>`:null,1]])}</div>
     ${catSummary(K,p)}
+    ${propExtData(p)}
   </div>
   <aside class="pk-photos" id="pkPhotos" aria-label="${L2("Foto's","Photos")}"><div class="pk-ph-h">${L2("Foto's","Photos")}</div><div class="pk-ph-list"><div class="loader sm">…</div></div></aside>
   ${raw.changelog?`<div class="card pk-wide"><div class="hd"><h3>${t("h.changelog")}</h3></div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div></div>`:""}
@@ -576,10 +577,19 @@ function wirePropEdit(d,p){
       if(s==="sold"&&ME&&ME.role==="admin"&&confirm(t("qs.solddetails")))NEXUS_EDIT.open(p.reference,editCtx("status"));
     }catch(err){b.disabled=false;alert(err.code==="40001"?t("qs.conflict"):(err.message||String(err)));if(err.code==="40001")openProp(p.reference)}});
 }
+/* kadaster- en marktgegevens: staan bij de kenmerken (besluit Rick 18-10), niet op foto's of in een aparte tab */
+function propExtData(p){const k=PR.catastro, pm=PR.price_m2;
+    const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${L2("Kadastergegevens","Cadastral details")}</h3><span class="tag">Catastro · ${ago(k.checked_at)}</span></div>${kv([[t("k.cadref"),`<a class="mono" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener">${esc(k.cadastral_ref)} ↗</a>`,1],[t("k.parcel"),k.parcel_ref],[t("k.unit"),[k.cat_block&&"bl. "+k.cat_block,k.cat_stair&&"esc. "+k.cat_stair,k.cat_floor&&"pl. "+k.cat_floor,k.cat_door&&"pta. "+k.cat_door].filter(Boolean).join(" · ")],[t("k.landclass"),k.land_class],[t("k.share"),k.participation_pct!=null?k.participation_pct+" %":null],[t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.year"),k.year_built],[t("k.built"),k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(CPR: ${num(p.build_area)} m²)</span>`:""):null,1],[t("k.living"),[k.living_area_m2&&num(k.living_area_m2)+" m² "+t("k.living.w"),k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],[t("k.plot"),k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],[t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
+      :"";
+    const pc=pm?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${t("m.title")}</h3><span class="tag">${esc(pm.town||"")} · ${esc(pm.segment||"")}</span></div>
+      <div class="facts" style="padding:12px 14px 0"><div><b>${eur(pm.ask_m2_cat||pm.ask_m2_wp)}</b><span>${t("m.ask")}</span></div><div><b>${eur(pm.market_median_m2)}</b><span>${t("m.median")}</span></div><div><b style="color:${pm.deviation_pct>10?"#f87171":pm.deviation_pct<-10?"#34d399":"inherit"}">${pm.deviation_pct!=null?(pm.deviation_pct>0?"+":"")+Number(pm.deviation_pct).toFixed(1)+"%":"—"}</b><span>${t("m.dev")}</span></div><div><b>${num(pm.market_n)}</b><span>${t("m.n")}</span></div></div>
+      <div class="sm muted" style="padding:0 14px 12px">${t("m.range",{a:eur(pm.market_p25_m2),b:eur(pm.market_p75_m2),c:esc(pm.market_basis||""),d:fdate(pm.period)})}</div></div>`:"";
+    return kc+catElements(k)+pc+((PR.enrichment||[]).length?enrichList(PR.enrichment,"property"):"");}
 function renderProp(){
+  if(prSub==="verrijking")prSub="kenmerken";
   const p=PR.property, raw=PR.raw||{}, d=$("#prDetail"), o=PR.owner, K=PR.catastro;
   const XL=p.is_external?extLink(p.external_agency,raw.external_url,raw.external_refnr):null;
-  const tabs=[["kenmerken",t("st.features")],["contacten",t("st.contacts"),(PR.interested||[]).length+(o?1:0)+(PR.buyer?1:0)],["verrijking",t("st.enrich"),(PR.enrichment||[]).length+(PR.catastro&&PR.catastro.cadastral_ref?1:0)+(PR.price_m2?1:0)],["website",L2("Website","Website")]];
+  const tabs=[["kenmerken",t("st.features")],["contacten",t("st.contacts"),(PR.interested||[]).length+(o?1:0)+(PR.buyer?1:0)],["website",L2("Website","Website")]];
   d.innerHTML=`<div class="dh" style="--acc:var(--c-pr)"><div style="min-width:0"><h2>${esc(p.reference)} · ${esc(p.title||"")}</h2>
      <div class="meta"><span>📍 ${esc([p.suburb,p.town,p.province].filter(Boolean).join(", "))}</span>
        ${o?`<a class="ownerlink" data-c="${esc(o.id||o.wp_id)}">👤 ${esc(o.name||o.email)}</a>`:""}
@@ -599,13 +609,6 @@ function renderProp(){
       ${vw.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.viewings",{n:vw.length})}</h3></div>${vw.map(v=>`<div class="sm" style="padding:4px 0">${fdate(v.date)} ${esc(v.time||"")} · ${esc(v.client||"")} · <span class="muted">${esc(v.agent||"")}</span></div>`).join("")}`:""}
       <div class="hd" style="padding:16px 0 8px"><h3>${t("h.interested",{n:it.length})}</h3></div>
       ${it.length?`<div style="display:flex;flex-direction:column;gap:6px">${it.map(x=>`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name||x.email)};width:30px;height:30px;font-size:calc(11px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${x.n}× · ${esc((x.types||[]).map(rq).join(", "))}</div></div><span class="sm muted">${ago(x.last)}</span></div>`).join("")}</div>`:`<div class="empty sm">${t("norequests")}</div>`}`}
-  if(prSub==="verrijking"){const k=PR.catastro, pm=PR.price_m2;
-    const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.match_quality||k.match_method||"")} · ${ago(k.checked_at)}</span></div>${kv([[t("k.cadref"),`<a class="mono" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener">${esc(k.cadastral_ref)} ↗</a>`,1],[t("k.parcel"),k.parcel_ref],[t("k.unit"),[k.cat_block&&"bl. "+k.cat_block,k.cat_stair&&"esc. "+k.cat_stair,k.cat_floor&&"pl. "+k.cat_floor,k.cat_door&&"pta. "+k.cat_door].filter(Boolean).join(" · ")],[t("k.landclass"),k.land_class],[t("k.share"),k.participation_pct!=null?k.participation_pct+" %":null],[t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.year"),k.year_built],[t("k.built"),k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(CPR: ${num(p.build_area)} m²)</span>`:""):null,1],[t("k.living"),[k.living_area_m2&&num(k.living_area_m2)+" m² "+t("k.living.w"),k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],[t("k.plot"),k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],[t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
-      :(k?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.status||t("k.notfound"))}</span></div><div class="note">${esc(k.error||t("k.nomatch"))}</div></div>`:"");
-    const pc=pm?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${t("m.title")}</h3><span class="tag">${esc(pm.town||"")} · ${esc(pm.segment||"")}</span></div>
-      <div class="facts" style="padding:12px 14px 0"><div><b>${eur(pm.ask_m2_cat||pm.ask_m2_wp)}</b><span>${t("m.ask")}</span></div><div><b>${eur(pm.market_median_m2)}</b><span>${t("m.median")}</span></div><div><b style="color:${pm.deviation_pct>10?"#f87171":pm.deviation_pct<-10?"#34d399":"inherit"}">${pm.deviation_pct!=null?(pm.deviation_pct>0?"+":"")+Number(pm.deviation_pct).toFixed(1)+"%":"—"}</b><span>${t("m.dev")}</span></div><div><b>${num(pm.market_n)}</b><span>${t("m.n")}</span></div></div>
-      <div class="sm muted" style="padding:0 14px 12px">${t("m.range",{a:eur(pm.market_p25_m2),b:eur(pm.market_p75_m2),c:esc(pm.market_basis||""),d:fdate(pm.period)})}</div></div>`:"";
-    B.innerHTML=kc+catElements(k)+pc+((PR.enrichment||[]).length||(!kc&&!pc)?enrichList(PR.enrichment,"property"):"");}
   if(prSub==="website")renderPropWeb(p,B);
 }
 /* ---------- woning: websitestatistiek (eigen meting gruposoltura.com, web_events) ---------- */
