@@ -80,7 +80,7 @@ const blankContact=()=>({title:"",first_name:"",last_name:"",company:"",language
   birthday:"",website:"",referred_by:"",owner:"",source:"",roles:[],emails:[{email:"",kind:""}],phones:[{phone:"",kind:"mobile"}],
   keyholder:false,mailing_optin:false,prefs:[],search:{budget:"",property_type:"",period:""},internal_comments:""});
 const blankProp=()=>({status:"draft",published:false,category:"",build_type:"resale",own_listing_type:"direct",reference:"",year_built:"",listed_at:new Date().toISOString().slice(0,10),
-  dossier_complete:false,listing_agent:"",
+  dossier_complete:false,listing_agent:"",internal_notes:"",
   price:"",price_text:"",price_original:"",price_temp:"",price_temp_until:"",price_hidden:false,price_fixed:false,price_from:false,price_on_request:false,price_coming_soon:false,
   labels:[],search_rank:"normal",no_export:false,export_feeds:[],
   municipality:"",area:"",area_new:"",street:"",street_number:"",postal_code:"",province:"Alicante",country:"Spain",lat:"",lng:"",hide_address:false,show_street:false,
@@ -207,7 +207,7 @@ function stepContact(){
        inp("c.first_name",["Voornaam","First name"],{req:"save",ac:"off"}),inp("c.last_name",["Achternaam","Last name"],{ac:"off"}),inp("c.company",["Bedrijf","Company"]))
      +row(sel("c.language",["Correspondentietaal","Correspondence language"],LANGS.map(l=>[l[0],[l[1],l[2]]]),{req:"save"}),inp("c.birthday",["Geboortedatum","Birthday"],{type:"date"}),
        sel("c.owner",["Verantwoordelijk teamlid","Responsible team member"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}),sel("c.source",["Bron","Source"],SOURCES))
-     +chk("c.keyholder",["Sleutelhouder (wij hebben de sleutel)","Keyholder (we hold the key)"])+`<small class="muted">${esc(tr(["Voornaam óf bedrijf is genoeg.","First name or company is enough."]))}</small>`)}
+     +`<small class="muted">${esc(tr(["Voornaam óf bedrijf is genoeg.","First name or company is enough."]))}</small>`)}
   ${sec(["E-mail en telefoon","E-mail and phone"],`
     <div class="ad-list">${c.emails.map((e,i)=>`<div class="ad-row">${inp(`c.emails.${i}.email`,i?["Extra e-mail","Extra e-mail"]:"E-mail",{type:"email",w:3,req:i?"":"save",ac:"off"})}${sel(`c.emails.${i}.kind`,["Soort","Kind"],EMAIL_KINDS,{empty:false})}
       ${i?`<button class="ad-x" data-rm="emails" data-i="${i}" title="×">×</button>`:""}</div>`).join("")}<button class="btn sm" data-add="emails">+ ${esc(tr(["e-mail","e-mail"]))}</button></div>
@@ -287,6 +287,7 @@ function propForm(base,media){
      ${row(inp(B(`texts.${txLang}.heading`),["Kop","Heading"],{w:4,req:txLang==="es"?"":"pub",ph:["bijv. Vrijstaande villa met privézwembad in Benimar","e.g. Detached villa with private pool in Benimar"]}))}
      ${row(area(B(`texts.${txLang}.description`),["Omschrijving","Description"],{rows:8,req:txLang==="es"?"":"pub"}))}
      ${row(area(B(`texts.${txLang}.key_details`),["Kernpunten (één per regel)","Key details (one per line)"],{rows:3}))}
+     ${row(area(B("internal_notes"),["Interne notities (bijv. wie de sleutelhouder is)","Internal notes (e.g. who holds the keys)"],{rows:3,hint:["Alleen intern, nooit op de site","Internal only, never on the site"]}))}
      ${row(inp(B(`texts.${txLang}.seo_title`),["SEO-titel","SEO title"],{w:2,hint:["max. ±60 tekens","max ±60 characters"]}),inp(B(`texts.${txLang}.seo_description`),["SEO-omschrijving","SEO description"],{w:2,hint:["max. ±155 tekens","max ±155 characters"]}))}
      <small class="muted">${esc(tr(["NL en EN zijn nodig voor de site en de Kyero-feed naar partners; ES is optioneel.","NL and EN are needed for the site and the Kyero feed to partners; ES is optional."]))}</small>`,{id:"pf-tekst"})}
   ${sec(["Foto's en media","Photos and media"],`<div class="ad-drop" data-media="${base}"><input type="file" multiple accept="image/*,application/pdf" hidden>
@@ -408,7 +409,7 @@ const n=v=>v===""||v==null?null:Number(v);
 const teamName=wp=>{const t=TEAM.find(x=>String(x.wp)===String(wp));return t?`← team ${t.name}`:(wp?`← team wp ${wp}`:null)};
 function propPayload(p,media,owner){
   const opts={};Object.entries(p.opts||{}).forEach(([k,v])=>{if(v&&v.length)opts[k]=v});
-  return {"core.properties":{reference:p.reference||null,origin:"own",own_listing_type:p.own_listing_type,status:p.status,published:!!p.published,category:p.category||null,build_type:p.build_type,
+  return {"core.properties":{reference:p.reference||null,origin:"own",internal_notes:p.internal_notes||null,own_listing_type:p.own_listing_type,status:p.status,published:!!p.published,category:p.category||null,build_type:p.build_type,
     price:n(p.price),price_previous:n(p.price_original),price_from:p.price_from,price_on_request:p.price_on_request,price_fixed:p.price_fixed,price_hidden:p.price_hidden,
     bedrooms:n(p.bedrooms),bathrooms:n(p.bathrooms),toilets:n(p.toilets),ensuites:n(p.ensuites),living_rooms:n(p.living_rooms),kitchens:n(p.kitchens),floors:n(p.floors),floor_level:p.floor_level||null,
     balconies:n(p.balconies),terraces:n(p.terraces),patios:n(p.patios),garages:n(p.garages),carports:n(p.carports),build_area:n(p.build_area),plot_area:n(p.plot_area),

@@ -549,3 +549,4 @@ html[data-theme="light"] .hero .pr{color:#fff}
   .pk-ph{flex:0 0 auto;width:100%}
 }
 .dh .acts a.act-new{background:var(--c-ct);border-color:var(--c-ct);color:#fff;font-weight:700;cursor:pointer}.dh .acts a.act-new:hover{filter:brightness(1.1);color:#fff}
+.pk-notes{white-space:pre-wrap;background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--c-pr);border-radius:8px;padding:8px 10px;font-size:calc(13.5px*var(--fs,1))}

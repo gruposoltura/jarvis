@@ -487,7 +487,8 @@ function propFeatures(p,raw,o,K,XL,m){
       [t("p.sea"),sea]])}</div>
     <div class="card pk-card"><div class="hd"><h3>${L2("Adres & toegang","Address & access")}</h3></div>${kv([
       [t("p.address"),[raw.street,raw.postal_code].filter(Boolean).join(", ")||null],
-      [t("p.keys"),raw.keydetails]])}</div>
+      [t("p.keys"),raw.keydetails],
+      [L2("Interne notities","Internal notes"),raw.internal_notes?`<div class="pk-notes">${esc(raw.internal_notes)}</div>`:null,1]])}</div>
     ${catSummary(K,p)}
   </div>
   <aside class="pk-photos" id="pkPhotos" aria-label="${L2("Foto's","Photos")}"><div class="pk-ph-h">${L2("Foto's","Photos")}</div><div class="pk-ph-list"><div class="loader sm">…</div></div></aside>

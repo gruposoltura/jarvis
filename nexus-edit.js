@@ -148,7 +148,8 @@ function secContacts(){const C=D.contacts||{};
       :cur?`<div class="ad-picked"><div style="min-width:0;grid-column:1/3"><b>${esc((PICKED[col]||{}).name||cur)}</b> <span class="tag">${esc(tr(["nieuw gekozen","newly picked"]))}</span></div><button class="btn sm" data-unlink="${col}">×</button></div>`:""}
       <input class="ad-search" data-pick="${col}" data-role="${role||""}" type="search" placeholder="${esc(tr(["Zoek op naam, e-mail of telefoon","Search by name, e-mail or phone"]))}"><div class="ad-res" data-res="${col}"></div></div>`};
   return sec("con",["Contacten","Contacts"],row(box("owner","owner_contact_id",["Eigenaar / verkoper","Owner / seller"]),box("buyer","buyer_contact_id",["Koper","Buyer"]))
-    +row(box("agency","agency_contact_id",["Aanbiedend kantoor (partner)","Listing agency (partner)"],"agent")))}
+    +row(box("agency","agency_contact_id",["Aanbiedend kantoor (partner)","Listing agency (partner)"],"agent"))
+    +row(`<label class="ad-f w4"><span>${esc(tr(["Interne notities (bijv. wie de sleutelhouder is)","Internal notes (e.g. who holds the keys)"]))}</span><textarea data-k="internal_notes" rows="4">${esc(P.internal_notes||"")}</textarea><small>${esc(tr(["Alleen intern, nooit op de site","Internal only, never on the site"]))}</small></label>`))}
 function secPub(){
   return sec("pub",["Publicatie","Publishing"],`<h5>Labels</h5>`+multi("labels",[["new","NEW"],["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:5})
     +`<h5>${esc(tr(["Exportfeeds","Export feeds"]))}</h5>`+multi("export_feeds",[["idealista","Idealista"]],{cols:4})+chk("no_export",["Uitsluiten van alle XML-feeds","Exclude from all XML feeds"])
@@ -299,7 +300,7 @@ async function openContact(key,ctx){X=ctx;
      <button class="pe-x" data-act="cclose">×</button></header>
      <div class="pe-main"><div id="peErr"></div><section class="ad-sec"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
        <div class="ad-row">${CFIELDS.slice(0,8).map(f=>`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" type="${f[2]||"text"}" value="${esc(v[f[0]]??"")}"></label>`).join("")}</div>
-       <label class="ad-c"><input type="checkbox" data-cf="keyholder" ${v.keyholder?"checked":""}><span>${esc(tr(["Sleutelhouder","Keyholder"]))}</span></label></section>
+</section>
      <section class="ad-sec"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
        <div class="ad-row">${CFIELDS.slice(8).map(f=>`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" value="${esc(v[f[0]]??"")}"></label>`).join("")}</div>
        <label class="ad-f w4"><span>${esc(tr(["Interne opmerking","Internal note"]))}</span><textarea data-cf="internal_comments" rows="4">${esc(v.internal_comments||"")}</textarea></label></section>
