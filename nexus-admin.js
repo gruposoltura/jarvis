@@ -164,7 +164,8 @@ const munis=()=>Object.keys(LOCS||LOC_FALLBACK).sort((a,b)=>a.localeCompare(b,"e
 function open(root,ctx){X=ctx;ROOT=root;if(!ROOT.dataset.init){load();ROOT.dataset.init="1";bind()}
   if(!S.c.owner&&X.me())S.c.owner=String(X.me().wp_author_id||"");
   if(!S.p.listing_agent&&X.me())S.p.listing_agent=String(X.me().wp_author_id||"");
-  render();loadLocations().then(()=>{if(ROOT.querySelector("#adMuni"))render()})}
+  render();loadLocations().then(()=>{if(ROOT.querySelector("#adMuni"))render()});
+  ["p","wp.p"].forEach(b=>{if(/^[A-Z]{2}\d{3}$/.test(getP(S,b).reference||""))checkRef(b)})}
 const STEPS=[[1,["Aanbrenger","Introducer"]],[2,["Contact","Contact"]],[3,["Woning","Property"]],[4,["Controle","Review"]]];
 /* bij opnieuw tekenen (bv. vinkje aan/uit) de scrollpositie en focus behouden, zodat het scherm niet naar boven springt */
 function render(){
@@ -381,6 +382,7 @@ function validateProp(p,media,stepNo,out){
   if(!p.category)add(["Woningtype kiezen","Choose property type"],"save","pf-basis");
   if(!p.reference)add(["Referentie invullen","Enter reference"],"save","pf-basis");
   else if(!/^[A-Z]{2}\d{3}$/.test(p.reference))add(["Referentie: 2 hoofdletters + 3 cijfers (bijv. RH995)","Reference: 2 capitals + 3 digits (e.g. RH995)"],"save","pf-basis");
+  else if(REF_TAKEN[p.reference])add([`Referentie ${p.reference} bestaat al — kies een andere`,`Reference ${p.reference} already exists — choose another`],"save","pf-basis");
   if(!p.listing_agent)add(["Verantwoordelijke makelaar kiezen","Choose listing agent"],"save","pf-basis");
   if(!p.price&&!p.price_on_request)add(["Vraagprijs (of ‘prijs op aanvraag’)","Asking price (or ‘price on request’)"],"save","pf-prijs");
   if(!p.municipality)add(["Gemeente kiezen","Choose municipality"],"save","pf-loc");
@@ -603,9 +605,11 @@ async function checkDups(){
   if(box)box.innerHTML=DUPS.length?`<div class="ad-warnbox"><b>${esc(tr(["Dit contact bestaat mogelijk al","This contact may already exist"]))}</b>${DUPS.map(d=>`<div class="ad-duprow"><span>${esc(d.name||d.email)} <span class="sm muted">· ${esc(d.why)} · ${esc((d.roles||[]).join(", "))}</span></span><button class="btn sm" data-usedup="${d.id||d.wp_id}">${esc(tr(["Gebruik dit contact","Use this contact"]))}</button></div>`).join("")}</div>`:"";
   updateChecks();
 }
+const REF_TAKEN={};
 async function checkRef(base){const p=getP(S,base);const box=ROOT.querySelector("#adRefCheck");if(!box)return;
   if(!/^[A-Z]{2}\d{3}$/.test(p.reference||"")){box.innerHTML="";return}
   const rows=await searchProps(p.reference);const hit=rows.find(r=>String(r.reference).toUpperCase()===p.reference);
+  REF_TAKEN[p.reference]=!!hit;updateChecks();
   box.innerHTML=hit?`<span class="ad-bad">⚠ ${esc(tr([`Referentie ${p.reference} bestaat al`,`Reference ${p.reference} already exists`]))} (${esc([hit.suburb,hit.town].filter(Boolean).join(", "))})</span>`:`<span style="color:#34d399">✓ ${esc(tr(["Referentie is vrij","Reference is free"]))}</span>`}
 
 /* ================= KAART ================= */
