@@ -706,3 +706,9 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .act-del{border:1px solid transparent;background:none;color:var(--tx3);cursor:pointer;border-radius:6px;padding:1px 5px;font-size:calc(12px*var(--fs,1));line-height:1.4;opacity:.45}
 .act-del:hover,.act-del:focus-visible{opacity:1;color:#ef4444;border-color:#ef4444;background:rgba(239,68,68,.08)}
 .tl .e .h .act-del{margin-left:auto}
+
+/* wachtwoord-oogje */
+.pw-wrap{position:relative;display:block}
+.pw-wrap input{padding-right:44px}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:none;border:0;border-radius:8px;color:var(--tx2);cursor:pointer;padding:0}
+.pw-eye:hover{color:var(--tx);background:var(--bg3,rgba(127,127,127,.12))}
