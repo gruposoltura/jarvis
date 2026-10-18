@@ -360,8 +360,7 @@
           <span class="when" id="mail-when"></span></h2>
         <div class="nums" id="mail-nums"></div>
         <div class="chart" id="mail-chart"></div>
-        <div class="legend"><span><i style="background:var(--yellow)"></i>Campagnes verzonden</span>
-          <span><i style="background:var(--green)"></i>Campagnes delivered</span>
+        <div class="legend"><span>Balk = campagnes verzonden, per type (kleur = code hieronder)</span>
           <span><i style="background:var(--red)"></i>Bounces</span>
           <span><i style="background:var(--trans)"></i>Transactioneel &mdash; rechteras</span></div>
         <div class="legend" id="mail-typekey"></div>
@@ -861,7 +860,10 @@
         padT = topLabels ? 26 : 12, padB = 26;
     var iW = w - padL - padR, iH = h - padT - padB;
     var max = 1;
-    groups.forEach(function(s){ s.values.forEach(function(v){ if(v > max) max = v; }); });
+    groups.forEach(function(s){
+      if(s.segments){ dates.forEach(function(d, i){ var t = 0; s.segments.forEach(function(g){ t += g.values[i] || 0; }); if(t > max) max = t; }); }
+      else s.values.forEach(function(v){ if(v > max) max = v; });
+    });
     if(lineSeries) lineSeries.values.forEach(function(v){ if(v > max) max = v; });
     max = niceMax(max);
     var rMax = 1;
@@ -888,6 +890,20 @@
         + '" text-anchor="middle" font-size="11" fill="'+CLR.muted+'">' + dayLabel(dates[i]) + '</text>';
     }
     groups.forEach(function(s, si){
+      if(s.segments){
+        // gestapelde balk: een segment per type, 2px naad in de achtergrondkleur, alleen de bovenste krijgt ronde hoeken
+        dates.forEach(function(d, i){
+          var x = padL + i*slot + (slot - bw*groups.length)/2 + si*bw, base = 0;
+          var parts = s.segments.filter(function(g){ return (g.values[i] || 0) > 0; });
+          parts.forEach(function(g, k){
+            var v = g.values[i], y1 = Y(base), y2 = Y(base + v), hgt = Math.max(1, y1 - y2 - (k ? 2 : 0));
+            svg += '<rect x="'+x.toFixed(1)+'" y="'+y2.toFixed(1)+'" width="'+(bw-1).toFixed(1)
+              + '" height="'+hgt.toFixed(1)+'" rx="'+(k === parts.length-1 ? 2 : 0)+'" fill="'+g.color+'"/>';
+            base += v;
+          });
+        });
+        return;
+      }
       s.values.forEach(function(v, i){
         var x = padL + i*slot + (slot - bw*groups.length)/2 + si*bw;
         var y = Y(v), bh = padT + iH - y;
@@ -927,7 +943,7 @@
       topLabels.forEach(function(t, i){
         if(!t || !t.text) return;
         var vmax = 0;
-        groups.forEach(function(s){ var v = Number(s.values[i]||0); if(v > vmax) vmax = v; });
+        groups.forEach(function(s){ var v = s.segments ? s.segments.reduce(function(t, g){ return t + Number(g.values[i]||0); }, 0) : Number(s.values[i]||0); if(v > vmax) vmax = v; });
         var x = padL + i*slot + slot/2;
         var y = Math.max(13, Y(vmax) - 7);
         svg += '<text x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" text-anchor="middle" font-size="13"'
@@ -1130,17 +1146,19 @@
   /* ---- labels + kleuren per mailing-type (gebruikt in tooltip EN in de tabel) ---- */
   var TYPE_LABELS = {
     weekly_news:'Wekelijks lokaal nieuws', price_reduced:'Prijsverlagingen', monthly_matches:'Suspect matches',
-    new_listing:'Nieuw aanbod', weekly_top10:'Top 10', reserved:'Gereserveerd / te laat',
+    new_listing:'Nieuw aanbod', weekly_top10:'Top 10', market_report:'Market Report', reserved:'Gereserveerd / te laat',
     welcome_seller:'Welkom verkoper', review_invite:'Review-uitnodiging', other:'Overig'
   };
+  // eigen kleur per mailing-type; gevalideerd op de donkere achtergrond (onderling onderscheidbaar,
+  // ook bij kleurenblindheid samen met de code boven de balk). Zelfde kleur in grafiek, legenda en tabel.
   var TYPE_CLR = {
-    weekly_news:CLR.cyan, price_reduced:CLR.orange, monthly_matches:CLR.blue, new_listing:CLR.green,
-    weekly_top10:CLR.yellow, reserved:CLR.muted, welcome_seller:CLR.muted,
+    weekly_news:'#00d4ff', price_reduced:'#e67e22', monthly_matches:'#5a6bff', new_listing:'#2fb87a',
+    weekly_top10:'#ffd400', market_report:'#ee5fb8', reserved:CLR.muted, welcome_seller:CLR.muted,
     review_invite:CLR.muted, other:CLR.muted
   };
   /* korte code boven de balk in de mailgrafiek - leesbaar zonder hover */
   var TYPE_CODE = {
-    weekly_news:'NWS', price_reduced:'PV', monthly_matches:'SM', new_listing:'NA',
+    weekly_news:'NWS', price_reduced:'PV', monthly_matches:'SM', new_listing:'NA', market_report:'MAR',
     weekly_top10:'T10', reserved:'RES', welcome_seller:'WV', review_invite:'REV', other:'OV'
   };
   function typeCode(t){ return TYPE_CODE[t] || String(t || '?').slice(0,3).toUpperCase(); }
@@ -1392,19 +1410,26 @@
         return { text: list.map(function(r){ return typeCode(r.mailing_type); }).join('+'),
                  color: TYPE_CLR[list[0].mailing_type] || CLR.yellow };
       });
-      $('mail-chart').innerHTML = barChart(md, [
-        { values: campSent, color: CLR.yellow },
-        { values: campDeliv, color: CLR.green }
-      ], { values: bounceVals, color: CLR.red }, 230, mailTop,
+      // een gestapelde balk per dag, een segment per mailing-type in de kleur van zijn code
+      var segTypes = [];
+      md.forEach(function(d){ (campTypesByDate[d] || []).forEach(function(r){ if(segTypes.indexOf(r.mailing_type) === -1) segTypes.push(r.mailing_type); }); });
+      var segs = segTypes.map(function(k){
+        return { type: k, color: TYPE_CLR[k] || CLR.muted, values: md.map(function(d){
+          return (campTypesByDate[d] || []).reduce(function(t, r){ return t + (r.mailing_type === k ? Number(r.sent||0) : 0); }, 0); }) };
+      });
+      $('mail-chart').innerHTML = barChart(md, [ { segments: segs } ],
+         { values: bounceVals, color: CLR.red }, 230, mailTop,
          { values: transSent, color: CLR.trans });
-      hookHover($('mail-chart'), md, [
-        { label: 'Campagnes verzonden', values: campSent, color: CLR.yellow },
-        { label: 'Campagnes delivered', values: campDeliv, color: CLR.green },
+      hookHover($('mail-chart'), md, segs.map(function(g){
+          return { label: typeCode(g.type) + ' \u00b7 ' + (TYPE_LABELS[g.type] || g.type), values: g.values, color: g.color };
+        }).concat([
+        { label: 'Campagnes verzonden', values: campSent, color: CLR.muted },
+        { label: 'Campagnes delivered', values: campDeliv, color: CLR.muted },
         { label: 'Bounces (totaal)', values: bounceVals, color: CLR.red },
         { label: 'Transactioneel (rechteras)', values: transSent, color: CLR.trans },
         { label: 'Totaal verzonden', values: totalSent, color: CLR.muted },
         { label: 'Opens uniek (totaal)', values: opensVals, color: CLR.muted }
-      ], true, mailNotes);
+      ]), true, mailNotes);
       // codelegenda: alleen de types die in deze 14 dagen echt zijn verzonden
       var keyEl = $('mail-typekey');
       if(keyEl){
