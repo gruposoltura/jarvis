@@ -150,7 +150,16 @@ function open(root,ctx){X=ctx;ROOT=root;if(!ROOT.dataset.init){load();ROOT.datas
   if(!S.p.listing_agent&&X.me())S.p.listing_agent=String(X.me().wp_author_id||"");
   render();loadLocations().then(()=>{if(ROOT.querySelector("#adMuni"))render()})}
 const STEPS=[[1,["Aanbrenger","Introducer"]],[2,["Contact","Contact"]],[3,["Woning","Property"]],[4,["Controle","Review"]]];
+/* bij opnieuw tekenen (bv. vinkje aan/uit) de scrollpositie en focus behouden, zodat het scherm niet naar boven springt */
 function render(){
+  const prevMain=ROOT&&ROOT.querySelector("#adMain"), keepY=prevMain?prevMain.scrollTop:0, keepKey=prevMain?prevMain.dataset.view:"";
+  const fe=document.activeElement, focusK=fe&&ROOT&&ROOT.contains(fe)?(fe.dataset.k||fe.id||""):"";
+  renderInner();
+  const m=ROOT.querySelector("#adMain");
+  if(m){m.dataset.view=S.flow+":"+S.step;if(keepKey===m.dataset.view)m.scrollTop=keepY}
+  if(focusK){const el=ROOT.querySelector(`[data-k="${CSS.escape(focusK)}"]`)||ROOT.querySelector("#"+CSS.escape(focusK));if(el&&el.focus)el.focus({preventScroll:true})}
+}
+function renderInner(){
   const flows=[["wizard",["Nieuw contact (workflow)","New contact (workflow)"],"①→④"],["prop",["Woning toevoegen","Add property"],"⌂"],["link",["Contact ↔ woning koppelen","Link contact ↔ property"],"⇄"]];
   ROOT.innerHTML=`<div class="ad">
    <aside class="card ad-nav"><div class="hd"><h3>Admin</h3></div>
