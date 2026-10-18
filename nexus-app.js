@@ -487,8 +487,26 @@ function propFeatures(p,raw,o,K,XL,m){
       [t("p.keys"),raw.keydetails]])}</div>
     ${catSummary(K,p)}
   </div>
+  <aside class="pk-photos" id="pkPhotos" aria-label="${L2("Foto's","Photos")}"><div class="pk-ph-h">${L2("Foto's","Photos")}</div><div class="pk-ph-list"><div class="loader sm">…</div></div></aside>
   ${raw.changelog?`<div class="card pk-wide"><div class="hd"><h3>${t("h.changelog")}</h3></div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div></div>`:""}
   </div>`;
+}
+/* alle foto's van de woning als verticale strip; klik = grote foto bovenaan, klik op de grote foto = volle grootte */
+const PHOTO_CACHE={};
+async function loadPropPhotos(p,raw){
+  const box=$("#pkPhotos .pk-ph-list"); if(!box||!p.id)return;
+  let urls=PHOTO_CACHE[p.id];
+  if(!urls){try{urls=await rpc("nexus_property_photos",{p_id:p.id})||[]}catch(e){urls=[]}PHOTO_CACHE[p.id]=urls}
+  const cur=$("#pkPhotos .pk-ph-list"); if(!cur||!PR||PR.property.id!==p.id)return;
+  if(!urls.length){cur.innerHTML=`<div class="muted sm">${L2("Geen foto's","No photos")}</div>`;return}
+  $("#pkPhotos .pk-ph-h").textContent=`${L2("Foto's","Photos")} (${urls.length})`;
+  cur.innerHTML=urls.map((u,i)=>`<button type="button" class="pk-ph${i===0?" on":""}" data-u="${esc(u)}" title="${i+1}/${urls.length}"><img loading="lazy" src="${esc(u)}" alt=""></button>`).join("");
+  const hero=$("#prBody .pk .hero");
+  if(hero){hero.style.cursor="zoom-in";hero.dataset.u=urls[0];if(!raw.image)hero.style.backgroundImage=`url('${urls[0].replace(/'/g,"%27")}')`;hero.onclick=()=>{if(hero.dataset.u)window.open(hero.dataset.u,"_blank","noopener")}}
+  cur.querySelectorAll(".pk-ph").forEach(b=>b.onclick=()=>{
+    cur.querySelectorAll(".pk-ph").forEach(x=>x.classList.toggle("on",x===b));
+    if(hero){hero.style.backgroundImage=`url('${b.dataset.u.replace(/'/g,"%27")}')`;hero.dataset.u=b.dataset.u;hero.scrollIntoView({behavior:"smooth",block:"nearest"})}
+  });
 }
 function ownerBox(o){
   if(!o)return `<div class="ownerbox" style="cursor:default;border-style:dashed"><span class="muted sm">${t("p.noowner")}</span></div>`;
@@ -549,7 +567,7 @@ function renderProp(){
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{prSub=b.dataset.s;renderProp()});
   wirePropEdit(d,p);
   const B=$("#prBody"), m=PR.matches||{};
-  if(prSub==="kenmerken")B.innerHTML=propFeatures(p,raw,o,K,XL,m);
+  if(prSub==="kenmerken"){B.innerHTML=propFeatures(p,raw,o,K,XL,m);loadPropPhotos(p,raw)}
   if(prSub==="contacten"){const one=(x,w,rc)=>x?`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm">${roleTag(rc)} <span class="muted">${esc(w)}</span></div></div></div>`:"";
     const it=PR.interested||[], vw=PR.viewings||[];
     B.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${one(o,o&&o.is_agent?t("o.agent"):t("o.owner"),o&&o.is_agent?"agent":"seller")}${one(PR.buyer,t("o.buyer"),"buyer")}</div>
