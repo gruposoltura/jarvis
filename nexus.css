@@ -701,3 +701,8 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .pk-card .kv{margin:0;gap:6px 14px;padding:10px 14px 12px}
 .pk-card .hd{padding:9px 14px}
 .focusbar{margin:0 0 6px}.focusbar .btn{padding:5px 12px;font-size:calc(13px*var(--fs,1))}
+
+/* activiteit verwijderen */
+.act-del{border:1px solid transparent;background:none;color:var(--tx3);cursor:pointer;border-radius:6px;padding:1px 5px;font-size:calc(12px*var(--fs,1));line-height:1.4;opacity:.45}
+.act-del:hover,.act-del:focus-visible{opacity:1;color:#ef4444;border-color:#ef4444;background:rgba(239,68,68,.08)}
+.tl .e .h .act-del{margin-left:auto}

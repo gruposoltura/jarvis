@@ -186,6 +186,7 @@ $("#prBack").onclick=()=>{if(prFrom&&prFrom.list){const y=prFrom.scroll||0;prFro
 $("#prAll").onclick=()=>{prFocus=false;prFrom=null;applyPrFocus();if(!prLoaded)loadProps(true)};
 /* data-c wint van data-p: zo opent de eigenaar-link op een woningkaart het contact, niet de woning */
 document.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;
+  const del=e.target.closest("[data-del-id]");if(del){e.stopPropagation();e.preventDefault();delActivity(del.dataset.delK,del.dataset.delId);return}
   const c=e.target.closest("[data-c]"), p=e.target.closest("[data-p]");
   if(c&&(!p||p.contains(c))){e.stopPropagation();go.c(c.dataset.c);return}
   if(p){
@@ -288,13 +289,24 @@ function viewingsHtml(v){return (v||[]).length?v.map(x=>`<div class="it" ${x.pro
 function notariesHtml(v){return (v||[]).length?v.map(x=>`<div class="it" ${x.prop_wp_id?`data-p="${x.prop_wp_id}"`:'style="cursor:default"'}><div class="ic" style="--ic:#a855f7">⚖</div>
   <div style="min-width:0"><div class="t">${esc(x.client||x.title||"—")}</div><div class="d">${agWhen(x)}${x.role?` · ${esc(t("nt."+x.role)!=="nt."+x.role?t("nt."+x.role):x.role)}`:""}${x.ref?" · "+esc(x.ref):""}${x.owner?` · <span style="color:${REPC[ownerName(x.owner)]||"#64748b"}">${esc(ownerName(x.owner))}</span>`:""}</div>
   ${(x.modelos||[]).length?`<div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">${x.modelos.map(m=>`<span class="tag">Modelo ${esc(m)}</span>`).join("")}</div>`:""}</div><span></span></div>`).join(""):`<div class="empty">${t("ov.nonotaries")}</div>`}
+/* losse activiteit verwijderen (alleen beheerder); verwijdert ook uit contacttijdlijn */
+const isAdmin=()=>!!(ME&&ME.role==="admin");
+const delBtn=(k,id)=>isAdmin()&&id!=null?`<button class="act-del" data-del-k="${esc(k)}" data-del-id="${esc(id)}" title="${esc(t("act.del"))}" aria-label="${esc(t("act.del"))}">🗑</button>`:"";
+async function delActivity(k,id){
+  if(!confirm(t("act.del.confirm")))return;
+  try{await rpc("nexus_activity_delete",{p_kind:k,p_id:String(id)})}catch(e){alert(e.message);return}
+  OV=null;ovLoaded=false;
+  if(curTab==="ov")loadOverview();
+  if(curTab==="ac")loadActivity();
+  if(curTab==="ct"&&ctSel)openContact(ctSel);
+}
 function feedHtml(list){
   const IC={request:["#ec4899","✉"],lead:["#f59e0b","★"],viewing:["#22c55e","◉"]};
   if(!list||!list.length)return`<div class="empty">${t("noactivity")}</div>`;
   return list.map(a=>{const ic=IC[a.kind]||IC.request;return `<div class="it" ${a.contact_wp_id?`data-c="${a.contact_wp_id}"`:""}>
     <div class="ic" style="--ic:${ic[0]}">${ic[1]}</div>
     <div style="min-width:0"><div class="t">${esc(a.name||t("unknown"))}</div><div class="d">${esc(a.kind==="request"?rq(a.type):a.type)}${a.ref?" · "+esc(a.ref):""} · <span style="color:${REPC[a.rep]||"#64748b"}">${esc(rep(a.rep||""))}</span></div></div>
-    <span class="sm muted">${ago(a.ts)}</span></div>`}).join("")}
+    <span class="sm muted" style="display:flex;align-items:center;gap:6px">${ago(a.ts)}${a.kind==="request"?delBtn("request",a.id):""}</span></div>`}).join("")}
 
 /* ================= CONTACTEN ================= */
 let ctLoaded=false, ctRole="", ctScope="all", ctOff=0, ctSel=null;
@@ -415,7 +427,7 @@ function ctProps(){
 function timeline(list){
   const C={request:"#ec4899",viewing:"#22c55e",mail:"#3b82f6",lead:"#f59e0b",hot:"#ef4444",note:"#a855f7"};
   if(!list||!list.length)return`<div class="empty">${t("notimeline")}</div>`;
-  return `<div class="tl">${list.map(e=>`<div class="e" style="--ec:${C[e.kind]||"#64748b"}"><div class="h"><span class="k">${esc(t("k."+e.kind))} · ${esc(e.kind==="request"?rq(e.title||""):tlTitle(e.title||""))}</span>${e.ref?`<span class="tag">${esc(e.ref)}</span>`:""}<span class="w">${fdate(e.ts)} · ${ago(e.ts)}</span></div>${e.text?`<div class="x">${esc(e.text)}</div>`:""}</div>`).join("")}</div>`}
+  return `<div class="tl">${list.map(e=>`<div class="e" style="--ec:${C[e.kind]||"#64748b"}"><div class="h"><span class="k">${esc(t("k."+e.kind))} · ${esc(e.kind==="request"?rq(e.title||""):tlTitle(e.title||""))}</span>${e.ref?`<span class="tag">${esc(e.ref)}</span>`:""}<span class="w">${fdate(e.ts)} · ${ago(e.ts)}</span>${e.id!=null&&(e.kind!=="mail"||e.src==="communication")?delBtn(e.kind==="mail"?"communication":e.kind,e.id):""}</div>${e.text?`<div class="x">${esc(e.text)}</div>`:""}</div>`).join("")}</div>`}
 function ctRelations(c){
   const r=CT.relations||[], im=CT.interested_in_mine||[];
   const rel=x=>`<div class="rel" data-c="${esc(x.key||x.wp_id)}"><div class="ini" style="background:${hue(x.name||x.email)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${esc(x.why||"")}</div></div></div>`;
