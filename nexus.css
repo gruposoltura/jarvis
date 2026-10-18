@@ -487,3 +487,4 @@ html[data-theme="light"] .tab i{box-shadow:none}
 .pe-small .pe-main{overflow:auto}
 html[data-theme="light"] .pc .im .badge{color:#fff}
 html[data-theme="light"] .hero .pr{color:#fff}
+.cpill.nophone{border-style:dashed;background:transparent}.cpill.nophone a{color:var(--tx3);font-weight:600;cursor:pointer}.cpill.nophone a b{color:var(--acc)}
