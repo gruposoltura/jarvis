@@ -475,7 +475,7 @@ function propFeatures(p,raw,o,K,XL,m){
       [t("p.pool"),pool],
       [t("p.orient"),orientHtml(raw.orientation),1],
       [t("p.view"),viewHtml(raw.view),1],
-      [t("p.sea"),sea||(raw.distance_sea?`<span class="muted">${L2("Niet gemeten (standaardwaarde 7 km)","Not measured (default 7 km)")}</span>`:null),1]])}</div>
+      [t("p.sea"),sea]])}</div>
     <div class="card pk-card"><div class="hd"><h3>${L2("Adres & toegang","Address & access")}</h3></div>${kv([
       [t("p.address"),[raw.street,raw.postal_code].filter(Boolean).join(", ")||null],
       [t("p.keys"),raw.keydetails]])}</div>
