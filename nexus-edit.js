@@ -144,7 +144,7 @@ function secCosts(){const n=(k,lab)=>inp(k,lab,{type:"number",min:0});
 function secContacts(){const C=D.contacts||{};
   const box=(k,col,lab,role)=>{const c=C[k];const cur=P[col];
     return `<div class="ad-f w2"><span>${esc(tr(lab))}</span>${cur&&c&&c.id===cur?`<div class="ad-picked"><div class="ini" style="background:var(--c-ct)">${esc((c.name||"?")[0].toUpperCase())}</div><div style="min-width:0"><b>${esc(c.name||"—")}</b><div class="sm muted">${esc(c.email||"")}</div></div>
-        <span>${c.wp_id?`<a class="btn sm" href="#c/${c.wp_id}" data-act="close">${esc(tr(["Open","Open"]))}</a>`:""}<button class="btn sm" data-unlink="${col}">${esc(tr(["Ontkoppelen","Unlink"]))}</button></span></div>`
+        <span>${c.id?`<a class="btn sm" href="#c/${c.id}" data-act="close">${esc(tr(["Open","Open"]))}</a>`:""}<button class="btn sm" data-unlink="${col}">${esc(tr(["Ontkoppelen","Unlink"]))}</button></span></div>`
       :cur?`<div class="ad-picked"><div style="min-width:0;grid-column:1/3"><b>${esc((PICKED[col]||{}).name||cur)}</b> <span class="tag">${esc(tr(["nieuw gekozen","newly picked"]))}</span></div><button class="btn sm" data-unlink="${col}">×</button></div>`:""}
       <input class="ad-search" data-pick="${col}" data-role="${role||""}" type="search" placeholder="${esc(tr(["Zoek op naam, e-mail of telefoon","Search by name, e-mail or phone"]))}"><div class="ad-res" data-res="${col}"></div></div>`};
   return sec("con",["Contacten","Contacts"],row(box("owner","owner_contact_id",["Eigenaar / verkoper","Owner / seller"]),box("buyer","buyer_contact_id",["Koper","Buyer"]))

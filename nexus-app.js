@@ -27,6 +27,14 @@ async function setLang(l,persist){
   if(booted){buildRoleChips();buildStatusChips();buildBuildSeg();if(mpMap)buildMpSeg();rerender();if(persist!==false)sb.rpc("nexus_set_lang",{p_lang:l}).then(()=>{},()=>{})}
 }
 $$("[data-lang-switch] button").forEach(b=>b.onclick=()=>setLang(b.dataset.l,true));
+/* lettergrootte (per gebruiker, in deze browser) */
+const FS=[0.9,1,1.1,1.2,1.3,1.45,1.6];
+let fsIdx=(()=>{try{const v=parseFloat(localStorage.getItem("nexus-fs"));const i=FS.indexOf(v);return i<0?1:i}catch(e){return 1}})();
+function applyFs(){document.documentElement.style.setProperty("--fs",FS[fsIdx]);try{localStorage.setItem("nexus-fs",String(FS[fsIdx]))}catch(e){}
+  $$("[data-fs-switch]").forEach(w=>{w.title=t("fs.title")+" "+Math.round(FS[fsIdx]*100)+"%";w.querySelector('[data-fs="-"]').disabled=fsIdx===0;w.querySelector('[data-fs="+"]').disabled=fsIdx===FS.length-1});
+  setTimeout(()=>{try{if(mpMap)mpMap.invalidateSize()}catch(e){}},50)}
+$$("[data-fs-switch] button").forEach(b=>b.onclick=()=>{fsIdx=Math.max(0,Math.min(FS.length-1,fsIdx+(b.dataset.fs==="+"?1:-1)));applyFs()});
+applyFs();
 function rerender(){
   if(ovLoaded&&OV)renderOverview();
   if(ctLoaded)loadContacts(true);
@@ -133,7 +141,7 @@ window.addEventListener("hashchange",route);
 function route(){
   if(!booted)return;const h=location.hash.replace(/^#/,"");
   let m;
-  if((m=h.match(/^c\/(\d+)/))){setTab("ct");openContact(+m[1]);return}
+  if((m=h.match(/^c\/([^/?#]+)/))){setTab("ct");openContact(decodeURIComponent(m[1]));return}
   if((m=h.match(/^p\/([^/?#]+)/))){setTab("pr");openProp(decodeURIComponent(m[1]));return}
   if(h==="ad"&&ME.role!=="admin")return setTab("ov");
   setTab(TABC[h]?h:"ov");
@@ -223,7 +231,7 @@ async function loadContacts(reset){
   const box=$("#ctRows");if(reset){ctOff=0;box.innerHTML=`<div class="loader">${t("loading.search")}</div>`}
   let r;try{r=await rpc("nexus_search",{p_q:$("#ctQ").value,p_role:ctRole||null,p_scope:ctScope,p_limit:50,p_offset:ctOff})}catch(e){box.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   ctLoaded=true;
-  const html=r.rows.map(c=>`<div class="row ${ctSel===c.wp_id?"sel":""}" data-c="${c.wp_id}">
+  const html=r.rows.map(c=>`<div class="row ${ctSel===String(c.key||c.wp_id)?"sel":""}" data-c="${esc(c.key||c.wp_id)}">
      <div class="ini" style="background:${hue(c.name||c.email)}">${esc(initials(c.name||c.email))}</div>
      <div style="min-width:0"><div class="nm">${esc(c.name||c.email||t("noname"))}</div>
        <div class="sub">${(c.roles||[]).map(roleTag).join(" ")} <span>${esc([c.city,c.country].filter(Boolean).join(", ")||c.email||"")}</span></div></div>
@@ -235,10 +243,10 @@ async function loadContacts(reset){
 }
 let ctSub="profiel", CT=null;
 async function openContact(id){
-  ctSel=id;$$("#ctRows .row").forEach(r=>r.classList.toggle("sel",+r.dataset.c===id));
+  id=String(id);ctSel=id;$$("#ctRows .row").forEach(r=>r.classList.toggle("sel",r.dataset.c===id));
   if(!ctLoaded)loadContacts(true);
   const d=$("#ctDetail");d.innerHTML=`<div class="loader">${t("loading.ct")}</div>`;
-  try{CT=await rpc("nexus_contact",{p_wp_id:id})}catch(e){d.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
+  try{CT=await rpc("nexus_contact_by_key",{p_key:id})}catch(e){d.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   if(!CT){d.innerHTML=`<div class="empty">${t("notfound.ct")}</div>`;return}
   renderContact();
   if(innerWidth<1100)d.scrollIntoView({behavior:"smooth",block:"start"});
@@ -255,11 +263,10 @@ function renderContact(){
   const intro=D.introducer;
   d.innerHTML=`<div class="dh"><div class="ini big" style="background:${hue(name)}">${esc(initials(name))}</div>
     <div style="min-width:0;flex:1"><h2>${esc(name)}</h2>
-      <div class="roles">${(c.roles||[]).map(roleTag).join("")}<span class="sm muted" style="margin-left:6px">👤 <b style="color:${REPC[c.rep]||"#94a3b8"}">${esc(rep(c.rep))}</b> · #${c.wp_id}${c.language?" · 🌐 "+esc(c.language):""}</span></div>
+      <div class="roles">${(c.roles||[]).map(roleTag).join("")}<span class="sm muted" style="margin-left:6px">👤 <b style="color:${REPC[c.rep]||"#94a3b8"}">${esc(rep(c.rep))}</b> ${c.wp_id?" · #"+c.wp_id:""}${c.language?" · 🌐 "+esc(c.language):""}</span></div>
       <div class="cstrip">${phones.map(p=>`<span class="cpill"><a href="tel:${esc(cleanTel(p))}">☎ ${esc(p)}</a><a class="wa" href="https://wa.me/${esc(waNum(p))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${emails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}${!phones.length&&!emails.length?`<span class="muted sm">${t("nocontactdata")}</span>`:""}</div>
-      ${intro?`<div class="introbar" data-c="${intro.wp_id}">🤝 ${t("intro.by")} <b>${esc(intro.name||intro.email)}</b>${intro.phone?` · ${esc(intro.phone)}`:""}${intro.email?` · ${esc(intro.email)}`:""}<span class="go">${t("intro.open")}</span></div>`:""}</div>
-    <div class="acts">${raw.cpr_link?`<a href="${esc(raw.cpr_link)}" target="_blank" rel="noopener">${t("act.cpr")}</a>`:""}
-      <a href="https://gruposoltura.com/wp-admin/admin.php?page=cpr-contacts&view=overview&id=${c.wp_id}" target="_blank" rel="noopener">${t("act.edit")}</a></div></div>
+      ${intro?`<div class="introbar" data-c="${esc(intro.key||intro.wp_id)}">🤝 ${t("intro.by")} <b>${esc(intro.name||intro.email)}</b>${intro.phone?` · ${esc(intro.phone)}`:""}${intro.email?` · ${esc(intro.email)}`:""}<span class="go">${t("intro.open")}</span></div>`:""}</div>
+    <div class="acts">${c.wp_id?`<a href="https://gruposoltura.com/wp-admin/admin.php?page=cpr-contacts&view=overview&id=${c.wp_id}" target="_blank" rel="noopener" title="${esc(t("act.cprold"))}">CPR ↗</a>`:""}</div></div>
    <div class="subtabs">${tabs.map(x=>`<button class="st ${ctSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
    <div class="dbody scroll" id="ctBody"></div>`;
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{ctSub=b.dataset.s;renderContact()});
@@ -285,7 +292,7 @@ function ctProfile(c,raw){
      <div class="bt"><div class="l">${t("t.engagement")}</div><div class="v">${ip.engagement_score!=null?Number(ip.engagement_score).toFixed(0):"—"}</div></div></div>
    <div class="grid2">
     <div class="card"><div class="hd"><h3>${t("h.person")}</h3></div>${kv([[t("f.title"),D.title],[t("f.first"),D.first_name],[t("f.last"),D.last_name],[t("f.homeaddr"),addr||null,1],[t("f.born"),D.birthday],[t("f.marital"),D.marital],[t("f.nie"),D.nie?`<b class="mono">${esc(D.nie)}</b>`:null,1],[t("f.passport"),D.passport?`<b class="mono">${esc(D.passport)}</b>`:null,1],[t("f.language"),D.language],[t("f.company"),D.company],[t("f.jobtitle"),D.jobtitle],[t("f.website"),link(D.website),1],[t("f.socials"),socials||null,1],[t("f.custom")+" 1",D.custom_1],[t("f.custom")+" 2",D.custom_2]])}</div>
-    <div class="card"><div class="hd"><h3>${t("h.cpr")}</h3></div>${kv([[t("f.introducer"),D.introducer?`<a class="ownerlink" data-c="${D.introducer.wp_id}">${esc(D.introducer.name||D.introducer.email)}</a>`:null,1],[t("f.referred"),D.referred_by],[t("f.keyholder"),D.keyholder],[t("f.salesstatus"),salesStatus(D.sales_status)],[t("f.value"),D.sales_value?eur(D.sales_value):null],[t("f.since"),raw.created_wp?fdate(raw.created_wp):null],[t("f.modified"),c.wp_modified?fdate(c.wp_modified):null]])}
+    <div class="card"><div class="hd"><h3>${t("h.cpr")}</h3></div>${kv([[t("f.introducer"),D.introducer?`<a class="ownerlink" data-c="${esc(D.introducer.key||D.introducer.wp_id)}">${esc(D.introducer.name||D.introducer.email)}</a>`:null,1],[t("f.referred"),D.referred_by],[t("f.keyholder"),D.keyholder],[t("f.salesstatus"),salesStatus(D.sales_status)],[t("f.value"),D.sales_value?eur(D.sales_value):null],[t("f.since"),raw.created_wp?fdate(raw.created_wp):null],[t("f.modified"),c.wp_modified?fdate(c.wp_modified):null]])}
       <div class="hd" style="border-top:1px solid var(--line)"><h3>${t("h.search")}</h3><span class="tag">${esc(ip.data_confidence||"—")}</span></div>${kv([[t("f.budget"),budget],[t("f.type"),ip.declared_property_type||raw.sd_type||(ip.preferred_categories?Object.keys(ip.preferred_categories).slice(0,3).join(", "):null)],[t("f.beds"),ip.declared_bedrooms_min?"≥ "+ip.declared_bedrooms_min:null],[t("f.areas"),ip.declared_areas?[].concat(ip.declared_areas).join(", "):null],[t("f.musthaves"),ip.declared_must_haves?[].concat(ip.declared_must_haves).join(", "):null],[t("f.period"),ip.declared_period||raw.sd_period],[t("f.firstlast"),ip.first_request_at?`${fdate(ip.first_request_at)} → ${fdate(ip.last_request_at)}`:null],[t("f.feedback"),Object.keys(fb).length?Object.entries(fb).map(([k,v])=>k+": "+v).join(" · "):null]])}</div>
    </div>
    <div class="card" style="margin-top:12px"><div class="hd"><h3>${t("h.notes")}</h3></div><div class="note">${raw.internal_comments?esc(raw.internal_comments.replace(/<br\s*\/?>/gi,"\n")):`<span class="muted">${t("nonotes")}</span>`}</div></div>`;
@@ -308,7 +315,7 @@ function ctMailings(c){
      <div class="bt"><div class="l">${t("ml.master")}</div><div class="v">${pill(masterOn,t("yes"),t("no"))}</div></div>
      <div class="bt"><div class="l">${t("ml.delivered")}</div><div class="v">${num(ev.delivered||0)}</div></div>
      <div class="bt"><div class="l">${t("ml.opened")} / ${t("ml.clicked")}</div><div class="v">${num(ev.opened||0)} / ${num(ev.clicked||0)}</div></div>
-     <div class="bt"><div class="l">${t("ml.lastmail")}</div><div class="v" style="font-size:15px">${ev.last_delivered?fdate(ev.last_delivered):"—"}</div></div></div>
+     <div class="bt"><div class="l">${t("ml.lastmail")}</div><div class="v" style="font-size:calc(15px*var(--fs,1))">${ev.last_delivered?fdate(ev.last_delivered):"—"}</div></div></div>
    ${ev.unsubscribed||ev.hard_bounce||ev.spam||(M.bounces||[]).length?`<div class="alertbar">${ev.unsubscribed?`⛔ ${t("ml.unsub")} ${fdate(ev.unsubscribed)} `:""}${ev.hard_bounce?`· ⚠ hard bounce ${fdate(ev.hard_bounce)} `:""}${ev.spam?`· 🚫 spam ${fdate(ev.spam)} `:""}${(M.bounces||[]).map(b=>`· ${t("ml.bounce")} ${fdate(b.at)} (${esc(b.reason||b.action||"")})`).join(" ")}</div>`:""}
    <div class="card"><div class="hd"><h3>${t("ml.jarvis")}</h3><span class="sm muted">${M.optout_changed?t("ml.changed")+" "+fdate(M.optout_changed):""}</span></div>
      <div class="scroll"><table class="mtable"><thead><tr><th>${t("ml.type")}</th><th>${t("ml.status")}</th><th>${t("ml.source")}</th><th>${t("ml.optin")}</th><th>${t("ml.optout")}</th><th>${t("ml.updated")}</th></tr></thead><tbody>${types}</tbody></table></div>
@@ -316,9 +323,9 @@ function ctMailings(c){
    <div class="card" style="margin-top:12px"><div class="hd"><h3>${t("ml.cpr")}</h3></div>
      <div class="scroll"><table class="mtable"><thead><tr><th>${t("ml.type")}</th><th>${t("ml.status")}</th><th>${t("ml.lastsent")}</th></tr></thead><tbody>${cpr||`<tr><td colspan="3" class="muted">—</td></tr>`}</tbody></table></div></div>`;
 }
-function propCard(p,extra){return `<div class="pcard" data-p="${p.wp_id||""}">${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="">`:'<div class="ph"></div>'}
+function propCard(p,extra){return `<div class="pcard" data-p="${esc(p.key||p.reference||p.wp_id||"")}">${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="">`:'<div class="ph"></div>'}
   <div style="min-width:0"><div class="tt">${esc(p.reference||"?")} · ${esc(p.title||"")}</div><div class="pr">${eur(p.price)}</div>
-  <div class="sm muted">${esc(p.town||"")} · ${esc(p.status||"")}${p.under_offer?" · "+t("underoffer"):""}</div>${extra||""}</div></div>`}
+  <div class="sm muted">${esc(p.town||"")} · ${esc(p.core_status?stLabel(p.core_status):(p.status||""))}</div>${extra||""}</div></div>`}
 function ctProps(){
   const own=CT.properties||[], it=CT.interests||[];
   return `<div class="hd" style="padding:0 0 8px"><h3>${t("h.owned",{n:own.length})}</h3></div>
@@ -326,12 +333,12 @@ function ctProps(){
    <div class="hd" style="padding:16px 0 8px"><h3>${t("h.interest",{n:it.length})}</h3></div>
    ${it.length?`<div class="grid2">${it.map(p=>propCard(p,`<div class="sm" style="margin-top:4px">${p.n}× · ${esc((p.types||[]).join(", "))} · ${ago(p.last)}</div>`)).join("")}</div>`:`<div class="empty sm">${t("nointerest")}</div>`}`}
 function timeline(list){
-  const C={request:"#ec4899",viewing:"#22c55e",mail:"#3b82f6",lead:"#f59e0b",hot:"#ef4444"};
+  const C={request:"#ec4899",viewing:"#22c55e",mail:"#3b82f6",lead:"#f59e0b",hot:"#ef4444",note:"#a855f7"};
   if(!list||!list.length)return`<div class="empty">${t("notimeline")}</div>`;
   return `<div class="tl">${list.map(e=>`<div class="e" style="--ec:${C[e.kind]||"#64748b"}"><div class="h"><span class="k">${esc(t("k."+e.kind))} · ${esc(tlTitle(e.title||""))}</span>${e.ref?`<span class="tag">${esc(e.ref)}</span>`:""}<span class="w">${fdate(e.ts)} · ${ago(e.ts)}</span></div>${e.text?`<div class="x">${esc(e.text)}</div>`:""}</div>`).join("")}</div>`}
 function ctRelations(c){
   const r=CT.relations||[], im=CT.interested_in_mine||[];
-  const rel=x=>`<div class="rel" data-c="${x.wp_id}"><div class="ini" style="background:${hue(x.name||x.email)};width:32px;height:32px;font-size:12px">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${esc(x.why||"")}</div></div></div>`;
+  const rel=x=>`<div class="rel" data-c="${esc(x.key||x.wp_id)}"><div class="ini" style="background:${hue(x.name||x.email)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${esc(x.why||"")}</div></div></div>`;
   return `<div class="hd" style="padding:0 0 8px"><h3>${t("h.guided")}</h3></div>
     <div class="rel" style="cursor:default;max-width:320px"><div class="avatar" style="background:${REPC[c.rep]||"#475569"}">${esc(initials(rep(c.rep)))}</div><div><b>${esc(rep(c.rep))}</b><div class="sm muted">Grupo Soltura</div></div></div>
     <div class="hd" style="padding:16px 0 8px"><h3>${t("h.connected",{n:r.length})}</h3></div>
@@ -340,7 +347,7 @@ function ctRelations(c){
 function enrichList(list,kind){
   if(!list||!list.length)return `<div class="empty">${t("noenrich",{k:t("kind."+kind)})}<br><span class="sm">${t("noenrich.s")}</span></div>`;
   const by={};list.forEach(e=>{(by[e.field]=by[e.field]||[]).push(e)});
-  return `<div class="card">${Object.entries(by).map(([f,arr])=>`<dl class="kv" style="border-bottom:1px solid var(--line)"><dt>${esc(f)}</dt><dd>${arr.map((e,i)=>`<div style="${i?"opacity:.55;font-size:12px":""}">${esc(typeof e.value==="object"?JSON.stringify(e.value):e.value)}<span class="src">${esc(e.label||e.source)}</span>${e.url?` <a href="${esc(e.url)}" target="_blank" rel="noopener" class="sm muted">↗</a>`:""} <span class="sm muted">${ago(e.at)}</span></div>`).join("")}</dd></dl>`).join("")}</div>`}
+  return `<div class="card">${Object.entries(by).map(([f,arr])=>`<dl class="kv" style="border-bottom:1px solid var(--line)"><dt>${esc(f)}</dt><dd>${arr.map((e,i)=>`<div style="${i?"opacity:.55;font-size:calc(12px*var(--fs,1))":""}">${esc(typeof e.value==="object"?JSON.stringify(e.value):e.value)}<span class="src">${esc(e.label||e.source)}</span>${e.url?` <a href="${esc(e.url)}" target="_blank" rel="noopener" class="sm muted">↗</a>`:""} <span class="sm muted">${ago(e.at)}</span></div>`).join("")}</dd></dl>`).join("")}</div>`}
 
 /* ================= WONINGEN ================= */
 let prLoaded=false, prStatus="current", prBuild="", prOff=0, prSel=null, PR=null, prSub="kenmerken";
@@ -361,7 +368,7 @@ async function loadProps(reset){
      <div class="t">${esc(p.title||"")}</div><div class="s">${esc([p.suburb,p.town].filter(Boolean).join(", "))} · ${p.bedrooms??"?"} ${t("beds.short")}${p.build?` · ${p.build} m²`:""}</div>
      <div class="s">${p.is_external?t("external"):t("own")}${p.n_enrich?` · <span style="color:#d8b4fe">${t("enriched",{n:p.n_enrich})}</span>`:""}</div>
      ${p.is_external?(()=>{const L=extLink(p.agency,p.ext_url,p.ext_ref);return L?`<a class="ext-l" href="${esc(L.href)}" target="_blank" rel="noopener" title="${esc(L.exact?t("ext.open",{a:p.agency||t("external")}):t("ext.search"))}">${L.exact?"🔗":"🔎"} ${esc(p.agency||t("external"))}${p.ext_ref?" · "+esc(p.ext_ref):""} ↗</a>`:""})():""}
-     ${p.owner_wp_id&&p.owner?`<span class="own-l" data-c="${p.owner_wp_id}" title="${t("p.openowner")}">👤 ${esc(p.owner)}</span>`:""}</div></div>`).join("");
+     ${(p.owner_id||p.owner_wp_id)&&p.owner?`<span class="own-l" data-c="${esc(p.owner_id||p.owner_wp_id)}" title="${t("p.openowner")}">👤 ${esc(p.owner)}</span>`:""}</div></div>`).join("");
   if(reset)box.innerHTML=`<div class="sub muted sm" style="padding:8px 12px 0">${t("n.props",{n:num(r.total)})}</div><div class="pgrid" id="pgrid">${html}</div>`;
   else{box.querySelector(".more")?.remove();$("#pgrid").insertAdjacentHTML("beforeend",html)}
   prOff+=r.rows.length;
@@ -379,12 +386,12 @@ async function openProp(id){
 function ownerBox(o){
   if(!o)return `<div class="ownerbox" style="cursor:default;border-style:dashed"><span class="muted sm">${t("p.noowner")}</span></div>`;
   const lbl=o.is_agent?t("p.agentc"):t("p.owner");
-  return `<div class="ownerbox" data-c="${o.wp_id}"><div class="ini" style="background:${hue(o.name||o.email)};width:38px;height:38px">${esc(initials(o.name||o.email))}</div>
+  return `<div class="ownerbox" data-c="${esc(o.id||o.wp_id)}"><div class="ini" style="background:${hue(o.name||o.email)};width:38px;height:38px">${esc(initials(o.name||o.email))}</div>
     <div style="min-width:0"><div class="sm muted">${lbl}</div><div style="font-weight:700">${esc(o.name||o.email)}</div>
     <div class="sm muted">${[o.email,o.phone].filter(Boolean).map(esc).join(" · ")}</div></div><span class="go">${t("p.openowner")}</span></div>`}
 function extBox(p,raw,L){
   const phone=raw.external_phone, mail=raw.external_email;
-  return `<div class="extbox"><div style="min-width:0"><div class="sm muted">${t("ext.partner")}</div><div style="font-weight:700;font-size:15px">${esc(p.external_agency||t("external"))}</div>
+  return `<div class="extbox"><div style="min-width:0"><div class="sm muted">${t("ext.partner")}</div><div style="font-weight:700;font-size:calc(15px*var(--fs,1))">${esc(p.external_agency||t("external"))}</div>
     <div class="sm">${raw.external_refnr?`${t("ext.theirref")}: <b class="mono">${esc(raw.external_refnr)}</b>`:""}${phone?` · <a href="tel:${esc(String(phone).replace(/[^\d+]/g,""))}">☎ ${esc(phone)}</a>`:""}${mail?` · <a href="mailto:${esc(mail)}">✉ ${esc(mail)}</a>`:""}</div>
     ${L&&!L.exact?`<div class="sm muted" style="margin-top:3px">${t("ext.nourl")}</div>`:""}</div>
     ${L?`<a class="go-ext" href="${esc(L.href)}" target="_blank" rel="noopener">${L.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div>`}
@@ -426,7 +433,7 @@ function renderProp(){
   const tabs=[["kenmerken",t("st.features")],["contacten",t("st.contacts"),(PR.interested||[]).length+(o?1:0)+(PR.buyer?1:0)],["verrijking",t("st.enrich"),(PR.enrichment||[]).length+(PR.catastro&&PR.catastro.cadastral_ref?1:0)+(PR.price_m2?1:0)]];
   d.innerHTML=`<div class="dh" style="--acc:var(--c-pr)"><div style="min-width:0"><h2>${esc(p.reference)} · ${esc(p.title||"")}</h2>
      <div class="meta"><span>📍 ${esc([p.suburb,p.town,p.province].filter(Boolean).join(", "))}</span>
-       ${o?`<a class="ownerlink" data-c="${o.wp_id}">👤 ${esc(o.name||o.email)}</a>`:""}
+       ${o?`<a class="ownerlink" data-c="${esc(o.id||o.wp_id)}">👤 ${esc(o.name||o.email)}</a>`:""}
        <span>🏷 <b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b></span>${p.is_newbuild?`<span>${t("pb.new")}</span>`:""}</div>
      ${statusBar(p)}</div>
      <div class="acts"><a class="act-edit" data-edit="1">✎ ${t("act.pedit")}</a>${raw.url_new?`<a href="${esc(raw.url_new)}" target="_blank" rel="noopener">${t("act.site")}</a>`:raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">${t("act.site")}</a>`:""}${p.wp_id?`<a href="https://gruposoltura.com/wp-admin/post.php?post=${p.wp_id}&action=edit" target="_blank" rel="noopener" title="${esc(t("act.cprold"))}">CPR ↗</a>`:""}${p.is_external&&XL?`<a class="act-ext" href="${esc(XL.href)}" target="_blank" rel="noopener">${XL.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div></div>
@@ -443,12 +450,12 @@ function renderProp(){
       <div><b>${num(raw.hits_total)}</b><span>${t("fa.hits")}</span></div><div><b>${raw.hits_today??"—"}</b><span>${t("fa.today")}</span></div><div><b>${num(m.sent||0)}</b><span>${t("fa.mailed")}</span></div><div><b>${num(m.converted||0)}</b><span>${t("fa.conv")}</span></div></div>
     <div class="card">${kv([[t("p.type"),p.property_type],[t("p.newbuild"),p.is_newbuild?t("yes"):null],[t("p.year"),raw.year_built&&raw.year_built!=="0"?raw.year_built:null],[t("p.energy"),raw.energy_label],[t("p.view"),raw.view],[t("p.orient"),raw.orientation],[t("p.pool"),raw.pool],[t("p.sea"),raw.distance_sea?num(raw.distance_sea)+" m":null],[t("p.address"),[raw.street,raw.postal_code].filter(Boolean).join(", ")],[t("p.keys"),raw.keydetails],[t("p.mandate"),raw.authority],[t("p.offeredby"),p.is_external?(p.external_agency||t("external"))+(raw.external_refnr?" · "+raw.external_refnr:""):t("p.owngs")],[t("p.srccontact"),[raw.external_phone,raw.external_email].filter(Boolean).join(" · ")],[t("p.prevprice"),p.previous_price&&p.previous_price!=p.price?eur(p.previous_price)+" ("+fdate(p.price_changedate)+")":null],[t("p.notary"),raw.sold_notary],[t("p.costs"),[raw.fee_notary&&t("c.notary")+" "+eur(raw.fee_notary),raw.fee_registry&&t("c.registry")+" "+eur(raw.fee_registry),raw.fee_legal&&t("c.legal")+" "+eur(raw.fee_legal)].filter(Boolean).join(" · ")],[t("p.listed"),p.list_date?fdate(p.list_date):null]])}</div>
     ${raw.changelog?`<div class="card" style="margin-top:12px"><div class="hd"><h3>${t("h.changelog")}</h3></div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div></div>`:""}`;
-  if(prSub==="contacten"){const one=(x,w,rc)=>x?`<div class="rel" data-c="${x.wp_id}"><div class="ini" style="background:${hue(x.name)};width:32px;height:32px;font-size:12px">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm">${roleTag(rc)} <span class="muted">${esc(w)}</span></div></div></div>`:"";
+  if(prSub==="contacten"){const one=(x,w,rc)=>x?`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm">${roleTag(rc)} <span class="muted">${esc(w)}</span></div></div></div>`:"";
     const it=PR.interested||[], vw=PR.viewings||[];
     B.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${one(o,o&&o.is_agent?t("o.agent"):t("o.owner"),o&&o.is_agent?"agent":"seller")}${one(PR.buyer,t("o.buyer"),"buyer")}</div>
       ${vw.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.viewings",{n:vw.length})}</h3></div>${vw.map(v=>`<div class="sm" style="padding:4px 0">${fdate(v.date)} ${esc(v.time||"")} · ${esc(v.client||"")} · <span class="muted">${esc(v.agent||"")}</span></div>`).join("")}`:""}
       <div class="hd" style="padding:16px 0 8px"><h3>${t("h.interested",{n:it.length})}</h3></div>
-      ${it.length?`<div style="display:flex;flex-direction:column;gap:6px">${it.map(x=>`<div class="rel" data-c="${x.wp_id}"><div class="ini" style="background:${hue(x.name||x.email)};width:30px;height:30px;font-size:11px">${esc(initials(x.name||x.email))}</div><div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${x.n}× · ${esc((x.types||[]).join(", "))}</div></div><span class="sm muted">${ago(x.last)}</span></div>`).join("")}</div>`:`<div class="empty sm">${t("norequests")}</div>`}`}
+      ${it.length?`<div style="display:flex;flex-direction:column;gap:6px">${it.map(x=>`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name||x.email)};width:30px;height:30px;font-size:calc(11px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${x.n}× · ${esc((x.types||[]).join(", "))}</div></div><span class="sm muted">${ago(x.last)}</span></div>`).join("")}</div>`:`<div class="empty sm">${t("norequests")}</div>`}`}
   if(prSub==="verrijking"){const k=PR.catastro, pm=PR.price_m2;
     const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.match_quality||k.match_method||"")} · ${ago(k.checked_at)}</span></div>${kv([[t("k.cadref"),`<a class="mono" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener">${esc(k.cadastral_ref)} ↗</a>`,1],[t("k.parcel"),k.parcel_ref],[t("k.unit"),[k.cat_block&&"bl. "+k.cat_block,k.cat_stair&&"esc. "+k.cat_stair,k.cat_floor&&"pl. "+k.cat_floor,k.cat_door&&"pta. "+k.cat_door].filter(Boolean).join(" · ")],[t("k.landclass"),k.land_class],[t("k.share"),k.participation_pct!=null?k.participation_pct+" %":null],[t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.year"),k.year_built],[t("k.built"),k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(CPR: ${num(p.build_area)} m²)</span>`:""):null,1],[t("k.living"),[k.living_area_m2&&num(k.living_area_m2)+" m² "+t("k.living.w"),k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],[t("k.plot"),k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],[t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
       :(k?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.status||t("k.notfound"))}</span></div><div class="note">${esc(k.error||t("k.nomatch"))}</div></div>`:"");
