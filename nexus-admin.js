@@ -48,7 +48,7 @@ const LISTING=[["direct",["Direct (eigen opdracht)","Direct (own mandate)"]],["i
 /* zelfde sleutels als core.properties.features (import_wp.php) */
 const F_INDOOR=[["security_system","Security system"],["family_room","Family room"],["study","Study"],["workshop","Workshop"],["basement","Basement"],
   ["furnished","Fully furnished"],["semi_furnished","Semi furnished"]];
-const F_OUTDOOR=[["pool","Pool"],["communal_pool","Communal pool"],["solarium","Solarium"],["deck","Deck"],["courtyard","Courtyard"],
+const F_OUTDOOR=[["pool","Private pool"],["communal_pool","Communal pool"],["solarium","Solarium"],["deck","Deck"],["courtyard","Courtyard"],
   ["outdoor_entertaining","Outdoor entertaining"],["storage_shed","Shed"],["remote_garage","Remote garage"],["secure_parking","Secure parking"],["intercom","Intercom"],["fully_fenced","Fully fenced"]];
 const F_CLIMATE=[["air_conditioning","Air conditioning"],["air_conditioning_preinstalled","Air conditioning pre"],["underfloor_heating","Underfloor heating"],
   ["central_heating","Central heating"],["ducted_heating","Ducted heating"],["ducted_cooling","Ducted cooling"],["split_heating","Split system heating"],

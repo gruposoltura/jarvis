@@ -503,7 +503,8 @@ function propFeatures(p,raw,o,K,XL,m){
   const sea=raw.distance_sea&&Number(raw.distance_sea)!==7000?num(raw.distance_sea)+" m":null;
   const yr=raw.year_built&&raw.year_built!=="0"?raw.year_built:null;
   const age=yr&&/^\d{4}$/.test(yr)?new Date().getFullYear()-Number(yr):null;
-  const pool=raw.pool==="yes"?L2("Ja","Yes"):raw.pool==="no"?L2("Nee","No"):null;
+  const fz=(PR.detail&&PR.detail.features)||[], pP=fz.includes("pool"), pC=fz.includes("communal_pool");
+  const pool=pP&&pC?L2("Privé én gemeenschappelijk","Private and communal"):pP?L2("Privé zwembad","Private pool"):pC?L2("Gemeenschappelijk zwembad","Communal pool"):L2("Geen zwembad","No pool");
   const offered=p.is_external?(p.external_agency||t("external"))+(raw.external_refnr?" · "+raw.external_refnr:""):t("p.owngs");
   const tile=(ic,val,lbl)=>`<div><span class="fi">${ic}</span><b>${val}</b><span>${lbl}</span></div>`;
   const D=PR.detail||{}, S=PR.sale||{};
@@ -590,6 +591,7 @@ function propFeatures(p,raw,o,K,XL,m){
       [L2("Patio's","Patios"),D.patios],
       [L2("Garages","Garages"),D.garages],
       ["Carports",D.carports],
+      [L2("Open parkeerplekken","Open parking spaces"),D.parking_spaces],
       [L2("Bebouwd","Built"),m2u(p.build_area)],
       [L2("Woonoppervlak","Living area"),m2u(D.area_living)],
       [L2("Terras","Terrace"),m2u(D.area_terrace)],
@@ -615,7 +617,7 @@ function propFeatures(p,raw,o,K,XL,m){
   <div class="card pk-wide" id="pkLog"><div class="hd"><h3>${L2("Wijzigingslog","Change log")}</h3></div><div class="pk-log-nx"><div class="loader sm">…</div></div>${raw.changelog?`<div class="sm muted" style="margin-top:10px">${L2("Historie uit CPR (tot 18 okt 2026)","History from CPR (until 18 Oct 2026)")}</div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div>`:""}</div>
   </div>`;
 }
-const FEAT={pool:["Zwembad","Pool"],communal_pool:["Gemeenschappelijk zwembad","Communal pool"],air_conditioning:["Airco","Air conditioning"],air_conditioning_preinstalled:["Airco voorbereid","A/C pre-installed"],split_aircon:["Split-airco","Split A/C"],ducted_cooling:["Kanaalkoeling","Ducted cooling"],ducted_heating:["Kanaalverwarming","Ducted heating"],central_heating:["Centrale verwarming","Central heating"],gas_heating:["Gasverwarming","Gas heating"],split_heating:["Split-verwarming","Split heating"],underfloor_heating:["Vloerverwarming","Underfloor heating"],fireplace:["Open haard","Fireplace"],furnished:["Gemeubileerd","Furnished"],semi_furnished:["Deels gemeubileerd","Semi-furnished"],secure_parking:["Afgesloten parkeren","Secure parking"],remote_garage:["Garage met afstandsbediening","Remote garage"],fully_fenced:["Volledig omheind","Fully fenced"],security_system:["Alarmsysteem","Security system"],intercom:["Intercom","Intercom"],solarium:["Solarium","Solarium"],courtyard:["Binnenplaats","Courtyard"],outdoor_entertaining:["Buitenleven","Outdoor entertaining"],basement:["Kelder","Basement"],storage_shed:["Berging","Storage shed"],study:["Studeerkamer","Study"],workshop:["Werkplaats","Workshop"]};
+const FEAT={pool:["Privé zwembad","Private pool"],communal_pool:["Gemeenschappelijk zwembad","Communal pool"],air_conditioning:["Airco","Air conditioning"],air_conditioning_preinstalled:["Airco voorbereid","A/C pre-installed"],split_aircon:["Split-airco","Split A/C"],ducted_cooling:["Kanaalkoeling","Ducted cooling"],ducted_heating:["Kanaalverwarming","Ducted heating"],central_heating:["Centrale verwarming","Central heating"],gas_heating:["Gasverwarming","Gas heating"],split_heating:["Split-verwarming","Split heating"],underfloor_heating:["Vloerverwarming","Underfloor heating"],fireplace:["Open haard","Fireplace"],furnished:["Gemeubileerd","Furnished"],semi_furnished:["Deels gemeubileerd","Semi-furnished"],secure_parking:["Afgesloten parkeren","Secure parking"],remote_garage:["Garage met afstandsbediening","Remote garage"],fully_fenced:["Volledig omheind","Fully fenced"],security_system:["Alarmsysteem","Security system"],intercom:["Intercom","Intercom"],solarium:["Solarium","Solarium"],courtyard:["Binnenplaats","Courtyard"],outdoor_entertaining:["Buitenleven","Outdoor entertaining"],basement:["Kelder","Basement"],storage_shed:["Berging","Storage shed"],study:["Studeerkamer","Study"],workshop:["Werkplaats","Workshop"]};
 const FOG={kitchen:["Keuken","Kitchen"],garden:["Tuin","Garden"],pool:["Zwembad","Pool"],community:["Gemeenschap","Community"],floor:["Vloer","Floor"],heating:["Verwarming","Heating"],aircon:["Airco","A/C"],terrace:["Terras","Terrace"],property:["Woning","Property"],more:["Overig","Other"]};
 function propFeatureList(D){
   const f=(D.features||[]).map(x=>FEAT[x]?L2(...FEAT[x]):cap(String(x).replace(/_/g," ")));
@@ -626,10 +628,19 @@ function propFeatureList(D){
     ${g.length?`<dl class="kv" style="grid-template-columns:110px 1fr">${g.map(k=>`<dt>${esc(FOG[k]?L2(...FOG[k]):cap(k))}</dt><dd><div class="pk-chips">${o[k].map(v=>`<span class="pk-chip">${esc(cap(String(v)))}</span>`).join("")}</div></dd>`).join("")}</dl>`:""}</div>`}
 /* alle foto's van de woning als verticale strip; klik = grote foto bovenaan, klik op de grote foto = volle grootte */
 const PHOTO_CACHE={};
-/* wijzigingslog: live uit core.audit_log via nexus_property_edit (zelfde bron als Historie in het bewerkscherm) */
+/* wijzigingslog: live uit core.audit_log + core.property_price_history via nexus_property_edit (zelfde bron als Historie in het bewerkscherm).
+   Prijswijzigingen door de partnerfeed staan alleen in de prijshistorie; die komen hier ook bij. */
 async function loadPropLog(p){const box=document.querySelector("#pkLog .pk-log-nx");if(!box||!p.reference)return;
-  try{const d=await rpc("nexus_property_edit",{p_ref:p.reference});const a=(d&&d.audit)||[];
-    box.innerHTML=a.length?a.map(x=>`<div><b>${new Date(x.at).toLocaleString("nl-NL",{day:"numeric",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"})}</b> · ${esc(x.who||L2("systeem","system"))} <span class="muted">· ${esc((x.fields||[]).join(", "))}</span></div>`).join("")
+  const fmt=d=>new Date(d).toLocaleString("nl-NL",{day:"numeric",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+  try{const d=await rpc("nexus_property_edit",{p_ref:p.reference});
+    const ev=((d&&d.audit)||[]).map(x=>({at:x.at,html:`${esc(x.who||L2("systeem","system"))} <span class="muted">· ${esc((x.fields||[]).join(", "))}</span>`}));
+    const ph=((d&&d.price_history)||[]).slice().sort((a,b)=>new Date(a.changed_at||a.at)-new Date(b.changed_at||b.at));
+    ph.forEach((h,k)=>{if(!k)return;const at=h.changed_at||h.at, prev=ph[k-1].price;if(prev==h.price)return;
+      const src=String(h.source||"");const who=src.startsWith("feed:")?L2("partnerfeed ","partner feed ")+src.slice(5):src==="nexus"?"NEXUS":src==="cpr_import"?"CPR":src;
+      const pct=prev?Math.round((h.price-prev)/prev*100):null;
+      ev.push({at,html:`${L2("Prijs","Price")} ${eur(prev)} → <b>${eur(h.price)}</b>${pct!=null?` <span class="muted">(${pct>0?"+":""}${pct}%)</span>`:""} <span class="muted">· ${esc(who)}</span>`})});
+    ev.sort((a,b)=>new Date(b.at)-new Date(a.at));
+    box.innerHTML=ev.length?ev.slice(0,25).map(x=>`<div><b>${fmt(x.at)}</b> · ${x.html}</div>`).join("")
       :`<div class="sm muted">${L2("Nog geen wijzigingen via NEXUS.","No changes via NEXUS yet.")}</div>`}
   catch(e){box.innerHTML=`<div class="sm muted">${L2("Log niet beschikbaar.","Log unavailable.")}</div>`}}
 async function loadPropPhotos(p,raw){

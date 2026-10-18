@@ -20,7 +20,7 @@ const FEED_FIELDS=["price","bedrooms","bathrooms","build_area","plot_area","ener
 let D=null, P=null, T=null, M=null, TOUCH={}, TTOUCH={}, MEDIA_DIRTY=false, txL="nl", ROOT=null, busy=false, MAP=null;
 
 /* ---------- waarden ---------- */
-const isNum=k=>/^(price|price_previous|bedrooms|bathrooms|toilets|ensuites|rooms|kitchens|living_rooms|floors|balconies|terraces|patios|garages|carports|build_area|plot_area|area_\w+|year_built|distance_\w+|fee_\w+|cost_\w+|lat|lng|sold_price|deed_price|commission_\w+|conveyancing|location_id)$/.test(k)&&k!=="commission_note";
+const isNum=k=>/^(price|price_previous|bedrooms|bathrooms|toilets|ensuites|rooms|kitchens|living_rooms|floors|balconies|terraces|patios|garages|carports|parking_spaces|build_area|plot_area|area_\w+|year_built|distance_\w+|fee_\w+|cost_\w+|lat|lng|sold_price|deed_price|commission_\w+|conveyancing|location_id)$/.test(k)&&k!=="commission_note";
 function norm(k,v){if(v===""||v===undefined)return null;if(v===null)return null;
   if(isNum(k)){const n=Number(String(v).replace(",","."));return isNaN(n)?null:n}
   if(/_at$|_date$/.test(k)&&typeof v==="string")return v.slice(0,10);
@@ -121,7 +121,7 @@ function secLayout(){const l=L(), n=(k,lab)=>inp(k,lab,{type:"number",min:0});
   return sec("ind",["Indeling en oppervlaktes","Layout and areas"],`<div class="ad-cols3"><div><h5>${esc(tr(["Kamers","Rooms"]))}</h5>${n("bedrooms",["Slaapkamers","Bedrooms"])}${n("bathrooms",["Badkamers","Bathrooms"])}${n("toilets",["Toiletten","Toilets"])}${n("ensuites","En-suite")}${n("rooms",["Kamers totaal","Rooms total"])}${n("living_rooms",["Woonkamers","Living rooms"])}${n("kitchens",["Keukens","Kitchens"])}</div>
     <div><h5>${esc(tr(["Oppervlakte (m²)","Surface (m²)"]))}</h5>${n("build_area",["Bebouwd","Built"])}${n("plot_area",["Perceel","Plot"])}${n("area_living",["Woonoppervlak","Living"])}${n("area_terrace",["Terras","Terrace"])}${n("area_garden",["Tuin","Garden"])}${n("area_kitchen",["Keuken","Kitchen"])}
       ${sel("energy_label",["Energielabel","Energy label"],l.ENERGY||[])}</div>
-    <div><h5>${esc(tr(["Overig","Other"]))}</h5>${n("floors",["Verdiepingen","Floors"])}${inp("floor_level",["Etage","Level"])}${n("balconies",["Balkons","Balconies"])}${n("terraces",["Terrassen","Terraces"])}${n("patios",["Patio's","Patios"])}${n("garages",["Garages","Garages"])}${n("carports","Carports")}</div></div>`)}
+    <div><h5>${esc(tr(["Overig","Other"]))}</h5>${n("floors",["Verdiepingen","Floors"])}${inp("floor_level",["Etage","Level"])}${n("balconies",["Balkons","Balconies"])}${n("terraces",["Terrassen","Terraces"])}${n("patios",["Patio's","Patios"])}${n("garages",["Garages","Garages"])}${n("carports","Carports")}${n("parking_spaces",["Open parkeerplekken","Open parking spaces"])}</div></div>`)}
 function secFeatures(){const l=L(), fo=P.feature_options||{}, known=Object.keys(l.OPT||{});
   const other=Object.keys(fo).filter(k=>!known.includes(k)&&(fo[k]||[]).length);
   return sec("ken",["Kenmerken","Features"],`<div class="ad-cols3"><div><h5>Indoor</h5>${multi("features",l.F_INDOOR||[])}</div><div><h5>Outdoor</h5>${multi("features",l.F_OUTDOOR||[])}</div><div><h5>${esc(tr(["Klimaat","Climate"]))}</h5>${multi("features",l.F_CLIMATE||[])}</div></div>
