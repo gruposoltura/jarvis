@@ -151,7 +151,7 @@ function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.da
   if(t_==="pr"&&!prLoaded)loadProps(true);
   if(t_==="mp")loadMap();
   if(t_==="ac")loadActivity();
-  if(t_==="ad"&&window.NEXUS_ADMIN)NEXUS_ADMIN.open($("#p-ad"),{rpc,t,lang:()=>LANG,me:()=>ME,esc});
+  if(t_==="ad"&&window.NEXUS_ADMIN)NEXUS_ADMIN.open($("#p-ad"),{sb,rpc,t,lang:()=>LANG,me:()=>ME,esc});
 }
 $$(".tab").forEach(b=>b.onclick=()=>{location.hash=b.dataset.tab});
 window.addEventListener("hashchange",route);

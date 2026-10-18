@@ -1,7 +1,8 @@
 /* NEXUS · Admin — invoerschermen (contact → aanbrenger → woning → koppelen).
-   STATUS: alleen frontend. Er wordt NIETS opgeslagen in Supabase of WordPress; de knop "Opslaan" staat uit
-   tot Rick akkoord geeft op de koppeling met het core-schema. Opzoeken (dubbelen, makelaars, woningen) gebeurt
-   alleen-lezen via de bestaande nexus_* RPC's. Concepten blijven in deze browser (localStorage), foto's niet. */
+   STATUS (18-10-2026, akkoord Rick): GEKOPPELD aan core. "Opslaan" roept nexus_admin_submit aan (migratie 019):
+   aanbrenger + contact + woning/koppeling in één transactie; lukt één stap niet, dan wordt niets opgeslagen.
+   Foto's/documenten gaan daarna naar Storage (property-media/<id>/nexus-<uuid>.<ext>) via nexus_property_media_add.
+   Concepten blijven tot het opslaan in deze browser (localStorage), foto's niet. */
 (function(){
 "use strict";
 window.NEXUS_I18N=window.NEXUS_I18N||{nl:{},en:{}};
@@ -134,8 +135,18 @@ const sec=(title,body,o={})=>`<section class="ad-sec" ${o.id?`id="${o.id}"`:""}>
 const row=(...c)=>`<div class="ad-row">${c.join("")}</div>`;
 
 /* ================= LOCATIES ================= */
+let LOC_ID={mun:{},area:{}};
 async function loadLocations(){
   if(LOCS)return;LOCS=JSON.parse(JSON.stringify(LOC_FALLBACK));
+  /* 1e keus: core.locations via nexus_locations (WordPress-API bestaat niet meer sinds de omzetting) */
+  try{const rows=await X.rpc("nexus_locations",{});
+    if(Array.isArray(rows)&&rows.length>20){const byId={},tree={};rows.forEach(r=>byId[r.id]=r);
+      rows.filter(r=>r.kind==="municipality").forEach(r=>{tree[r.name]=tree[r.name]||[];LOC_ID.mun[r.name]=r.id});
+      rows.filter(r=>r.kind!=="municipality").forEach(r=>{let m=byId[r.parent_id],g=0;while(m&&m.kind!=="municipality"&&g++<5)m=byId[m.parent_id];
+        if(!m)return;(tree[m.name]=tree[m.name]||[]).push(r.name);LOC_ID.area[m.name+"|"+r.name]=r.id});
+      Object.values(tree).forEach(a=>a.sort((a,b)=>a.localeCompare(b,"es")));
+      LOCS=tree;LOC_SRC="core";return}
+  }catch(e){}
   try{let all=[],page=1;
     while(page<10){const r=await fetch(`https://gruposoltura.com/wp-json/wp/v2/location?per_page=100&page=${page}&_fields=id,name,parent`,{mode:"cors"});
       if(!r.ok)break;const j=await r.json();all=all.concat(j);if(j.length<100)break;page++}
@@ -171,7 +182,7 @@ function renderInner(){
      ${flows.map(f=>`<button class="ad-flow ${S.flow===f[0]?"on":""}" data-flow="${f[0]}"><i>${f[2]}</i>${esc(tr(f[1]))}</button>`).join("")}
      ${S.flow==="wizard"?`<div class="ad-steps">${STEPS.map(s=>s[0]===3&&!isSeller()?`<button class="ad-step skip" disabled title="${esc(tr(["Alleen bij label Seller of Suspect-Seller","Only with label Seller or Suspect-Seller"]))}"><b>3</b>${esc(tr(s[1]))} <small>${esc(tr(["(alleen bij Seller)","(Seller only)"]))}</small></button>`:`<button class="ad-step ${S.step===s[0]?"on":""} ${stepDone(s[0])?"ok":""}" data-step="${s[0]}"><b>${s[0]}</b>${esc(tr(s[1]))}</button>`).join("")}</div>`:""}
      <div class="ad-legend sm"><div>${mark("save")} ${esc(tr(["verplicht om op te slaan","required to save"]))}</div><div>${mark("pub")} ${esc(tr(["verplicht om te publiceren","required to publish"]))}</div></div>
-     <div class="ad-off sm"><b>${esc(tr(["Nog niet gekoppeld","Not connected yet"]))}</b>${esc(tr(["Dit scherm schrijft nog niets weg. Opslaan gaat aan na akkoord van Rick.","This screen does not save anything yet. Saving is enabled after Rick approves."]))}</div>
+     <div class="ad-off sm" id="adSaveMsg"><b>${esc(tr(["Gekoppeld aan NEXUS","Connected to NEXUS"]))}</b>${esc(tr(["Opslaan schrijft direct naar de database; lukt één onderdeel niet, dan wordt niets opgeslagen.","Saving writes straight to the database; if any part fails, nothing is saved."]))}</div>
      <div class="sm muted" id="adStamp" style="padding:8px 14px"></div>
      <button class="ad-reset" id="adReset">${esc(tr(["Concept wissen","Clear draft"]))}</button>
    </aside>
@@ -182,7 +193,8 @@ function renderInner(){
    <aside class="card ad-side"><div class="hd"><h3>${esc(tr(["Controle","Checks"]))}</h3></div><div class="ad-scroll" id="adChecks"></div></aside></div>`;
   afterRender();
 }
-const saveBtn=lbl=>`<button class="btn ad-save" disabled title="${esc(tr(["Opslaan wordt gekoppeld na akkoord","Saving is connected after approval"]))}">🔒 ${esc(lbl||tr(["Opslaan","Save"]))}</button>`;
+const canSave=()=>!BUSY&&!validate(S.flow).some(x=>x.level==="save");
+const saveBtn=lbl=>`<button class="btn ad-save" data-save="1" data-lbl="${esc(lbl||"")}" ${canSave()?"":"disabled"} title="${esc(tr(["Slaat op in NEXUS (core)","Saves to NEXUS (core)"]))}">${BUSY?"…":"💾"} ${esc(BUSY?tr(["Opslaan…","Saving…"]):(lbl||tr(["Opslaan","Save"])))}</button>`;
 function afterRender(){updateChecks();stamp();
   if(ROOT.querySelector("#adMap"))initMap();
   ROOT.querySelectorAll(".ad-drop").forEach(wireDrop);
@@ -333,7 +345,7 @@ function stepReview(){
   const v=validate("wizard"), save=v.filter(x=>x.level==="save"), pub=v.filter(x=>x.level==="pub");
   const c=S.contactMode==="existing"?S.existing:S.c, p=S.p;
   const name=S.contactMode==="existing"?(c&&c.name):[S.c.first_name,S.c.last_name].filter(Boolean).join(" ")||S.c.company;
-  return `<div class="ad-intro"><h2>${esc(tr(["Controle","Review"]))}</h2><p class="muted">${esc(tr(["Zo komt het in het nieuwe schema terecht. Opslaan wordt aangezet na akkoord.","This is how it lands in the new schema. Saving is switched on after approval."]))}</p></div>
+  return `<div class="ad-intro"><h2>${esc(tr(["Controle","Review"]))}</h2><p class="muted">${esc(tr(["Zo komt het in NEXUS terecht. Controleer en klik op Opslaan.","This is how it lands in NEXUS. Check and click Save."]))}</p></div>
   <div class="ad-sum">
    <div class="ad-sumcard"><h5>${esc(tr(["Aanbrenger","Introducer"]))}</h5>${S.agentMode==="none"?`<span class="muted">${esc(tr(["Niet aangebracht","Not introduced"]))}</span>${S.c.referred_by?" · "+esc(S.c.referred_by):""}`
      :S.agentMode==="existing"?(S.agent?`<b>${esc(S.agent.name||S.agent.email)}</b> <span class="sm muted">WP ${esc(S.agent.wp_id)}</span>`:`<span class="ad-bad">${esc(tr(["nog niet gekozen","not chosen yet"]))}</span>`)
@@ -368,7 +380,7 @@ function validateProp(p,media,stepNo,out){
   const add=(msg,level,jump)=>out.push({msg:tr(msg),level,step:stepNo,jump});
   if(!p.category)add(["Woningtype kiezen","Choose property type"],"save","pf-basis");
   if(!p.reference)add(["Referentie invullen","Enter reference"],"save","pf-basis");
-  else if(!/^[A-Z]{2,3}\d{1,5}$/.test(p.reference))add(["Referentie: 2–3 hoofdletters + nummer (bijv. RH995)","Reference: 2–3 capitals + number (e.g. RH995)"],"save","pf-basis");
+  else if(!/^[A-Z]{2}\d{3}$/.test(p.reference))add(["Referentie: 2 hoofdletters + 3 cijfers (bijv. RH995)","Reference: 2 capitals + 3 digits (e.g. RH995)"],"save","pf-basis");
   if(!p.listing_agent)add(["Verantwoordelijke makelaar kiezen","Choose listing agent"],"save","pf-basis");
   if(!p.price&&!p.price_on_request)add(["Vraagprijs (of ‘prijs op aanvraag’)","Asking price (or ‘price on request’)"],"save","pf-prijs");
   if(!p.municipality)add(["Gemeente kiezen","Choose municipality"],"save","pf-loc");
@@ -418,8 +430,9 @@ function updateChecks(){
   const grp=(lvl,title,cls)=>{const l=v.filter(x=>x.level===lvl);return l.length?`<div class="ad-chk ${cls}"><h5>${esc(tr(title))} <b>${l.length}</b></h5>${l.map(x=>`<a ${x.step?`data-step="${x.step}"`:""} ${x.jump?`data-jump="${x.jump}"`:""}>${S.flow==="wizard"&&x.step?`<i>${x.step}</i>`:""}${esc(x.msg)}</a>`).join("")}</div>`:""};
   box.innerHTML=(v.filter(x=>x.level!=="tip").length?"":`<div class="ad-chk ok"><h5>✓ ${esc(tr(["Compleet","Complete"]))}</h5></div>`)
     +grp("save",["Verplicht om op te slaan","Required to save"],"bad")+grp("pub",["Nodig om te publiceren","Needed to publish"],"warn")+grp("tip",["Aandachtspunten","Points of attention"],"tip")
-    +(DUPS.length&&S.flow==="wizard"?`<div class="ad-chk tip"><h5>${esc(tr(["Mogelijk al in NEXUS","Possibly already in NEXUS"]))}</h5>${DUPS.map(d=>`<a data-usedup="${d.wp_id}">${esc(d.name||d.email)}<span class="sm muted"> · ${esc(d.why)}</span></a>`).join("")}</div>`:"");
+    +(DUPS.length&&S.flow==="wizard"?`<div class="ad-chk tip"><h5>${esc(tr(["Mogelijk al in NEXUS","Possibly already in NEXUS"]))}</h5>${DUPS.map(d=>`<a data-usedup="${d.id||d.wp_id}">${esc(d.name||d.email)}<span class="sm muted"> · ${esc(d.why)}</span></a>`).join("")}</div>`:"");
   ROOT.querySelectorAll(".ad-step").forEach(b=>b.classList.toggle("ok",stepDone(+b.dataset.step)));
+  ROOT.querySelectorAll(".ad-save").forEach(b=>{b.disabled=!canSave();b.textContent=(BUSY?"… ":"💾 ")+(BUSY?tr(["Opslaan…","Saving…"]):b.dataset.lbl||tr(["Opslaan","Save"]))});
 }
 
 /* ================= PAYLOAD (voorbeeld van de schrijfactie) ================= */
@@ -467,14 +480,110 @@ function payload(flow){
   return out;
 }
 
+/* ================= OPSLAAN (gekoppeld 18-10-2026, migratie 019) ================= */
+let BUSY=false;
+const nul=v=>v===""||v==null?null:v;
+const CONTACT_KEYS=["title","first_name","last_name","company","language","birthday","street","street_number","postcode","city","state","country","website","referred_by","internal_comments"];
+function contactFields(c){
+  const f={};CONTACT_KEYS.forEach(k=>{const v=typeof c[k]==="string"?c[k].trim():c[k];if(nul(v)!=null)f[k]=v});
+  if(c.owner)f.owner_id=String(c.owner);
+  f.source=c.source?"nexus:"+c.source:"nexus";
+  const sp=Object.fromEntries(Object.entries(c.search||{}).filter(([,v])=>Array.isArray(v)?v.length:v));if(Object.keys(sp).length)f.search_profile=sp;
+  if(c.mailing_optin){f.mailing_optin=true;f.mailing_prefs=Object.fromEntries(MAILINGS.map(([k])=>[k,(c.prefs||[]).includes(k)]))}
+  return f;
+}
+const contactEmails=c=>(c.emails||[]).filter(e=>e.email&&e.email.trim()).map((e,i)=>({email:e.email.trim().toLowerCase(),kind:e.kind||null,is_primary:i===0}));
+const contactPhones=c=>(c.phones||[]).filter(p=>p.phone&&p.phone.replace(/\D/g,"").length>=6).map((p,i)=>({phone:p.phone.trim(),kind:p.kind||null,is_primary:i===0}));
+function locationId(p){if(!p.municipality)return null;
+  if(p.area&&p.area!=="__mun"&&p.area!=="__new"&&LOC_ID.area[p.municipality+"|"+p.area])return LOC_ID.area[p.municipality+"|"+p.area];
+  return LOC_ID.mun[p.municipality]||null}
+function propFields(p){
+  const pl=propPayload(p,[],null)["core.properties"];
+  const f={reference:p.reference};
+  ["own_listing_type","status","published","category","build_type","price","price_previous","price_from","price_on_request","price_fixed","price_hidden",
+   "bedrooms","bathrooms","toilets","ensuites","living_rooms","kitchens","floors","floor_level","balconies","terraces","patios","garages","carports",
+   "build_area","plot_area","area_living","area_terrace","area_garden","area_kitchen","year_built","orientation","views","energy_label","features","feature_options",
+   "country","province","city","location_area","street","street_number","postal_code","lat","lng","hide_address",
+   "distance_sea_m","distance_airport_m","distance_city_m","distance_shops_m","fee_legal","fee_notary","fee_registry","fee_transfer_tax",
+   "cost_community","cost_ibi","cost_garbage","cost_insurance","cadastral_ref","finca_number","labels","export_feeds","no_export","video_url","tour_360_url",
+   "listed_at","internal_notes"].forEach(k=>{const v=pl[k];if(v!==undefined&&v!==null&&v!=="")f[k]=v});
+  if(f.cadastral_ref)f.cadastral_ref=String(f.cadastral_ref).replace(/\s/g,"").toUpperCase();
+  if(p.dossier_complete)f.dossier_complete=true;
+  const loc=locationId(p);if(loc)f.location_id=loc;
+  if(p.listing_agent)f.listing_agent_id=String(p.listing_agent);
+  return f;
+}
+function propTexts(p){const t={};["nl","en","es"].forEach(l=>{const x=p.texts&&p.texts[l];if(!x)return;
+  const y={};Object.entries(x).forEach(([k,v])=>{if(v&&String(v).trim())y[k]=String(v).trim()});if(Object.keys(y).length)t[l]=y});return t}
+function buildSubmit(flow){
+  if(flow==="link"){const k=S.lk;return {contact:{mode:"existing",id:k.contact&&k.contact.id,roles:[]},property:{mode:"link",id:k.prop&&k.prop.id,rel:k.rel||"owner"}}}
+  if(flow==="prop"){return {contact:{mode:"none"},owner_id:S.wp.owner&&S.wp.owner.id||null,property:{mode:"now",fields:propFields(S.wp.p),texts:propTexts(S.wp.p)}}}
+  const out={};
+  if(S.agentMode==="existing"&&S.agent)out.agent={mode:"existing",id:S.agent.id};
+  else if(S.agentMode==="new"){const a=S.newAgent;
+    out.agent={mode:"new",fields:Object.fromEntries(Object.entries({company:a.company,first_name:a.first_name,last_name:a.last_name,language:a.language,website:a.website,source:"nexus"}).filter(([,v])=>nul(v)!=null)),
+      emails:a.email?[{email:a.email.trim().toLowerCase(),is_primary:true}]:[],phones:a.phone?[{phone:a.phone.trim(),kind:"work",is_primary:true}]:[]}}
+  else out.agent={mode:"none"};
+  if(S.contactMode==="existing")out.contact={mode:"existing",id:S.existing&&S.existing.id,roles:S.c.roles||[]};
+  else out.contact={mode:"new",fields:contactFields(S.c),roles:S.c.roles,emails:contactEmails(S.c),phones:contactPhones(S.c)};
+  const m=pm();
+  if(m==="now")out.property={mode:"now",fields:propFields(S.p),texts:propTexts(S.p)};
+  else if(m==="link"&&S.linkProp)out.property={mode:"link",id:S.linkProp.id,rel:S.linkRel||"owner"};
+  else out.property={mode:"none"};
+  return out;
+}
+async function uploadMedia(pid,arr){
+  const items=arr.filter(m=>m.file);if(!pid||!items.length)return {n:0,errors:[]};
+  if(!X.sb)return {n:0,errors:[tr(["Foto's niet geüpload: verbinding met Storage ontbreekt","Photos not uploaded: no Storage connection"])]};
+  const ids=[],errors=[];
+  for(const m of items){try{
+    const ext=(m.file.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
+    const path=`${pid}/nexus-${crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2)}.${ext}`;
+    const up=await X.sb.storage.from("property-media").upload(path,m.file,{contentType:m.file.type,upsert:false});
+    if(up.error)throw new Error(up.error.message);
+    const r=await X.rpc("nexus_property_media_add",{p_property_id:pid,p_storage_path:path,p_kind:m.kind,p_caption:m.caption||null});
+    ids.push({id:r&&r.id,kind:m.kind,caption:m.caption||""});
+  }catch(e){errors.push(m.name+": "+(e.message||e))}}
+  const ok=ids.filter(x=>x.id);
+  if(ok.length){try{let main=false;
+    await X.rpc("nexus_property_media_save",{p_property_id:pid,p_items:ok.map((x,i)=>{const im=!main&&x.kind==="photo";if(im)main=true;return {id:x.id,sort:i,is_main:im,caption:x.caption,kind:x.kind}})})
+  }catch(e){errors.push(tr(["Volgorde foto's: ","Photo order: "])+(e.message||e))}}
+  return {n:ok.length,errors};
+}
+function saveMsg(html,cls){const el=ROOT&&ROOT.querySelector("#adSaveMsg");if(el){el.innerHTML=html;el.className="ad-off sm"+(cls?" "+cls:"")}}
+async function submit(){
+  if(BUSY||!canSave())return;
+  const flow=S.flow, payload=buildSubmit(flow);
+  if(flow==="wizard"&&payload.contact.mode==="existing"&&!payload.contact.id)return saveMsg(esc(tr(["Kies het bestaande contact opnieuw (oude selectie zonder NEXUS-id).","Pick the existing contact again (old selection without NEXUS id)."])),"err");
+  if(payload.agent&&payload.agent.mode==="existing"&&!payload.agent.id)return saveMsg(esc(tr(["Kies de makelaar opnieuw (oude selectie zonder NEXUS-id).","Pick the agent again (old selection without NEXUS id)."])),"err");
+  if(payload.property&&payload.property.mode==="link"&&!payload.property.id)return saveMsg(esc(tr(["Kies de woning opnieuw (oude selectie zonder NEXUS-id).","Pick the property again (old selection without NEXUS id)."])),"err");
+  BUSY=true;updateChecks();
+  let res;
+  try{res=await X.rpc("nexus_admin_submit",{p:payload})}
+  catch(e){BUSY=false;updateChecks();saveMsg(`<b>${esc(tr(["Niet opgeslagen","Not saved"]))}</b>${esc(e.message||String(e))}`,"err");return}
+  const media=flow==="wizard"?MEDIA:flow==="prop"?WP_MEDIA:[];
+  const up=res&&res.property_id&&(flow==="prop"||pm()==="now")?await uploadMedia(res.property_id,media):{n:0,errors:[]};
+  BUSY=false;
+  /* concept leegmaken; zelfde scherm blijft open voor de volgende invoer */
+  [...MEDIA,...WP_MEDIA].forEach(m=>m.url&&URL.revokeObjectURL(m.url));MEDIA=[];WP_MEDIA=[];DUPS=[];S=blank();S.flow=flow;
+  if(X.me()){S.c.owner=S.p.listing_agent=S.wp.p.listing_agent=String(X.me().wp_author_id||"")}
+  try{localStorage.removeItem(DRAFT_KEY)}catch(_){}
+  render();
+  const links=[];
+  if(res&&res.contact_id)links.push(`<a href="#c/${esc(res.contact_id)}">${esc(tr(["Open contact","Open contact"]))}</a>`);
+  if(res&&res.reference)links.push(`<a href="#p/${encodeURIComponent(res.reference)}">${esc(tr(["Open woning","Open property"]))} ${esc(res.reference)}</a>`);
+  saveMsg(`<b>✓ ${esc(tr(["Opgeslagen","Saved"]))}</b>${up.n?esc(tr([` · ${up.n} bestand(en) geüpload`,` · ${up.n} file(s) uploaded`])):""} ${links.join(" · ")}`
+    +(up.errors.length?`<div class="ad-bad">${esc(tr(["Niet alle bestanden zijn geüpload — voeg ze toe via Bewerken bij de woning:","Not all files were uploaded — add them via Edit on the property:"]))}<br>${up.errors.map(esc).join("<br>")}</div>`:""),"ok");
+}
+
 /* ================= ZOEKEN (alleen-lezen via bestaande RPC's) ================= */
 let DUPS=[], dupT;
 async function searchContacts(q,role){if(!q||q.trim().length<2)return[];try{const r=await X.rpc("nexus_search",{p_q:q.trim(),p_role:role||null,p_scope:"all",p_limit:8,p_offset:0});return r.rows||[]}catch(e){return[]}}
 async function searchProps(q){if(!q||q.trim().length<2)return[];try{const r=await X.rpc("nexus_properties",{p_q:q.trim(),p_status:"",p_limit:8,p_offset:0});return r.rows||[]}catch(e){return[]}}
-const resRow=c=>`<button class="ad-hit" data-pick='${esc(JSON.stringify({wp_id:c.wp_id,name:c.name,email:c.email,city:c.city,roles:c.roles}))}'>
+const resRow=c=>`<button class="ad-hit" data-pick='${esc(JSON.stringify({id:c.id,wp_id:c.wp_id,name:c.name,email:c.email,city:c.city,roles:c.roles}))}'>
   <div class="ini" style="background:hsl(${[...String(c.name||c.email||"")].reduce((h,ch)=>(h*31+ch.charCodeAt(0))%360,0)} 55% 42%)">${esc(((c.name||c.email||"?")[0]||"?").toUpperCase())}</div>
   <div style="min-width:0"><b>${esc(c.name||c.email||"—")}</b><div class="sm muted">${(c.roles||[]).map(r=>esc(r)).join(", ")} ${esc([c.email,c.city].filter(Boolean).join(" · "))}</div></div><span class="sm muted">WP ${esc(c.wp_id)}</span></button>`;
-const propRow=p=>`<button class="ad-hit" data-pickp='${esc(JSON.stringify({wp_id:p.wp_id,reference:p.reference,price:p.price,town:p.town,suburb:p.suburb,image:p.image,owner:p.owner,owner_wp_id:p.owner_wp_id}))}'>
+const propRow=p=>`<button class="ad-hit" data-pickp='${esc(JSON.stringify({id:p.id,wp_id:p.wp_id,reference:p.reference,price:p.price,town:p.town,suburb:p.suburb,image:p.image,owner:p.owner,owner_wp_id:p.owner_wp_id}))}'>
   <div class="th" style="${p.image?`background-image:url('${esc(p.image)}')`:""}"></div><div style="min-width:0"><b>${esc(p.reference)} · ${p.price?"€ "+Number(p.price).toLocaleString("nl-NL"):"—"}</b>
   <div class="sm muted">${esc([p.suburb,p.town].filter(Boolean).join(", "))}${p.owner?" · 👤 "+esc(p.owner):""}${p.is_external?" · "+esc(p.agency||"extern"):""}</div></div></button>`;
 function liveSearch(inputSel,resSel,fn,rowFn,onPick,attr){
@@ -488,14 +597,14 @@ async function checkDups(){
   const qs=[...S.c.emails.map(e=>e.email.trim()).filter(e=>emailOk(e)),...S.c.phones.map(p=>p.phone.replace(/\D/g,"")).filter(x=>x.length>=8).map(x=>x.slice(-9))];
   const nm=[S.c.first_name,S.c.last_name].filter(Boolean).join(" ").trim();if(S.c.last_name&&nm.length>=5)qs.push(nm);
   const found={};
-  for(const q of qs){for(const r of await searchContacts(q)){if(!found[r.wp_id])found[r.wp_id]=Object.assign({},r,{why:q.includes("@")?"e-mail":/^\d+$/.test(q)?tr(["telefoon","phone"]):tr(["naam","name"])})}}
+  for(const q of qs){for(const r of await searchContacts(q)){const key=r.id||r.wp_id;if(!found[key])found[key]=Object.assign({},r,{why:q.includes("@")?"e-mail":/^\d+$/.test(q)?tr(["telefoon","phone"]):tr(["naam","name"])})}}
   DUPS=Object.values(found).slice(0,5);
   const box=ROOT.querySelector("#adDup");
-  if(box)box.innerHTML=DUPS.length?`<div class="ad-warnbox"><b>${esc(tr(["Dit contact bestaat mogelijk al","This contact may already exist"]))}</b>${DUPS.map(d=>`<div class="ad-duprow"><span>${esc(d.name||d.email)} <span class="sm muted">· ${esc(d.why)} · ${esc((d.roles||[]).join(", "))}</span></span><button class="btn sm" data-usedup="${d.wp_id}">${esc(tr(["Gebruik dit contact","Use this contact"]))}</button></div>`).join("")}</div>`:"";
+  if(box)box.innerHTML=DUPS.length?`<div class="ad-warnbox"><b>${esc(tr(["Dit contact bestaat mogelijk al","This contact may already exist"]))}</b>${DUPS.map(d=>`<div class="ad-duprow"><span>${esc(d.name||d.email)} <span class="sm muted">· ${esc(d.why)} · ${esc((d.roles||[]).join(", "))}</span></span><button class="btn sm" data-usedup="${d.id||d.wp_id}">${esc(tr(["Gebruik dit contact","Use this contact"]))}</button></div>`).join("")}</div>`:"";
   updateChecks();
 }
 async function checkRef(base){const p=getP(S,base);const box=ROOT.querySelector("#adRefCheck");if(!box)return;
-  if(!/^[A-Z]{2,3}\d{1,5}$/.test(p.reference||"")){box.innerHTML="";return}
+  if(!/^[A-Z]{2}\d{3}$/.test(p.reference||"")){box.innerHTML="";return}
   const rows=await searchProps(p.reference);const hit=rows.find(r=>String(r.reference).toUpperCase()===p.reference);
   box.innerHTML=hit?`<span class="ad-bad">⚠ ${esc(tr([`Referentie ${p.reference} bestaat al`,`Reference ${p.reference} already exists`]))} (${esc([hit.suburb,hit.town].filter(Boolean).join(", "))})</span>`:`<span style="color:#34d399">✓ ${esc(tr(["Referentie is vrij","Reference is free"]))}</span>`}
 
@@ -533,7 +642,7 @@ function wireDrop(d){const base=d.dataset.media, f=d.querySelector("input[type=f
   f.onchange=()=>{addFiles(base,f.files);f.value=""}}
 function addFiles(base,files){const arr=mediaOf(base);
   [...files].forEach(file=>{if(!/^image\/|^application\/pdf$/.test(file.type))return;
-    arr.push({id:Math.random().toString(36).slice(2),name:file.name,size:file.size,type:file.type,url:file.type.startsWith("image/")?URL.createObjectURL(file):null,
+    arr.push({id:Math.random().toString(36).slice(2),file,name:file.name,size:file.size,type:file.type,url:file.type.startsWith("image/")?URL.createObjectURL(file):null,
       kind:file.type==="application/pdf"?"energy_certificate":/plan|plano|floor/i.test(file.name)?"floorplan":"photo",caption:""})});
   renderMedia();updateChecks()}
 function renderMedia(){[["p",MEDIA],["wp.p",WP_MEDIA]].forEach(([base,arr])=>{const box=ROOT.querySelector(`#adMedia-${CSS.escape(base)}`);if(!box)return;
@@ -580,7 +689,8 @@ function bind(){
     if(d.add){e.preventDefault();S.c[d.add].push(d.add==="emails"?{email:"",kind:""}:{phone:"",kind:"mobile"});persist();render();return}
     if(d.rm){e.preventDefault();S.c[d.rm].splice(+d.i,1);persist();render();return}
     if(d.clear){({agent:()=>S.agent=null,existing:()=>S.existing=null,linkProp:()=>S.linkProp=null,wpOwner:()=>S.wp.owner=null,lkContact:()=>S.lk.contact=null,lkProp:()=>S.lk.prop=null})[d.clear]();persist();render();return}
-    if(d.usedup){const x=DUPS.find(y=>String(y.wp_id)===d.usedup);if(x){S.contactMode="existing";S.existing={wp_id:x.wp_id,name:x.name,email:x.email,city:x.city,roles:x.roles};S.step=2;S.flow="wizard";DUPS=[];persist();render()}return}
+    if(d.usedup){const x=DUPS.find(y=>String(y.id||y.wp_id)===d.usedup);if(x){S.contactMode="existing";S.existing={id:x.id,wp_id:x.wp_id,name:x.name,email:x.email,city:x.city,roles:x.roles};S.step=2;S.flow="wizard";DUPS=[];persist();render()}return}
+    if(d.save){e.preventDefault();submit();return}
     if(t.id==="adCopyJson"){navigator.clipboard&&navigator.clipboard.writeText(JSON.stringify(payload("wizard"),null,2));t.textContent="✓";return}
     if(t.id==="adReset"){if(confirm(tr(["Concept wissen? Alle ingevulde velden en foto's gaan weg.","Clear draft? All entered fields and photos are removed."]))){
       [...MEDIA,...WP_MEDIA].forEach(m=>m.url&&URL.revokeObjectURL(m.url));MEDIA=[];WP_MEDIA=[];DUPS=[];const f=S.flow;S=blank();S.flow=f;
@@ -599,7 +709,7 @@ function bind(){
 }
 let agT;function agentDup(){clearTimeout(agT);agT=setTimeout(async()=>{const box=ROOT.querySelector("#adAgentDup");if(!box)return;
   const q=S.newAgent.email&&emailOk(S.newAgent.email)?S.newAgent.email:S.newAgent.company;const rows=q&&q.length>=3?await searchContacts(q):[];
-  box.innerHTML=rows.length?`<div class="ad-warnbox"><b>${esc(tr(["Bestaat deze makelaar al?","Does this agent already exist?"]))}</b>${rows.slice(0,4).map(r=>`<div class="ad-duprow"><span>${esc(r.name||r.email)} <span class="sm muted">· ${esc((r.roles||[]).join(", "))}</span></span><button class="btn sm" data-useagent='${esc(JSON.stringify({wp_id:r.wp_id,name:r.name,email:r.email,city:r.city}))}'>${esc(tr(["Gebruik deze","Use this one"]))}</button></div>`).join("")}</div>`:"";
+  box.innerHTML=rows.length?`<div class="ad-warnbox"><b>${esc(tr(["Bestaat deze makelaar al?","Does this agent already exist?"]))}</b>${rows.slice(0,4).map(r=>`<div class="ad-duprow"><span>${esc(r.name||r.email)} <span class="sm muted">· ${esc((r.roles||[]).join(", "))}</span></span><button class="btn sm" data-useagent='${esc(JSON.stringify({id:r.id,wp_id:r.wp_id,name:r.name,email:r.email,city:r.city}))}'>${esc(tr(["Gebruik deze","Use this one"]))}</button></div>`).join("")}</div>`:"";
   box.querySelectorAll("[data-useagent]").forEach(b=>b.onclick=()=>{S.agent=JSON.parse(b.dataset.useagent);S.agentMode="existing";persist();render()})},500)}
 
 window.NEXUS_ADMIN={open,rerender:()=>{if(ROOT&&ROOT.dataset.init)render()},
