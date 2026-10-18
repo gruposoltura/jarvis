@@ -61,6 +61,22 @@
   .web-sub span{text-transform:none;letter-spacing:0}
   .web-gap{margin:0 0 10px;padding:8px 10px;border-radius:8px;font-size:12.5px;border:1px solid rgba(255,93,93,.45);background:rgba(255,93,93,.08);color:var(--red)}
   #site-top{margin-top:12px}
+  :root{--fun-ga:#2a93d6;--fun-own:#32a77e}
+  .fun{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+  .fun-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .fun-hd h3{font-size:12px;font-weight:600;color:var(--muted);margin:0;letter-spacing:.04em;text-transform:uppercase}
+  .fun-hd h3 span{text-transform:none;letter-spacing:0;font-weight:400}
+  .fun-rng{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .fun-rng button{background:transparent;color:var(--muted);border:0;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer}
+  .fun-rng button[aria-pressed="true"]{background:rgba(42,147,214,.18);color:var(--text)}
+  .fun-chart svg{display:block;max-width:100%}
+  #fun-legend{margin:2px 0 10px}
+  .fun-chart rect.hit{fill:transparent;cursor:default}
+  .fun-chart g.row:hover rect.bar{filter:brightness(1.18)}
+  .fun-note{font-size:11.5px;color:var(--muted);margin:4px 0 0;line-height:1.45}
+  .fun-tbl{overflow-x:auto;margin-top:10px}
+  .fun-tbl td.ch{color:var(--text)}
+  .fun-tbl td.pc{color:var(--muted)}
   #site-top h3{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 6px;letter-spacing:.04em;text-transform:uppercase}
   .num .v{font-size:25px;font-weight:800;line-height:1.05}
   .num .l{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
@@ -320,6 +336,22 @@
         <span><i style="background:var(--orange)"></i>Gebruikers GA4</span>
         <span><i style="background:var(--green)"></i>Sessies eigen meting</span></div>
       <div id="site-top"></div>
+      <div class="fun" id="fun">
+        <div class="fun-hd">
+          <h3>Trechter &middot; bezoek &rarr; aanvraag <span id="fun-when"></span></h3>
+          <div class="fun-rng" role="group" aria-label="Periode">
+            <button type="button" data-rng="7">7 dagen</button><button type="button" data-rng="28">28 dagen</button>
+          </div>
+        </div>
+        <div class="legend" id="fun-legend">
+          <span><i style="background:var(--fun-ga)"></i>GA4 &middot; gebruikers</span>
+          <span><i style="background:var(--fun-own)"></i>Eigen meting &middot; bezoekers</span>
+        </div>
+        <div class="nums" id="fun-nums"></div>
+        <div class="fun-chart" id="fun-chart"></div>
+        <div class="fun-note" id="fun-note"></div>
+        <div class="fun-tbl" id="fun-ch"></div>
+      </div>
     </div>
 
     <div class="row2">
@@ -987,6 +1019,96 @@
     });
   })();
 
+  /* ================= trechter (Website-kaart) ================= */
+  var FUN = { ga: [], own: [], range: 7 };
+  try{ var fr = Number(localStorage.getItem('bridge_kpi_funrange')); if(fr === 7 || fr === 28) FUN.range = fr; }catch(e){}
+  var FUN_STEPS = ['Bezoek', 'Woning bekeken', 'Interesse', 'Aanvraag'];
+  var FUN_CLR = { ga: '#2a93d6', own: '#32a77e' };
+  var FUN_CH = { 'Direct':'Direct', 'Organic Search':'Google (organisch)', 'Paid Search':'Google Ads', 'Email':'E-mail',
+    'Paid Social':'Meta-advertenties', 'Organic Social':'Social (organisch)', 'Referral':'Verwijzing', 'AI Assistant':'AI-assistent',
+    'Unassigned':'Onbekend', 'Cross-network':'Cross-network', 'Display':'Display', 'Organic Video':'Video' };
+  function pct(a, b){ return b > 0 ? Math.round(a / b * 1000) / 10 : null; }
+  function pctTxt(v){ return v === null ? '\u2014' : String(v).replace('.', ',') + '%'; }
+  function funEsc(x){ return String(x == null ? '' : x).replace(/[<>&"]/g, function(c){ return { '<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;' }[c]; }); }
+  function renderFunnel(){
+    var box = $('fun'); if(!box) return;
+    var R = FUN.range;
+    box.querySelectorAll('[data-rng]').forEach(function(b){
+      b.setAttribute('aria-pressed', Number(b.dataset.rng) === R ? 'true' : 'false');
+      b.onclick = function(){ FUN.range = Number(b.dataset.rng); try{ localStorage.setItem('bridge_kpi_funrange', String(FUN.range)); }catch(e){} renderFunnel(); };
+    });
+    var gaR = FUN.ga.filter(function(r){ return Number(r.range_days) === R; });
+    var snap = gaR.reduce(function(m, r){ return r.snapshot_date > m ? r.snapshot_date : m; }, '');
+    gaR = gaR.filter(function(r){ return r.snapshot_date === snap; });
+    var ga = [0,0,0,0], own = [0,0,0,0], byCh = {};
+    gaR.forEach(function(r){
+      var i = Number(r.step_idx) - 1; if(i < 0 || i > 3) return;
+      if(r.channel === 'Totaal') ga[i] = Number(r.users || 0);
+      else (byCh[r.channel] = byCh[r.channel] || [0,0,0,0])[i] = Number(r.users || 0);
+    });
+    FUN.own.forEach(function(r){ if(Number(r.range_days) === R){ var i = Number(r.step_idx) - 1; if(i >= 0 && i < 4) own[i] = Number(r.users || 0); } });
+    var hasGa = !!snap, hasOwn = own[0] > 0;
+    $('fun-when').textContent = '\u2014 ' + R + ' dagen' + (snap ? ', GA4 t/m ' + snap : '') + ' \u00b7 eigen meting t/m nu';
+
+    // kopcijfers: de twee overgangen die ertoe doen + eindconversie
+    $('fun-nums').innerHTML =
+      num('bezoek \u2192 woning \u00b7 eigen', pctTxt(pct(own[1], own[0])), '') +
+      num('woning \u2192 interesse \u00b7 eigen', pctTxt(pct(own[2], own[1])), '') +
+      num('interesse \u2192 aanvraag \u00b7 eigen', pctTxt(pct(own[3], own[2])), '') +
+      num('bezoek \u2192 aanvraag \u00b7 eigen', pctTxt(pct(own[3], own[0])), '', own[3] ? 'goodval' : '') +
+      (hasGa ? num('GA4 bezoek \u2192 aanvraag', pctTxt(pct(ga[3], ga[0])), '') : '');
+
+    // horizontale gegroepeerde balken per stap, gedeelde schaal; label = aantal + % van vorige stap
+    // tekenen op de echte breedte (geen geschaalde viewBox), anders wordt de tekst op de telefoon onleesbaar
+    var W = Math.max(300, Math.round(($('fun-chart').clientWidth || 900))), narrow = W < 560;
+    var labW = narrow ? 0 : 150, valW = narrow ? 104 : 190, top = narrow ? 18 : 0, barMax = W - labW - valW - 8,
+        bh = 14, gap = 3, rowH = top + (hasGa ? bh*2 + gap : bh) + 20, H = rowH * 4 + 6;
+    var mx = Math.max(1, ga[0], own[0], ga[1], own[1]);
+    function bar(y, v, prev, clr, who, step){
+      var w = v > 0 ? Math.max(4, v / mx * barMax) : 0;
+      var p = prev === null ? '' : ' \u00b7 ' + pctTxt(pct(v, prev)) + ' van vorige stap';
+      var tip = who + ' \u00b7 ' + step + ': ' + fmt(v) + p;
+      return '<rect class="bar" x="' + labW + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + bh + '" rx="4" fill="' + clr + '"><title>' + tip + '</title></rect>'
+        + '<text x="' + (labW + w + 8).toFixed(1) + '" y="' + (y + bh - 3) + '" font-size="12" fill="#dfe8f5">' + fmt(v)
+        + (prev === null ? '' : '<tspan fill="#7d8ca3"> \u00b7 ' + pctTxt(pct(v, prev)) + '</tspan>') + '</text>'
+        + '<rect class="hit" x="0" y="' + (y - 1) + '" width="' + W + '" height="' + (bh + 2) + '"><title>' + tip + '</title></rect>';
+    }
+    var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Trechter bezoek tot aanvraag, GA4 en eigen meting">';
+    if(!narrow) svg += '<line x1="' + labW + '" y1="2" x2="' + labW + '" y2="' + (H - 4) + '" stroke="#1c2940" stroke-width="1"/>';
+    FUN_STEPS.forEach(function(name, i){
+      var y0 = i * rowH + 6 + top;
+      svg += '<g class="row"><text x="' + (narrow ? 0 : labW - 12) + '" y="' + (narrow ? y0 - 6 : y0 + bh + 2) + '" text-anchor="' + (narrow ? 'start' : 'end') + '" font-size="12.5" fill="#dfe8f5">' + (i + 1) + '. ' + name + '</text>';
+      if(hasGa) svg += bar(y0, ga[i], i ? ga[i-1] : null, FUN_CLR.ga, 'GA4', name);
+      svg += bar(y0 + (hasGa ? bh + gap : 0), own[i], i ? own[i-1] : null, FUN_CLR.own, 'Eigen meting', name);
+      svg += '</g>';
+    });
+    $('fun-chart').innerHTML = (hasGa || hasOwn) ? svg + '</svg>' : '<div class="fun-note">Nog geen trechterdata.</div>';
+    $('fun-legend').style.display = hasGa ? '' : 'none';
+
+    var notes = [];
+    if(hasGa && ga[0] > 0 && !ga[1] && !ga[2] && !ga[3])
+      notes.push('GA4 ontvangt woning-, contact- en lead-events pas sinds 18-10-2026 (16:15); stap 2 t/m 4 vullen vanaf de volgende dagelijkse ophaal (06:45). GA4-stap 1 bevat t/m 17-10 ook bezoek aan de oude WordPress-site.');
+    notes.push('Open trechter: elke stap telt zelfstandig, ook wie halverwege binnenkomt (bijv. via een woninglink in een mail). '
+      + 'Interesse = bewaren, WhatsApp, bellen, kostenoverzicht of bezichtigingsformulier openen. Aanvraag = formulier of koopgids verstuurd. '
+      + 'GA4 telt alleen met cookieloze pings of toestemming; de eigen meting telt elk bezoek anoniem.');
+    $('fun-note').textContent = notes.join(' ');
+
+    // GA4 per kanaal
+    var chs = Object.keys(byCh).sort(function(a, b){ return byCh[b][0] - byCh[a][0]; });
+    $('fun-ch').innerHTML = !chs.length ? '' :
+      '<table class="adt"><thead><tr><th>GA4 per kanaal</th><th>Bezoek</th><th>Woning</th><th>Interesse</th><th>Aanvraag</th>'
+      + '<th>Bezoek\u2192woning</th><th>Woning\u2192aanvraag</th></tr></thead><tbody>'
+      + chs.map(function(c){ var v = byCh[c];
+          return '<tr><td class="ch">' + funEsc(FUN_CH[c] || c) + '</td><td>' + fmt(v[0]) + '</td><td>' + fmt(v[1]) + '</td><td>' + fmt(v[2]) + '</td><td>' + fmt(v[3]) + '</td>'
+            + '<td class="pc">' + pctTxt(pct(v[1], v[0])) + '</td><td class="pc">' + pctTxt(pct(v[3], v[1])) + '</td></tr>'; }).join('')
+      + '<tr><td class="ch"><b>Totaal</b></td><td><b>' + fmt(ga[0]) + '</b></td><td><b>' + fmt(ga[1]) + '</b></td><td><b>' + fmt(ga[2]) + '</b></td><td><b>' + fmt(ga[3]) + '</b></td>'
+      + '<td class="pc">' + pctTxt(pct(ga[1], ga[0])) + '</td><td class="pc">' + pctTxt(pct(ga[3], ga[1])) + '</td></tr></tbody></table>';
+  }
+
+  var funRz; window.addEventListener('resize', function(){ clearTimeout(funRz); funRz = setTimeout(renderFunnel, 150); });
+  // ingeklapte zone heeft breedte 0: bij uitklappen opnieuw tekenen op de echte breedte
+  document.addEventListener('click', function(e){ if(e.target.closest && e.target.closest('.fold, .zone-head, [data-zone]')) setTimeout(renderFunnel, 60); });
+
   function pivot(rows, source){
     var out = {};
     rows.forEach(function(r){
@@ -1111,7 +1233,10 @@
         // eigen websitemeting (web_events) per dag en top-woningen 7 dagen (res[9], res[10]).
         // Mag falen: dan toont de Website-kaart alleen GA4.
         sb.from('bridge_site_daily').select('*').order('day', { ascending: true }),
-        sb.from('bridge_site_top_properties').select('*').order('views', { ascending: false }).limit(8)
+        sb.from('bridge_site_top_properties').select('*').order('views', { ascending: false }).limit(8),
+        // trechter: GA4 (dagelijks door KpiSync-GA4 in ga4_funnel) en eigen meting (res[11], res[12]). Mag falen.
+        sb.from('ga4_funnel').select('*').order('snapshot_date', { ascending: false }).limit(600),
+        sb.from('bridge_site_funnel').select('*')
       ]);
       if(res[0].error) throw res[0].error;
       var kpi = res[0].data || [],
@@ -1189,6 +1314,11 @@
               + '<td>' + fmt(r.returning_visitors||0) + '</td><td>' + fmt(r.favorites||0) + '</td>'
               + '<td>' + fmt(r.contact_intents||0) + '</td><td>' + fmt(r.leads||0) + '</td></tr>';
           }).join('') + '</tbody></table>';
+
+      /* ---- trechter: bezoek -> woning bekeken -> interesse -> aanvraag (GA4 naast eigen meting) ---- */
+      FUN.ga = (res[11] && !res[11].error) ? (res[11].data || []) : [];
+      FUN.own = (res[12] && !res[12].error) ? (res[12].data || []) : [];
+      renderFunnel();
 
       /* ---- MAIL (Brevo): campagnes op de linkeras, transactioneel op de rechteras ----
          De twee bronnen verschillen een factor 50 in volume (campagnes ~2.400 per
