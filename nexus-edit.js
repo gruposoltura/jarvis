@@ -296,25 +296,46 @@ async function openContact(key,ctx){X=ctx;
   ROOT.className="pe";document.body.classList.add("pe-open");ROOT.innerHTML=`<div class="pe-box pe-small"><div class="pe-load">${esc(tr(["Contact laden…","Loading contact…"]))}</div></div>`;
   let C;try{C=await X.rpc("nexus_contact_by_key",{p_key:String(key)})}catch(e){ROOT.querySelector(".pe-box").innerHTML=`<div class="pe-load">${esc(e.message)} <button class="btn" data-act="cclose">×</button></div>`;return}
   const o=C.core||{}, v=JSON.parse(JSON.stringify(o));
+  /* labels: aan/uit; bij Seller/Suspect-Seller aan verschijnt de optie om meteen een woning aan te maken */
+  const RL=[["suspect","Suspect"],["seller","Seller"],["buyer","Buyer"],["suspect_seller","Suspect-Seller"],["agent","Agent"]];
+  const r0=new Set((C.contact.roles||[]).map(x=>String(x).replace(/-/g,"_")).filter(x=>RL.some(r=>r[0]===x)));
+  const rs=new Set(r0); let mkProp=false;
+  const isSell=set=>set.has("seller")||set.has("suspect_seller");
+  const rolesChanged=()=>r0.size!==rs.size||[...rs].some(x=>!r0.has(x));
+  const propOpt=()=>isSell(rs)&&!isSell(r0)?`<label class="ad-c pe-mkprop"><input type="checkbox" id="peMkProp" ${mkProp?"checked":""}><span><b>${esc(tr(["Woning aanmaken voor dit contact","Create a property for this contact"]))}</b> · ${esc(tr(["na opslaan opent ‘Woning toevoegen’ met dit contact als eigenaar","after saving, ‘Add property’ opens with this contact as owner"]))}</span></label>`:(isSell(rs)&&!(C.properties||[]).some(p=>p.relation==="eigenaar")?`<button type="button" class="btn sm" id="peMkPropBtn">+ ${esc(tr(["Woning aanmaken voor dit contact","Create a property for this contact"]))}</button>`:"");
   const draw=()=>{ROOT.innerHTML=`<div class="pe-box pe-small"><header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(C.contact.full_name||"—")}</div><div class="pe-tt">${esc(tr(["Contactgegevens bewerken","Edit contact details"]))}</div></div>
      <button class="pe-x" data-act="cclose">×</button></header>
-     <div class="pe-main"><div id="peErr"></div><section class="ad-sec"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
+     <div class="pe-main"><div id="peErr"></div>
+     <section class="ad-sec"><h4>${esc(tr(["Labels","Labels"]))}</h4><div class="pe-roles">${RL.map(r=>`<button type="button" class="pe-role ${rs.has(r[0])?"on":""}" data-role="${r[0]}" style="--rc:var(--r-${r[0].replace("_","-")})">${r[1]}</button>`).join("")}</div>
+       <small class="muted">${esc(tr(["Een contact kan op elk moment een ander label krijgen. Minstens één label.","A contact can get another label at any time. At least one label."]))}</small><div id="peProp">${propOpt()}</div></section>
+     <section class="ad-sec"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
        <div class="ad-row">${CFIELDS.slice(0,8).map(f=>`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" type="${f[2]||"text"}" value="${esc(v[f[0]]??"")}"></label>`).join("")}</div>
 </section>
      <section class="ad-sec"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
        <div class="ad-row">${CFIELDS.slice(8).map(f=>`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" value="${esc(v[f[0]]??"")}"></label>`).join("")}</div>
        <label class="ad-f w4"><span>${esc(tr(["Interne opmerking","Internal note"]))}</span><textarea data-cf="internal_comments" rows="4">${esc(v.internal_comments||"")}</textarea></label></section>
-     <div class="sm muted">${esc(tr(["E-mailadressen, telefoons en labels volgen in een volgende stap.","E-mail addresses, phones and labels follow in a next step."]))}</div></div>
+     <div class="sm muted">${esc(tr(["E-mailadressen en telefoons volgen in een volgende stap.","E-mail addresses and phones follow in a next step."]))}</div></div>
      <footer class="pe-ft"><span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
     const diff=()=>{const d={};for(const k in v){if(["keyholder","internal_comments"].concat(CFIELDS.map(f=>f[0])).includes(k)){const a=v[k]===""?null:v[k],b=o[k]===""?null:o[k];if(JSON.stringify(a)!==JSON.stringify(b))d[k]=a}}return d};
-    const up=()=>{const n=Object.keys(diff()).length;ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
+    const up=()=>{const n=Object.keys(diff()).length+(rolesChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
     ROOT.querySelectorAll("[data-cf]").forEach(el=>el.oninput=el.onchange=()=>{v[el.dataset.cf]=el.type==="checkbox"?el.checked:el.value;up()});
+    const wireProp=()=>{const cb=ROOT.querySelector("#peMkProp");if(cb)cb.onchange=()=>{mkProp=cb.checked};
+      const bt=ROOT.querySelector("#peMkPropBtn");if(bt)bt.onclick=()=>{closeC();goNewProp()}};
+    ROOT.querySelectorAll("[data-role]").forEach(b=>b.onclick=()=>{const r=b.dataset.role;
+      if(rs.has(r)){if(rs.size===1)return;rs.delete(r)}else rs.add(r);
+      b.classList.toggle("on",rs.has(r));if(!isSell(rs))mkProp=false;
+      ROOT.querySelector("#peProp").innerHTML=propOpt();wireProp();up()});
+    wireProp();
     ROOT.querySelectorAll('[data-act="cclose"]').forEach(b=>b.onclick=()=>{if(Object.keys(diff()).length&&!confirm(tr(["Niet-opgeslagen wijzigingen. Toch sluiten?","Unsaved changes. Close anyway?"])))return;ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")});
-    ROOT.querySelector('[data-act="csave"]').onclick=async()=>{const d=diff();if(!Object.keys(d).length)return;const b=ROOT.querySelector("#peSave");b.disabled=true;b.textContent=tr(["Opslaan…","Saving…"]);
-      try{await X.rpc("nexus_contact_save",{p_id:o.id,p_patch:d});ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open");toast(tr(["Opgeslagen","Saved"]));X.onSaved&&X.onSaved(o.id)}
+    ROOT.querySelector('[data-act="csave"]').onclick=async()=>{const d=diff();if(!Object.keys(d).length&&!rolesChanged())return;const b=ROOT.querySelector("#peSave");b.disabled=true;b.textContent=tr(["Opslaan…","Saving…"]);
+      try{if(Object.keys(d).length)await X.rpc("nexus_contact_save",{p_id:o.id,p_patch:d});
+        if(rolesChanged())await X.rpc("nexus_contact_roles_set",{p_id:o.id,p_roles:[...rs]});
+        const go=mkProp&&isSell(rs);closeC();toast(tr(["Opgeslagen","Saved"]));X.onSaved&&X.onSaved(o.id);if(go)goNewProp()}
       catch(e){b.disabled=false;b.textContent=tr(["Opslaan","Save"]);ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(e.message||String(e))}</div>`}};
     up()};
+  const closeC=()=>{ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")};
+  const goNewProp=()=>{location.hash="ad";setTimeout(()=>{if(window.NEXUS_ADMIN&&NEXUS_ADMIN.startNewProperty)NEXUS_ADMIN.startNewProperty({id:o.id,wp_id:C.contact.wp_id||"",name:C.contact.full_name,email:C.contact.email,city:o.city,roles:[...rs].map(x=>x.replace("_","-"))})},0)};
   draw();
 }
 window.NEXUS_EDIT={open:(ref,ctx)=>{X=ctx;load(ref)},openContact,quickStatus,STATUS,statusOf,tr:v=>tr(v)};

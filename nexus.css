@@ -551,3 +551,9 @@ html[data-theme="light"] .hero .pr{color:#fff}
 .dh .acts a.act-new{background:var(--c-ct);border-color:var(--c-ct);color:#fff;font-weight:700;cursor:pointer}.dh .acts a.act-new:hover{filter:brightness(1.1);color:#fff}
 .pk-notes{white-space:pre-wrap;background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--c-pr);border-radius:8px;padding:8px 10px;font-size:calc(13.5px*var(--fs,1))}
 .ad-step.skip{opacity:.45;cursor:not-allowed}.ad-step.skip small{font-size:calc(11px*var(--fs,1));color:var(--tx3)}
+/* labels aan/uit in contact bewerken */
+.pe-roles{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 6px}
+.pe-role{border:1.5px solid color-mix(in srgb,var(--rc) 55%,transparent);background:transparent;color:var(--tx2);border-radius:999px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:calc(13px*var(--fs,1))}
+.pe-role.on{background:var(--rc);border-color:var(--rc);color:#fff}
+.pe-mkprop{margin-top:10px;padding:10px 12px;border-radius:10px;border:1.5px dashed var(--r-seller);background:color-mix(in srgb,var(--r-seller) 10%,transparent)}
+#peProp .btn{margin-top:10px}
