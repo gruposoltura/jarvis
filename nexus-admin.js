@@ -103,7 +103,10 @@ let saveT;function persist(){clearTimeout(saveT);saveT=setTimeout(()=>{try{local
 function stamp(){const el=ROOT&&ROOT.querySelector("#adStamp");if(el)el.textContent=tr(["Concept bewaard in deze browser · ","Draft kept in this browser · "])+new Date().toLocaleTimeString(X.lang()==="en"?"en-GB":"nl-NL",{hour:"2-digit",minute:"2-digit"})}
 const getP=(o,path)=>path.split(".").reduce((a,k)=>a==null?a:a[k],o);
 function setP(o,path,v){const ks=path.split(".");let a=o;for(let i=0;i<ks.length-1;i++){if(a[ks[i]]==null)a[ks[i]]={};a=a[ks[i]]}a[ks[ks.length-1]]=v}
-const pm=()=>S.propMode||(isSeller()?"now":"none");
+const pm=()=>isSeller()?(S.propMode||"now"):"none"; /* zonder Seller-label nooit een woning */
+/* Woning-stap (3) alleen bij Seller/Suspect-Seller; anders van Contact direct naar Controle */
+const nextStep=()=>S.step===2&&!isSeller()?4:S.step+1;
+const prevStep=()=>S.step===4&&!isSeller()?2:S.step-1;
 const isSeller=()=>S.c.roles.some(r=>r==="seller"||r==="suspect_seller")||(S.contactMode==="existing"&&S.existing&&(S.existing.roles||[]).some(r=>/seller/.test(r)));
 
 /* ================= VELD-HELPERS ================= */
@@ -152,15 +155,15 @@ function render(){
   ROOT.innerHTML=`<div class="ad">
    <aside class="card ad-nav"><div class="hd"><h3>Admin</h3></div>
      ${flows.map(f=>`<button class="ad-flow ${S.flow===f[0]?"on":""}" data-flow="${f[0]}"><i>${f[2]}</i>${esc(tr(f[1]))}</button>`).join("")}
-     ${S.flow==="wizard"?`<div class="ad-steps">${STEPS.map(s=>`<button class="ad-step ${S.step===s[0]?"on":""} ${stepDone(s[0])?"ok":""}" data-step="${s[0]}"><b>${s[0]}</b>${esc(tr(s[1]))}</button>`).join("")}</div>`:""}
+     ${S.flow==="wizard"?`<div class="ad-steps">${STEPS.map(s=>s[0]===3&&!isSeller()?`<button class="ad-step skip" disabled title="${esc(tr(["Alleen bij label Seller of Suspect-Seller","Only with label Seller or Suspect-Seller"]))}"><b>3</b>${esc(tr(s[1]))} <small>${esc(tr(["(alleen bij Seller)","(Seller only)"]))}</small></button>`:`<button class="ad-step ${S.step===s[0]?"on":""} ${stepDone(s[0])?"ok":""}" data-step="${s[0]}"><b>${s[0]}</b>${esc(tr(s[1]))}</button>`).join("")}</div>`:""}
      <div class="ad-legend sm"><div>${mark("save")} ${esc(tr(["verplicht om op te slaan","required to save"]))}</div><div>${mark("pub")} ${esc(tr(["verplicht om te publiceren","required to publish"]))}</div></div>
      <div class="ad-off sm"><b>${esc(tr(["Nog niet gekoppeld","Not connected yet"]))}</b>${esc(tr(["Dit scherm schrijft nog niets weg. Opslaan gaat aan na akkoord van Rick.","This screen does not save anything yet. Saving is enabled after Rick approves."]))}</div>
      <div class="sm muted" id="adStamp" style="padding:8px 14px"></div>
      <button class="ad-reset" id="adReset">${esc(tr(["Concept wissen","Clear draft"]))}</button>
    </aside>
    <div class="card ad-main"><div class="ad-scroll" id="adMain">${S.flow==="wizard"?wizard():S.flow==="prop"?propFlow():linkFlow()}</div>
-     ${S.flow==="wizard"?`<div class="ad-foot">${S.step>1?`<button class="btn" data-step="${S.step-1}">← ${esc(tr(["Vorige","Back"]))}</button>`:"<span></span>"}
-       ${S.step<4?`<button class="btn ad-next" data-step="${S.step+1}">${esc(tr(["Volgende","Next"]))} →</button>`:saveBtn()}</div>`:S.flow==="prop"?`<div class="ad-foot"><span></span>${saveBtn()}</div>`:`<div class="ad-foot"><span></span>${saveBtn(tr(["Koppeling opslaan","Save link"]))}</div>`}
+     ${S.flow==="wizard"?`<div class="ad-foot">${S.step>1?`<button class="btn" data-step="${prevStep()}">← ${esc(tr(["Vorige","Back"]))}</button>`:"<span></span>"}
+       ${S.step<4?`<button class="btn ad-next" data-step="${nextStep()}">${esc(tr(["Volgende","Next"]))} →</button>`:saveBtn()}</div>`:S.flow==="prop"?`<div class="ad-foot"><span></span>${saveBtn()}</div>`:`<div class="ad-foot"><span></span>${saveBtn(tr(["Koppeling opslaan","Save link"]))}</div>`}
    </div>
    <aside class="card ad-side"><div class="hd"><h3>${esc(tr(["Controle","Checks"]))}</h3></div><div class="ad-scroll" id="adChecks"></div></aside></div>`;
   afterRender();
@@ -388,8 +391,8 @@ function validate(flow){
       if(c.phones.some(p=>p.phone&&!/^\+/.test(p.phone.trim())))add(["Telefoon zonder landcode (+34, +31 …)","Phone without country code (+34, +31 …)"],"tip",2);
       if(DUPS.length)add([`${DUPS.length} mogelijk dubbel contact`,`${DUPS.length} possible duplicate contact(s)`],"tip",2)}
     if(isSeller()&&pm()==="none")add(["Verkoper zonder woning: kies ‘later’ of maak hem aan","Seller without property: choose ‘later’ or create it"],"tip",3);
-    if(pm()==="link"&&!S.linkProp)add(["Woning kiezen om te koppelen","Pick property to link"],"save",3);
-    if(pm()==="now")validateProp(S.p,MEDIA,3,out);
+    if(isSeller()&&pm()==="link"&&!S.linkProp)add(["Woning kiezen om te koppelen","Pick property to link"],"save",3);
+    if(isSeller()&&pm()==="now")validateProp(S.p,MEDIA,3,out);
   }else if(flow==="prop"){validateProp(S.wp.p,WP_MEDIA,0,out);if(!S.wp.owner)out.push({msg:tr(["Geen eigenaar gekoppeld (kan later)","No owner linked (can be done later)"]),level:"tip",step:0})}
   else{if(!S.lk.contact)add(["Contact kiezen","Pick contact"],"save",0);if(!S.lk.prop)add(["Woning kiezen","Pick property"],"save",0)}
   return out;
@@ -553,7 +556,7 @@ function bind(){
     persist();updateChecks()});
   ROOT.addEventListener("click",e=>{const t=e.target.closest("button,a");if(!t||!ROOT.contains(t))return;const d=t.dataset;
     if(d.flow){S.flow=d.flow;persist();render();ROOT.querySelector("#adMain").scrollTop=0;return}
-    if(d.step){S.step=+d.step;S.flow="wizard";persist();render();ROOT.querySelector("#adMain").scrollTop=0;
+    if(d.step){S.step=+d.step;if(S.step===3&&!isSeller())S.step=4;S.flow="wizard";persist();render();ROOT.querySelector("#adMain").scrollTop=0;
       if(d.jump)setTimeout(()=>{const s=ROOT.querySelector("#"+d.jump);if(s)s.scrollIntoView({behavior:"smooth",block:"start"})},50);return}
     if(d.jump){e.preventDefault();const s=ROOT.querySelector("#"+d.jump);if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
     if(d.am){S.agentMode=d.am;persist();render();return}
