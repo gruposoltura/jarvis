@@ -508,6 +508,14 @@ async function loadPropPhotos(p,raw){
     if(hero){hero.style.backgroundImage=`url('${b.dataset.u.replace(/'/g,"%27")}')`;hero.dataset.u=b.dataset.u;hero.scrollIntoView({behavior:"smooth",block:"nearest"})}
   });
 }
+/* contactgegevens van de eigenaar (of de aanbiedende partner) bovenaan de woning */
+function ownerContactStrip(o,raw,p){
+  const tel=v=>String(v).replace(/[^\d+]/g,""), wa=v=>tel(v).replace(/^\+/,"").replace(/^00/,"");
+  const phones=[...new Set([].concat(o&&o.phones&&o.phones.length?o.phones.map(x=>x.value||x):(o&&o.phone?[o.phone]:[]),p.is_external&&raw.external_phone?[raw.external_phone]:[]).filter(Boolean).flatMap(v=>String(v).split(/\s*[,;\/]\s*/)).filter(v=>tel(v).length>=6))];
+  const mails=[...new Set([].concat(o&&o.email?[o.email]:[],p.is_external&&raw.external_email?[raw.external_email]:[]).filter(Boolean))];
+  if(!phones.length&&!mails.length)return "";
+  return `<div class="cstrip" style="margin-top:8px">${phones.map(v=>`<span class="cpill"><a href="tel:${esc(tel(v))}">☎ ${esc(v)}</a><a class="wa" href="https://wa.me/${esc(wa(v))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${mails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}</div>`;
+}
 function ownerBox(o){
   if(!o)return `<div class="ownerbox" style="cursor:default;border-style:dashed"><span class="muted sm">${t("p.noowner")}</span></div>`;
   const lbl=o.is_agent?t("p.agentc"):t("p.owner");
@@ -560,6 +568,7 @@ function renderProp(){
      <div class="meta"><span>📍 ${esc([p.suburb,p.town,p.province].filter(Boolean).join(", "))}</span>
        ${o?`<a class="ownerlink" data-c="${esc(o.id||o.wp_id)}">👤 ${esc(o.name||o.email)}</a>`:""}
        <span>🏷 <b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b></span>${p.is_newbuild?`<span>${t("pb.new")}</span>`:""}</div>
+     ${ownerContactStrip(o,raw,p)}
      ${statusBar(p)}</div>
      <div class="acts"><a class="act-edit" data-edit="1">✎ ${t("act.pedit")}</a>${raw.url_new?`<a href="${esc(raw.url_new)}" target="_blank" rel="noopener">${t("act.site")}</a>`:raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">${t("act.site")}</a>`:""}${p.wp_id?`<a href="https://gruposoltura.com/wp-admin/post.php?post=${p.wp_id}&action=edit" target="_blank" rel="noopener" title="${esc(t("act.cprold"))}">CPR ↗</a>`:""}${p.is_external&&XL?`<a class="act-ext" href="${esc(XL.href)}" target="_blank" rel="noopener">${XL.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div></div>
    <div class="subtabs" style="--acc:var(--c-pr)">${tabs.map(x=>`<button class="st ${prSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
