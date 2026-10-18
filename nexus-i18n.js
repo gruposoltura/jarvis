@@ -2,7 +2,7 @@
 window.NEXUS_I18N = {
   nl: {
     "ps.draft": "Concept", "cs.available": "Actief", "cs.under_offer": "Gereserveerd", "cs.sold": "Verkocht", "cs.withdrawn": "Ingetrokken", "cs.draft": "Concept", "cs.off_market": "Off-market", "cs.reserved": "Gereserveerd", "k.note": "Notitie", "fs.title": "Lettergrootte", "th.light": "Lichte modus", "th.dark": "Donkere modus",
-    "act.pedit": "Bewerken", "act.cprold": "Oude CPR in WordPress (bevroren sinds 17-10)", "qs.confirm": "Status van {r} wijzigen naar ‘{s}’?", "qs.solddetails": "Verkoopprijs, -datum en notaris nu invullen?", "qs.conflict": "Deze woning is intussen door iemand anders gewijzigd. Hij wordt opnieuw geladen; probeer het daarna nog eens.",
+    "act.pedit": "Bewerken", "qs.confirm": "Status van {r} wijzigen naar ‘{s}’?", "qs.solddetails": "Verkoopprijs, -datum en notaris nu invullen?", "qs.conflict": "Deze woning is intussen door iemand anders gewijzigd. Hij wordt opnieuw geladen; probeer het daarna nog eens.",
     
     "login.lead": "Eén plek voor elk contact, elke woning en elk verband. Log in met je <b>@gruposoltura.com</b>-account.",
     "login.email": "E-mail", "login.password": "Wachtwoord", "login.submit": "Inloggen",
@@ -97,7 +97,7 @@ window.NEXUS_I18N = {
   },
   en: {
     "ps.draft": "Draft", "cs.available": "Active", "cs.under_offer": "Reserved", "cs.sold": "Sold", "cs.withdrawn": "Withdrawn", "cs.draft": "Draft", "cs.off_market": "Off-market", "cs.reserved": "Reserved", "k.note": "Note", "fs.title": "Text size", "th.light": "Light mode", "th.dark": "Dark mode",
-    "act.pedit": "Edit", "act.cprold": "Old CPR in WordPress (frozen since 17 Oct)", "qs.confirm": "Change status of {r} to ‘{s}’?", "qs.solddetails": "Enter sale price, date and notary now?", "qs.conflict": "This property was changed by someone else in the meantime. It will reload; please try again.",
+    "act.pedit": "Edit", "qs.confirm": "Change status of {r} to ‘{s}’?", "qs.solddetails": "Enter sale price, date and notary now?", "qs.conflict": "This property was changed by someone else in the meantime. It will reload; please try again.",
     
     "login.lead": "One place for every contact, every property and every connection. Sign in with your <b>@gruposoltura.com</b> account.",
     "login.email": "Email", "login.password": "Password", "login.submit": "Sign in",
