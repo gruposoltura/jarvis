@@ -276,7 +276,7 @@ async function openContact(id){
 function renderContact(){
   const c=CT.contact, raw=CT.raw||{}, d=$("#ctDetail");
   const name=c.full_name||[raw.first_name,raw.last_name].filter(Boolean).join(" ")||c.email;
-  const tabs=[["profiel",t("st.profile")],["woningen",t("st.props"),(CT.properties||[]).length+(CT.interests||[]).length],["tijdlijn",t("st.timeline"),(CT.timeline||[]).length],["relaties",t("st.relations"),(CT.relations||[]).length+(CT.interested_in_mine||[]).length],["mailings",t("st.mailings")]];
+  const tabs=[["profiel",t("st.profile")],["woningen",t("st.props"),(CT.properties||[]).length+(CT.interests||[]).length+(CT.interested_in_mine||[]).length],["tijdlijn",t("st.timeline"),(CT.timeline||[]).length],["relaties",t("st.relations"),(CT.relations||[]).length+(CT.interested_in_mine||[]).length],["mailings",t("st.mailings")]];
   if(!tabs.some(x=>x[0]===ctSub))ctSub="profiel";
   const D=CT.details||{};
   const phones=(D.phones&&D.phones.length?D.phones.map(x=>x.value):[c.phone]).filter(Boolean);
@@ -350,11 +350,15 @@ function propCard(p,extra){return `<div class="pcard" data-p="${esc(p.key||p.ref
   <div style="min-width:0"><div class="tt">${esc(p.reference||"?")} · ${esc(p.title||"")}</div><div class="pr">${eur(p.price)}</div>
   <div class="sm muted">${esc(p.town||"")} · ${esc(p.core_status?stLabel(p.core_status):(p.status||""))}</div>${extra||""}</div></div>`}
 function ctProps(){
-  const own=CT.properties||[], it=CT.interests||[];
+  const own=CT.properties||[], it=CT.interests||[], im=CT.interested_in_mine||[];
+  const byRef={};im.forEach(x=>{(byRef[x.ref]=byRef[x.ref]||[]).push(x)});
+  const nInt=p=>(byRef[p.reference]||[]).length;
+  const rel=x=>`<div class="rel" data-c="${esc(x.key||x.wp_id)}"><div class="ini" style="background:${hue(x.name||"")};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||""))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||"")}</div><div class="sm muted">${esc(x.ref)} · ${t("x.requests",{n:x.n})}</div></div></div>`;
   return `<div class="hd" style="padding:0 0 8px"><h3>${t("h.owned",{n:own.length})}</h3></div>
-   ${own.length?`<div class="grid2">${own.map(p=>propCard(p,`<div style="margin-top:4px"><span class="role" style="--rc:var(${p.relation==="koper"?"--r-buyer":p.relation==="eigenaar"?"--r-seller":"--r-agent"})">${esc(relT(p.relation))}</span></div>`)).join("")}</div>`:`<div class="empty sm">${t("noowned")}</div>`}
-   <div class="hd" style="padding:16px 0 8px"><h3>${t("h.interest",{n:it.length})}</h3></div>
-   ${it.length?`<div class="grid2">${it.map(p=>propCard(p,`<div class="sm" style="margin-top:4px">${p.n}× · ${esc((p.types||[]).join(", "))} · ${ago(p.last)}</div>`)).join("")}</div>`:`<div class="empty sm">${t("nointerest")}</div>`}`}
+   ${own.length?`<div class="grid2">${own.map(p=>propCard(p,`<div style="margin-top:4px"><span class="role" style="--rc:var(${p.relation==="koper"?"--r-buyer":p.relation==="eigenaar"?"--r-seller":"--r-agent"})">${esc(relT(p.relation))}</span>${nInt(p)?` <span class="sm" style="margin-left:6px;color:var(--c-pr);font-weight:700">👥 ${t("x.interested",{n:nInt(p)})}</span>`:""}</div>`)).join("")}</div>`:`<div class="empty sm">${t("noowned")}</div>`}
+   ${im.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.intmine",{n:im.length})}</h3></div><div class="grid2">${im.map(rel).join("")}</div>`:""}
+   ${it.length||!own.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.interest",{n:it.length})}</h3></div>
+   ${it.length?`<div class="grid2">${it.map(p=>propCard(p,`<div class="sm" style="margin-top:4px">${p.n}× · ${esc((p.types||[]).join(", "))} · ${ago(p.last)}</div>`)).join("")}</div>`:`<div class="empty sm">${t("nointerest")}</div>`}`:""}`}
 function timeline(list){
   const C={request:"#ec4899",viewing:"#22c55e",mail:"#3b82f6",lead:"#f59e0b",hot:"#ef4444",note:"#a855f7"};
   if(!list||!list.length)return`<div class="empty">${t("notimeline")}</div>`;
