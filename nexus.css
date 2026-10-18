@@ -666,3 +666,38 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .wb-note{padding:8px 14px 0}
 @media (max-width:1150px){.wb-grid{grid-template-columns:repeat(4,1fr)}}
 @media (max-width:700px){.wb-grid{grid-template-columns:repeat(2,1fr)}}
+/* woning: compacte kop (18-10) — titel + status op één regel, meta + contact op de tweede */
+.dh.dh-pr{padding:10px 16px;align-items:center;gap:12px}
+.dh-pr .dh-l{min-width:0;flex:1}
+.dh-pr .dh-r1{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.dh-pr h2{font-size:calc(19px*var(--fs,1))}
+.dh-pr .stbar{margin-top:0;gap:3px}
+.dh-pr .stbar button{padding:3px 9px;font-size:calc(11.5px*var(--fs,1))}
+.dh-pr .meta{margin-top:6px;align-items:center;gap:6px 14px}
+.dh-pr .cstrip{margin:0;gap:6px}
+.dh-pr .cpill a{padding:3px 9px;font-size:calc(13px*var(--fs,1))}
+.dh-pr .cpill a.wa{padding:3px 7px;font-size:calc(10px*var(--fs,1))}
+.dh-pr .acts{align-self:flex-start}
+/* woning gebruikt de volle breedte */
+.psplit.focus #prBody{max-width:none}
+.psplit.focus #prBody .hero{height:clamp(240px,38vh,480px)}
+.pk-side{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start}
+.pk-sa,.pk-sb{display:flex;flex-direction:column;gap:12px;min-width:0}
+@container (min-width:1240px){
+  .pk{grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr) 140px;gap:14px}
+  .pk-side .pk-card .kv{grid-template-columns:118px 1fr}
+  .pk .facts.big b{font-size:calc(19px*var(--fs,1))}
+  .pk-side{display:block;column-count:2;column-gap:12px}
+  .pk-sa,.pk-sb{display:contents}
+  .pk-side .pk-sa>*,.pk-side .pk-sb>*{break-inside:avoid;margin:0 0 12px}
+}
+@container (min-width:1560px){.pk{grid-template-columns:minmax(0,1fr) minmax(0,1.75fr) 150px}.pk-side .pk-card .kv{grid-template-columns:140px 1fr}}
+.pk-chips{display:flex;flex-wrap:wrap;gap:5px}
+.pk-chip{font-size:calc(12px*var(--fs,1));padding:2px 9px;border-radius:999px;border:1px solid var(--line2);background:var(--bg2);color:var(--tx2)}
+.pk-chip.on{border-color:color-mix(in srgb,var(--c-pr) 55%,transparent);background:color-mix(in srgb,var(--c-pr) 12%,transparent);color:var(--hi)}
+.pk-admin{border-color:color-mix(in srgb,#a855f7 45%,var(--line))}
+.pk-desc{white-space:pre-wrap;padding:12px 14px 14px;font-size:calc(14px*var(--fs,1));line-height:1.55;color:var(--tx2);max-height:320px;overflow:auto}
+.hd a.tag{text-decoration:none;cursor:pointer}.hd a.tag:hover{color:var(--hi)}
+.pk-card .kv{margin:0;gap:6px 14px;padding:10px 14px 12px}
+.pk-card .hd{padding:9px 14px}
+.focusbar{margin:0 0 6px}.focusbar .btn{padding:5px 12px;font-size:calc(13px*var(--fs,1))}

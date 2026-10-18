@@ -495,6 +495,23 @@ function propFeatures(p,raw,o,K,XL,m){
   const pool=raw.pool==="yes"?L2("Ja","Yes"):raw.pool==="no"?L2("Nee","No"):null;
   const offered=p.is_external?(p.external_agency||t("external"))+(raw.external_refnr?" · "+raw.external_refnr:""):t("p.owngs");
   const tile=(ic,val,lbl)=>`<div><span class="fi">${ic}</span><b>${val}</b><span>${lbl}</span></div>`;
+  const D=PR.detail||{}, S=PR.sale||{};
+  const yn=b=>b?L2("Ja","Yes"):null, m2u=v=>v?num(v)+" m²":null;
+  const dist=v=>v==null||v===""?null:(v>=1000?(Math.round(v/100)/10).toLocaleString(LOC())+" km":num(v)+" m");
+  const nWith=(a,b,lbl)=>a==null?null:(b?`${a} <span class="muted sm">(${L2("waarvan","of which")} ${b} ${lbl})</span>`:String(a));
+  const area=D.loc_area||D.suburb||D.location_area||p.suburb;
+  const town=D.city||D.loc_municipality||p.town;
+  const fullAddr=[[D.street,D.street_number].filter(Boolean).join(" "),[D.postal_code,town].filter(Boolean).join(" "),D.province||p.province].filter(Boolean).join(", ");
+  const mapHref=D.lat&&D.lng?`https://www.google.com/maps/search/?api=1&query=${D.lat},${D.lng}`:(fullAddr?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddr)}`:null);
+  const LBL={exclusive:["Exclusief","Exclusive"],featured:["Uitgelicht","Featured"],reduced:["Prijs verlaagd","Price reduced"],new:["Nieuw","New"],sold:["Verkocht","Sold"]};
+  const priceMode=[D.price_on_request&&L2("Prijs op aanvraag","Price on request"),D.price_hidden&&L2("Prijs verborgen op site","Price hidden on site"),D.price_fixed&&L2("Vaste prijs","Fixed price"),p.price_from&&L2("Vanafprijs","From-price")].filter(Boolean).join(" · ");
+  const feeds=D.no_export?L2("Uitgesloten van alle feeds","Excluded from all feeds"):(D.export_feeds||[]).length?D.export_feeds.join(", "):(p.is_own&&p.core_status==="available"?L2("Idealista + partnerfeeds","Idealista + partner feeds"):null);
+  const fees=[[L2("Notaris","Notary"),D.fee_notary],[L2("Registro","Land registry"),D.fee_registry],[L2("Advocaat","Lawyer"),D.fee_legal],[L2("Overdrachtsbelasting","Transfer tax"),D.fee_transfer_tax]];
+  const costs=[[L2("Gemeenschapskosten","Community fees"),D.cost_community],["IBI",D.cost_ibi],[L2("Vuilnisbelasting","Waste tax"),D.cost_garbage],[L2("Verzekering","Insurance"),D.cost_insurance]];
+  const feeSum=fees.reduce((a,x)=>a+(Number(x[1])||0),0);
+  const featBox=propFeatureList(D);
+  const desc=(LANG==="en"?D.desc_en||D.desc_nl:D.desc_nl||D.desc_en)||"";
+  const descTxt=desc?(new DOMParser().parseFromString(desc.replace(/<\/(p|li|h\d)>|<br\s*\/?>/gi,"\n"),"text/html").body.textContent||"").replace(/\n{3,}/g,"\n\n").trim():"";
   return `<div class="pk">
   <div class="pk-main">
     <div class="hero" style="${raw.image?`background-image:url('${esc(raw.image)}')`:""}"><span class="pr">${eur(price)}</span></div>
@@ -509,8 +526,9 @@ function propFeatures(p,raw,o,K,XL,m){
     <div class="facts big">${tile("🛏",p.bedrooms??"—",t("fa.beds"))}${tile("🛁",p.bathrooms??"—",t("fa.baths"))}${tile("📐",p.build_area?num(p.build_area)+" m²":"—",t("fa.build"))}${tile("🌳",p.plot_area?num(p.plot_area)+" m²":"—",t("fa.plot"))}</div>
     <div class="pk-sub">${L2("Belangstelling","Interest")}</div>
     <div class="facts">${tile("👁",num(raw.hits_total),t("fa.hits"))}${tile("⚡",raw.hits_today??"—",t("fa.today"))}${tile("✉",num(m.sent||0),t("fa.mailed"))}${tile("✓",num(m.converted||0),t("fa.conv"))}</div>
+    ${descTxt?`<div class="card pk-card"><div class="hd"><h3>${L2("Omschrijving","Description")}</h3>${D.desc_nl&&D.desc_en?`<span class="tag">${LANG==="en"?"EN":"NL"}</span>`:""}</div><div class="pk-desc">${esc(descTxt)}</div></div>`:""}
   </div>
-  <div class="pk-side">
+  <div class="pk-side"><div class="pk-sa">
     ${p.is_external?extBox(p,raw,XL):""}
     ${ownerBox(o)}
     <div class="card pk-card"><div class="hd"><h3>${L2("Aanbod","Listing")}</h3></div>${kv([
@@ -519,28 +537,83 @@ function propFeatures(p,raw,o,K,XL,m){
       [t("p.prevprice"),prev?`${eur(prev)} <span class="muted sm">· ${L2("gewijzigd","changed")} ${fdate(p.price_changedate)}${chg!=null?` · ${chg>0?"+":""}${chg}%`:""}</span>`:null,1],
       [t("p.mandate"),raw.authority?(MANDATE[raw.authority]?L2(...MANDATE[raw.authority]):raw.authority):null],
       [t("p.listed"),p.list_date?`${fdate(p.list_date)} <span class="muted sm">· ${since(p.list_date)}</span>`:null,1],
+      [L2("Prijsweergave","Price display"),priceMode||null],
+      [L2("Labels","Labels"),(D.labels||[]).length?D.labels.map(x=>LBL[x]?L2(...LBL[x]):x).join(" · "):null],
+      [L2("Op de website","On the website"),p.is_own||D.published!=null?(D.published?`<span style="color:#22c55e">● ${L2("Gepubliceerd","Published")}</span>`:`<span class="muted">○ ${L2("Niet gepubliceerd","Not published")}</span>`):null,1],
+      [L2("Feeds","Feeds"),feeds],
+      [L2("Onder bod sinds","Under offer since"),D.under_offer_at?fdate(D.under_offer_at):null],
+      [L2("Ingetrokken op","Withdrawn on"),D.withdrawn_at?fdate(D.withdrawn_at):null],
+      [L2("Dossier","File"),p.is_own?(D.dossier_complete?L2("Compleet","Complete"):L2("Nog niet compleet","Not yet complete")):null],
       [t("p.srccontact"),[raw.external_phone,raw.external_email].filter(Boolean).join(" · ")],
-      [t("p.notary"),raw.sold_notary]])}</div>
+      [t("p.notary"),S.notary?null:raw.sold_notary]])}</div>
+    ${Object.keys(S).length?`<div class="card pk-card pk-admin"><div class="hd"><h3>${L2("Verkoop & commissie","Sale & commission")}</h3><span class="tag">admin</span></div>${kv([
+      [L2("Verkoopprijs","Sale price"),S.sold_price!=null?eur(S.sold_price):null],
+      [L2("Verkoopdatum","Sale date"),S.sold_date?fdate(S.sold_date):null],
+      [L2("Waarde in akte","Deed value"),S.deed_price!=null?eur(S.deed_price):null],
+      [L2("Notaris","Notary"),[S.notary,S.notary_protocol&&("prot. "+S.notary_protocol)].filter(Boolean).join(" · ")],
+      [L2("Verkocht door","Sold by"),S.sold_agent],
+      [L2("Commissie A","Commission A"),S.commission_a!=null?eur(S.commission_a):null],
+      [L2("Commissie B","Commission B"),S.commission_b!=null?eur(S.commission_b):null],
+      [L2("Commissie uit","Commission out"),S.commission_out!=null?eur(S.commission_out):null],
+      ["Conveyancing",S.conveyancing!=null?eur(S.conveyancing):null],
+      [L2("Notitie","Note"),S.commission_note]])}</div>`:""}
     <div class="card pk-card"><div class="hd"><h3>${L2("Woning","Property")}</h3></div>${kv([
-      [t("p.type"),p.property_type?cap(p.property_type):null],
-      [t("p.newbuild"),p.is_newbuild?t("yes"):null],
+      [t("p.type"),p.property_type?esc(cap(p.property_type))+(D.object_style?` <span class="muted sm">· ${esc(cap(D.object_style))}</span>`:""):null,1],
+      [L2("Bouw","Build"),p.is_newbuild?L2("Nieuwbouw","New build"):D.build_type==="resale"?L2("Bestaande bouw","Resale"):D.build_type],
+      [L2("Verdiepingen","Floors"),D.floors],
+      [L2("Op verdieping","On floor"),D.floor_level],
       [t("p.year"),yr?`${esc(yr)}${age!=null&&age>=0?` <span class="muted sm">· ${L2(age+" jaar oud",age+" years old")}</span>`:""}`:null,1],
       [t("p.energy"),energyHtml(raw.energy_label),1],
       [t("p.pool"),pool],
       [t("p.orient"),orientHtml(raw.orientation),1],
-      [t("p.view"),viewHtml(raw.view),1],
-      [t("p.sea"),sea]])}</div>
-    <div class="card pk-card"><div class="hd"><h3>${L2("Adres & toegang","Address & access")}</h3></div>${kv([
-      [t("p.address"),[raw.street,raw.postal_code].filter(Boolean).join(", ")||null],
+      [t("p.view"),viewHtml(raw.view),1]])}</div>
+    <div class="card pk-card"><div class="hd"><h3>${L2("Indeling & oppervlakte","Layout & areas")}</h3></div>${kv([
+      [L2("Slaapkamers","Bedrooms"),p.bedrooms],
+      [L2("Badkamers","Bathrooms"),nWith(p.bathrooms,D.ensuites,"en-suite"),1],
+      [L2("Losse toiletten","Separate toilets"),D.toilets],
+      [L2("Woonkamers","Living rooms"),D.living_rooms],
+      [L2("Keukens","Kitchens"),D.kitchens],
+      [L2("Kamers totaal","Rooms total"),D.rooms],
+      [L2("Terrassen","Terraces"),D.terraces],
+      [L2("Balkons","Balconies"),D.balconies],
+      [L2("Patio's","Patios"),D.patios],
+      [L2("Garages","Garages"),D.garages],
+      ["Carports",D.carports],
+      [L2("Bebouwd","Built"),m2u(p.build_area)],
+      [L2("Woonoppervlak","Living area"),m2u(D.area_living)],
+      [L2("Terras","Terrace"),m2u(D.area_terrace)],
+      [L2("Tuin","Garden"),m2u(D.area_garden)],
+      [L2("Perceel","Plot"),m2u(p.plot_area)]])}</div>
+    ${featBox}</div><div class="pk-sb">
+    <div class="card pk-card"><div class="hd"><h3>${L2("Adres & ligging","Address & location")}</h3>${mapHref?`<a class="tag" href="${esc(mapHref)}" target="_blank" rel="noopener">${L2("Kaart","Map")} ↗</a>`:""}</div>${kv([
+      [L2("Straat","Street"),[D.street||raw.street,D.street_number].filter(Boolean).join(" ")||null],
+      [L2("Urbanisatie","Urbanisation"),area],
+      [L2("Postcode","Postcode"),D.postal_code||raw.postal_code],
+      [L2("Plaats","Town"),town],
+      [L2("Provincie","Province"),D.province||p.province],
+      [L2("Land","Country"),D.country?(D.country==="Spain"?L2("Spanje","Spain"):D.country):null],
+      [L2("Adres online","Address online"),p.is_own?(D.hide_address?L2("Verborgen","Hidden"):L2("Zichtbaar","Visible")):null],
+      [L2("Afstanden","Distances"),[sea&&L2("zee ","sea ")+sea,dist(D.dist_city)&&L2("centrum ","town ")+dist(D.dist_city),dist(D.dist_shops)&&L2("winkels ","shops ")+dist(D.dist_shops),dist(D.dist_airport)&&L2("luchthaven ","airport ")+dist(D.dist_airport)].filter(Boolean).join(" · ")],
+      [L2("Finca / registro","Finca / registry"),[D.finca_number&&"finca "+D.finca_number,D.registry_name].filter(Boolean).join(" · ")],
       [t("p.keys"),raw.keydetails],
       [L2("Interne notities","Internal notes"),raw.internal_notes?`<div class="pk-notes">${esc(raw.internal_notes)}</div>`:null,1]])}</div>
+    ${fees.some(x=>x[1]!=null)||costs.some(x=>x[1]!=null)?`<div class="card pk-card"><div class="hd"><h3>${L2("Kosten","Costs")}</h3>${feeSum?`<span class="tag">${L2("koperskosten","buyer costs")} ${eur(feeSum)}</span>`:""}</div>${kv(fees.concat(costs).map(x=>[x[0],x[1]!=null?eur(x[1]):null]))}</div>`:""}
     ${catSummary(K,p)}
     ${propExtData(p)}
-  </div>
+  </div></div>
   <aside class="pk-photos" id="pkPhotos" aria-label="${L2("Foto's","Photos")}"><div class="pk-ph-h">${L2("Foto's","Photos")}</div><div class="pk-ph-list"><div class="loader sm">…</div></div></aside>
   ${raw.changelog?`<div class="card pk-wide"><div class="hd"><h3>${t("h.changelog")}</h3></div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div></div>`:""}
   </div>`;
 }
+const FEAT={pool:["Zwembad","Pool"],communal_pool:["Gemeenschappelijk zwembad","Communal pool"],air_conditioning:["Airco","Air conditioning"],air_conditioning_preinstalled:["Airco voorbereid","A/C pre-installed"],split_aircon:["Split-airco","Split A/C"],ducted_cooling:["Kanaalkoeling","Ducted cooling"],ducted_heating:["Kanaalverwarming","Ducted heating"],central_heating:["Centrale verwarming","Central heating"],gas_heating:["Gasverwarming","Gas heating"],split_heating:["Split-verwarming","Split heating"],underfloor_heating:["Vloerverwarming","Underfloor heating"],fireplace:["Open haard","Fireplace"],furnished:["Gemeubileerd","Furnished"],semi_furnished:["Deels gemeubileerd","Semi-furnished"],secure_parking:["Afgesloten parkeren","Secure parking"],remote_garage:["Garage met afstandsbediening","Remote garage"],fully_fenced:["Volledig omheind","Fully fenced"],security_system:["Alarmsysteem","Security system"],intercom:["Intercom","Intercom"],solarium:["Solarium","Solarium"],courtyard:["Binnenplaats","Courtyard"],outdoor_entertaining:["Buitenleven","Outdoor entertaining"],basement:["Kelder","Basement"],storage_shed:["Berging","Storage shed"],study:["Studeerkamer","Study"],workshop:["Werkplaats","Workshop"]};
+const FOG={kitchen:["Keuken","Kitchen"],garden:["Tuin","Garden"],pool:["Zwembad","Pool"],community:["Gemeenschap","Community"],floor:["Vloer","Floor"],heating:["Verwarming","Heating"],aircon:["Airco","A/C"],terrace:["Terras","Terrace"],property:["Woning","Property"],more:["Overig","Other"]};
+function propFeatureList(D){
+  const f=(D.features||[]).map(x=>FEAT[x]?L2(...FEAT[x]):cap(String(x).replace(/_/g," ")));
+  const o=D.feature_options||{}, g=Object.keys(o).filter(k=>k!=="feed"&&Array.isArray(o[k])&&o[k].length);
+  if(!f.length&&!g.length)return "";
+  return `<div class="card pk-card"><div class="hd"><h3>${L2("Voorzieningen","Features")}</h3><span class="tag">${f.length+g.reduce((a,k)=>a+o[k].length,0)}</span></div>
+    ${f.length?`<div class="pk-chips" style="padding:10px 14px 4px">${f.map(x=>`<span class="pk-chip on">${esc(x)}</span>`).join("")}</div>`:""}
+    ${g.length?`<dl class="kv" style="grid-template-columns:110px 1fr">${g.map(k=>`<dt>${esc(FOG[k]?L2(...FOG[k]):cap(k))}</dt><dd><div class="pk-chips">${o[k].map(v=>`<span class="pk-chip">${esc(cap(String(v)))}</span>`).join("")}</div></dd>`).join("")}</dl>`:""}</div>`}
 /* alle foto's van de woning als verticale strip; klik = grote foto bovenaan, klik op de grote foto = volle grootte */
 const PHOTO_CACHE={};
 async function loadPropPhotos(p,raw){
@@ -564,7 +637,7 @@ function ownerContactStrip(o,raw,p){
   const phones=[...new Set([].concat(o&&o.phones&&o.phones.length?o.phones.map(x=>x.value||x):(o&&o.phone?[o.phone]:[]),p.is_external&&raw.external_phone?[raw.external_phone]:[]).filter(Boolean).flatMap(v=>String(v).split(/\s*[,;\/]\s*/)).filter(v=>tel(v).length>=6))];
   const mails=[...new Set([].concat(o&&o.email?[o.email]:[],p.is_external&&raw.external_email?[raw.external_email]:[]).filter(Boolean))];
   if(!phones.length&&!mails.length)return "";
-  return `<div class="cstrip" style="margin-top:8px">${phones.map(v=>`<span class="cpill"><a href="tel:${esc(tel(v))}">☎ ${esc(v)}</a><a class="wa" href="https://wa.me/${esc(wa(v))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${mails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}</div>`;
+  return `<div class="cstrip">${phones.map(v=>`<span class="cpill"><a href="tel:${esc(tel(v))}">☎ ${esc(v)}</a><a class="wa" href="https://wa.me/${esc(wa(v))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${mails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}</div>`;
 }
 function ownerBox(o){
   if(!o)return `<div class="ownerbox" style="cursor:default;border-style:dashed"><span class="muted sm">${t("p.noowner")}</span></div>`;
@@ -623,13 +696,14 @@ function renderProp(){
   const p=PR.property, raw=PR.raw||{}, d=$("#prDetail"), o=PR.owner, K=PR.catastro;
   const XL=p.is_external?extLink(p.external_agency,raw.external_url,raw.external_refnr):null;
   const tabs=[["kenmerken",t("st.features")],["contacten",t("st.contacts"),(PR.interested||[]).length+(o?1:0)+(PR.buyer?1:0)],["website",L2("Website","Website")]];
-  d.innerHTML=`<div class="dh" style="--acc:var(--c-pr)"><div style="min-width:0"><h2>${esc(p.reference)} · ${esc(p.title||"")}</h2>
+  const D=PR.detail||{};
+  d.innerHTML=`<div class="dh dh-pr" style="--acc:var(--c-pr)"><div class="dh-l">
+     <div class="dh-r1"><h2>${esc(p.reference)} · ${esc(p.title||"")}</h2>${statusBar(p)}</div>
      <div class="meta"><span>📍 ${esc([p.suburb,p.town,p.province].filter(Boolean).join(", "))}</span>
        ${o?`<a class="ownerlink" data-c="${esc(o.id||o.wp_id)}">👤 ${esc(o.name||o.email)}</a>`:""}
-       <span>🏷 <b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b></span>${p.is_newbuild?`<span>${t("pb.new")}</span>`:""}</div>
-     ${ownerContactStrip(o,raw,p)}
-     ${statusBar(p)}</div>
-     <div class="acts"><a class="act-edit" data-edit="1">✎ ${t("act.pedit")}</a>${raw.url_new?`<a href="${esc(raw.url_new)}" target="_blank" rel="noopener">${t("act.site")}</a>`:raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">${t("act.site")}</a>`:""}${p.is_external&&XL?`<a class="act-ext" href="${esc(XL.href)}" target="_blank" rel="noopener">${XL.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div></div>
+       <span>🏷 <b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b></span>${p.is_newbuild?`<span>${t("pb.new")}</span>`:""}
+       ${ownerContactStrip(o,raw,p)}</div></div>
+     <div class="acts"><a class="act-edit" data-edit="1">✎ ${t("act.pedit")}</a>${raw.url_new?`<a href="${esc(raw.url_new)}" target="_blank" rel="noopener">${t("act.site")}</a>`:raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">${t("act.site")}</a>`:""}${D.video_url?`<a href="${esc(D.video_url)}" target="_blank" rel="noopener">▶ Video</a>`:""}${D.tour_360_url?`<a href="${esc(D.tour_360_url)}" target="_blank" rel="noopener">360° ↗</a>`:""}${p.is_external&&XL?`<a class="act-ext" href="${esc(XL.href)}" target="_blank" rel="noopener">${XL.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div></div>
    <div class="subtabs" style="--acc:var(--c-pr)">${tabs.map(x=>`<button class="st ${prSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
    <div class="dbody scroll" id="prBody"></div>`;
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{prSub=b.dataset.s;renderProp()});
