@@ -151,28 +151,34 @@ function route(){
   if((m=h.match(/^c\/([^/?#]+)/))){setTab("ct");openContact(decodeURIComponent(m[1]));return}
   if((m=h.match(/^p\/([^/?#]+)/))){setTab("pr");applyPrFocus();openProp(decodeURIComponent(m[1]));return}
   prFocus=false;applyPrFocus();
+  if(h==="pr"&&prListY!=null){const y=prListY;requestAnimationFrame(()=>{const r=$("#prRows");if(r)r.scrollTop=y})}
   if(h==="ad"&&ME.role!=="admin")return setTab("ov");
   setTab(TABC[h]?h:"ov");
 }
 const go={c:id=>location.hash="c/"+id,p:id=>location.hash="p/"+encodeURIComponent(id)};
 /* Woning openen van buiten de woningenlijst (vanuit een contact, overzicht, activiteit of directe link):
    volledig scherm met alle details en een terugknop. Vanuit de lijst zelf blijft het de gesplitste weergave. */
-let prFocus=true, prFrom=null;
+let prFocus=true, prFrom=null, prListY=null;
 function applyPrFocus(){
   const ps=$("#p-pr .psplit"), fb=$("#prFocus"); if(!ps||!fb)return;
   ps.classList.toggle("focus",prFocus); fb.classList.toggle("hidden",!prFocus);
-  $("#prBackLbl").textContent=prFrom&&prFrom.name?t("back.to",{n:prFrom.name}):t("back");
+  $("#prBackLbl").textContent=prFrom&&prFrom.list?t("back.list"):prFrom&&prFrom.name?t("back.to",{n:prFrom.name}):t("back");
+  $("#prAll").classList.toggle("hidden",!!(prFrom&&prFrom.list));
   $("#prAll").textContent=t("pr.all");
 }
-$("#prBack").onclick=()=>{if(prFrom&&prFrom.hash)location.hash=prFrom.hash;else if(history.length>1)history.back();else location.hash="pr"};
+$("#prBack").onclick=()=>{if(prFrom&&prFrom.list){const y=prFrom.scroll||0;prFrom=null;location.hash="pr";requestAnimationFrame(()=>{const r=$("#prRows");if(r)r.scrollTop=y});return}
+  if(prFrom&&prFrom.hash)location.hash=prFrom.hash;else if(history.length>1)history.back();else location.hash="pr"};
 $("#prAll").onclick=()=>{prFocus=false;prFrom=null;applyPrFocus();if(!prLoaded)loadProps(true)};
 /* data-c wint van data-p: zo opent de eigenaar-link op een woningkaart het contact, niet de woning */
 document.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;
   const c=e.target.closest("[data-c]"), p=e.target.closest("[data-p]");
   if(c&&(!p||p.contains(c))){e.stopPropagation();go.c(c.dataset.c);return}
   if(p){
-    prFocus=!p.closest("#prRows");
-    if(prFocus&&curTab!=="pr")prFrom=curTab==="ct"&&CT&&CT.contact?{name:CT.contact.full_name||CT.contact.email,hash:location.hash.replace(/^#/,"")}:{hash:location.hash.replace(/^#/,"")||curTab};
+    /* een woning opent altijd volledig scherm; vanuit de lijst onthouden we de scrollpositie voor 'Terug' */
+    const fromList=!!p.closest("#prRows");
+    prFocus=true;
+    if(fromList){const rows=$("#prRows");prListY=rows?rows.scrollTop:0;prFrom={list:true,hash:"pr",scroll:prListY}}
+    else if(curTab!=="pr")prFrom=curTab==="ct"&&CT&&CT.contact?{name:CT.contact.full_name||CT.contact.email,hash:location.hash.replace(/^#/,"")}:{hash:location.hash.replace(/^#/,"")||curTab};
     go.p(p.dataset.p)}});
 
 /* globale zoek */
