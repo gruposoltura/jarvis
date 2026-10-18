@@ -32,11 +32,11 @@ const STATUS=[["draft",["Concept","Draft"]],["available",["In aanbod (current)",
 const CATS=[["apartment",["Appartement","Apartment"]],["penthouse","Penthouse"],["bungalow","Bungalow"],["townhouse",["Geschakelde woning","Townhouse"]],
   ["quadrant",["Quad (kwadrant)","Quad house"]],["semi-detached",["Halfvrijstaand","Semi-detached"]],["detached",["Vrijstaand","Detached"]],["villa","Villa"],
   ["duplex","Duplex"],["finca","Finca"],["studio","Studio"],["plot",["Bouwgrond","Plot"]],["commercial",["Bedrijfspand","Commercial"]],["other",["Overig","Other"]]];
-const ORIENT=["N","NE","E","SE","S","SW","W","NW"].map(o=>[o,o]);
-const VIEWS=[["bay",["Baai","Bay"]],["country",["Platteland","Country"]],["golf","Golf"],["green_zone",["Groenzone","Green zone"]],["harbour",["Haven","Harbour"]],
+const ORIENT=[["north",["Noord","North"]],["northeast",["Noordoost","North-east"]],["east",["Oost","East"]],["southeast",["Zuidoost","South-east"]],["south",["Zuid","South"]],["southwest",["Zuidwest","South-west"]],["west",["West","West"]],["northwest",["Noordwest","North-west"]]];
+const VIEWS=[["bay",["Baai","Bay"]],["country",["Platteland","Country"]],["golf","Golf"],["green",["Groenzone","Green zone"]],["harbour",["Haven","Harbour"]],
   ["lake",["Meer","Lake"]],["mountain",["Bergen","Mountain"]],["ocean",["Oceaan","Ocean"]],["panoramic",["Panorama","Panoramic"]],["residential",["Woonwijk","Residential"]],
   ["sea",["Zee","Sea"]],["valley",["Vallei","Valley"]]];
-const ENERGY=["A","B","C","D","E","F","G"].map(x=>[x,x]).concat([["in_progress",["In aanvraag","In progress"]],["exempt",["Vrijgesteld","Exempt"]]]);
+const ENERGY=["A","B","C","D","E","F","G"].map(x=>[x,x]).concat([["R","R"],["X","X"]]);
 const RANK=[["top","TOP"],["high","HIGH"],["normal","NORMAL"],["low","LOW"],["bottom","BOTTOM"]];
 const LISTING=[["direct",["Direct (eigen opdracht)","Direct (own mandate)"]],["indirect",["Indirect (via derde)","Indirect (via third party)"]]];
 /* zelfde sleutels als core.properties.features (import_wp.php) */
@@ -71,6 +71,7 @@ const LOC_FALLBACK={"Rojales":["Ciudad Quesada","La Marquesa","Benimar","Doña P
   "Torrevieja":["Playa del Cura","Aguas Nuevas"],"Bigastro":["Loma Alta"],"Orihuela":["La Campaneta","Torremendo"],"Catral":[],"Daya Nueva":[],"Daya Vieja":[],"Dolores":[],
   "Pilar de la Horadada":["Torre de la Horadada"],"Albatera":[],"Benejúzar":[],"Benferri":[],"Callosa de Segura":[],"Cox":[],"Crevillente":[],"Redován":[],
   "San Bartolomé":[],"Abanilla":[],"Aspe":[],"Altea":["Altea Hills"],"Los Alcázares":[],"La Manga del Mar Menor":[]};
+window.NEXUS_LISTS={CATS,ORIENT,VIEWS,ENERGY,F_INDOOR,F_OUTDOOR,F_CLIMATE,OPT,RANK};
 let LOCS=null, LOC_SRC="fallback";
 const REF_PFX=["RH","BE","QU","LM","LP","PL","PB","DP","FO","AL","PR","SB","SR","TO","VL","AY"];
 

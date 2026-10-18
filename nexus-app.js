@@ -134,11 +134,11 @@ function route(){
   if(!booted)return;const h=location.hash.replace(/^#/,"");
   let m;
   if((m=h.match(/^c\/(\d+)/))){setTab("ct");openContact(+m[1]);return}
-  if((m=h.match(/^p\/(\d+)/))){setTab("pr");openProp(+m[1]);return}
+  if((m=h.match(/^p\/([^/?#]+)/))){setTab("pr");openProp(decodeURIComponent(m[1]));return}
   if(h==="ad"&&ME.role!=="admin")return setTab("ov");
   setTab(TABC[h]?h:"ov");
 }
-const go={c:id=>location.hash="c/"+id,p:id=>location.hash="p/"+id};
+const go={c:id=>location.hash="c/"+id,p:id=>location.hash="p/"+encodeURIComponent(id)};
 /* data-c wint van data-p: zo opent de eigenaar-link op een woningkaart het contact, niet de woning */
 document.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;
   const c=e.target.closest("[data-c]"), p=e.target.closest("[data-p]");
@@ -344,7 +344,7 @@ function enrichList(list,kind){
 
 /* ================= WONINGEN ================= */
 let prLoaded=false, prStatus="current", prBuild="", prOff=0, prSel=null, PR=null, prSub="kenmerken";
-function buildStatusChips(){const S=["current","under_offer","own","withdrawn","sold","all"];
+function buildStatusChips(){const S=["current","under_offer","own","draft","withdrawn","sold","all"];
   $("#prStatus").innerHTML=S.map(s=>`<span class="chip ${prStatus===s?"on":""}" data-s="${s}" style="--cc:var(--c-pr)">${t("ps."+s)}</span>`).join("");
   $$("#prStatus .chip").forEach(c=>c.onclick=()=>{prStatus=c.dataset.s;buildStatusChips();loadProps(true)})}
 function buildBuildSeg(){const B=[["","pb.all"],["resale","pb.resale"],["new","pb.new"]];
@@ -355,11 +355,11 @@ async function loadProps(reset){
   const box=$("#prRows");if(reset){prOff=0;box.innerHTML=`<div class="loader">${t("loading.props")}</div>`}
   let r;try{r=await rpc("nexus_properties",{p_q:$("#prQ").value,p_status:prStatus+(prBuild?":"+prBuild:""),p_limit:48,p_offset:prOff})}catch(e){box.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   prLoaded=true;
-  const html=r.rows.map(p=>`<div class="pc ${prSel===p.wp_id?"sel":""}" data-p="${p.wp_id}"><div class="im" style="${p.image?`background-image:url('${esc(p.image)}')`:""}">
-     <span class="badge">${esc(p.reference||"")}</span>${p.cat_ref?`<span class="catb" title="Catastro ${esc(p.cat_ref)}">CAT</span>`:""}${p.req30>0?`<span class="hot">${p.req30}× 30d</span>`:""}</div>
+  const html=r.rows.map(p=>`<div class="pc ${prSel===p.reference?"sel":""}" data-p="${esc(p.reference)}"><div class="im" style="${p.image?`background-image:url('${esc(p.image)}')`:""}">
+     <span class="badge">${esc(p.reference||"")}</span>${stBadge(p.core_status)}${p.cat_ref?`<span class="catb" title="Catastro ${esc(p.cat_ref)}">CAT</span>`:""}${p.req30>0?`<span class="hot">${p.req30}× 30d</span>`:""}</div>
      <div class="bd"><div class="p">${eur(p.price)}${p.previous_price&&p.previous_price>p.price?` <span class="sm muted" style="text-decoration:line-through">${eur(p.previous_price)}</span>`:""}</div>
      <div class="t">${esc(p.title||"")}</div><div class="s">${esc([p.suburb,p.town].filter(Boolean).join(", "))} · ${p.bedrooms??"?"} ${t("beds.short")}${p.build?` · ${p.build} m²`:""}</div>
-     <div class="s">${p.is_external?t("external"):t("own")}${p.under_offer?` · <b style="color:var(--c-ac)">${t("underoffer")}</b>`:""}${p.n_enrich?` · <span style="color:#d8b4fe">${t("enriched",{n:p.n_enrich})}</span>`:""}</div>
+     <div class="s">${p.is_external?t("external"):t("own")}${p.n_enrich?` · <span style="color:#d8b4fe">${t("enriched",{n:p.n_enrich})}</span>`:""}</div>
      ${p.is_external?(()=>{const L=extLink(p.agency,p.ext_url,p.ext_ref);return L?`<a class="ext-l" href="${esc(L.href)}" target="_blank" rel="noopener" title="${esc(L.exact?t("ext.open",{a:p.agency||t("external")}):t("ext.search"))}">${L.exact?"🔗":"🔎"} ${esc(p.agency||t("external"))}${p.ext_ref?" · "+esc(p.ext_ref):""} ↗</a>`:""})():""}
      ${p.owner_wp_id&&p.owner?`<span class="own-l" data-c="${p.owner_wp_id}" title="${t("p.openowner")}">👤 ${esc(p.owner)}</span>`:""}</div></div>`).join("");
   if(reset)box.innerHTML=`<div class="sub muted sm" style="padding:8px 12px 0">${t("n.props",{n:num(r.total)})}</div><div class="pgrid" id="pgrid">${html}</div>`;
@@ -368,10 +368,10 @@ async function loadProps(reset){
   if(prOff<r.total){box.insertAdjacentHTML("beforeend",`<div class="more"><button class="btn" id="prMore">${t("more",{n:num(r.total-prOff)})}</button></div>`);$("#prMore").onclick=()=>loadProps(false)}
 }
 async function openProp(id){
-  prSel=id;$$("#prRows .pc").forEach(r=>r.classList.toggle("sel",+r.dataset.p===id));
+  id=String(id);prSel=id;$$("#prRows .pc").forEach(r=>r.classList.toggle("sel",r.dataset.p===id));
   if(!prLoaded)loadProps(true);
   const d=$("#prDetail");d.innerHTML=`<div class="loader">${t("loading.pr")}</div>`;
-  try{PR=await rpc("nexus_property",{p_wp_id:id})}catch(e){d.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
+  try{PR=await rpc("nexus_property_by_ref",{p_ref:id})}catch(e){d.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   if(!PR){d.innerHTML=`<div class="empty">${t("notfound.pr")}</div>`;return}
   renderProp();
   if(innerWidth<1100)d.scrollIntoView({behavior:"smooth",block:"start"});
@@ -403,6 +403,23 @@ function catSummary(k,p){
     <div class="sm muted" style="margin-top:8px">${[k.use_class,[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", "),k.checked_at?ago(k.checked_at):""].filter(Boolean).map(esc).join(" · ")}</div></div>`}
 function catElements(k){const el=Array.isArray(k&&k.elements)?k.elements:[];if(!el.length)return "";
   return `<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${t("k.elements")}</h3></div><div class="scroll"><table class="mtable"><thead><tr><th>${t("k.use")}</th><th>${t("k.eltype")}</th><th>${t("k.floor")}</th><th style="text-align:right">m²</th></tr></thead><tbody>${el.map(e=>`<tr><td>${esc(e.use||"")}</td><td class="muted">${esc(e.type||"")}</td><td>${esc(e.pt??"")}</td><td style="text-align:right">${num(e.m2)}</td></tr>`).join("")}</tbody></table></div></div>`}
+/* status (core) + bewerken */
+const STC={available:"#22c55e",under_offer:"#ec4899",reserved:"#f43f5e",sold:"#a855f7",withdrawn:"#64748b",draft:"#f59e0b",off_market:"#475569"};
+const stLabel=s=>t("cs."+s)!=="cs."+s?t("cs."+s):s;
+const stBadge=s=>s&&s!=="available"?`<span class="stb" style="--sc:${STC[s]||"#64748b"}">${esc(stLabel(s))}</span>`:"";
+function statusBar(p){const S=["available","under_offer","sold","withdrawn","draft"];
+  return `<div class="stbar">${S.map(s=>`<button data-qs="${s}" class="${p.core_status===s?"on":""}" style="--sc:${STC[s]}">${esc(stLabel(s))}</button>`).join("")}${["off_market","reserved"].includes(p.core_status)?`<button class="on" style="--sc:${STC[p.core_status]}">${esc(stLabel(p.core_status))}</button>`:""}</div>`}
+function editCtx(jump){return {sb,rpc,lang:()=>LANG,me:()=>ME,jump,onSaved:ref=>{if(String(prSel).toUpperCase()===String(ref).toUpperCase()||prSel===String(PR&&PR.property&&PR.property.wp_id))openProp(ref);loadProps(true);ovLoaded=false;mpData=null}}}
+function wirePropEdit(d,p){
+  const e=d.querySelector("[data-edit]");if(e)e.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.open(p.reference,editCtx());
+  d.querySelectorAll("[data-qs]").forEach(b=>b.onclick=async()=>{const s=b.dataset.qs;if(s===p.core_status)return;
+    if(!confirm(t("qs.confirm",{r:p.reference,s:stLabel(s)})))return;
+    b.disabled=true;
+    try{await rpc("nexus_property_save",{p_id:p.id,p_patch:{status:s},p_texts:{},p_base:p.updated_at});
+      await openProp(p.reference);loadProps(true);ovLoaded=false;mpData=null;
+      if(s==="sold"&&ME&&ME.role==="admin"&&confirm(t("qs.solddetails")))NEXUS_EDIT.open(p.reference,editCtx("status"));
+    }catch(err){b.disabled=false;alert(err.code==="40001"?t("qs.conflict"):(err.message||String(err)));if(err.code==="40001")openProp(p.reference)}});
+}
 function renderProp(){
   const p=PR.property, raw=PR.raw||{}, d=$("#prDetail"), o=PR.owner, K=PR.catastro;
   const XL=p.is_external?extLink(p.external_agency,raw.external_url,raw.external_refnr):null;
@@ -410,11 +427,13 @@ function renderProp(){
   d.innerHTML=`<div class="dh" style="--acc:var(--c-pr)"><div style="min-width:0"><h2>${esc(p.reference)} · ${esc(p.title||"")}</h2>
      <div class="meta"><span>📍 ${esc([p.suburb,p.town,p.province].filter(Boolean).join(", "))}</span>
        ${o?`<a class="ownerlink" data-c="${o.wp_id}">👤 ${esc(o.name||o.email)}</a>`:""}
-       <span>🏷 <b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b></span><span>${esc(DICT.nl["ps."+p.status]?t("ps."+p.status):p.status)}${p.under_offer?" · "+t("underoffer"):""}${p.is_newbuild?" · "+t("pb.new"):""}</span></div></div>
-     <div class="acts">${raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">${t("act.site")}</a>`:""}<a href="https://gruposoltura.com/wp-admin/post.php?post=${p.wp_id}&action=edit" target="_blank" rel="noopener">CPR ↗</a>${p.is_external&&XL?`<a class="act-ext" href="${esc(XL.href)}" target="_blank" rel="noopener">${XL.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div></div>
+       <span>🏷 <b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b></span>${p.is_newbuild?`<span>${t("pb.new")}</span>`:""}</div>
+     ${statusBar(p)}</div>
+     <div class="acts"><a class="act-edit" data-edit="1">✎ ${t("act.pedit")}</a>${raw.url_new?`<a href="${esc(raw.url_new)}" target="_blank" rel="noopener">${t("act.site")}</a>`:raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">${t("act.site")}</a>`:""}${p.wp_id?`<a href="https://gruposoltura.com/wp-admin/post.php?post=${p.wp_id}&action=edit" target="_blank" rel="noopener" title="${esc(t("act.cprold"))}">CPR ↗</a>`:""}${p.is_external&&XL?`<a class="act-ext" href="${esc(XL.href)}" target="_blank" rel="noopener">${XL.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div></div>
    <div class="subtabs" style="--acc:var(--c-pr)">${tabs.map(x=>`<button class="st ${prSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
    <div class="dbody scroll" id="prBody"></div>`;
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{prSub=b.dataset.s;renderProp()});
+  wirePropEdit(d,p);
   const B=$("#prBody"), m=PR.matches||{};
   if(prSub==="kenmerken")B.innerHTML=`<div class="hero" style="${raw.image?`background-image:url('${esc(raw.image)}')`:""}"><span class="pr">${eur(p.price)}</span></div>
     ${p.is_external?extBox(p,raw,XL):""}
@@ -483,7 +502,7 @@ function popupHtml(p){
     <div class="ll">${p.lat}, ${p.lng}</div><div class="sm muted">${t("mp.src."+p.src)}</div>
     <div class="btns"><button class="pri" data-cp="link">📍 ${t("mp.copylink")}</button>
       <div class="row2"><button data-cp="coord">${t("mp.copycoord")}</button><a class="b" href="${esc(gPin(p.lat,p.lng))}" target="_blank" rel="noopener">${t("mp.gmaps")}</a></div>
-      <button data-open="${p.wp_id}">${t("mp.open")}</button></div></div></div>`}
+      <button data-open="${esc(p.reference)}">${t("mp.open")}</button></div></div></div>`}
 function wirePopup(pp){
   const el=pp.getElement(), p=pp._nx;if(!el||!p)return;
   el.onmouseenter=()=>clearTimeout(mpHideT);
@@ -513,7 +532,7 @@ function renderMap(fit){
       m.on("mouseover",()=>{clearTimeout(mpHideT);pp._hover=true;if(!m.isPopupOpen())m.openPopup()});
       m.on("mouseout",()=>{if(pp._hover)mpHideT=setTimeout(()=>{if(pp._hover)mpMap.closePopup(pp)},350)});
       m.on("click",()=>{pp._hover=false;clearTimeout(mpHideT);m.openPopup()});
-      mpMarkers[p.wp_id]=m;
+      mpMarkers[p.reference]=m;
     });
     if(fit&&on.length)mpMap.fitBounds(L.latLngBounds(on.map(p=>[p.lat,p.lng])).pad(0.15),{maxZoom:15});
   }
@@ -521,11 +540,11 @@ function renderMap(fit){
   const it=(p,extra,attr)=>`<div class="mp-it" ${attr}><div class="th" style="${p.image?`background-image:url('${esc(p.image)}')`:""}"></div>
     <div style="min-width:0"><div class="t"><span class="dot" style="background:${p.is_own?MPC.own:MPC.ext}"></span>${esc(p.reference)} · ${eur(p.price)}</div><div class="d">${extra}</div></div><span class="sm" style="color:var(--c-ac)">${p.under_offer?"●":""}</span></div>`;
   const onOwn=on.filter(p=>p.is_own), onExt=on.filter(p=>!p.is_own);
-  const sec=(lbl,list)=>list.length?`<div class="mp-sec">${lbl}</div>`+list.map(p=>it(p,sub(p)+(p.src==="catastro"?" · ≈":""),`data-fly="${p.wp_id}"`)).join(""):"";
+  const sec=(lbl,list)=>list.length?`<div class="mp-sec">${lbl}</div>`+list.map(p=>it(p,sub(p)+(p.src==="catastro"?" · ≈":""),`data-fly="${esc(p.reference)}"`)).join(""):"";
   $("#mpList").innerHTML=(rows.length?"":`<div class="empty">${t("mp.none")}</div>`)
     +sec(t("mp.located.own",{n:onOwn.length}),onOwn)+sec(t("mp.located.ext",{n:onExt.length}),onExt)
     +(off.length?`<div class="mp-sec">${t("mp.nolocation",{n:off.length})}</div><div class="sm muted" style="padding:8px 12px">${t("mp.nolocation.s")}</div>`
-      +off.map(p=>it(p,p.is_own?esc([p.street||p.cat_address,p.suburb,p.town].filter(Boolean).join(", ")):sub(p),`data-p="${p.wp_id}"`)).join(""):"");
+      +off.map(p=>it(p,p.is_own?esc([p.street||p.cat_address,p.suburb,p.town].filter(Boolean).join(", ")):sub(p),`data-p="${esc(p.reference)}"`)).join(""):"");
   $$("#mpList [data-fly]").forEach(r=>r.onclick=()=>{const m=mpMarkers[r.dataset.fly];if(!m)return;
     mpMap.flyTo(m.getLatLng(),Math.max(mpMap.getZoom(),16),{duration:.6});setTimeout(()=>{m.getPopup()._hover=false;m.openPopup()},650)});
 }
