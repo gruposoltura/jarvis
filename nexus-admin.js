@@ -25,8 +25,13 @@ const SOURCES=[["website","Website"],["phone",["Telefoon","Phone"]],["email","E-
   ["referral",["Doorverwezen","Referral"]],["portal",["Portaal (Idealista e.d.)","Portal (Idealista etc.)"]],["social","Social media"],["other",["Anders","Other"]]];
 const EMAIL_KINDS=[["","—"],["private",["Privé","Private"]],["work",["Werk","Work"]]];
 const PHONE_KINDS=[["mobile",["Mobiel","Mobile"]],["phone",["Vast","Landline"]],["work",["Werk","Work"]],["whatsapp","WhatsApp"]];
-const MAILINGS=[["newlistings",["Nieuwe woningen","New listings"]],["bargains",["Koopjes","Bargains"]],["hottop10","Hot top 10"],["newsletters",["Nieuwsbrief","Newsletter"]],
-  ["reviewus",["Review-verzoek","Review request"]],["birthdays",["Verjaardag","Birthday"]]];
+/* Nieuwsbrieven = slugs uit public.mailing_types die JARVIS/Brevo echt verstuurt (18-10-2026). Transactionele mails
+   (reserved, review_invite, review_viewing, welcome_seller) zijn geen nieuwsbrief en staan hier bewust niet.
+   market_report is het enige opt-in-type (default_opt_in=false); de rest staat standaard aan met afmeldmogelijkheid. */
+const MAILINGS=[["weekly_news",["Wekelijks nieuws (vrijdag)","Weekly news (Friday)"]],["price_reduced",["Prijsverlagingen (woensdag)","Price reductions (Wednesday)"]],
+  ["monthly_matches",["Maandelijkse woningmatches","Monthly property matches"]],["new_listing",["Nieuwe woning","New listing"]],
+  ["market_report",["Marktbericht (alleen met expliciete opt-in)","Market report (explicit opt-in only)"]]];
+const MAILING_DEFAULT_ON=["weekly_news","price_reduced","monthly_matches","new_listing"];
 const STATUS=[["draft",["Concept","Draft"]],["available",["In aanbod (current)","For sale (current)"]],["under_offer",["Onder bod","Under offer"]],
   ["sold",["Verkocht","Sold"]],["withdrawn",["Ingetrokken","Withdrawn"]],["off_market",["Off-market","Off-market"]]];
 const CATS=[["apartment",["Appartement","Apartment"]],["penthouse","Penthouse"],["bungalow","Bungalow"],["townhouse",["Geschakelde woning","Townhouse"]],
@@ -449,7 +454,7 @@ function payload(flow){
   if(S.contactMode==="existing")out["core.contacts"]={bestaand:S.existing?`legacy_map contact wp_id ${S.existing.wp_id}`:null,roles_toevoegen:c.roles};
   else{out["core.contacts"]={title:c.title||null,first_name:c.first_name||null,last_name:c.last_name||null,company:c.company||null,language:c.language||null,country:c.country||null,state:c.state||null,
       city:c.city||null,postcode:c.postcode||null,street:c.street||null,street_number:c.street_number||null,birthday:c.birthday||null,website:c.website||null,referred_by:c.referred_by||null,
-      owner_id:teamName(c.owner),keyholder:!!c.keyholder,mailing_optin:c.mailing_optin,mailing_prefs:Object.fromEntries((c.mailing_optin?c.prefs:[]).map(k=>[k,{on:true}])),
+      owner_id:teamName(c.owner),keyholder:!!c.keyholder,mailing_optin:c.mailing_optin,mailing_prefs:Object.fromEntries(MAILINGS.map(([k])=>[k,{on:!!c.mailing_optin&&(c.prefs||[]).includes(k)}])),
       search_profile:Object.fromEntries(Object.entries(c.search).filter(([,v])=>Array.isArray(v)?v.length:v)),internal_comments:c.internal_comments||null,source:c.source?"nexus:"+c.source:"nexus"};
     out["core.contact_emails"]=c.emails.filter(e=>e.email).map((e,i)=>({email:e.email.trim().toLowerCase(),kind:e.kind||null,is_primary:i===0}));
     out["core.contact_phones"]=c.phones.filter(p=>p.phone).map((p,i)=>({phone:p.phone.trim(),kind:p.kind,is_primary:i===0}));
@@ -554,7 +559,7 @@ function bind(){
       const ch=el.closest(".chip");if(ch)ch.classList.toggle("on",el.checked);
       if(k==="c.roles"&&S.flow==="wizard"&&S.step===2){persist();render();return}
       if(k==="c.prefs"||/\.opts\./.test(k)){const d=el.closest("details");if(d){const s=d.querySelector("summary .sm");if(s)s.textContent=(getP(S,k)||[]).length||""}}}
-    else if(el.dataset.bool!=null){setP(S,k,el.checked);if(k==="c.mailing_optin"){persist();render();return}}
+    else if(el.dataset.bool!=null){setP(S,k,el.checked);if(k==="c.mailing_optin"){const cur=(S.c.prefs||[]).filter(x=>MAILINGS.some(m=>m[0]===x));S.c.prefs=el.checked&&!cur.length?[...MAILING_DEFAULT_ON]:cur;persist();render();return}}
     else{let v=el.value;if(/\.reference$/.test(k)){v=v.toUpperCase().replace(/\s/g,"");if(el.value!==v)el.value=v}setP(S,k,v)}
     if(/\.(municipality|area)$/.test(k)){if(/municipality$/.test(k))setP(S,k.replace(/municipality$/,"area"),"");persist();render();return}
     if(/\.(lat|lng)$/.test(k)&&MAP&&MAP._place){const b=k.replace(/\.(lat|lng)$/,""),p=getP(S,b);if(p.lat!==""&&p.lng!==""&&!isNaN(+p.lat)&&!isNaN(+p.lng))MAP._place(p.lat,p.lng,true)}
