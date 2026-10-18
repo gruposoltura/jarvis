@@ -101,14 +101,18 @@ $("#fActivate").onsubmit=async e=>{e.preventDefault();const em=$("#acEmail").val
   const {data,error}=await sb.auth.signUp({email:em,password:$("#acPass").value,options:{emailRedirectTo:location.origin+location.pathname}});
   if(error){return /registered|exists/i.test(error.message)?lgMsg("msg.exists"):lgMsg(error.message,false,true)}
   if(data.session)return; lgMsg("msg.confirm",true)};
-$("#fNewPass").onsubmit=async e=>{e.preventDefault();const {error}=await sb.auth.updateUser({password:$("#npPass").value});
-  if(error)return lgMsg(error.message,false,true);lgMsg("msg.saved",true);history.replaceState(null,"",location.pathname);
+$("#fNewPass").onsubmit=async e=>{e.preventDefault();const pw=$("#npPass").value;
+  if(MUST_PW&&pw==="soltura2026")return lgMsg("msg.samepw");
+  const {error}=await sb.auth.updateUser({password:pw});
+  if(error)return lgMsg(error.message,false,true);
+  if(MUST_PW){try{await sb.rpc("nexus_password_changed")}catch(e){}MUST_PW=false;booted=false;await sb.auth.refreshSession();}
+  lgMsg("msg.saved",true);history.replaceState(null,"",location.pathname);
   if(booted){$("#login").classList.add("hidden");$("#app").classList.remove("hidden");route()}else boot()};
 $("#logout").onclick=async()=>{await sb.auth.signOut();location.hash="";location.reload()};
 function noAccess(){$("#app").classList.add("hidden");$("#login").classList.remove("hidden");showForm("login");
   lgMsg("msg.noaccess");sb.auth.signOut()}
 
-let ME=null, booted=false;
+let ME=null, booted=false, MUST_PW=false;
 sb.auth.onAuthStateChange((ev,session)=>{
   if(ev==="PASSWORD_RECOVERY"){$("#login").classList.remove("hidden");$("#app").classList.add("hidden");showForm("newpass");return}
   if(session&&!booted)boot();
@@ -121,6 +125,9 @@ async function boot(){
   if(booted)return;booted=true;
   try{ME=await rpc("nexus_me")}catch(e){booted=false;return}
   if(!ME){booted=false;return noAccess()}
+  /* Tijdelijk wachtwoord: eerst verplicht wijzigen, pas daarna de app */
+  if(ME.must_change_pw){MUST_PW=true;booted=false;$("#app").classList.add("hidden");$("#login").classList.remove("hidden");
+    showForm("newpass");lgMsg("msg.mustchange");return}
   if(ME.lang&&ME.lang!==LANG){LANG=ME.lang;try{localStorage.setItem("nexus-lang",LANG)}catch(e){}applyStatic()}
   $("#login").classList.add("hidden");$("#app").classList.remove("hidden");
   $("#meName").textContent=ME.display_name;const av=$("#meAv");av.textContent=initials(ME.display_name);av.style.background=ME.color||"#14b8a6";
