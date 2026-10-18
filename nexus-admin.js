@@ -78,7 +78,7 @@ const REF_PFX=["RH","BE","QU","LM","LP","PL","PB","DP","FO","AL","PR","SB","SR",
 /* ================= STATE ================= */
 const blankContact=()=>({title:"",first_name:"",last_name:"",company:"",language:"",country:"",state:"",city:"",postcode:"",street:"",street_number:"",
   birthday:"",website:"",referred_by:"",owner:"",source:"",roles:[],emails:[{email:"",kind:""}],phones:[{phone:"",kind:"mobile"}],
-  keyholder:false,mailing_optin:false,prefs:[],search:{budget:"",property_type:"",period:""},internal_comments:""});
+  keyholder:false,mailing_optin:false,prefs:[],search:{budget:"",property_type:"",period:"",build:[]},internal_comments:""});
 const blankProp=()=>({status:"draft",published:false,category:"",build_type:"resale",own_listing_type:"direct",reference:"",year_built:"",listed_at:new Date().toISOString().slice(0,10),
   dossier_complete:false,listing_agent:"",internal_notes:"",
   price:"",price_text:"",price_original:"",price_temp:"",price_temp_until:"",price_hidden:false,price_fixed:false,price_from:false,price_on_request:false,price_coming_soon:false,
@@ -217,7 +217,8 @@ function stepContact(){
   ${sec(["Adres","Address"],row(inp("c.street",["Straat","Street"],{w:2}),inp("c.street_number",["Nr.","No."]),inp("c.postcode",["Postcode","Postcode"]))
      +row(inp("c.city",["Plaats","City"],{w:2}),inp("c.state",["Provincie / regio","Province / region"]),inp("c.country",["Land","Country"],{list:"adCountries"})))}
   ${c.roles.some(r=>r==="buyer"||r==="suspect")?sec(["Zoekprofiel","Search profile"],row(inp("c.search.budget",["Budget","Budget"],{ph:["bijv. 200-300k","e.g. 200-300k"]}),
-     sel("c.search.property_type",["Woningtype","Property type"],CATS),inp("c.search.period",["Wanneer kopen","When to buy"],{ph:["bijv. binnen 6 maanden","e.g. within 6 months"]}),inp("c.website","Website"))):""}
+     sel("c.search.property_type",["Woningtype","Property type"],CATS),inp("c.search.period",["Wanneer kopen","When to buy"],{ph:["bijv. binnen 6 maanden","e.g. within 6 months"]}),inp("c.website","Website"))
+     +row(`<div class="ad-f w4"><span>${esc(tr(["Bestaande bouw of nieuwbouw (beide mag)","Resale or new build (both allowed)"]))}</span>${multi("c.search.build",[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]],{cols:2})}</div>`)):""}
   ${sec(["Mailings","Mailings"],`${chk("c.mailing_optin",["Toestemming voor mailings (opt-in)","Consent to mailings (opt-in)"])}${S.c.mailing_optin?multi("c.prefs",MAILINGS,{cols:3}):""}`)}
   ${sec(["Interne opmerking","Internal note"],row(area("c.internal_comments",["Alleen zichtbaar voor het team","Only visible to the team"],{rows:3})))}`}
   <datalist id="adCountries">${["Spain","Netherlands","Belgium","United Kingdom","Ireland","Germany","France","Sweden","Norway","Denmark","Finland","Switzerland","Austria"].map(x=>`<option value="${x}">`).join("")}</datalist>`;
@@ -437,7 +438,7 @@ function payload(flow){
   else{out["core.contacts"]={title:c.title||null,first_name:c.first_name||null,last_name:c.last_name||null,company:c.company||null,language:c.language||null,country:c.country||null,state:c.state||null,
       city:c.city||null,postcode:c.postcode||null,street:c.street||null,street_number:c.street_number||null,birthday:c.birthday||null,website:c.website||null,referred_by:c.referred_by||null,
       owner_id:teamName(c.owner),keyholder:!!c.keyholder,mailing_optin:c.mailing_optin,mailing_prefs:Object.fromEntries((c.mailing_optin?c.prefs:[]).map(k=>[k,{on:true}])),
-      search_profile:Object.fromEntries(Object.entries(c.search).filter(([,v])=>v)),internal_comments:c.internal_comments||null,source:c.source?"nexus:"+c.source:"nexus"};
+      search_profile:Object.fromEntries(Object.entries(c.search).filter(([,v])=>Array.isArray(v)?v.length:v)),internal_comments:c.internal_comments||null,source:c.source?"nexus:"+c.source:"nexus"};
     out["core.contact_emails"]=c.emails.filter(e=>e.email).map((e,i)=>({email:e.email.trim().toLowerCase(),kind:e.kind||null,is_primary:i===0}));
     out["core.contact_phones"]=c.phones.filter(p=>p.phone).map((p,i)=>({phone:p.phone.trim(),kind:p.kind,is_primary:i===0}));
     out["core.contact_roles"]=c.roles.map(r=>({role:r}));}
