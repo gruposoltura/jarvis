@@ -310,7 +310,7 @@ const CADDR=[["street",["Straat","Street"]],["street_number",["Nr.","No."]],["po
   ["country",["Land","Country"]],["website","Website"],["referred_by",["Verwezen door","Referred by"]]];
 const CEXTRA=[["facebook","Facebook"],["instagram","Instagram"],["linkedin","LinkedIn"],["twitter","X / Twitter"],["custom_1",["Vrij veld 1","Custom field 1"]],["custom_2",["Vrij veld 2","Custom field 2"]]];
 const CFIELDS=[...CPERSON,...CADDR,...CEXTRA];
-const CEDIT=["keyholder","internal_comments","owner_id","source","sales_status","sales_value","mailing_optin"].concat(CFIELDS.map(f=>f[0]));
+const CEDIT=["keyholder","internal_comments","owner_id","source","sales_value","mailing_optin"].concat(CFIELDS.map(f=>f[0]));
 /* Nieuwsbrieven = slugs uit mailing_types (gelijk aan nexus-admin.js). market_report alleen bij expliciete opt-in. */
 const CMAILS=[["weekly_news",["Wekelijks nieuws (vrijdag)","Weekly news (Friday)"]],["price_reduced",["Prijsverlagingen (woensdag)","Price reductions (Wednesday)"]],
   ["monthly_matches",["Maandelijkse woningmatches","Monthly property matches"]],["new_listing",["Nieuwe woning","New listing"]],
@@ -318,7 +318,6 @@ const CMAILS=[["weekly_news",["Wekelijks nieuws (vrijdag)","Weekly news (Friday)
 const CMAIL_DEF=["weekly_news","price_reduced","monthly_matches","new_listing"];
 const SP_BUDGET=[["",""],["100k","€ 100k"],["150k","€ 150k"],["250k","€ 250k"],["more",["Meer","More"]]];
 const SP_PERIOD=[["",""],["0-3",["0-3 maanden","0-3 months"]],["3-6",["3-6 maanden","3-6 months"]],["longer",["Langer","Longer"]]];
-const SALES_ST=[["0","0 · Unqualified"],["10","10"],["90","90"],["94","94"],["97","97"],["98","98"],["99","99"]];
 async function openContact(key,ctx){X=ctx;
   ROOT=document.getElementById("pe");if(!ROOT){ROOT=document.createElement("div");ROOT.id="pe";document.body.appendChild(ROOT);bind()}
   ROOT.className="pe";document.body.classList.add("pe-open");ROOT.innerHTML=`<div class="pe-box pe-small"><div class="pe-load">${esc(tr(["Contact laden…","Loading contact…"]))}</div></div>`;
@@ -379,7 +378,6 @@ async function openContact(key,ctx){X=ctx;
      <section class="ad-sec"><h4>${esc(tr(["CPR en verkoop","CPR and sales"]))}</h4>
        <div class="ad-row">
          <label class="ad-f"><span>${esc(tr(["Bron","Source"]))}</span><input data-cf="source" value="${esc(v.source??"")}"></label>
-         <label class="ad-f"><span>${esc(tr(["Verkoopstatus (CPR-code)","Sales status (CPR code)"]))}</span>${optSel("data-cf","sales_status",[["",""]].concat(SALES_ST),v.sales_status)}</label>
          <label class="ad-f"><span>${esc(tr(["Verkoopwaarde (€)","Sales value (€)"]))}</span><input data-cf="sales_value" type="number" min="0" step="1000" value="${esc(v.sales_value??"")}"></label>
          <label class="ad-c" style="align-self:center"><input type="checkbox" data-cf="keyholder" ${v.keyholder?"checked":""}><span>${esc(tr(["Sleutelhouder","Keyholder"]))}</span></label></div></section>
      <section class="ad-sec"><h4>${esc(tr(["Online en vrije velden","Online and custom fields"]))}</h4>
