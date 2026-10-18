@@ -564,3 +564,7 @@ html[data-theme="light"] .hero .pr{color:#fff}
 .pe-ch .ad-x{margin:0;height:34px}
 .pe-ch .ad-c span{font-size:16px}
 @media (max-width:700px){.pe-ch{grid-template-columns:1fr 100px 36px 30px}}
+/* verwijderknop in bewerkschermen (alleen beheerder) */
+.pe-del{color:#f87171;border-color:rgba(248,113,113,.45)}
+.pe-del:hover{background:rgba(248,113,113,.12)}
+html[data-theme="light"] .pe-del{color:#b91c1c}

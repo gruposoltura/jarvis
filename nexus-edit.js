@@ -71,7 +71,7 @@ function render(keepScroll){
        <div id="peErr"></div>
        ${secStatus()}${secBasis()}${secPrice()}${secLoc()}${secLayout()}${secFeatures()}${secTexts()}${secMedia()}${secCosts()}${secContacts()}${secPub()}${secHist()}
      </div></div>
-   <footer class="pe-ft"><span class="sm muted" id="peDirty"></span><span style="flex:1"></span>
+   <footer class="pe-ft">${D.is_admin&&p.origin!=="partner"?`<button class="btn pe-del" data-act="delete" title="${esc(tr(["Woning definitief verwijderen (alleen beheerder)","Delete property permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span>
      <button class="btn" data-act="close">${esc(tr(["Annuleren","Cancel"]))}</button>
      <button class="btn ad-next" data-act="save" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
   ROOT.querySelector("#peMain").scrollTop=sc;
@@ -225,6 +225,7 @@ function bind(){
     if(d.act==="close"){if(b.tagName!=="A")e.preventDefault();close();return}
     if(d.act==="save"){e.preventDefault();save();return}
     if(d.act==="reload"){e.preventDefault();load(P.reference);return}
+    if(d.act==="delete"){e.preventDefault();delProp();return}
     if(d.jump){e.preventDefault();const s=ROOT.querySelector("#pe-"+d.jump);if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
     if(d.status){e.preventDefault();set("status",d.status);render(true);return}
     if(d.txl){e.preventDefault();txL=d.txl;render(true);return}
@@ -251,6 +252,16 @@ async function load(ref){
 function close(){if(dirtyCount()&&!confirm(tr(["Er zijn niet-opgeslagen wijzigingen. Toch sluiten?","There are unsaved changes. Close anyway?"])))return;
   M&&M.forEach(m=>m.file&&m.url&&URL.revokeObjectURL(m.url));if(MAP){MAP.remove();MAP=null}
   ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")}
+async function delProp(){
+  const ref=P.reference;
+  const typed=prompt(tr([`Woning ${ref} definitief verwijderen? Teksten, foto-verwijzingen en prijshistorie gaan mee; aanvragen en bezichtigingen blijven bestaan zonder woning. Er wordt een volledige kopie in het auditlog bewaard.\n\nTyp ${ref} om te bevestigen:`,
+    `Permanently delete property ${ref}? Texts, photo references and price history go with it; requests and viewings remain without a property. A full copy is kept in the audit log.\n\nType ${ref} to confirm:`]));
+  if(typed==null)return;if(typed.trim().toUpperCase()!==String(ref).toUpperCase()){alert(tr(["Referentie klopt niet; niets verwijderd.","Reference does not match; nothing deleted."]));return}
+  try{await X.rpc("nexus_property_delete",{p_id:P.id});
+    M&&M.forEach(m=>m.file&&m.url&&URL.revokeObjectURL(m.url));if(MAP){MAP.remove();MAP=null}
+    ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open");
+    alert(tr([`Woning ${ref} verwijderd`,`Property ${ref} deleted`]));location.hash="pr";location.reload()}
+  catch(e){err(e.message||String(e))}}
 async function save(){
   if(busy)return;const pt=patch(), tt=tpatch();
   if(!dirtyCount())return;
@@ -375,7 +386,7 @@ async function openContact(key,ctx){X=ctx;
        <small class="muted">${esc(tr(["★ = hoofdadres (gebruikt voor mailings en WhatsApp). Telefoon met landcode, bijv. +34 of +31.","★ = primary (used for mailings and WhatsApp). Phone with country code, e.g. +34 or +31."]))}</small></section>
      ${(C.team||[]).length?`<section class="ad-sec"><h4>${esc(tr(["Verantwoordelijk","Responsible"]))}</h4><label class="ad-f" style="max-width:320px"><span>${esc(tr(["Teamlid","Team member"]))}</span><select data-cf="owner_id"><option value="">—</option>${C.team.map(t=>`<option value="${t.id}" ${o.owner_id===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label></section>`:""}
      </div>
-     <footer class="pe-ft"><span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
+     <footer class="pe-ft">${X.me&&X.me()&&X.me().role==="admin"?`<button class="btn pe-del" data-act="cdelete" title="${esc(tr(["Contact definitief verwijderen (alleen beheerder)","Delete contact permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
     const diff=()=>{const d={};for(const k of CEDIT){if(!(k in v))continue;const a=v[k]===""?null:v[k],b=o[k]===""?null:o[k];if(String(a??"")!==String(b??""))d[k]=a}return d};
     const anyDirty=()=>Object.keys(diff()).length||rolesChanged()||chChanged()||spChanged()||msChanged();
@@ -405,6 +416,12 @@ async function openContact(key,ctx){X=ctx;
       ROOT.querySelector("#peProp").innerHTML=propOpt();wireProp();up()});
     wireProp();
     ROOT.querySelectorAll('[data-act="cclose"]').forEach(b=>b.onclick=()=>{if(anyDirty()&&!confirm(tr(["Niet-opgeslagen wijzigingen. Toch sluiten?","Unsaved changes. Close anyway?"])))return;ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")});
+    const delB=ROOT.querySelector('[data-act="cdelete"]');
+    if(delB)delB.onclick=async()=>{const nm=C.contact.full_name||C.contact.email||"dit contact";
+      if(!confirm(tr([`Contact "${nm}" definitief verwijderen?\n\nE-mails, telefoons, labels, relaties en notities gaan mee; aanvragen en bezichtigingen blijven bestaan zonder contact. Er wordt een volledige kopie in het auditlog bewaard.`,
+        `Permanently delete contact "${nm}"?\n\nE-mails, phones, labels, relations and notes go with it; requests and viewings remain without a contact. A full copy is kept in the audit log.`])))return;
+      try{await X.rpc("nexus_contact_delete",{p_id:o.id});closeC();alert(tr(["Contact verwijderd","Contact deleted"]));location.hash="ct";location.reload()}
+      catch(e){ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(e.message||String(e))}</div>`}};
     ROOT.querySelector('[data-act="csave"]').onclick=async()=>{const d=diff();if(spChanged())d.search_profile=spClean(SP);if(msChanged())d.mailing_prefs=Object.assign({},MS);if(!anyDirty())return;
       const badE=EM.map(x=>(x.email||"").trim()).filter(e=>e&&!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(e));
       if(badE.length){ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(tr(["Ongeldig e-mailadres: ","Invalid e-mail: "])+badE.join(", "))}</div>`;return}const b=ROOT.querySelector("#peSave");b.disabled=true;b.textContent=tr(["Opslaan…","Saving…"]);
