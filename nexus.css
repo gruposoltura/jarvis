@@ -643,3 +643,4 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .xm-err{color:#f87171;font-weight:600;min-height:1em;margin-top:6px}
 .xm-detail .ad-foot{flex:none}
 @media (max-width:900px){.xm{grid-template-columns:1fr;grid-template-rows:minmax(220px,40%) 1fr}.xm-rules{grid-template-columns:1fr}.xm-scroll{padding:14px}}
+.xm-meta{color:var(--tx2)!important}.xm-meta b{font-weight:600;color:var(--hi)}.xm-meta b.xm-warn{color:#f59e0b}

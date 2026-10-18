@@ -24,6 +24,8 @@ function when(ts){if(!ts)return tr(["nooit","never"]);const d=new Date(ts), s=(D
   if(s<60)return tr(["zojuist","just now"]);if(s<3600)return tr([`${Math.round(s/60)} min geleden`,`${Math.round(s/60)} min ago`]);
   if(s<86400)return tr([`${Math.round(s/3600)} uur geleden`,`${Math.round(s/3600)} h ago`])+` · ${d.toLocaleTimeString(LOC(),{hour:"2-digit",minute:"2-digit"})}`;
   if(s<86400*30)return tr([`${Math.round(s/86400)} dagen geleden`,`${Math.round(s/86400)} days ago`])+` · ${abs}`;return abs}
+function dt(ts){if(!ts)return tr(["nooit","never"]);const d=new Date(ts);
+  return d.toLocaleString(LOC(),{day:"numeric",month:"short",year:d.getFullYear()!==new Date().getFullYear()?"numeric":undefined,hour:"2-digit",minute:"2-digit"})}
 function stale(ts,days){return !ts||(Date.now()-new Date(ts))/86400000>days}
 function n(v){return v==null?"—":Number(v).toLocaleString(LOC())}
 async function copy(text,btn){try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement("textarea");t.value=text;document.body.appendChild(t);t.select();try{document.execCommand("copy")}catch(_){}t.remove()}
@@ -69,16 +71,17 @@ function rowExp(f){const old=f.active&&stale(f.last_accessed_at,14);
   return `<div class="row xm-row ${SEL===f.id?"on":""} ${f.active?"":"off"}" data-sel="${f.id}">
    ${sw(f)}
    <div style="min-width:0"><div class="nm">${esc(f.name)}</div>
-     <div class="sub sm">${f.agency_name?`<span class="xm-ag">${esc(f.agency_name)}</span>`:`<span class="xm-warn">${esc(tr(["geen makelaar gekoppeld","no agent linked"]))}</span>`}
-     · <span class="${old?"xm-warn":"muted"}" title="${esc(tr(["Laatst opgehaald","Last fetched"]))}">⟳ ${esc(when(f.last_accessed_at))}</span></div></div>
+     <div class="sub sm">${f.agency_name?`<span class="xm-ag">${esc(f.agency_name)}</span>`:`<span class="xm-warn">${esc(tr(["geen makelaar gekoppeld","no agent linked"]))}</span>`}</div>
+     <div class="sub sm xm-meta"><span class="${old?"xm-warn":""}" title="${esc(tr(["Laatst opgehaald door de makelaar","Last fetched by the agent"]))}">⟳ ${esc(dt(f.last_accessed_at))}</span>${f.last_item_count!=null?` · ${n(f.last_item_count)} ${esc(tr(["woningen","listings"]))}`:""}</div></div>
    <button class="btn sm xm-copy" data-copy="${esc(f.url)}" title="${esc(f.url)}">⧉ URL</button></div>`}
-function rowImp(f){const lr=f.last_run, err=f.last_error;const old=f.active&&stale(f.last_run_at,2);
+function rowImp(f){const err=f.last_error, rp=(f.last_run&&f.last_run.report)||{};const old=f.active&&stale(f.last_run_at,2);
+  const cnt=rp.accepted!=null?rp.accepted:f.last_item_count;
   return `<div class="row xm-row ${SEL===f.id?"on":""} ${f.active?"":"off"}" data-sel="${f.id}">
    ${sw(f)}
    <div style="min-width:0"><div class="nm">${esc(f.code)} <span class="xm-pfx">${esc(f.ref_prefix)}</span></div>
-     <div class="sub sm">${f.agency_name?`<span class="xm-ag">${esc(f.agency_name)}</span>`:`<span class="xm-warn">${esc(tr(["geen makelaar","no agent"]))}</span>`}
-     · <span class="${err?"xm-bad":old?"xm-warn":"muted"}">${err?"⚠ "+esc(tr(["fout","error"])):"⟳"} ${esc(when(f.last_run_at))}</span>
-     · ${n(f.live_count)} ${esc(tr(["in aanbod","live"]))}</div></div>
+     <div class="sub sm">${f.agency_name?`<span class="xm-ag">${esc(f.agency_name)}</span>`:`<span class="xm-warn">${esc(tr(["geen makelaar","no agent"]))}</span>`}</div>
+     <div class="sub sm xm-meta"><span class="${err?"xm-bad":old?"xm-warn":""}" title="${esc(tr(["Laatste run","Last run"]))}">${err?"⚠":"⟳"} ${esc(dt(f.last_run_at))}</span>
+       · <b class="${cnt===0&&f.active?"xm-warn":""}" title="${esc(tr(["Woningen in de laatste run (na filters)","Listings in last run (after filters)"]))}">${n(cnt)} ${esc(tr(["woningen","listings"]))}</b>${rp.in_feed!=null&&rp.in_feed!==cnt?` <span class="muted">${esc(tr([`van ${n(rp.in_feed)}`,`of ${n(rp.in_feed)}`]))}</span>`:""}</div></div>
    <button class="btn sm xm-copy" data-copy="${esc(f.url)}" title="${esc(f.url)}">⧉ URL</button></div>`}
 
 function kv(k,v){return `<div class="xm-kv"><span>${esc(k)}</span><b>${v}</b></div>`}
