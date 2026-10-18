@@ -156,6 +156,9 @@ function route(){
   setTab(TABC[h]?h:"ov");
 }
 const go={c:id=>location.hash="c/"+id,p:id=>location.hash="p/"+encodeURIComponent(id)};
+/* + Nieuw contact (rechtsboven in Contacten): naar Admin, workflow "Nieuw contact" */
+function newContact(){location.hash="ad";setTimeout(()=>{if(window.NEXUS_ADMIN&&NEXUS_ADMIN.startNewContact)NEXUS_ADMIN.startNewContact()},0)}
+document.addEventListener("click",e=>{if(e.target.closest("[data-newct]")){e.preventDefault();e.stopPropagation();newContact()}},true);
 /* Woning openen van buiten de woningenlijst (vanuit een contact, overzicht, activiteit of directe link):
    volledig scherm met alle details en een terugknop. Vanuit de lijst zelf blijft het de gesplitste weergave. */
 let prFocus=true, prFrom=null, prListY=null;
@@ -294,7 +297,7 @@ function renderContact(){
       <div class="roles">${(c.roles||[]).map(roleTag).join("")}<span class="sm muted" style="margin-left:6px">👤 <b style="color:${REPC[c.rep]||"#94a3b8"}">${esc(rep(c.rep))}</b> ${c.wp_id?" · #"+c.wp_id:""}${c.language?" · 🌐 "+esc(c.language):""}</span></div>
       <div class="cstrip">${phones.map(p=>`<span class="cpill"><a href="tel:${esc(cleanTel(p))}">☎ ${esc(p)}</a><a class="wa" href="https://wa.me/${esc(waNum(p))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${!phones.length?`<span class="cpill nophone"><a data-cedit="1" title="${esc(t("addphone"))}">☎ ${t("nophone")} · <b>+ ${t("addphone")}</b></a></span>`:""}${emails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}${!emails.length?`<span class="cpill nophone"><a data-cedit="1">✉ ${t("noemail")} · <b>+ ${t("addemail")}</b></a></span>`:""}</div>
       ${intro?`<div class="introbar" data-c="${esc(intro.key||intro.wp_id)}">🤝 ${t("intro.by")} <b>${esc(intro.name||intro.email)}</b>${intro.phone?` · ${esc(intro.phone)}`:""}${intro.email?` · ${esc(intro.email)}`:""}<span class="go">${t("intro.open")}</span></div>`:""}</div>
-    <div class="acts"><a class="act-edit" data-cedit="1">✎ ${t("act.pedit")}</a>${c.wp_id?`<a href="https://gruposoltura.com/wp-admin/admin.php?page=cpr-contacts&view=overview&id=${c.wp_id}" target="_blank" rel="noopener" title="${esc(t("act.cprold"))}">CPR ↗</a>`:""}</div></div>
+    <div class="acts">${ME&&ME.role==="admin"?`<a class="act-new" data-newct="1">+ ${t("act.newct")}</a>`:""}<a class="act-edit" data-cedit="1">✎ ${t("act.pedit")}</a>${c.wp_id?`<a href="https://gruposoltura.com/wp-admin/admin.php?page=cpr-contacts&view=overview&id=${c.wp_id}" target="_blank" rel="noopener" title="${esc(t("act.cprold"))}">CPR ↗</a>`:""}</div></div>
    <div class="subtabs">${tabs.map(x=>`<button class="st ${ctSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
    <div class="dbody scroll" id="ctBody"></div>`;
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{ctSub=b.dataset.s;renderContact()});

@@ -548,3 +548,4 @@ html[data-theme="light"] .hero .pr{color:#fff}
   .pk-ph-list{flex-direction:column;overflow-x:hidden;overflow-y:auto;padding:0 4px 0 0}
   .pk-ph{flex:0 0 auto;width:100%}
 }
+.dh .acts a.act-new{background:var(--c-ct);border-color:var(--c-ct);color:#fff;font-weight:700;cursor:pointer}.dh .acts a.act-new:hover{filter:brightness(1.1);color:#fff}

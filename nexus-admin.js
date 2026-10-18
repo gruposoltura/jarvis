@@ -584,5 +584,7 @@ let agT;function agentDup(){clearTimeout(agT);agT=setTimeout(async()=>{const box
   box.innerHTML=rows.length?`<div class="ad-warnbox"><b>${esc(tr(["Bestaat deze makelaar al?","Does this agent already exist?"]))}</b>${rows.slice(0,4).map(r=>`<div class="ad-duprow"><span>${esc(r.name||r.email)} <span class="sm muted">· ${esc((r.roles||[]).join(", "))}</span></span><button class="btn sm" data-useagent='${esc(JSON.stringify({wp_id:r.wp_id,name:r.name,email:r.email,city:r.city}))}'>${esc(tr(["Gebruik deze","Use this one"]))}</button></div>`).join("")}</div>`:"";
   box.querySelectorAll("[data-useagent]").forEach(b=>b.onclick=()=>{S.agent=JSON.parse(b.dataset.useagent);S.agentMode="existing";persist();render()})},500)}
 
-window.NEXUS_ADMIN={open,rerender:()=>{if(ROOT&&ROOT.dataset.init)render()}};
+window.NEXUS_ADMIN={open,rerender:()=>{if(ROOT&&ROOT.dataset.init)render()},
+  /* vanuit Contacten: direct de workflow "Nieuw contact" openen (stap 2 = contact als er geen aanbrenger is) */
+  startNewContact:()=>{S.flow="wizard";S.step=1;S.contactMode="new";if(ROOT&&ROOT.dataset.init)render()}};
 })();
