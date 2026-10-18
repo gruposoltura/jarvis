@@ -74,6 +74,8 @@ function why(s){if(!s)return"";let m;
   if((m=s.match(/^aanbieder van (.+)$/)))return t("why.offerer",{r:m[1]});
   if(s==="zelfde adres/telefoon")return t("why.household");return s}
 const relT=r=>r==="koper"?t("rel.koper"):r==="eigenaar"?t("rel.eigenaar"):r==="aanbiedend makelaar"?t("rel.agent"):r;
+/* leesbare formuliernamen (core.request_forms via nexus2_request_forms); onbekende sleutel blijft zichtbaar */
+let RF={};const rq=k=>{const f=RF[k];return f?(LANG==="en"?f.en:f.nl)||k:k};
 const tlTitle=s=>s==="bezichtiging"?t("tl.viewing"):s;
 /* link naar de woning bij de partner-makelaar; zonder URL in de feed: zoeken op agency + hun referentie */
 function extLink(agency,url,ref){if(url)return{href:url,exact:true};
@@ -125,6 +127,7 @@ async function boot(){
   if(booted)return;booted=true;
   try{ME=await rpc("nexus_me")}catch(e){booted=false;return}
   if(!ME){booted=false;return noAccess()}
+  try{(await rpc("nexus2_request_forms")||[]).forEach(f=>{RF[f.key]=f})}catch(e){}
   /* Tijdelijk wachtwoord: eerst verplicht wijzigen, pas daarna de app */
   if(ME.must_change_pw){MUST_PW=true;booted=false;$("#app").classList.add("hidden");$("#login").classList.remove("hidden");
     showForm("newpass");lgMsg("msg.mustchange");return}
@@ -226,7 +229,7 @@ function renderOverview(){
      <div class="hd" style="border-top:1px solid var(--line);margin-top:6px"><h3>${t("ov.req30")}</h3><span class="sm muted">${t("ov.max",{n:mx})}</span></div>
      <div class="spark"><svg viewBox="0 0 300 70" preserveAspectRatio="none"><defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ec4899" stop-opacity=".45"/><stop offset="1" stop-color="#ec4899" stop-opacity="0"/></linearGradient></defs>
        <polygon points="0,70 ${pts} 300,70" fill="url(#sg)"/><polyline points="${pts}" fill="none" stroke="#ec4899" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
-       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${(o.req_types_30d||[]).map(x=>`<span class="tag">${esc(x.t)} · ${x.n}</span>`).join("")}</div></div>
+       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${(o.req_types_30d||[]).map(x=>`<span class="tag">${esc(rq(x.t))} · ${x.n}</span>`).join("")}</div></div>
      </div></div>
    <div class="card ov-act"><div class="hd"><h3>${t("ov.activity")}</h3><a class="sm muted" href="#ac">${t("ov.all")}</a></div>
      <div class="scroll feed" style="flex:1">${feedHtml(o.activity)}</div></div>
@@ -255,7 +258,7 @@ function feedHtml(list){
   if(!list||!list.length)return`<div class="empty">${t("noactivity")}</div>`;
   return list.map(a=>{const ic=IC[a.kind]||IC.request;return `<div class="it" ${a.contact_wp_id?`data-c="${a.contact_wp_id}"`:""}>
     <div class="ic" style="--ic:${ic[0]}">${ic[1]}</div>
-    <div style="min-width:0"><div class="t">${esc(a.name||t("unknown"))}</div><div class="d">${esc(a.type)}${a.ref?" · "+esc(a.ref):""} · <span style="color:${REPC[a.rep]||"#64748b"}">${esc(rep(a.rep||""))}</span></div></div>
+    <div style="min-width:0"><div class="t">${esc(a.name||t("unknown"))}</div><div class="d">${esc(a.kind==="request"?rq(a.type):a.type)}${a.ref?" · "+esc(a.ref):""} · <span style="color:${REPC[a.rep]||"#64748b"}">${esc(rep(a.rep||""))}</span></div></div>
     <span class="sm muted">${ago(a.ts)}</span></div>`}).join("")}
 
 /* ================= CONTACTEN ================= */
@@ -374,11 +377,11 @@ function ctProps(){
    ${own.length?`<div class="grid2">${own.map(p=>propCard(p,`<div style="margin-top:4px"><span class="role" style="--rc:var(${p.relation==="koper"?"--r-buyer":p.relation==="eigenaar"?"--r-seller":"--r-agent"})">${esc(relT(p.relation))}</span>${nInt(p)?` <span class="sm" style="margin-left:6px;color:var(--c-pr);font-weight:700">👥 ${t("x.interested",{n:nInt(p)})}</span>`:""}</div>`)).join("")}</div>`:`<div class="empty sm">${t("noowned")}</div>`}
    ${im.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.intmine",{n:im.length})}</h3></div><div class="grid2">${im.map(rel).join("")}</div>`:""}
    ${it.length||!own.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.interest",{n:it.length})}</h3></div>
-   ${it.length?`<div class="grid2">${it.map(p=>propCard(p,`<div class="sm" style="margin-top:4px">${p.n}× · ${esc((p.types||[]).join(", "))} · ${ago(p.last)}</div>`)).join("")}</div>`:`<div class="empty sm">${t("nointerest")}</div>`}`:""}`}
+   ${it.length?`<div class="grid2">${it.map(p=>propCard(p,`<div class="sm" style="margin-top:4px">${p.n}× · ${esc((p.types||[]).map(rq).join(", "))} · ${ago(p.last)}</div>`)).join("")}</div>`:`<div class="empty sm">${t("nointerest")}</div>`}`:""}`}
 function timeline(list){
   const C={request:"#ec4899",viewing:"#22c55e",mail:"#3b82f6",lead:"#f59e0b",hot:"#ef4444",note:"#a855f7"};
   if(!list||!list.length)return`<div class="empty">${t("notimeline")}</div>`;
-  return `<div class="tl">${list.map(e=>`<div class="e" style="--ec:${C[e.kind]||"#64748b"}"><div class="h"><span class="k">${esc(t("k."+e.kind))} · ${esc(tlTitle(e.title||""))}</span>${e.ref?`<span class="tag">${esc(e.ref)}</span>`:""}<span class="w">${fdate(e.ts)} · ${ago(e.ts)}</span></div>${e.text?`<div class="x">${esc(e.text)}</div>`:""}</div>`).join("")}</div>`}
+  return `<div class="tl">${list.map(e=>`<div class="e" style="--ec:${C[e.kind]||"#64748b"}"><div class="h"><span class="k">${esc(t("k."+e.kind))} · ${esc(e.kind==="request"?rq(e.title||""):tlTitle(e.title||""))}</span>${e.ref?`<span class="tag">${esc(e.ref)}</span>`:""}<span class="w">${fdate(e.ts)} · ${ago(e.ts)}</span></div>${e.text?`<div class="x">${esc(e.text)}</div>`:""}</div>`).join("")}</div>`}
 function ctRelations(c){
   const r=CT.relations||[], im=CT.interested_in_mine||[];
   const rel=x=>`<div class="rel" data-c="${esc(x.key||x.wp_id)}"><div class="ini" style="background:${hue(x.name||x.email)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${esc(x.why||"")}</div></div></div>`;
@@ -593,7 +596,7 @@ function renderProp(){
     B.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${one(o,o&&o.is_agent?t("o.agent"):t("o.owner"),o&&o.is_agent?"agent":"seller")}${one(PR.buyer,t("o.buyer"),"buyer")}</div>
       ${vw.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.viewings",{n:vw.length})}</h3></div>${vw.map(v=>`<div class="sm" style="padding:4px 0">${fdate(v.date)} ${esc(v.time||"")} · ${esc(v.client||"")} · <span class="muted">${esc(v.agent||"")}</span></div>`).join("")}`:""}
       <div class="hd" style="padding:16px 0 8px"><h3>${t("h.interested",{n:it.length})}</h3></div>
-      ${it.length?`<div style="display:flex;flex-direction:column;gap:6px">${it.map(x=>`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name||x.email)};width:30px;height:30px;font-size:calc(11px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${x.n}× · ${esc((x.types||[]).join(", "))}</div></div><span class="sm muted">${ago(x.last)}</span></div>`).join("")}</div>`:`<div class="empty sm">${t("norequests")}</div>`}`}
+      ${it.length?`<div style="display:flex;flex-direction:column;gap:6px">${it.map(x=>`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name||x.email)};width:30px;height:30px;font-size:calc(11px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${x.n}× · ${esc((x.types||[]).map(rq).join(", "))}</div></div><span class="sm muted">${ago(x.last)}</span></div>`).join("")}</div>`:`<div class="empty sm">${t("norequests")}</div>`}`}
   if(prSub==="verrijking"){const k=PR.catastro, pm=PR.price_m2;
     const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.match_quality||k.match_method||"")} · ${ago(k.checked_at)}</span></div>${kv([[t("k.cadref"),`<a class="mono" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener">${esc(k.cadastral_ref)} ↗</a>`,1],[t("k.parcel"),k.parcel_ref],[t("k.unit"),[k.cat_block&&"bl. "+k.cat_block,k.cat_stair&&"esc. "+k.cat_stair,k.cat_floor&&"pl. "+k.cat_floor,k.cat_door&&"pta. "+k.cat_door].filter(Boolean).join(" · ")],[t("k.landclass"),k.land_class],[t("k.share"),k.participation_pct!=null?k.participation_pct+" %":null],[t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.year"),k.year_built],[t("k.built"),k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(CPR: ${num(p.build_area)} m²)</span>`:""):null,1],[t("k.living"),[k.living_area_m2&&num(k.living_area_m2)+" m² "+t("k.living.w"),k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],[t("k.plot"),k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],[t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
       :(k?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>Catastro</h3><span class="tag">${esc(k.status||t("k.notfound"))}</span></div><div class="note">${esc(k.error||t("k.nomatch"))}</div></div>`:"");
@@ -701,7 +704,7 @@ async function loadActivity(){
     <div class="card list"><div class="hd"><h3>${t("ac.req")}</h3><span class="sm muted">${t("ac.7d",{n:num(OV.requests_7d)})}</span></div><div class="rows scroll feed">${feedHtml(OV.activity)}</div></div>
     <div class="card list"><div class="hd"><h3>${t("ac.view")}</h3><span class="sm muted">${t("ac.planned",{n:num(OV.viewings_upcoming)})}</span></div><div class="rows scroll feed">${viewingsHtml(OV.viewings)}
     <div class="hd" style="border-top:1px solid var(--line)"><h3>${t("ov.notaries")}</h3></div>${notariesHtml(OV.notaries)}
-    <div class="hd" style="border-top:1px solid var(--line)"><h3>${t("ac.types")}</h3></div><div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:6px">${(OV.req_types_30d||[]).map(x=>`<span class="tag">${esc(x.t)} · ${x.n}</span>`).join("")}</div></div></div></div>`;
+    <div class="hd" style="border-top:1px solid var(--line)"><h3>${t("ac.types")}</h3></div><div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:6px">${(OV.req_types_30d||[]).map(x=>`<span class="tag">${esc(rq(x.t))} · ${x.n}</span>`).join("")}</div></div></div></div>`;
 }
 
 })();
