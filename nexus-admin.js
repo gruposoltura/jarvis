@@ -206,7 +206,7 @@ function stepContact(){
   ${sec(["Persoon","Person"],row(sel("c.title",["Aanhef","Title"],[["Mr","Mr"],["Mrs","Mrs"],["Ms","Ms"],["Mr & Mrs","Mr & Mrs"],["Dhr.","Dhr."],["Mevr.","Mevr."],["Sr.","Sr."],["Sra.","Sra."]]),
        inp("c.first_name",["Voornaam","First name"],{req:"save",ac:"off"}),inp("c.last_name",["Achternaam","Last name"],{ac:"off"}),inp("c.company",["Bedrijf","Company"]))
      +row(sel("c.language",["Correspondentietaal","Correspondence language"],LANGS.map(l=>[l[0],[l[1],l[2]]]),{req:"save"}),inp("c.birthday",["Geboortedatum","Birthday"],{type:"date"}),
-       sel("c.owner",["Verantwoordelijk teamlid","Responsible team member"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}),sel("c.source",["Bron","Source"],SOURCES,{req:"save"}))
+       sel("c.owner",["Verantwoordelijk teamlid","Responsible team member"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}),sel("c.source",["Bron","Source"],SOURCES))
      +chk("c.keyholder",["Sleutelhouder (wij hebben de sleutel)","Keyholder (we hold the key)"])+`<small class="muted">${esc(tr(["Voornaam óf bedrijf is genoeg.","First name or company is enough."]))}</small>`)}
   ${sec(["E-mail en telefoon","E-mail and phone"],`
     <div class="ad-list">${c.emails.map((e,i)=>`<div class="ad-row">${inp(`c.emails.${i}.email`,i?["Extra e-mail","Extra e-mail"]:"E-mail",{type:"email",w:3,req:i?"":"save",ac:"off"})}${sel(`c.emails.${i}.kind`,["Soort","Kind"],EMAIL_KINDS,{empty:false})}
@@ -383,7 +383,6 @@ function validate(flow){
       em.filter(e=>!emailOk(e)).forEach(e=>add([`Ongeldig e-mailadres: ${e}`,`Invalid e-mail: ${e}`],"save",2));
       if(!c.language)add(["Correspondentietaal","Correspondence language"],"save",2);
       if(!c.owner)add(["Verantwoordelijk teamlid","Responsible team member"],"save",2);
-      if(!c.source)add(["Bron van het contact","Contact source"],"save",2);
       if(c.phones.some(p=>p.phone&&!/^\+/.test(p.phone.trim())))add(["Telefoon zonder landcode (+34, +31 …)","Phone without country code (+34, +31 …)"],"tip",2);
       if(DUPS.length)add([`${DUPS.length} mogelijk dubbel contact`,`${DUPS.length} possible duplicate contact(s)`],"tip",2)}
     if(isSeller()&&pm()==="none")add(["Verkoper zonder woning: kies ‘later’ of maak hem aan","Seller without property: choose ‘later’ or create it"],"tip",3);
@@ -437,7 +436,7 @@ function payload(flow){
   else{out["core.contacts"]={title:c.title||null,first_name:c.first_name||null,last_name:c.last_name||null,company:c.company||null,language:c.language||null,country:c.country||null,state:c.state||null,
       city:c.city||null,postcode:c.postcode||null,street:c.street||null,street_number:c.street_number||null,birthday:c.birthday||null,website:c.website||null,referred_by:c.referred_by||null,
       owner_id:teamName(c.owner),keyholder:!!c.keyholder,mailing_optin:c.mailing_optin,mailing_prefs:Object.fromEntries((c.mailing_optin?c.prefs:[]).map(k=>[k,{on:true}])),
-      search_profile:Object.fromEntries(Object.entries(c.search).filter(([,v])=>v)),internal_comments:c.internal_comments||null,source:"nexus:"+(c.source||"?")};
+      search_profile:Object.fromEntries(Object.entries(c.search).filter(([,v])=>v)),internal_comments:c.internal_comments||null,source:c.source?"nexus:"+c.source:"nexus"};
     out["core.contact_emails"]=c.emails.filter(e=>e.email).map((e,i)=>({email:e.email.trim().toLowerCase(),kind:e.kind||null,is_primary:i===0}));
     out["core.contact_phones"]=c.phones.filter(p=>p.phone).map((p,i)=>({phone:p.phone.trim(),kind:p.kind,is_primary:i===0}));
     out["core.contact_roles"]=c.roles.map(r=>({role:r}));}
