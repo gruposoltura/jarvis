@@ -35,7 +35,7 @@ const ro=k=>(!D.is_admin&&ADMIN_ONLY.includes(k));
 const feedMark=k=>P.origin==="partner"&&FEED_FIELDS.includes(k)?`<b class="pe-feed" title="${esc(tr(["Wordt elke nacht door de partnerfeed overschreven","Overwritten nightly by the partner feed"]))}">⟳</b>`:"";
 function inp(k,label,o={}){const v=P[k];let val=v??"";if(o.type==="date"&&val)val=String(val).slice(0,10);
   return `<label class="ad-f ${o.w?"w"+o.w:""}"><span>${esc(tr(label))}${feedMark(k)}${ro(k)?" 🔒":""}</span>
-   <input data-k="${k}" type="${o.type||"text"}" value="${esc(val)}" ${o.step?`step="${o.step}"`:""} ${o.min!=null?`min="${o.min}"`:""} ${o.ph?`placeholder="${esc(tr(o.ph))}"`:""} ${ro(k)||o.ro?"disabled":""}>${o.hint?`<small>${esc(tr(o.hint))}</small>`:""}</label>`}
+   <input data-k="${k}" type="${o.type||"text"}" value="${esc(val)}" ${o.step?`step="${o.step}"`:""} ${o.min!=null?`min="${o.min}"`:""} ${o.ph?`placeholder="${esc(tr(o.ph))}"`:""} ${o.list?`list="${o.list}"`:""} ${ro(k)||o.ro?"disabled":""}>${o.hint?`<small>${esc(tr(o.hint))}</small>`:""}</label>`}
 function sel(k,label,opts,o={}){const v=P[k]==null?"":String(P[k]);const has=opts.some(x=>String(x[0])===v);
   return `<label class="ad-f ${o.w?"w"+o.w:""}"><span>${esc(tr(label))}${feedMark(k)}${ro(k)?" 🔒":""}</span><select data-k="${k}" ${ro(k)?"disabled":""}>
    ${o.empty!==false?`<option value="">—</option>`:""}${!has&&v?`<option value="${esc(v)}" selected>${esc(v)} ${esc(tr(["(huidig)","(current)"]))}</option>`:""}
@@ -74,6 +74,7 @@ function render(keepScroll){
    <footer class="pe-ft">${D.is_admin&&p.origin!=="partner"?`<button class="btn pe-del" data-act="delete" title="${esc(tr(["Woning definitief verwijderen (alleen beheerder)","Delete property permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span>
      <button class="btn" data-act="close">${esc(tr(["Annuleren","Cancel"]))}</button>
      <button class="btn ad-next" data-act="save" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
+  ROOT.querySelector(".pe-box").insertAdjacentHTML("beforeend",`<datalist id="peRegistros">${(LK.registry||[]).map(x=>`<option value="${esc(x)}">`).join("")}</datalist><datalist id="peNotaries">${(LK.notary||[]).map(x=>`<option value="${esc(x)}">`).join("")}</datalist>`);
   ROOT.querySelector("#peMain").scrollTop=sc;
   upDirty();initMap();wireMedia();
 }
@@ -89,7 +90,7 @@ function secStatus(){const p=P;
     +`<h5>${esc(tr(["Verkoop","Sale"]))}${D.is_admin?"":` <span class="sm muted">🔒 ${esc(tr(["alleen beheerder","admin only"]))}</span>`}</h5>`
     +row(inp("sold_price",["Verkoopprijs (€)","Sold price (€)"],{type:"number",min:0,step:1000}),inp("sold_date",["Verkoopdatum","Sale date"],{type:"date"}),
          sel("sold_agent_id",["Verkocht door","Sold by"],D.team.map(t=>[t.id,t.name])),inp("sold_agent_text",["Verkocht door (vrij)","Sold by (free text)"]))
-    +row(inp("notary",["Notaris","Notary"],{w:2}),inp("notary_protocol",["Protocolnummer","Protocol number"]),D.is_admin?inp("deed_price",["Aktewaarde (€)","Deed value (€)"],{type:"number",min:0,step:1000}):"")
+    +row(inp("notary",["Notaris","Notary"],{w:2,list:"peNotaries",ph:["kies of typ","pick or type"]}),inp("notary_protocol",["Protocolnummer","Protocol number"]),D.is_admin?inp("deed_price",["Aktewaarde (€)","Deed value (€)"],{type:"number",min:0,step:1000}):"")
     +chk("sold_price_display",["Verkoopprijs tonen op de site","Display sold price"])
     +(D.is_admin?`<h5>${esc(tr(["Commissie","Commission"]))}</h5>`+row(inp("commission_a",["Commissie A (€)","Commission A (€)"],{type:"number",step:"any"}),inp("commission_b",["Commissie B (€)","Commission B (€)"],{type:"number",step:"any"}),
          inp("commission_out",["Commissie uit (€)","Commission out (€)"],{type:"number",step:"any"}),inp("conveyancing",["Conveyancing (€)","Conveyancing (€)"],{type:"number",step:"any"}))
@@ -140,7 +141,7 @@ function secMedia(){
 function secCosts(){const n=(k,lab)=>inp(k,lab,{type:"number",min:0});
   return sec("kost",["Kosten en kadaster","Costs and registry"],`<div class="ad-cols3"><div><h5>${esc(tr(["Vaste lasten per jaar (€)","Running costs per year (€)"]))}</h5>${n("cost_community",["Gemeenschap","Community"])}${n("cost_ibi","IBI")}${n("cost_garbage",["Afval","Garbage"])}${n("cost_insurance",["Verzekering","Insurance"])}</div>
     <div><h5>${esc(tr(["Kosten koper (€)","Buyer costs (€)"]))}</h5>${n("fee_transfer_tax",["Overdrachtsbelasting","Transfer tax"])}${n("fee_notary",["Notaris","Notary"])}${n("fee_registry","Registro")}${n("fee_legal",["Advocaat","Legal"])}</div>
-    <div><h5>${esc(tr(["Kadaster","Registry"]))}</h5>${inp("cadastral_ref",["Kadastrale referentie","Cadastral reference"])}${inp("finca_number",["Fincanummer","Finca number"])}</div></div>`)}
+    <div><h5>${esc(tr(["Kadaster","Registry"]))}</h5>${inp("cadastral_ref",["Kadastrale referentie","Cadastral reference"])}${inp("finca_number",["Fincanummer","Finca number"]),inp("registry_name",["Registro de la Propiedad","Land registry"],{list:"peRegistros",ph:["kies of typ","pick or type"]})}</div></div>`)}
 function secContacts(){const C=D.contacts||{};
   const box=(k,col,lab,role)=>{const c=C[k];const cur=P[col];
     return `<div class="ad-f w2"><span>${esc(tr(lab))}</span>${cur&&c&&c.id===cur?`<div class="ad-picked"><div class="ini" style="background:var(--c-ct)">${esc((c.name||"?")[0].toUpperCase())}</div><div style="min-width:0"><b>${esc(c.name||"—")}</b><div class="sm muted">${esc(c.email||"")}</div></div>
@@ -243,6 +244,7 @@ let pT;function pickSearch(el){clearTimeout(pT);pT=setTimeout(async()=>{const co
 /* ---------- laden / opslaan ---------- */
 async function load(ref){
   shell();TOUCH={};TTOUCH={};MEDIA_DIRTY=false;PICKED={};
+  await loadLK();
   try{D=await X.rpc("nexus_property_edit",{p_ref:ref})}catch(e){ROOT.querySelector(".pe-box").innerHTML=`<div class="pe-load">${esc(e.message)} <button class="btn" data-act="close">×</button></div>`;return}
   if(!D){ROOT.querySelector(".pe-box").innerHTML=`<div class="pe-load">${esc(tr(["Woning niet gevonden","Property not found"]))} <button class="btn" data-act="close">×</button></div>`;return}
   P=JSON.parse(JSON.stringify(D.property));T=JSON.parse(JSON.stringify(D.texts||{}));M=JSON.parse(JSON.stringify(D.media||[]));
@@ -252,6 +254,8 @@ async function load(ref){
 function close(){if(dirtyCount()&&!confirm(tr(["Er zijn niet-opgeslagen wijzigingen. Toch sluiten?","There are unsaved changes. Close anyway?"])))return;
   M&&M.forEach(m=>m.file&&m.url&&URL.revokeObjectURL(m.url));if(MAP){MAP.remove();MAP=null}
   ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")}
+let LK={};
+async function loadLK(){if(LK.registry)return;try{LK=await X.rpc("nexus_lookups",{})||{}}catch(_){LK={}}}
 async function delProp(){
   const ref=P.reference;
   const typed=prompt(tr([`Woning ${ref} definitief verwijderen? Teksten, foto-verwijzingen en prijshistorie gaan mee; aanvragen en bezichtigingen blijven bestaan zonder woning. Er wordt een volledige kopie in het auditlog bewaard.\n\nTyp ${ref} om te bevestigen:`,
