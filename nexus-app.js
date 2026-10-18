@@ -225,6 +225,7 @@ function renderOverview(){
     ${kp(num(o.requests_7d),t("kpi.req"),t("kpi.req.s",{a:num(o.requests_30d),b:num(o.leads_7d)}),"--c-ac","ac")}
     ${kp(num(o.viewings_upcoming),t("kpi.view"),t("kpi.view.s",{n:num(o.hot_pending)}),"--c-ac","ac")}
    </div>
+   <div class="card ov-web" id="ovWeb"><div class="loader sm">${L2("Websitecijfers laden…","Loading website figures…")}</div></div>
    <div class="card ov-roles"><div class="hd"><h3>${t("ov.roles")}</h3><span class="sm muted">${t("ov.clickfilter")}</span></div>
      <div class="scroll" style="flex:1;padding:6px 0">${order.map(r=>`<div class="rolebar" data-role="${r}" style="--rc:var(${(ROLE[r]||[])[1]})">
        <span>${roleTag(r)}</span><div class="bar"><span style="width:${((roles[r]||0)/maxR*100).toFixed(1)}%"></span></div><span class="n">${num(roles[r]||0)}</span></div>`).join("")}
@@ -246,6 +247,38 @@ function renderOverview(){
     if(tb==="pr"&&a){prStatus=a;buildStatusChips();prLoaded=false}
     location.hash=tb;});
   p.querySelectorAll("[data-role]").forEach(r=>r.onclick=()=>{ctRole=r.dataset.role;buildRoleChips();ctLoaded=false;location.hash="ct"});
+  loadSiteStrip();
+}
+/* ---------- websitecijfers op Overzicht: eigen meting (web_events) + formulieren (core.requests) + GA4 (kpi_daily) ---------- */
+let SITE=null, siteDays=(()=>{try{return +localStorage.getItem("nexus-site-days")||7}catch(e){return 7}})();
+async function loadSiteStrip(force){
+  const box=$("#ovWeb");if(!box)return;
+  if(!SITE||force||SITE.days!==siteDays){try{SITE=await rpc("nexus_site_overview",{p_days:siteDays})}catch(e){box.innerHTML=`<div class="empty sm">${esc(e.message)}</div>`;return}}
+  renderSiteStrip();
+}
+function renderSiteStrip(){
+  const box=$("#ovWeb");if(!box||!SITE)return;
+  const S=SITE, c=S.cur||{}, pv=S.prev||{}, dl=S.daily||[], gl=S.ga_last||{}, oy=S.own_yesterday||{};
+  const mmss=v=>v==null?"—":`${Math.floor(v/60)}:${String(Math.round(v%60)).padStart(2,"0")}`;
+  const dlt=(a,b)=>{if(!b||a==null)return"";const x=Math.round((a-b)/b*100);if(!isFinite(x)||x===0)return"";return ` <span class="dl ${x>0?"up":"dn"}">${x>0?"▲":"▼"} ${Math.abs(x)}%</span>`};
+  const bars=(k,col)=>{const v=dl.map(x=>x[k]==null?null:+x[k]), mx=Math.max(1,...v.filter(x=>x!=null));
+    return `<div class="wb-bars" style="--bc:${col}">${dl.map((x,i)=>`<i title="${fdate(x.day)}: ${v[i]==null?"—":k==="ga_dur"?mmss(v[i]):num(v[i])}" style="height:${v[i]==null?0:Math.max(4,v[i]/mx*100)}%" class="${v[i]==null?"na":""}"></i>`).join("")}</div>`};
+  const tile=(lab,val,sub,k,col,go)=>`<div class="wb-t" ${go?`data-go="${go}"`:""} style="--bc:${col}"><div class="l">${lab}</div><div class="v">${val}</div><div class="s">${sub}</div>${bars(k,col)}</div>`;
+  const per=L2(`${S.days} d`,`${S.days} d`), gaGap=(c.ga_days||0)<S.days;
+  box.innerHTML=`<div class="hd"><h3>${L2("Website","Website")} · <span class="muted" style="font-weight:500">${L2("laatste","last")} ${S.days} ${L2("dagen","days")}</span></h3>
+     <div class="seg sm" id="wbDays">${[7,30].map(n=>`<button data-n="${n}" class="${S.days===n?"on":""}">${n} d</button>`).join("")}</div></div>
+   <div class="wb-grid">
+    ${tile(L2("Bezoekers gisteren","Visitors yesterday")+" <span class='src'>GA4</span>",num(gl.users),`${gl.day?fdate(gl.day)+" · ":""}${L2("eigen meting","own")}: ${num(oy.visitors||0)}`,"ga_users","#3b82f6")}
+    ${tile(L2("Bezoekers","Visitors")+` ${per} <span class='src'>GA4</span>`,num(c.ga_users)+dlt(c.ga_days?c.ga_users/c.ga_days:null,pv.ga_days?pv.ga_users/pv.ga_days:null),`${num(c.ga_sessions)} ${L2("sessies","sessions")} · ${L2("eigen","own")}: ${num(c.visitors)}`,"ga_users","#3b82f6")}
+    ${tile(L2("Gem. tijd per bezoek","Avg. time per visit")+" <span class='src'>GA4</span>",mmss(c.ga_dur)+dlt(c.ga_dur,pv.ga_dur),`${L2("gisteren","yesterday")}: ${mmss(gl.dur)}`,"ga_dur","#06b6d4")}
+    ${tile(L2("Startpagina","Home page"),num(c.home),L2("bezoeken (sessies)","visits (sessions)"),"home","#22c55e")}
+    ${tile(L2("Woningpagina's","Property pages"),num(c.prop_views),`${L2("bekeken in","viewed in")} ${num(c.prop_sessions)} ${L2("sessies","sessions")}`,"prop_views","#f59e0b","pr")}
+    ${tile(L2("Zoekopdrachten","Searches"),num(c.searches),L2("ingetypt op de site","typed on the site"),"searches","#a855f7")}
+    ${tile(L2("Formulieren","Forms"),num(c.forms),`${num(c.intents)} ${L2("contactklikken","contact clicks")}`,"forms","#ec4899","ac")}
+   </div>
+   ${gaGap?`<div class="sm muted wb-note">${L2(`GA4 loopt een dag achter${(c.ga_days||0)<S.days-1?"; sinds de overstap op 18-10 vult GA4 weer vanaf nu":""}. Eigen meting loopt sinds 17-10.`,`GA4 lags one day${(c.ga_days||0)<S.days-1?"; since the switch on 18 Oct GA4 refills from now":""}. Own measurement runs since 17 Oct.`)}</div>`:""}`;
+  box.querySelectorAll("#wbDays button").forEach(b=>b.onclick=()=>{siteDays=+b.dataset.n;try{localStorage.setItem("nexus-site-days",siteDays)}catch(e){};loadSiteStrip(true)});
+  box.querySelectorAll("[data-go]").forEach(k=>k.onclick=()=>{location.hash=k.dataset.go});
 }
 /* komende afspraken uit nexus_agenda (agenda-scans van ViewingLogger en ModeloReminder) */
 const ownerName=e=>{const m=String(e||"").match(/^([a-z]+)@gruposoltura\.com$/i);return m?m[1][0].toUpperCase()+m[1].slice(1):(e||"")};
