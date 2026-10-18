@@ -300,6 +300,16 @@ async function openContact(key,ctx){X=ctx;
   const RL=[["suspect","Suspect"],["seller","Seller"],["buyer","Buyer"],["suspect_seller","Suspect-Seller"],["agent","Agent"]];
   const r0=new Set((C.contact.roles||[]).map(x=>String(x).replace(/-/g,"_")).filter(x=>RL.some(r=>r[0]===x)));
   const rs=new Set(r0); let mkProp=false;
+  /* e-mails, telefoons en verantwoordelijk teamlid */
+  const ch0=C.channels||{emails:(C.details&&C.details.emails||[]).map((e,i)=>({email:e.value,kind:e.label||"",is_primary:i===0})),phones:(C.details&&C.details.phones||[]).map((p,i)=>({phone:p.value,kind:p.label||"",is_primary:i===0}))};
+  const EM=JSON.parse(JSON.stringify(ch0.emails||[])), PH=JSON.parse(JSON.stringify(ch0.phones||[]));
+  const norm=a=>JSON.stringify(a.filter(x=>(x.email||x.phone||"").trim()).map(x=>[(x.email||x.phone||"").trim().toLowerCase(),x.kind||"",!!x.is_primary]));
+  const chChanged=()=>norm(EM)!==norm(ch0.emails||[])||norm(PH)!==norm(ch0.phones||[]);
+  const EK=[["",tr(["—","—"])],["private",tr(["Privé","Private"])],["work",tr(["Werk","Work"])]], PK=[["mobile",tr(["Mobiel","Mobile"])],["phone",tr(["Vast","Landline"])],["work",tr(["Werk","Work"])],["whatsapp","WhatsApp"],["",tr(["—","—"])]];
+  const chRows=(arr,key,kinds,ph)=>arr.map((x,i)=>`<div class="pe-ch"><input data-ch="${key}" data-i="${i}" data-f="${key==="em"?"email":"phone"}" value="${esc(x.email||x.phone||"")}" placeholder="${esc(ph)}" type="${key==="em"?"email":"tel"}">
+     <select data-ch="${key}" data-i="${i}" data-f="kind">${kinds.map(k=>`<option value="${k[0]}" ${String(x.kind||"")===k[0]?"selected":""}>${esc(k[1])}</option>`).join("")}</select>
+     <label class="ad-c" title="${esc(tr(["Hoofdadres","Primary"]))}"><input type="radio" name="pr-${key}" data-ch="${key}" data-i="${i}" data-f="is_primary" ${x.is_primary?"checked":""}><span>★</span></label>
+     <button type="button" class="ad-x" data-chdel="${key}" data-i="${i}">×</button></div>`).join("")+`<button type="button" class="btn sm" data-chadd="${key}">+ ${esc(key==="em"?tr(["e-mail","e-mail"]):tr(["telefoon","phone"]))}</button>`;
   const isSell=set=>set.has("seller")||set.has("suspect_seller");
   const rolesChanged=()=>r0.size!==rs.size||[...rs].some(x=>!r0.has(x));
   const propOpt=()=>isSell(rs)&&!isSell(r0)?`<label class="ad-c pe-mkprop"><input type="checkbox" id="peMkProp" ${mkProp?"checked":""}><span><b>${esc(tr(["Woning aanmaken voor dit contact","Create a property for this contact"]))}</b> · ${esc(tr(["na opslaan opent ‘Woning toevoegen’ met dit contact als eigenaar","after saving, ‘Add property’ opens with this contact as owner"]))}</span></label>`:(isSell(rs)&&!(C.properties||[]).some(p=>p.relation==="eigenaar")?`<button type="button" class="btn sm" id="peMkPropBtn">+ ${esc(tr(["Woning aanmaken voor dit contact","Create a property for this contact"]))}</button>`:"");
@@ -314,12 +324,27 @@ async function openContact(key,ctx){X=ctx;
      <section class="ad-sec"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
        <div class="ad-row">${CFIELDS.slice(8).map(f=>`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" value="${esc(v[f[0]]??"")}"></label>`).join("")}</div>
        <label class="ad-f w4"><span>${esc(tr(["Interne opmerking","Internal note"]))}</span><textarea data-cf="internal_comments" rows="4">${esc(v.internal_comments||"")}</textarea></label></section>
-     <div class="sm muted">${esc(tr(["E-mailadressen en telefoons volgen in een volgende stap.","E-mail addresses and phones follow in a next step."]))}</div></div>
+     <section class="ad-sec"><h4>${esc(tr(["E-mail en telefoon","E-mail and phone"]))}</h4>
+       <div class="pe-chs" id="peEm">${chRows(EM,"em",EK,"naam@voorbeeld.com")}</div>
+       <div class="pe-chs" id="pePh" style="margin-top:10px">${chRows(PH,"ph",PK,"+34 …")}</div>
+       <small class="muted">${esc(tr(["★ = hoofdadres (gebruikt voor mailings en WhatsApp). Telefoon met landcode, bijv. +34 of +31.","★ = primary (used for mailings and WhatsApp). Phone with country code, e.g. +34 or +31."]))}</small></section>
+     ${(C.team||[]).length?`<section class="ad-sec"><h4>${esc(tr(["Verantwoordelijk","Responsible"]))}</h4><label class="ad-f" style="max-width:320px"><span>${esc(tr(["Teamlid","Team member"]))}</span><select data-cf="owner_id"><option value="">—</option>${C.team.map(t=>`<option value="${t.id}" ${o.owner_id===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label></section>`:""}
+     </div>
      <footer class="pe-ft"><span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
-    const diff=()=>{const d={};for(const k in v){if(["keyholder","internal_comments"].concat(CFIELDS.map(f=>f[0])).includes(k)){const a=v[k]===""?null:v[k],b=o[k]===""?null:o[k];if(JSON.stringify(a)!==JSON.stringify(b))d[k]=a}}return d};
-    const up=()=>{const n=Object.keys(diff()).length+(rolesChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
+    const diff=()=>{const d={};for(const k in v){if(["keyholder","internal_comments","owner_id"].concat(CFIELDS.map(f=>f[0])).includes(k)){const a=v[k]===""?null:v[k],b=o[k]===""?null:o[k];if(JSON.stringify(a)!==JSON.stringify(b))d[k]=a}}return d};
+    const up=()=>{const n=Object.keys(diff()).length+(rolesChanged()?1:0)+(chChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
     ROOT.querySelectorAll("[data-cf]").forEach(el=>el.oninput=el.onchange=()=>{v[el.dataset.cf]=el.type==="checkbox"?el.checked:el.value;up()});
+    const wireCh=()=>{
+      ROOT.querySelectorAll("[data-ch]").forEach(el=>el.oninput=el.onchange=()=>{const arr=el.dataset.ch==="em"?EM:PH, i=+el.dataset.i, f=el.dataset.f;
+        if(f==="is_primary"){arr.forEach((x,j)=>x.is_primary=j===i)}else arr[i][f]=el.value;up()});
+      ROOT.querySelectorAll("[data-chadd]").forEach(b=>b.onclick=()=>{const key=b.dataset.chadd, arr=key==="em"?EM:PH;
+        arr.push(key==="em"?{email:"",kind:"",is_primary:!arr.length}:{phone:"",kind:"mobile",is_primary:!arr.length});redrawCh(key);
+        const ins=ROOT.querySelectorAll(`[data-ch="${key}"][data-f="${key==="em"?"email":"phone"}"]`);if(ins.length)ins[ins.length-1].focus()});
+      ROOT.querySelectorAll("[data-chdel]").forEach(b=>b.onclick=()=>{const key=b.dataset.chdel, arr=key==="em"?EM:PH, i=+b.dataset.i;const wasP=arr[i].is_primary;
+        arr.splice(i,1);if(wasP&&arr.length)arr[0].is_primary=true;redrawCh(key);up()})};
+    const redrawCh=key=>{ROOT.querySelector(key==="em"?"#peEm":"#pePh").innerHTML=key==="em"?chRows(EM,"em",EK,"naam@voorbeeld.com"):chRows(PH,"ph",PK,"+34 …");wireCh()};
+    wireCh();
     const wireProp=()=>{const cb=ROOT.querySelector("#peMkProp");if(cb)cb.onchange=()=>{mkProp=cb.checked};
       const bt=ROOT.querySelector("#peMkPropBtn");if(bt)bt.onclick=()=>{closeC();goNewProp()}};
     ROOT.querySelectorAll("[data-role]").forEach(b=>b.onclick=()=>{const r=b.dataset.role;
@@ -327,10 +352,13 @@ async function openContact(key,ctx){X=ctx;
       b.classList.toggle("on",rs.has(r));if(!isSell(rs))mkProp=false;
       ROOT.querySelector("#peProp").innerHTML=propOpt();wireProp();up()});
     wireProp();
-    ROOT.querySelectorAll('[data-act="cclose"]').forEach(b=>b.onclick=()=>{if(Object.keys(diff()).length&&!confirm(tr(["Niet-opgeslagen wijzigingen. Toch sluiten?","Unsaved changes. Close anyway?"])))return;ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")});
-    ROOT.querySelector('[data-act="csave"]').onclick=async()=>{const d=diff();if(!Object.keys(d).length&&!rolesChanged())return;const b=ROOT.querySelector("#peSave");b.disabled=true;b.textContent=tr(["Opslaan…","Saving…"]);
+    ROOT.querySelectorAll('[data-act="cclose"]').forEach(b=>b.onclick=()=>{if((Object.keys(diff()).length||rolesChanged()||chChanged())&&!confirm(tr(["Niet-opgeslagen wijzigingen. Toch sluiten?","Unsaved changes. Close anyway?"])))return;ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")});
+    ROOT.querySelector('[data-act="csave"]').onclick=async()=>{const d=diff();if(!Object.keys(d).length&&!rolesChanged()&&!chChanged())return;
+      const badE=EM.map(x=>(x.email||"").trim()).filter(e=>e&&!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(e));
+      if(badE.length){ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(tr(["Ongeldig e-mailadres: ","Invalid e-mail: "])+badE.join(", "))}</div>`;return}const b=ROOT.querySelector("#peSave");b.disabled=true;b.textContent=tr(["Opslaan…","Saving…"]);
       try{if(Object.keys(d).length)await X.rpc("nexus_contact_save",{p_id:o.id,p_patch:d});
         if(rolesChanged())await X.rpc("nexus_contact_roles_set",{p_id:o.id,p_roles:[...rs]});
+        if(chChanged())await X.rpc("nexus_contact_channels_set",{p_id:o.id,p_emails:EM.filter(x=>(x.email||"").trim()),p_phones:PH.filter(x=>(x.phone||"").trim())});
         const go=mkProp&&isSell(rs);closeC();toast(tr(["Opgeslagen","Saved"]));X.onSaved&&X.onSaved(o.id);if(go)goNewProp()}
       catch(e){b.disabled=false;b.textContent=tr(["Opslaan","Save"]);ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(e.message||String(e))}</div>`}};
     up()};
