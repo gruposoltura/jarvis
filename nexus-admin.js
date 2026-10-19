@@ -361,11 +361,8 @@ function propForm(base,media){
        <div><b>${esc(tr(["Sleep foto's hierheen of klik om te kiezen","Drop photos here or click to choose"]))}</b><div class="sm muted">${esc(tr(["JPG/PNG/WebP, ook plattegronden en PDF (energiecertificaat). Eerste foto = hoofdfoto. Volgorde aanpassen door te slepen.","JPG/PNG/WebP, also floor plans and PDF (energy certificate). First photo = main photo. Drag to reorder."]))}</div></div></div>
      <div class="ad-media" id="adMedia-${base}"></div>
      <small class="muted">${esc(tr(["Foto's blijven alleen in dit venster; ze worden pas geüpload naar Supabase Storage (bucket property-media) na koppeling.","Photos stay in this window only; they are uploaded to Supabase Storage (bucket property-media) once connected."]))}</small>`,{id:"pf-media"})}
-  ${sec(["Kosten en kadaster","Costs and land registry"],`<div class="ad-cols3"><div><h5>${esc(tr(["Vaste lasten per jaar (€)","Running costs per year (€)"]))}</h5>
-       ${inp(B("cost_community"),["Gemeenschapskosten","Community fees"],{type:"number",min:0})}${inp(B("cost_garbage"),["Afvalheffing","Garbage fee"],{type:"number",min:0})}
-       ${inp(B("cost_ibi"),["IBI (onroerendgoedbelasting)","IBI (property tax)"],{type:"number",min:0})}${inp(B("cost_insurance"),["Opstalverzekering","Home insurance"],{type:"number",min:0})}</div>
-     <div><h5>${esc(tr(["Kosten koper (€)","Buyer costs (€)"]))}</h5>${inp(B("fee_transfer_tax"),["Overdrachtsbelasting (ITP)","Transfer tax (ITP)"],{type:"number",min:0})}
-       ${inp(B("fee_notary"),["Notaris","Notary"],{type:"number",min:0})}${inp(B("fee_registry"),["Registro","Registry"],{type:"number",min:0})}${inp(B("fee_legal"),["Advocaat","Legal"],{type:"number",min:0})}</div>
+  ${/* BESLUIT Rick 18/19-10-2026: geen kosten koper en geen vaste lasten in NEXUS. Niet terugzetten. */""}
+  ${sec(["Eigendomsakte","Title deed"],`<div class="ad-cols3">
      <div><h5>${esc(tr(["Eigendomsakte","Title deed"]))}</h5>${inp(B("registry_name"),["Registro de la Propiedad","Land registry"],{list:"adRegistros",ph:["kies of typ, bijv. Torrevieja nº 2","pick or type, e.g. Torrevieja nº 2"]})}<datalist id="adRegistros">${(LOOKUPS.registry||[]).map(x=>`<option value="${esc(x)}">`).join("")}</datalist>${inp(B("finca_number"),["Fincanummer","Finca number"])}
        ${inp(B("cadastral_ref"),["Kadastrale referentie","Cadastre number"],{hint:["20 tekens; hiermee worden de kadastergegevens opgehaald","20 characters; used to fetch the cadastral data"]})}</div></div>
      <div class="ad-note sm">${esc(tr(["Verkoopprijs, notaris en commissies vul je later in via ✎ Bewerken op de woning (alleen beheerder).","Sale price, notary and commissions are entered later via ✎ Edit on the property (admin only)."]))}</div>`,{id:"pf-kost"})}

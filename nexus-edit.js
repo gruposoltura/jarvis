@@ -53,7 +53,7 @@ const row=(...c)=>`<div class="ad-row">${c.join("")}</div>`;
 
 /* ---------- opbouw ---------- */
 const NAV=[["status",["Status","Status"]],["basis",["Basis","Basics"]],["prijs",["Prijs","Price"]],["loc",["Locatie","Location"]],["ind",["Indeling","Layout"]],
-  ["ken",["Kenmerken","Features"]],["tekst",["Teksten","Texts"]],["media",["Foto's","Photos"]],["kost",["Kosten & kadaster","Costs & registry"]],["con",["Contacten","Contacts"]],
+  ["ken",["Kenmerken","Features"]],["tekst",["Teksten","Texts"]],["media",["Foto's","Photos"]],["kost",["Eigendomsakte","Title deed"]],["con",["Contacten","Contacts"]],
   ["pub",["Publicatie","Publishing"]],["sale",["Verkoop","Sale"]],["hist",["Historie","History"]]];
 function shell(){
   ROOT=document.getElementById("pe");if(!ROOT){ROOT=document.createElement("div");ROOT.id="pe";document.body.appendChild(ROOT);bind()}
@@ -142,9 +142,9 @@ function secMedia(){
       <div><b>${esc(tr(["Sleep foto's hierheen of klik om te uploaden","Drop photos here or click to upload"]))}</b><div class="sm muted">${esc(tr(["JPG/PNG/WebP of PDF, max. 20 MB. Upload gebeurt bij Opslaan. Sleep om de volgorde te wijzigen; ★ = hoofdfoto.","JPG/PNG/WebP or PDF, max 20 MB. Uploaded on Save. Drag to reorder; ★ = main photo."]))}</div></div></div>
     <div class="ad-media" id="peMedia"></div>`,{aside:`<span class="sm muted">${M.filter(m=>!m.del).length}</span>`})}
 function secCosts(){const n=(k,lab)=>inp(k,lab,{type:"number",min:0});
-  return sec("kost",["Kosten en kadaster","Costs and registry"],`<div class="ad-cols3"><div><h5>${esc(tr(["Vaste lasten per jaar (€)","Running costs per year (€)"]))}</h5>${n("cost_community",["Gemeenschap","Community"])}${n("cost_ibi","IBI")}${n("cost_garbage",["Afval","Garbage"])}${n("cost_insurance",["Verzekering","Insurance"])}</div>
-    <div><h5>${esc(tr(["Kosten koper (€)","Buyer costs (€)"]))}</h5>${n("fee_transfer_tax",["Overdrachtsbelasting","Transfer tax"])}${n("fee_notary",["Notaris","Notary"])}${n("fee_registry","Registro")}${n("fee_legal",["Advocaat","Legal"])}</div>
-    <div><h5>${esc(tr(["Kadaster","Registry"]))}</h5>${inp("cadastral_ref",["Kadastrale referentie","Cadastral reference"])}${inp("finca_number",["Fincanummer","Finca number"]),inp("registry_name",["Registro de la Propiedad","Land registry"],{list:"peRegistros",ph:["kies of typ","pick or type"]})}</div></div>`)}
+  /* BESLUIT Rick 18/19-10-2026: geen kosten koper en geen vaste lasten in NEXUS. Niet terugzetten. */
+  return sec("kost",["Eigendomsakte","Title deed"],`<div class="ad-cols3">
+    <div><h5>${esc(tr(["Kadaster","Registry"]))}</h5>${inp("cadastral_ref",["Kadastrale referentie","Cadastral reference"])}${inp("finca_number",["Fincanummer","Finca number"])}${inp("registry_name",["Registro de la Propiedad","Land registry"],{list:"peRegistros",ph:["kies of typ","pick or type"]})}</div></div>`)}
 function secContacts(){const C=D.contacts||{};
   const box=(k,col,lab,role)=>{const c=C[k];const cur=P[col];
     return `<div class="ad-f w2"><span>${esc(tr(lab))}</span>${cur&&c&&c.id===cur?`<div class="ad-picked"><div class="ini" style="background:var(--c-ct)">${esc((c.name||"?")[0].toUpperCase())}</div><div style="min-width:0"><b>${esc(c.name||"—")}</b><div class="sm muted">${esc(c.email||"")}</div></div>
