@@ -173,7 +173,9 @@ const munis=()=>Object.keys(LOCS||LOC_FALLBACK).sort((a,b)=>a.localeCompare(b,"e
 let LOOKUPS={}, LOOKUPS_LOADED=false;
 function loadLookups(){if(LOOKUPS_LOADED)return Promise.resolve();LOOKUPS_LOADED=true;
   return X.rpc("nexus_lookups",{}).then(r=>{LOOKUPS=r||{}}).catch(()=>{LOOKUPS_LOADED=false})}
+let PENDING=null; /* start-actie van buiten Admin, toegepast ná het laden van het concept */
 function open(root,ctx){X=ctx;ROOT=root;if(!ROOT.dataset.init){load();ROOT.dataset.init="1";bind()}
+  if(PENDING){const f=PENDING;PENDING=null;f()}
   if(!S.c.owner&&X.me())S.c.owner=String(X.me().wp_author_id||"");
   if(!S.p.listing_agent&&X.me())S.p.listing_agent=String(X.me().wp_author_id||"");
   render();loadLocations().then(()=>{if(ROOT.querySelector("#adMuni"))render()});
@@ -797,7 +799,7 @@ let agT;function agentDup(){clearTimeout(agT);agT=setTimeout(async()=>{const box
 
 window.NEXUS_ADMIN={open,rerender:()=>{if(ROOT&&ROOT.dataset.init)render()},
   /* vanuit Contacten: direct de workflow "Nieuw contact" openen (stap 2 = contact als er geen aanbrenger is) */
-  startNewContact:()=>{S.flow="wizard";S.step=1;S.contactMode="new";if(ROOT&&ROOT.dataset.init)render()},
+  startNewContact:()=>{const f=()=>{S.flow="wizard";S.step=1;S.contactMode="new";persist()};if(ROOT&&ROOT.dataset.init){f();render()}else PENDING=f},
   /* vanuit een contact dat Seller wordt: 'Woning toevoegen' met dit contact als eigenaar */
-  startNewProperty:owner=>{S.flow="prop";S.wp=S.wp||{owner:null,p:blankProp()};S.wp.owner=owner||null;persist();if(ROOT&&ROOT.dataset.init)render()}};
+  startNewProperty:owner=>{const f=()=>{DONE=null;S.flow="prop";S.wp=S.wp||{owner:null,p:blankProp()};S.wp.owner=owner||null;persist()};if(ROOT&&ROOT.dataset.init){f();render()}else PENDING=f}};
 })();

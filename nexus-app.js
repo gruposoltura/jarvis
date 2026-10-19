@@ -138,6 +138,7 @@ async function boot(){
   buildRoleChips();buildStatusChips();buildBuildSeg();
   /* Admin (invoerschermen, nog niet gekoppeld): voorlopig alleen voor de rol admin */
   $("#tabAd").classList.toggle("hidden",ME.role!=="admin");
+  $("#prNew").classList.toggle("hidden",ME.role!=="admin");
   route();
 }
 
@@ -171,6 +172,13 @@ const go={c:id=>location.hash="c/"+id,p:id=>location.hash="p/"+encodeURIComponen
 /* + Nieuw contact (rechtsboven in Contacten): naar Admin, workflow "Nieuw contact" */
 function newContact(){location.hash="ad";setTimeout(()=>{if(window.NEXUS_ADMIN&&NEXUS_ADMIN.startNewContact)NEXUS_ADMIN.startNewContact()},0)}
 document.addEventListener("click",e=>{if(e.target.closest("[data-newct]")){e.preventDefault();e.stopPropagation();newContact()}},true);
+/* + Nieuwe woning (Woningen-tab) en + Woning toevoegen (contact → Woningen): naar Admin, flow "Woning toevoegen".
+   Vanuit een contact staat dat contact meteen als eigenaar ingevuld; nexus_admin_submit koppelt het als 'owner'. */
+function newProp(owner){location.hash="ad";setTimeout(()=>{if(window.NEXUS_ADMIN&&NEXUS_ADMIN.startNewProperty)NEXUS_ADMIN.startNewProperty(owner||null)},0)}
+function ctOwner(){if(!CT)return null;const c=CT.contact||{},o=CT.core||{};if(!o.id)return null;
+  return {id:o.id,wp_id:c.wp_id||"",name:c.full_name||o.full_name||c.email,email:c.email||o.email,city:o.city||"",roles:(c.roles||[]).map(x=>String(x).replace("_","-"))}}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-newpr]");if(!b)return;e.preventDefault();e.stopPropagation();
+  newProp(b.dataset.newpr==="ct"?ctOwner():null)},true);
 /* Woning openen van buiten de woningenlijst (vanuit een contact, overzicht, activiteit of directe link):
    volledig scherm met alle details en een terugknop. Vanuit de lijst zelf blijft het de gesplitste weergave. */
 let prFocus=true, prFrom=null, prListY=null;
@@ -419,7 +427,7 @@ function ctProps(){
   const byRef={};im.forEach(x=>{(byRef[x.ref]=byRef[x.ref]||[]).push(x)});
   const nInt=p=>(byRef[p.reference]||[]).length;
   const rel=x=>`<div class="rel" data-c="${esc(x.key||x.wp_id)}"><div class="ini" style="background:${hue(x.name||"")};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||""))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||"")}</div><div class="sm muted">${esc(x.ref)} · ${t("x.requests",{n:x.n})}</div></div></div>`;
-  return `<div class="hd" style="padding:0 0 8px"><h3>${t("h.owned",{n:own.length})}</h3></div>
+  return `<div class="hd" style="padding:0 0 8px"><h3>${t("h.owned",{n:own.length})}</h3>${ME&&ME.role==="admin"&&CT.core&&CT.core.id?`<button class="btn sm act-newpr" type="button" data-newpr="ct">+ ${t("act.addpr")}</button>`:""}</div>
    ${own.length?`<div class="grid2">${own.map(p=>propCard(p,`<div style="margin-top:4px"><span class="role" style="--rc:var(${p.relation==="koper"?"--r-buyer":p.relation==="eigenaar"?"--r-seller":"--r-agent"})">${esc(relT(p.relation))}</span>${nInt(p)?` <span class="sm" style="margin-left:6px;color:var(--c-pr);font-weight:700">👥 ${t("x.interested",{n:nInt(p)})}</span>`:""}</div>`)).join("")}</div>`:`<div class="empty sm">${t("noowned")}</div>`}
    ${im.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.intmine",{n:im.length})}</h3></div><div class="grid2">${im.map(rel).join("")}</div>`:""}
    ${it.length||!own.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.interest",{n:it.length})}</h3></div>

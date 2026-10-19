@@ -815,3 +815,6 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .af-tile.af-amber .af-pct{color:#d97706;display:inline;font:inherit;font-weight:700}
 .af-inl{display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:help}
 .af-inl.af-red{color:#ef4444}.af-inl.af-amber{color:#d97706}
+/* + Nieuwe woning / + Woning toevoegen (19-10-2026) */
+.btn.act-newpr{background:var(--c-pr);border-color:var(--c-pr);color:#fff;font-weight:700;margin-left:auto;white-space:nowrap}.btn.act-newpr:hover{filter:brightness(1.1)}
+.btn.act-newpr.hidden{display:none}
