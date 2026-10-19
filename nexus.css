@@ -322,7 +322,8 @@ header .brand h1.wordmark{font-size:calc(42px*var(--fs,1));line-height:32px}
 .ad-main .ad-scroll{padding:18px 22px 30px}
 .ad-foot{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid var(--line);background:var(--card)}
 .ad-next{background:var(--c-ad);border:0;color:#0a0f1e}
-.ad-save{background:var(--card2);color:var(--tx3);cursor:not-allowed!important}
+.ad-save{background:var(--c-ad);border:0;color:#0a0f1e;font-weight:600;cursor:pointer}
+.ad-save:disabled{background:var(--card2);color:var(--tx3);cursor:not-allowed}
 .ad-intro h2{margin:0 0 4px;font:700 calc(22px*var(--fs,1))/1.2 'Space Grotesk'}.ad-intro p{margin:0 0 14px;max-width:760px}
 .ad-seg{margin-bottom:14px}.ad-seg button{padding:8px 14px;font-size:calc(13px*var(--fs,1))}.ad-seg.sm button{padding:5px 12px;font-size:calc(12px*var(--fs,1))}
 .ad-sec{border:1px solid var(--line);border-radius:12px;padding:14px 16px 10px;margin-bottom:14px;background:color-mix(in srgb,var(--card2) 45%,transparent);scroll-margin-top:10px}

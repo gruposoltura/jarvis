@@ -557,7 +557,8 @@ async function uploadMedia(pid,arr){
 function saveMsg(html,cls){const el=ROOT&&ROOT.querySelector("#adSaveMsg");if(el){el.innerHTML=html;el.className="ad-off sm"+(cls?" "+cls:"")}}
 async function submit(){
   if(BUSY||!canSave())return;
-  const flow=S.flow, payload=buildSubmit(flow);
+  const flow=S.flow;let payload;
+  try{payload=buildSubmit(flow)}catch(e){console.error("NEXUS admin buildSubmit",e);return saveMsg(`<b>${esc(tr(["Niet opgeslagen","Not saved"]))}</b>${esc(tr(["Fout bij samenstellen: ","Error building data: "]))+esc(e.message||String(e))}`,"err")}
   if(flow==="wizard"&&payload.contact.mode==="existing"&&!payload.contact.id)return saveMsg(esc(tr(["Kies het bestaande contact opnieuw (oude selectie zonder NEXUS-id).","Pick the existing contact again (old selection without NEXUS id)."])),"err");
   if(payload.agent&&payload.agent.mode==="existing"&&!payload.agent.id)return saveMsg(esc(tr(["Kies de makelaar opnieuw (oude selectie zonder NEXUS-id).","Pick the agent again (old selection without NEXUS id)."])),"err");
   if(payload.property&&payload.property.mode==="link"&&!payload.property.id)return saveMsg(esc(tr(["Kies de woning opnieuw (oude selectie zonder NEXUS-id).","Pick the property again (old selection without NEXUS id)."])),"err");
@@ -696,7 +697,7 @@ function bind(){
     if(d.rm){e.preventDefault();S.c[d.rm].splice(+d.i,1);persist();render();return}
     if(d.clear){({agent:()=>S.agent=null,existing:()=>S.existing=null,linkProp:()=>S.linkProp=null,wpOwner:()=>S.wp.owner=null,lkContact:()=>S.lk.contact=null,lkProp:()=>S.lk.prop=null})[d.clear]();persist();render();return}
     if(d.usedup){const x=DUPS.find(y=>String(y.id||y.wp_id)===d.usedup);if(x){S.contactMode="existing";S.existing={id:x.id,wp_id:x.wp_id,name:x.name,email:x.email,city:x.city,roles:x.roles};S.step=2;S.flow="wizard";DUPS=[];persist();render()}return}
-    if(d.save){e.preventDefault();submit();return}
+    if(d.save){e.preventDefault();submit().catch(err=>{BUSY=false;updateChecks();console.error("NEXUS admin submit",err);saveMsg(`<b>${esc(tr(["Niet opgeslagen","Not saved"]))}</b>${esc((err&&err.message)||String(err))}`,"err")});return}
     if(t.id==="adCopyJson"){navigator.clipboard&&navigator.clipboard.writeText(JSON.stringify(payload("wizard"),null,2));t.textContent="✓";return}
     if(t.id==="adReset"){if(confirm(tr(["Concept wissen? Alle ingevulde velden en foto's gaan weg.","Clear draft? All entered fields and photos are removed."]))){
       [...MEDIA,...WP_MEDIA].forEach(m=>m.url&&URL.revokeObjectURL(m.url));MEDIA=[];WP_MEDIA=[];DUPS=[];const f=S.flow;S=blank();S.flow=f;
