@@ -837,7 +837,14 @@ async function renderPropWeb(p,B){
 /* Eigen woningen: CPR-coördinaten, anders Catastro-geocode (benadering). Externe woningen: alleen opgeslagen coördinaten.
    Alles wordt één keer geladen (nexus_map('all')); het filter Eigen/Extern/Alles werkt in de browser. */
 const MPC={own:"#22c55e",ext:"#3b82f6"};
-let mpData=null, mpMap=null, mpLayer=null, mpMarkers={}, mpHideT=null, mpFitted={};
+let mpData=null, mpMap=null, mpLayer=null, mpMarkers={}, mpHideT=null, mpFitted={}, mpQ="", mpQT=null;
+const mpNorm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+const mpHay=p=>p._h||(p._h=mpNorm([p.reference,p.ext_ref,p.title,p.town,p.suburb,p.street,p.cat_address,p.agency,p.owner,p.rep,p.q].join(" ")));
+function mpMatch(p){if(!mpQ)return true;const h=mpHay(p);return mpNorm(mpQ).split(/\s+/).filter(Boolean).every(w=>h.includes(w)||(/^\d{3,}$/.test(w)&&h.replace(/\s/g,"").includes(w)))}
+function wireMpSearch(){const i=$("#mpQ");if(!i||i._w)return;i._w=1;
+  i.oninput=()=>{clearTimeout(mpQT);mpQT=setTimeout(()=>{mpQ=i.value.trim();if(mpData)renderMap(true)},180)};
+  i.onkeydown=e=>{if(e.key==="Escape"){i.value="";mpQ="";if(mpData)renderMap(true)}
+    else if(e.key==="Enter"){e.preventDefault();clearTimeout(mpQT);mpQ=i.value.trim();if(!mpData)return;renderMap(true);const f=$("#mpList [data-fly]");if(f)f.click();else{const g=$("#mpList [data-p]");if(g)g.click()}}}}
 let mpScope=(()=>{try{return localStorage.getItem("nexus-mp-scope")||"own"}catch(e){return"own"}})();
 if(!["own","external","all"].includes(mpScope))mpScope="own";
 const gPin=(lat,lng)=>`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
@@ -850,7 +857,7 @@ function buildMpSeg(){const S=[["own","mp.s.own"],["external","mp.s.ext"],["all"
   $$("#mpScope button").forEach(b=>b.onclick=()=>{mpScope=b.dataset.v;try{localStorage.setItem("nexus-mp-scope",mpScope)}catch(e){}buildMpSeg();if(mpData)renderMap(true)})}
 function mpCompact(){if(mpMap)mpMap.getContainer().classList.toggle("mp-compact",mpMap.getZoom()<14)}
 async function loadMap(){
-  buildMpSeg();
+  buildMpSeg();wireMpSearch();
   if(!window.L){$("#mpList").innerHTML=`<div class="empty">${t("mp.noleaflet")}</div>`;return}
   if(!mpMap){
     mpMap=L.map("mpMap",{zoomControl:true,attributionControl:true}).setView([38.07,-0.72],12);
@@ -890,7 +897,9 @@ function wirePopup(pp){
 }
 function renderMap(fit){
   const all=mpData.rows||[];
-  const rows=all.filter(r=>mpScope==="all"||(mpScope==="own"?r.is_own:!r.is_own));
+  const inScope=r=>mpScope==="all"||(mpScope==="own"?r.is_own:!r.is_own);
+  const rows=all.filter(r=>inScope(r)&&mpMatch(r));
+  const elsewhere=mpQ?all.filter(r=>!inScope(r)&&mpMatch(r)).length:0;
   const on=rows.filter(r=>r.lat!=null), off=rows.filter(r=>r.lat==null);
   $("#cntMp").textContent=num(all.filter(r=>r.is_own&&r.lat!=null).length);
   $("#mpCount").textContent=t("mp.onmap",{a:num(on.length),b:num(rows.length)});
@@ -909,17 +918,20 @@ function renderMap(fit){
       m.on("click",()=>{pp._hover=false;clearTimeout(mpHideT);m.openPopup()});
       mpMarkers[p.reference]=m;
     });
-    if(fit&&on.length)mpMap.fitBounds(L.latLngBounds(on.map(p=>[p.lat,p.lng])).pad(0.15),{maxZoom:15});
+    if(fit&&on.length===1&&mpQ){const m=mpMarkers[on[0].reference];mpMap.flyTo(m.getLatLng(),Math.max(mpMap.getZoom(),16),{duration:.6});setTimeout(()=>{m.getPopup()._hover=false;m.openPopup()},650)}
+    else if(fit&&on.length)mpMap.fitBounds(L.latLngBounds(on.map(p=>[p.lat,p.lng])).pad(0.15),{maxZoom:15});
   }
-  const sub=p=>esc(p.is_own?[p.suburb,p.town].filter(Boolean).join(", "):[p.agency,p.town].filter(Boolean).join(" · "));
+  const sub=p=>esc(p.is_own?[p.suburb,p.town].filter(Boolean).join(", "):[p.agency,p.town].filter(Boolean).join(" · "))+(p.owner?` <span class="muted">· 👤 ${esc(p.owner)}</span>`:"");
   const it=(p,extra,attr)=>`<div class="mp-it" ${attr}><div class="th" style="${p.image?`background-image:url('${esc(p.image)}')`:""}"></div>
     <div style="min-width:0"><div class="t"><span class="dot" style="background:${p.is_own?MPC.own:MPC.ext}"></span>${esc(p.reference)} · ${eur(p.price)}</div><div class="d">${extra}</div></div><span class="sm" style="color:var(--c-ac)">${p.under_offer?"●":""}</span></div>`;
   const onOwn=on.filter(p=>p.is_own), onExt=on.filter(p=>!p.is_own);
   const sec=(lbl,list)=>list.length?`<div class="mp-sec">${lbl}</div>`+list.map(p=>it(p,sub(p)+(p.src==="catastro"?" · ≈":""),`data-fly="${esc(p.reference)}"`)).join(""):"";
-  $("#mpList").innerHTML=(rows.length?"":`<div class="empty">${t("mp.none")}</div>`)
+  $("#mpList").innerHTML=(rows.length?"":`<div class="empty">${mpQ?t("mp.nomatch",{q:esc(mpQ)}):t("mp.none")}</div>`)
+    +(elsewhere?`<div class="mp-else"><button data-allq="1">${t("mp.elsewhere",{n:num(elsewhere)})}</button></div>`:"")
     +sec(t("mp.located.own",{n:onOwn.length}),onOwn)+sec(t("mp.located.ext",{n:onExt.length}),onExt)
     +(off.length?`<div class="mp-sec">${t("mp.nolocation",{n:off.length})}</div><div class="sm muted" style="padding:8px 12px">${t("mp.nolocation.s")}</div>`
       +off.map(p=>it(p,p.is_own?esc([p.street||p.cat_address,p.suburb,p.town].filter(Boolean).join(", ")):sub(p),`data-p="${esc(p.reference)}"`)).join(""):"");
+  const ab=$("#mpList [data-allq]");if(ab)ab.onclick=()=>{mpScope="all";try{localStorage.setItem("nexus-mp-scope",mpScope)}catch(e){}buildMpSeg();renderMap(true)};
   $$("#mpList [data-fly]").forEach(r=>r.onclick=()=>{const m=mpMarkers[r.dataset.fly];if(!m)return;
     mpMap.flyTo(m.getLatLng(),Math.max(mpMap.getZoom(),16),{duration:.6});setTimeout(()=>{m.getPopup()._hover=false;m.openPopup()},650)});
 }

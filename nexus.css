@@ -846,3 +846,5 @@ html[data-theme="light"] .introbar.ptbar .go{color:#be123c}
 .fx-chip.ro{cursor:default;font-size:calc(12px*var(--fs,1));padding:3px 9px}
 .fx-vr{flex-basis:100%;display:flex;gap:8px;align-items:baseline;font-size:calc(13px*var(--fs,1))}.fx-vr span{color:var(--tx2);min-width:90px}
 .fx-empty{margin-top:8px}
+
+.mp-else{padding:8px 12px}.mp-else button{width:100%;padding:7px 10px;border-radius:9px;border:1px dashed var(--line2);background:var(--bg2);color:var(--acc);cursor:pointer;font-weight:600}
