@@ -11,6 +11,7 @@
 <script src="/date-picker.js?v=1" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="bridge-config.js"></script>
+<script>try{var t=localStorage.getItem("fact-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <style>
 /* JARVIS-Finance-Invoicing (proef). Formulier links, factuur rechts in de huisstijl van 2026/0030. */
 :root{--bg:#eef1f3;--panel:#fff;--fg:#1b2731;--muted:#5d6b76;--line:#d6dde2;--accent:#c0392b;--accent-ink:#fff;--accent-soft:#fae8e6;
@@ -18,7 +19,10 @@
 --f-ui:"Manrope",system-ui,sans-serif;--f-num:"IBM Plex Mono",ui-monospace,monospace;
 --s-red:#c0392b;--s-rule:#e05a45;--s-pink:#fae8e6;--s-cream:#fffbea;--s-slate:#2e3a48;--s-gold:#f5c518;--s-goldtxt:#c69500;--s-grey:#6b7280;--s-hair:#e3e5e8;
 --f-doc:"Carlito","Calibri",Arial,sans-serif;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--bg:#12181d;--panel:#1a2229;--fg:#e4eaee;--muted:#9aa8b2;--line:#2c3842;--accent:#e06a5c;--accent-ink:#1a0d0b;--accent-soft:#3a1f1c;--warn:#f0c46a;--warn-bg:#3a2e14;--danger:#f08a84;--ok:#8fd19b;--ok-bg:#1d3324;color-scheme:dark}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12181d;--panel:#1a2229;--fg:#e4eaee;--muted:#9aa8b2;--line:#2c3842;--accent:#e06a5c;--accent-ink:#1a0d0b;--accent-soft:#3a1f1c;--warn:#f0c46a;--warn-bg:#3a2e14;--danger:#f08a84;--ok:#8fd19b;--ok-bg:#1d3324;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12181d;--panel:#1a2229;--fg:#e4eaee;--muted:#9aa8b2;--line:#2c3842;--accent:#e06a5c;--accent-ink:#1a0d0b;--accent-soft:#3a1f1c;--warn:#f0c46a;--warn-bg:#3a2e14;--danger:#f08a84;--ok:#8fd19b;--ok-bg:#1d3324;color-scheme:dark}
+.themebtn{font:inherit;font-size:13px;background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:6px}.themebtn:hover{color:var(--fg)}
+.party-pick.minor{opacity:.65}.party-pick small{display:block}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-ui);padding:20px 16px 40px}
 .top{max-width:1300px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
@@ -126,7 +130,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 <body>
 <header class="top">
   <div class="brand"><b>Facturatie</b><span>Grupo Soltura · werkplek Ingrid</span></div>
-  <span><span class="pill">Proefmodus</span> <button type="button" class="logout" id="logoutBtn" hidden>Uitloggen</button></span>
+  <span><span class="pill">Proefmodus</span> <button type="button" class="themebtn" id="themeBtn" aria-label="Wissel tussen dag en nacht"></button> <button type="button" class="logout" id="logoutBtn" hidden>Uitloggen</button></span>
 </header>
 <div class="login" id="login" hidden>
   <form id="loginForm" autocomplete="on">
@@ -153,8 +157,8 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       <button type="button" class="btn ghost small" id="manual">+ Klant die niet in het CRM staat</button>
 
       <div class="drop" id="drop">
-        <span><b>Contract inlezen</b>: sleep de arras, escritura of nota simple hierheen, of kies een bestand. Claude vult NIE, adres, finca en kadastrale referentie in.</span>
-        <div><input type="file" id="file" accept="application/pdf,image/jpeg,image/png" hidden><button type="button" class="btn small" id="pickFile">Bestand kiezen</button></div>
+        <span><b>Document inlezen</b>: sleep een arras, escritura, volmacht (poder), nota simple, NIE-certificaat of paspoort hierheen, of kies een bestand. Claude haalt naam, NIE, woonadres, finca en kadastrale referentie eruit.</span>
+        <div><input type="file" id="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden><button type="button" class="btn small" id="pickFile">Bestand kiezen</button></div>
         <div class="extract" id="extract" hidden></div>
       </div>
 
@@ -353,25 +357,29 @@ $("manual").onclick=()=>{crm=null;$("picked").hidden=false;$("pickedTxt").innerH
 function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(",")[1]);r.onerror=rej;r.readAsDataURL(f)})}
 async function extractFile(f){
   if(!f)return;
-  if(!/^(application\/pdf|image\/(jpeg|png))$/.test(f.type)){$("extract").hidden=false;$("extract").innerHTML='<span class="msg err">Alleen PDF, JPG of PNG.</span>';return}
+  if(!/^(application\/pdf|image\/(jpeg|png|webp))$/.test(f.type)){$("extract").hidden=false;$("extract").innerHTML='<span class="msg err">Alleen PDF, JPG, PNG of WebP.</span>';return}
   if(f.size>15*1024*1024){$("extract").hidden=false;$("extract").innerHTML='<span class="msg err">Bestand is groter dan 15 MB.</span>';return}
   $("extract").hidden=false;$("extract").innerHTML=`<span>${esc(f.name)} wordt gelezen…</span>`;
   try{
     const j=await call("extract",{mime:f.type,file_base64:await readFile(f)});const d=j.data||{};
-    const parties=[...(d.sellers||[]).map(p=>Object.assign({role:"Verkoper"},p)),...(d.buyers||[]).map(p=>Object.assign({role:"Koper"},p))];
+    const ROLE={vendedor:"Verkoper",comprador:"Koper",poderdante:"Volmachtgever (klant)",apoderado:"Gemachtigde",titular:"Eigenaar / houder",otro:"Overig"};
+    const DOC={arras:"arras",compraventa:"escritura de compraventa",escritura:"escritura",poder:"volmacht (poder)",nota_simple:"nota simple",nie:"NIE-certificaat",identidad:"identiteitsbewijs",other:"document"};
+    let parties=Array.isArray(d.parties)?d.parties:[...(d.sellers||[]).map(p=>Object.assign({role:"vendedor"},p)),...(d.buyers||[]).map(p=>Object.assign({role:"comprador"},p))];
+    parties=parties.map(p=>Object.assign({},p,{roleLbl:ROLE[p.role]||p.role||"Partij",cand:p.invoice_candidate!==false}));
     const pr=d.property||{};
     window._ex={parties,property:pr};
-    $("extract").innerHTML=`<span>${esc(f.name)}: ${esc(d.doc_type||"document")}${pr.finca?` · finca ${esc(pr.finca)}`:""}${pr.ref_catastral?` · ref. ${esc(pr.ref_catastral)}`:""}</span>`+
-      parties.map((p,i)=>`<div class="party-pick"><span><b>${esc([p.salutation,p.full_name].filter(Boolean).join(" "))}</b><small>${esc(p.role)}${p.id_number?" · "+esc(p.id_type||"")+" "+esc(p.id_number):""}</small></span><button type="button" class="btn small" data-p="${i}">Gebruik</button></div>`).join("")||'<span class="missing">Geen partijen gevonden.</span>';
+    const line=p=>[p.id_number?(p.id_type||"ID")+" "+p.id_number:"geen NIE/ID gevonden",p.passport&&p.passport!==p.id_number?"pas. "+p.passport:"",[p.address,p.city,p.country].filter(Boolean).join(", ")||"geen woonadres gevonden"].filter(Boolean).join(" · ");
+    $("extract").innerHTML=`<span>${esc(f.name)}: ${esc(DOC[d.doc_type]||d.doc_type||"document")}${pr.finca?` · finca ${esc(pr.finca)}`:""}${pr.ref_catastral?` · ref. ${esc(pr.ref_catastral)}`:""}</span>`+
+      (parties.map((p,i)=>`<div class="party-pick${p.cand?"":" minor"}"><span><b>${esc([p.salutation,p.full_name].filter(Boolean).join(" "))}</b><small>${esc(p.roleLbl)}</small><small>${esc(line(p))}</small></span><button type="button" class="btn small${p.cand?" prim":""}" data-p="${i}">Gebruik</button></div>`).join("")||'<span class="missing">Geen personen gevonden in dit document.</span>');
     $("extract").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>useParty(window._ex.parties[+b.dataset.p]));
     if(pr.finca||pr.ref_catastral){if(pr.finca)$("finca").value=pr.finca;if(pr.ref_catastral)$("refcat").value=pr.ref_catastral;render()}
   }catch(e){$("extract").innerHTML=`<span class="msg err">${esc(e.message)}</span>`}
 }
 function useParty(p){
-  if($("clientForm").hidden){crm=null;$("picked").hidden=false;$("pickedTxt").innerHTML=`<b>${esc(p.full_name)}</b><small>Uit het contract, niet gekoppeld aan het CRM</small>`;setForm({});$("clientForm").hidden=false}
+  if($("clientForm").hidden){crm=null;$("picked").hidden=false;$("pickedTxt").innerHTML=`<b>${esc(p.full_name)}</b><small>Uit het document, niet gekoppeld aan het CRM</small>`;setForm({});$("clientForm").hidden=false}
   const put=(id,v,force)=>{if(v&&(force||!$(id).value.trim()))$(id).value=v};
   if(p.salutation)$("c-sal").value=p.salutation;
-  put("c-name",p.full_name,true);if(p.id_type)$("c-idt").value=p.id_type;put("c-idn",p.id_number,true);
+  put("c-name",p.full_name,true);if(p.id_number){if(p.id_type)$("c-idt").value=p.id_type;put("c-idn",p.id_number,true)}else if(p.passport){$("c-idt").value="PAS";put("c-idn",p.passport,true)}
   put("c-addr",p.address,true);put("c-city",p.city,true);put("c-country",p.country,true);
   render();
 }
@@ -586,6 +594,12 @@ if(SB) SB.auth.onAuthStateChange(ev=>{
     catch(err){$("nErr").textContent=err.message;$("nBtn").disabled=false}
   };
 });
+/* ---------- dag / nacht ---------- */
+function curTheme(){const t=document.documentElement.getAttribute("data-theme");if(t)return t;return matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}
+function paintThemeBtn(){const d=curTheme()==="dark";$("themeBtn").innerHTML=d?"☀️ Dag":"🌙 Nacht";$("themeBtn").title=d?"Lichte achtergrond":"Donkere achtergrond"}
+$("themeBtn").onclick=()=>{const n=curTheme()==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",n);try{localStorage.setItem("fact-theme",n)}catch(e){}paintThemeBtn()};
+try{matchMedia("(prefers-color-scheme: dark)").addEventListener("change",paintThemeBtn)}catch(e){}
+paintThemeBtn();
 $("logoutBtn").onclick=async()=>{try{await SB.auth.signOut()}catch(e){}location.reload()};
 (async()=>{
   $("date").value=today();
