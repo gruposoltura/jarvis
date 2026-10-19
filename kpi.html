@@ -491,7 +491,10 @@
     { id:'studio',        label:'STUDIO',        url:'/social-studio.html', title:'SOCIAL STUDIO' },
     { id:'floor',         label:'FLOOR',         url:'/floor.html',         title:'FLOOR' },
     { id:'office',        label:'OFFICE',        url:'/office-v2.html',     title:'OFFICE' },
-    { id:'usage',         label:'USAGE',         url:'/usage.html',         title:'VERBRUIK TOOLS' }
+    { id:'usage',         label:'USAGE',         url:'/usage.html',         title:'VERBRUIK TOOLS' },
+    // NEXUS-team (nexus_team): eigen apps met eigen login, niet aankleden (raw)
+    { id:'team',          label:'TEAM DASHBOARD', url:'/nexus.html',        raw:true },
+    { id:'factura',       label:'FACTURATIE',    url:'/facturacion.html',   raw:true }
   ];
   var PANEL_BY_ID = {};
   PANELS.forEach(function(p){ PANEL_BY_ID[p.id] = p; });
@@ -514,7 +517,10 @@
       { label:'KPI',                          icon:'K', color:'#00d4ff', zone:'top', cur:true },
       { label:'Paneel - Stats & Marketing',   icon:'\u25CF', color:'#00c8ff', zone:'z-stats' },
       { label:'Paneel - Meta',                icon:'M', color:'#ff3f9a', zone:'z-ads' },
-      { label:'Paneel - Jarvis',              icon:'J', color:'#a37bff', zone:'z-jarvis' } ]},
+      { label:'Paneel - Jarvis',              icon:'J', color:'#a37bff', zone:'z-jarvis' },
+      // alleen zichtbaar voor een account in nexus_team (NEXUS-wachtwoord)
+      { label:'Team Dashboard',               icon:'T', color:'#14b8a6', panel:'team',    team:true },
+      { label:'Facturatie',                   icon:'\u20AC', color:'#e8231a', panel:'factura', team:true } ]},
     { sec:'VIEWS', items:[
       { label:'Office V2',                    icon:'O', color:'#00d4ff', panel:'office' },
       { label:'Social Studio',                icon:'S', color:'#e8231a', panel:'studio' },
@@ -529,15 +535,18 @@
       { label:'Usage',                        icon:'%', color:'#3ecf8e', panel:'usage' } ]}
   ];
   var navItems = [];   // {el, item, sec}
+  var IS_TEAM = false; // true zodra nexus_me() dit account herkent (nexus_team)
   var isNarrow = function(){ return window.matchMedia('(max-width:820px)').matches; };
 
   function buildNav(){
     var list = $('navList'); list.innerHTML = '';
+    navItems.length = 0;
     NAV.forEach(function(g){
       var h = document.createElement('div'); h.className = 'ns'; h.textContent = g.sec;
       list.appendChild(h);
       g.items.forEach(function(it){
         if(it.panel && !PANEL_BY_ID[it.panel]) return;
+        if(it.team && !IS_TEAM) return;
         var a = document.createElement('div');
         a.className = 'ni' + (it.cur ? ' cur' : '');
         a.tabIndex = 0; a.setAttribute('role', 'button');
@@ -752,6 +761,7 @@
   }
 
   function dressPanel(frame, p){
+    if(p.raw) return;   // NEXUS en facturatie zijn eigen apps: niets aankleden
     var pass = function(){
       try{
         var doc = frame.contentDocument;
@@ -1723,6 +1733,10 @@
     $('work').classList.remove('hidden');
     $('navBtn').classList.remove('hidden');
     buildPanes();
+    // Team Dashboard + Facturatie in het menu voor elk NEXUS-teamaccount
+    sb.rpc('nexus_me').then(function(r){
+      if(r && r.data && !r.error){ IS_TEAM = true; buildNav(); updateNav(); }
+    }).catch(function(){});
     var propsEl = $('props');
     if(propsEl) propsEl.addEventListener('click', function(ev){
       var btn = ev.target.closest('button[data-kind]');
