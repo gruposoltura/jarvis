@@ -156,8 +156,7 @@ function secContacts(){const C=D.contacts||{};
     +row(`<label class="ad-f w4"><span>${esc(tr(["Interne notities (bijv. wie de sleutelhouder is)","Internal notes (e.g. who holds the keys)"]))}</span><textarea data-k="internal_notes" rows="4">${esc(P.internal_notes||"")}</textarea><small>${esc(tr(["Alleen intern, nooit op de site","Internal only, never on the site"]))}</small></label>`))}
 function secPub(){
   return sec("pub",["Publicatie","Publishing"],`<h5>Labels</h5>`+multi("labels",[["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:4})+`<small class="muted">${esc(tr(["NEW zet NEXUS zelf: de eerste 7 dagen na de eerste publicatie","NEXUS sets NEW itself: the first 7 days after first publication"]))}${P.published_at?" ("+new Date(P.published_at).toLocaleDateString("nl-NL")+")":""}.</small>`
-    +`<h5>${esc(tr(["Exportfeeds","Export feeds"]))}</h5>`+multi("export_feeds",[["idealista","Idealista"]],{cols:4})+chk("no_export",["Uitsluiten van alle XML-feeds","Exclude from all XML feeds"])
-    +row(inp("video_url",["Video-URL","Video URL"],{w:2,ph:"https://"}),inp("tour_360_url",["360°/3D-link","360°/3D link"],{w:2,ph:"https://"})))}
+    +`<h5>${esc(tr(["Exportfeeds","Export feeds"]))}</h5>`+multi("export_feeds",[["idealista","Idealista"]],{cols:4})+chk("no_export",["Uitsluiten van alle XML-feeds","Exclude from all XML feeds"]))}
 function secHist(){const a=D.audit||[];
   return sec("hist",["Historie","History"],a.length?`<div class="pe-audit">${a.map(x=>`<div><b>${new Date(x.at).toLocaleString("nl-NL",{day:"numeric",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"})}</b> · ${esc(x.who||"?")} <span class="muted">· ${esc((x.fields||[]).join(", "))}</span></div>`).join("")}</div>`
     :`<div class="sm muted">${esc(tr(["Nog geen wijzigingen via NEXUS.","No changes via NEXUS yet."]))}</div>`)}

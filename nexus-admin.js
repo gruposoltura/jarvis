@@ -103,7 +103,7 @@ const blankProp=()=>({status:"draft",published:false,category:"",build_type:"res
   features:[],opts:{},
   texts:{en:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""},nl:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""},sv:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""}},key_on:false,key_number:"",
   cost_community:"",cost_garbage:"",cost_ibi:"",cost_insurance:"",fee_transfer_tax:"",fee_legal:"",fee_notary:"",fee_registry:"",
-  registry_name:"",finca_number:"",cadastral_ref:"",video_url:"",tour_360_url:"",video_embed:""});
+  registry_name:"",finca_number:"",cadastral_ref:""});
 function blank(){return{flow:"wizard",step:1,agentMode:"none",agent:null,newAgent:{company:"",first_name:"",last_name:"",email:"",phone:"",website:"",language:"es"},
   contactMode:"new",existing:null,c:blankContact(),propMode:null,linkProp:null,linkRel:"owner",p:blankProp(),
   /* losse schermen */
@@ -359,8 +359,7 @@ function propForm(base,media){
   ${sec(["Foto's en media","Photos and media"],`<div class="ad-drop" data-media="${base}"><input type="file" multiple accept="image/*,application/pdf" hidden>
        <div><b>${esc(tr(["Sleep foto's hierheen of klik om te kiezen","Drop photos here or click to choose"]))}</b><div class="sm muted">${esc(tr(["JPG/PNG/WebP, ook plattegronden en PDF (energiecertificaat). Eerste foto = hoofdfoto. Volgorde aanpassen door te slepen.","JPG/PNG/WebP, also floor plans and PDF (energy certificate). First photo = main photo. Drag to reorder."]))}</div></div></div>
      <div class="ad-media" id="adMedia-${base}"></div>
-     <small class="muted">${esc(tr(["Foto's blijven alleen in dit venster; ze worden pas geüpload naar Supabase Storage (bucket property-media) na koppeling.","Photos stay in this window only; they are uploaded to Supabase Storage (bucket property-media) once connected."]))}</small>
-     ${row(inp(B("video_url"),["Video-URL","Video URL"],{w:2,ph:"https://"}),inp(B("tour_360_url"),["360°/3D-link (vistafoto.eu)","360°/3D link (vistafoto.eu)"],{w:2,ph:"https://"}))}`,{id:"pf-media"})}
+     <small class="muted">${esc(tr(["Foto's blijven alleen in dit venster; ze worden pas geüpload naar Supabase Storage (bucket property-media) na koppeling.","Photos stay in this window only; they are uploaded to Supabase Storage (bucket property-media) once connected."]))}</small>`,{id:"pf-media"})}
   ${sec(["Kosten en kadaster","Costs and land registry"],`<div class="ad-cols3"><div><h5>${esc(tr(["Vaste lasten per jaar (€)","Running costs per year (€)"]))}</h5>
        ${inp(B("cost_community"),["Gemeenschapskosten","Community fees"],{type:"number",min:0})}${inp(B("cost_garbage"),["Afvalheffing","Garbage fee"],{type:"number",min:0})}
        ${inp(B("cost_ibi"),["IBI (onroerendgoedbelasting)","IBI (property tax)"],{type:"number",min:0})}${inp(B("cost_insurance"),["Opstalverzekering","Home insurance"],{type:"number",min:0})}</div>
@@ -490,7 +489,7 @@ function propPayload(p,media,owner){
     distance_sea_m:n(p.distance_sea_m),distance_airport_m:n(p.distance_airport_m),distance_city_m:n(p.distance_city_m),distance_shops_m:n(p.distance_shops_m),
     fee_legal:n(p.fee_legal),fee_notary:n(p.fee_notary),fee_registry:n(p.fee_registry),fee_transfer_tax:n(p.fee_transfer_tax),cost_community:n(p.cost_community),cost_ibi:n(p.cost_ibi),
     cost_garbage:n(p.cost_garbage),cost_insurance:n(p.cost_insurance),cadastral_ref:p.cadastral_ref||null,finca_number:p.finca_number||null,key_number:p.key_on?(p.key_number||null):null,labels:(p.labels||[]).filter(x=>x!=="new"),export_feeds:p.export_feeds,
-    no_export:p.no_export,video_url:p.video_url||null,tour_360_url:p.tour_360_url||null,registry_name:p.registry_name||null,owner_contact_id:owner,listing_agent_id:teamName(p.listing_agent),listed_at:p.listed_at||null},
+    no_export:p.no_export,registry_name:p.registry_name||null,owner_contact_id:owner,listing_agent_id:teamName(p.listing_agent),listed_at:p.listed_at||null},
    "core.property_texts":TX_LANGS.filter(l=>Object.values(p.texts[l]||{}).some(Boolean)).map(l=>Object.assign({lang:l},p.texts[l])),
    "core.property_price_history":p.price?[{price:n(p.price),source:"nexus"}]:[],
    "core.property_media":media.map((m,i)=>({kind:m.kind,sort:i,is_main:i===0,caption:m.caption||null,storage_path:`property-media/<property_id>/<media_id>.${(m.name.split(".").pop()||"jpg").toLowerCase()}`,file:m.name,bytes:m.size})),
@@ -544,7 +543,7 @@ function propFields(p){
    "build_area","plot_area","area_living","area_terrace","area_garden","area_kitchen","year_built","orientation","views","energy_label","features","feature_options",
    "country","province","city","location_area","street","street_number","postal_code","lat","lng","hide_address",
    "distance_sea_m","distance_airport_m","distance_city_m","distance_shops_m","fee_legal","fee_notary","fee_registry","fee_transfer_tax",
-   "cost_community","cost_ibi","cost_garbage","cost_insurance","cadastral_ref","finca_number","labels","export_feeds","no_export","video_url","tour_360_url",
+   "cost_community","cost_ibi","cost_garbage","cost_insurance","cadastral_ref","finca_number","labels","export_feeds","no_export",
    "listed_at","internal_notes","registry_name"].forEach(k=>{const v=pl[k];if(v!==undefined&&v!==null&&v!=="")f[k]=v});
   if(f.cadastral_ref)f.cadastral_ref=String(f.cadastral_ref).replace(/\s/g,"").toUpperCase();
   if(p.dossier_complete)f.dossier_complete=true;
