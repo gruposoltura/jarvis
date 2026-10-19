@@ -296,7 +296,7 @@
     s.tex.needsUpdate = true;
   }
 
-  // ---------- executies (echte nodes) via Supabase Edge Function agent-run (was /api/agent-run op Vercel) ----------
+  // ---------- executies (echte nodes) via Supabase Edge Function agent-run ----------
   async function apiGet(qs){
     const { data:{ session: live } } = await sb.auth.getSession();
     const token = live && live.access_token;
@@ -305,7 +305,7 @@
     if(!r.ok) throw new Error((await r.json().catch(()=>({}))).detail || ("API "+r.status));
     return r.json();
   }
-  // max 3 tegelijk, zodat n8n en Vercel niet worden platgelopen bij een afdeling met 19 agents
+  // max 3 tegelijk, zodat n8n en de edge function niet worden platgelopen bij een afdeling met 19 agents
   const queue = []; let inflight = 0;
   function enqueue(fn){ return new Promise((res,rej)=>{ queue.push({fn,res,rej}); pump(); }); }
   function pump(){ while(inflight<3 && queue.length){ const j=queue.shift(); inflight++; j.fn().then(j.res,j.rej).finally(()=>{inflight--; pump();}); } }

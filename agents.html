@@ -239,11 +239,11 @@
       }).join("")+"</tbody></table>";
   }
 
-  // --- executies + pipeline (via Supabase Edge Function agent-run (was /api/agent-run op Vercel)) ---
+  // --- executies + pipeline (via Supabase Edge Function agent-run) ---
   // Het access-token wordt VERS per aanroep opgehaald. De sessie die bij het
   // laden werd opgehaald bevat een token dat na ~1 uur verloopt; de client
   // ververst zichzelf op de achtergrond (tabel-reads blijven werken), maar een
-  // vastgehouden token verouderde stil -> /api/agent-run gaf 401. getSession()
+  // vastgehouden token verouderde stil -> agent-run gaf 401. getSession()
   // levert het actuele (auto-ververste) token.
   async function apiGet(qs){
     const { data:{ session: live } } = await sb.auth.getSession();
