@@ -35,9 +35,10 @@ const MAILINGS=[["weekly_news",["Wekelijks nieuws (vrijdag)","Weekly news (Frida
 const MAILING_DEFAULT_ON=["weekly_news","price_reduced","monthly_matches","new_listing"];
 const STATUS=[["draft",["Concept (offline)","Draft (offline)"]],["available",["Actief (online)","Active (online)"]],["under_offer",["Gereserveerd (online)","Reserved (online)"]],
   ["sold",["Verkocht (offline)","Sold (offline)"]],["withdrawn",["Ingetrokken (offline)","Withdrawn (offline)"]]];
-const CATS=[["apartment",["Appartement","Apartment"]],["penthouse","Penthouse"],["bungalow","Bungalow"],["townhouse",["Geschakelde woning","Townhouse"]],
-  ["quadrant",["Quad (kwadrant)","Quad house"]],["semi-detached",["Halfvrijstaand","Semi-detached"]],["detached",["Vrijstaand","Detached"]],["villa","Villa"],
-  ["duplex","Duplex"],["finca","Finca"],["studio","Studio"],["plot",["Bouwgrond","Plot"]],["commercial",["Bedrijfspand","Commercial"]],["other",["Overig","Other"]]];
+// De 9 standaard woningtypen (besluit 19-10-2026, = core.property_types). Andere waarden weigert de database.
+const CATS=[["villa","Villa"],["apartment",["Appartement","Apartment"]],["penthouse","Penthouse"],["bungalow","Bungalow"],
+  ["quadrant",["Quad (kwadrant)","Quad house"]],["semi-detached",["Halfvrijstaand","Semi-detached"]],["townhouse",["Geschakelde woning","Townhouse"]],
+  ["duplex","Duplex"],["finca","Finca"]];
 const ORIENT=[["north",["Noord","North"]],["northeast",["Noordoost","North-east"]],["east",["Oost","East"]],["southeast",["Zuidoost","South-east"]],["south",["Zuid","South"]],["southwest",["Zuidwest","South-west"]],["west",["West","West"]],["northwest",["Noordwest","North-west"]]];
 const VIEWS=[["bay",["Baai","Bay"]],["country",["Platteland","Country"]],["golf","Golf"],["green",["Groenzone","Green zone"]],["harbour",["Haven","Harbour"]],
   ["lake",["Meer","Lake"]],["mountain",["Bergen","Mountain"]],["ocean",["Oceaan","Ocean"]],["panoramic",["Panorama","Panoramic"]],["residential",["Woonwijk","Residential"]],
