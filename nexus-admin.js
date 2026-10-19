@@ -85,7 +85,12 @@ const REF_PFX=["RH","BE","QU","LM","LP","PL","PB","DP","FO","AL","PR","SB","SR",
 /* ================= STATE ================= */
 const blankContact=()=>({title:"",first_name:"",last_name:"",company:"",language:"",country:"",state:"",city:"",postcode:"",street:"",street_number:"",
   birthday:"",website:"",referred_by:"",owner:"",source:"",roles:[],emails:[{email:"",kind:""}],phones:[{phone:"",kind:"mobile"}],
-  keyholder:false,mailing_optin:false,prefs:[],search:{budget:"",property_type:"",period:"",build:[]},internal_comments:""});
+  keyholder:false,mailing_optin:false,prefs:[],search:{budget:"",property_type:"",period:"",build:[]},internal_comments:"",
+  partner:{on:false,title:"",first_name:"",last_name:"",email:"",phone:""}});
+/* Echtpaar = twee contacten (Rick 19-10-2026). Herkent alleen een heel duidelijk "John & Heather" / "Ian and Diane" / "Henk en Joke". */
+const COUPLE_RE=/^([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.-]+)\s*(?:&|\+|\s(?:and|en|y|und|og|och|et|e)\s)\s*([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.-]+)$/i;
+const COUPLE_NOT=/^(partners?|sons?|family|familie|familia|co|company|kids|children|kinderen|friends?)$/i;
+function coupleSplit(fn){const m=String(fn||"").trim().match(COUPLE_RE);if(!m||COUPLE_NOT.test(m[1])||COUPLE_NOT.test(m[2]))return null;return [m[1],m[2]]}
 const blankProp=()=>({status:"draft",published:false,category:"",build_type:"resale",own_listing_type:"direct",reference:"",year_built:"",listed_at:new Date().toISOString().slice(0,10),
   dossier_complete:false,listing_agent:"",internal_notes:"",
   price:"",price_text:"",price_original:"",price_temp:"",price_temp_until:"",price_hidden:false,price_fixed:false,price_from:false,price_on_request:false,price_coming_soon:false,
@@ -136,7 +141,7 @@ function multi(k,opts,o={}){const arr=getP(S,k)||[];
     return `<label class="ad-c"><input type="checkbox" data-k="${k}" data-arr="${esc(val)}" ${arr.includes(val)?"checked":""}><span>${esc(tr(lab))}</span></label>`}).join("")}</div>`}
 /* 19-10-2026: elk invulblok een eigen kleur (dunne rand, ronde hoeken, lichte achtergrond) */
 const SEC_C={"pf-basis":"#3b82f6","pf-prijs":"#22c55e","pf-loc":"#06b6d4","pf-ind":"#f59e0b","pf-ken":"#a855f7","pf-tekst":"#ec4899","pf-media":"#f97316","pf-kost":"#64748b","pf-pub":"#eab308",
-  "ct-labels":"#ec4899","ct-person":"#3b82f6","ct-chan":"#22c55e","ct-addr":"#06b6d4","ct-search":"#f59e0b","ct-mail":"#a855f7","ct-note":"#64748b","ag":"#14b8a6"};
+  "ct-labels":"#ec4899","ct-partner":"#e11d48","ct-person":"#3b82f6","ct-chan":"#22c55e","ct-addr":"#06b6d4","ct-search":"#f59e0b","ct-mail":"#a855f7","ct-note":"#64748b","ag":"#14b8a6"};
 const SEC_T={"Labels":"#ec4899","Persoon":"#3b82f6","E-mail en telefoon":"#22c55e","Adres":"#06b6d4","Zoekprofiel":"#f59e0b","Mailings":"#a855f7","Interne opmerking":"#64748b",
   "Makelaar zoeken":"#14b8a6","Nieuwe makelaar":"#14b8a6","Of: vrij verwezen door":"#64748b","Verwezen door":"#64748b","Bestaand contact":"#3b82f6","Bestaande woning":"#f97316","Status":"#22c55e",
   "Wat er geschreven wordt (core-schema)":"#64748b","Eigenaar":"#14b8a6","Contact":"#3b82f6","Woning":"#f97316","Koppeling":"#a855f7"};
@@ -248,11 +253,12 @@ function stepContact(){
   <div id="adDup"></div>
   ${sec(["Labels","Labels"],`<div class="ad-f w4"><span>${esc(tr(["Rol(len) van dit contact","Role(s) of this contact"]))}${mark("save")}</span>${roleChips()}
      <small>${esc(tr(["Meerdere mogelijk. Seller of Suspect-Seller opent de woningstap.","Several allowed. Seller or Suspect-Seller opens the property step."]))}</small></div>`)}
-  ${sec(["Persoon","Person"],row(sel("c.title",["Aanhef","Title"],[["Mr","Mr"],["Mrs","Mrs"],["Ms","Ms"],["Mr & Mrs","Mr & Mrs"],["Dhr.","Dhr."],["Mevr.","Mevr."],["Sr.","Sr."],["Sra.","Sra."]]),
+  ${sec(["Persoon","Person"],row(sel("c.title",["Aanhef","Title"],[["Mr","Mr"],["Mrs","Mrs"],["Ms","Ms"],["Dhr.","Dhr."],["Mevr.","Mevr."],["Sr.","Sr."],["Sra.","Sra."],["Herr","Herr"],["Frau","Frau"],["Dr.","Dr."]]),
        inp("c.first_name",["Voornaam","First name"],{req:"save",ac:"off"}),inp("c.last_name",["Achternaam","Last name"],{ac:"off"}),inp("c.company",["Bedrijf","Company"]))
      +row(sel("c.language",["Correspondentietaal","Correspondence language"],LANGS.map(l=>[l[0],[l[1],l[2]]]),{req:"save"}),inp("c.birthday",["Geboortedatum","Birthday"],{type:"date"}),
        sel("c.owner",["Verantwoordelijk teamlid","Responsible team member"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}),sel("c.source",["Bron","Source"],SOURCES))
-     +`<small class="muted">${esc(tr(["Voornaam óf bedrijf is genoeg.","First name or company is enough."]))}</small>`)}
+     +`<small class="muted">${esc(tr(["Voornaam óf bedrijf is genoeg. Eén persoon per contact: een echtpaar leg je vast als contact + partner hieronder.","First name or company is enough. One person per contact: record a couple as contact + partner below."]))}</small><div id="adPtHint">${ptHint()}</div>`)}
+  ${sec(["Partner / tweede persoon","Partner / second person"],ptBlock(),{id:"ct-partner"})}
   ${sec(["E-mail en telefoon","E-mail and phone"],`
     <div class="ad-list">${c.emails.map((e,i)=>`<div class="ad-row">${inp(`c.emails.${i}.email`,i?["Extra e-mail","Extra e-mail"]:"E-mail",{type:"email",w:3,req:i?"":"save",ac:"off"})}${sel(`c.emails.${i}.kind`,["Soort","Kind"],EMAIL_KINDS,{empty:false})}
       ${i?`<button class="ad-x" data-rm="emails" data-i="${i}" title="×">×</button>`:""}</div>`).join("")}<button class="btn sm" data-add="emails">+ ${esc(tr(["e-mail","e-mail"]))}</button></div>
@@ -268,6 +274,18 @@ function stepContact(){
   ${sec(["Interne opmerking","Internal note"],row(area("c.internal_comments",["Alleen zichtbaar voor het team","Only visible to the team"],{rows:3})))}`}
   <datalist id="adCountries">${["Spain","Netherlands","Belgium","United Kingdom","Ireland","Germany","France","Sweden","Norway","Denmark","Finland","Switzerland","Austria"].map(x=>`<option value="${x}">`).join("")}</datalist>`;
 }
+function ptHint(){const c=S.c, x=coupleSplit(c.first_name);if(!x||(c.partner&&c.partner.on))return "";
+  return `<div class="ad-warnbox" style="margin-top:8px"><b>💑 ${esc(tr([`Twee personen in één naam: ${x[0]} en ${x[1]}`,`Two people in one name: ${x[0]} and ${x[1]}`]))}</b>
+    <div class="sm">${esc(tr([`Leg ${x[1]} vast als partner met een eigen contact, e-mail en mobiel.`,`Record ${x[1]} as partner with a contact, e-mail and mobile of their own.`]))}</div>
+    <button class="btn sm" data-ptsplit="1" style="margin-top:6px">${esc(tr(["Splitsen in contact + partner","Split into contact + partner"]))}</button></div>`}
+function ptBlock(){const pt=S.c.partner||(S.c.partner=blankContact().partner);
+  if(!pt.on)return `<button class="btn sm" data-ptadd="1">+ ${esc(tr(["Partner toevoegen (mede-eigenaar / mede-koper)","Add partner (co-owner / co-buyer)"]))}</button>
+    <small class="muted" style="display:block;margin-top:6px">${esc(tr(["De partner wordt een eigen contact, individueel vindbaar, en staat als mede-eigenaar of mede-koper bij dezelfde woning.","The partner becomes a contact of their own, findable on their own, and shows as co-owner or co-buyer on the same property."]))}</small>`;
+  return row(sel("c.partner.title",["Aanhef","Title"],[["Mr","Mr"],["Mrs","Mrs"],["Ms","Ms"],["Dhr.","Dhr."],["Mevr.","Mevr."],["Sr.","Sr."],["Sra.","Sra."],["Herr","Herr"],["Frau","Frau"],["Dr.","Dr."]]),
+      inp("c.partner.first_name",["Voornaam","First name"],{req:"save",ac:"off"}),inp("c.partner.last_name",["Achternaam","Last name"],{ac:"off"}))
+    +row(inp("c.partner.email",["Eigen e-mail","Own e-mail"],{type:"email",w:2,ac:"off"}),inp("c.partner.phone",["Eigen mobiel","Own mobile"],{type:"tel",w:2,ph:"+34 …",ac:"off"}))
+    +`<small class="muted">${esc(tr(["Adres, taal, teamlid en labels worden overgenomen. Mailing-toestemming niet: die geeft ieder zelf. E-mail en mobiel mogen leeg blijven.","Address, language, team member and labels are copied. Mailing consent is not: everyone gives that themselves. E-mail and mobile may stay empty."]))}</small>
+     <div><button class="btn sm" data-ptdel="1" style="margin-top:8px">× ${esc(tr(["Geen partner","No partner"]))}</button></div>`}
 function roleChips(){return `<div class="ad-chips">${ROLES.map(r=>`<label class="chip ${S.c.roles.includes(r[0])?"on":""}" style="--cc:var(${r[2]})"><input type="checkbox" hidden data-k="c.roles" data-arr="${r[0]}" ${S.c.roles.includes(r[0])?"checked":""}>${esc(tr(r[1]))}</label>`).join("")}</div>`}
 
 /* ================= STAP 3 · WONING ================= */
@@ -431,6 +449,9 @@ function validate(flow){
       if(!em.length&&!ph.length)add(["E-mail of telefoon","E-mail or phone"],"save",2);
       em.filter(e=>!emailOk(e)).forEach(e=>add([`Ongeldig e-mailadres: ${e}`,`Invalid e-mail: ${e}`],"save",2));
       if(!c.language)add(["Correspondentietaal","Correspondence language"],"save",2);
+      const pt=c.partner||{};if(pt.on){if(!String(pt.first_name||"").trim()&&!String(pt.last_name||"").trim())add(["Naam van de partner (of ‘Geen partner’)","Partner's name (or ‘No partner’)"],"save",2,"ct-partner");
+        if(String(pt.email||"").trim()&&!emailOk(pt.email.trim()))add([`Ongeldig e-mailadres partner: ${pt.email}`,`Invalid partner e-mail: ${pt.email}`],"save",2,"ct-partner");
+        if(String(pt.email||"").trim()&&em.some(e=>e.toLowerCase()===pt.email.trim().toLowerCase()))add(["Partner heeft hetzelfde e-mailadres als het contact","Partner has the same e-mail as the contact"],"save",2,"ct-partner")}
       if(!c.owner)add(["Verantwoordelijk teamlid","Responsible team member"],"save",2);
       if(c.phones.some(p=>p.phone&&!/^\+/.test(p.phone.trim())))add(["Telefoon zonder landcode (+34, +31 …)","Phone without country code (+34, +31 …)"],"tip",2);
       if(DUPS.length)add([`${DUPS.length} mogelijk dubbel contact`,`${DUPS.length} possible duplicate contact(s)`],"tip",2)}
@@ -544,7 +565,12 @@ function buildSubmit(flow){
       emails:a.email?[{email:a.email.trim().toLowerCase(),is_primary:true}]:[],phones:a.phone?[{phone:a.phone.trim(),kind:"work",is_primary:true}]:[]}}
   else out.agent={mode:"none"};
   if(S.contactMode==="existing")out.contact={mode:"existing",id:S.existing&&S.existing.id,roles:S.c.roles||[]};
-  else out.contact={mode:"new",fields:contactFields(S.c),roles:S.c.roles,emails:contactEmails(S.c),phones:contactPhones(S.c)};
+  else{out.contact={mode:"new",fields:contactFields(S.c),roles:S.c.roles,emails:contactEmails(S.c),phones:contactPhones(S.c)};
+    const pt=S.c.partner||{};
+    if(pt.on&&(String(pt.first_name||"").trim()||String(pt.last_name||"").trim()))out.contact.partner={
+      fields:Object.fromEntries(Object.entries({title:pt.title,first_name:String(pt.first_name||"").trim(),last_name:String(pt.last_name||"").trim()||String(S.c.last_name||"").trim()}).filter(([,v])=>v)),
+      emails:String(pt.email||"").trim()?[{email:pt.email.trim().toLowerCase(),is_primary:true}]:[],
+      phones:String(pt.phone||"").replace(/\D/g,"").length>=6?[{phone:pt.phone.trim(),kind:"mobile",is_primary:true}]:[]}}
   const m=pm();
   if(m==="now")out.property={mode:"now",fields:propFields(S.p),texts:propTexts(S.p)};
   else if(m==="link"&&S.linkProp)out.property={mode:"link",id:S.linkProp.id,rel:S.linkRel||"owner"};
@@ -756,6 +782,7 @@ function bind(){
     if(/\.texts\./.test(k)){const b=ROOT.querySelector(`[data-tx="${txLang}"]`);if(b){const base=k.split(".texts.")[0];b.textContent=txLang.toUpperCase()+(txOk(getP(S,base),txLang)?" ✓":"")}}
     if(/^newAgent\./.test(k))agentDup();
     if(/^c\.(emails|phones|first_name|last_name)/.test(k)){clearTimeout(dupT);dupT=setTimeout(checkDups,600)}
+    if(k==="c.first_name"){const h=ROOT.querySelector("#adPtHint");if(h)h.innerHTML=ptHint()}
     if(/\.reference$/.test(k)){clearTimeout(dupT);dupT=setTimeout(()=>checkRef(k.replace(/\.reference$/,"")),500)}
     persist();updateChecks()});
   ROOT.addEventListener("click",e=>{const t=e.target.closest("button,a");if(!t||!ROOT.contains(t))return;const d=t.dataset;
@@ -767,6 +794,11 @@ function bind(){
     if(d.jump){e.preventDefault();const s=ROOT.querySelector("#"+d.jump);if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
     if(d.am){S.agentMode=d.am;persist();render();return}
     if(d.cm){S.contactMode=d.cm;persist();render();return}
+    if(d.ptadd){e.preventDefault();S.c.partner=Object.assign(blankContact().partner,{on:true,last_name:S.c.last_name||""});persist();render();return}
+    if(d.ptdel){e.preventDefault();S.c.partner=blankContact().partner;persist();render();return}
+    if(d.ptsplit){e.preventDefault();const x=coupleSplit(S.c.first_name);if(x){S.c.first_name=x[0];if(/&|mr\s*mrs|\band\b/i.test(S.c.title||""))S.c.title="";
+      S.c.partner=Object.assign(blankContact().partner,{on:true,first_name:x[1],last_name:S.c.last_name||""})}persist();render();
+      const s=ROOT.querySelector("#ct-partner");if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
     if(d.pm){S.propMode=d.pm;persist();render();return}
     if(d.tx){txLang=d.tx;render();const s=ROOT.querySelector("#pf-tekst");if(s)s.scrollIntoView({block:"start"});return}
     if(d.add){e.preventDefault();S.c[d.add].push(d.add==="emails"?{email:"",kind:""}:{phone:"",kind:"mobile"});persist();render();return}

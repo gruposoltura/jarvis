@@ -818,3 +818,9 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 /* + Nieuwe woning / + Woning toevoegen (19-10-2026) */
 .btn.act-newpr{background:var(--c-pr);border-color:var(--c-pr);color:#fff;font-weight:700;margin-left:auto;white-space:nowrap}.btn.act-newpr:hover{filter:brightness(1.1)}
 .btn.act-newpr.hidden{display:none}
+/* partner / tweede persoon (19-10-2026) */
+.introbar.ptbar{border-color:color-mix(in srgb,#e11d48 50%,transparent);background:color-mix(in srgb,#e11d48 11%,transparent)}
+.introbar.ptbar .go{color:#fda4af}.introbar.ptbar:hover{border-color:#e11d48}
+html[data-theme="light"] .introbar.ptbar .go{color:#be123c}
+.pe-pthint{margin:2px 0 8px;padding:10px 12px;border-radius:10px;border:1.5px dashed #e11d48;background:color-mix(in srgb,#e11d48 9%,transparent);font-size:calc(13px*var(--fs,1));line-height:1.45}
+.pe-ptc{margin-bottom:8px}.pe-ptc.off{opacity:.55;border-style:dashed}

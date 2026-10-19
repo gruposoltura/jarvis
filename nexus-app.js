@@ -73,8 +73,8 @@ function why(s){if(!s)return"";let m;
   if((m=s.match(/^verkoper van (.+)$/)))return t("why.seller",{r:m[1]});
   if((m=s.match(/^eigenaar van (.+)$/)))return t("why.owner",{r:m[1]});
   if((m=s.match(/^aanbieder van (.+)$/)))return t("why.offerer",{r:m[1]});
-  if(s==="zelfde adres/telefoon")return t("why.household");return s}
-const relT=r=>r==="koper"?t("rel.koper"):r==="eigenaar"?t("rel.eigenaar"):r==="aanbiedend makelaar"?t("rel.agent"):r;
+  if(s==="zelfde adres/telefoon")return t("why.household");if(s==="partner")return t("why.partner");return s}
+const relT=r=>r==="koper"?t("rel.koper"):r==="eigenaar"?t("rel.eigenaar"):r==="aanbiedend makelaar"?t("rel.agent"):r==="mede-eigenaar (partner)"?t("rel.coowner"):r==="mede-koper (partner)"?t("rel.cobuyer"):r;
 /* leesbare formuliernamen (core.request_forms via nexus2_request_forms); onbekende sleutel blijft zichtbaar */
 let RF={};const rq=k=>{const f=RF[k];return f?(LANG==="en"?f.en:f.nl)||k:k};
 const tlTitle=s=>s==="bezichtiging"?t("tl.viewing"):s;
@@ -330,7 +330,7 @@ async function loadContacts(reset){
   const html=r.rows.map(c=>`<div class="row ${ctSel===String(c.key||c.wp_id)?"sel":""}" data-c="${esc(c.key||c.wp_id)}">
      <div class="ini" style="background:${hue(c.name||c.email)}">${esc(initials(c.name||c.email))}</div>
      <div style="min-width:0"><div class="nm">${esc(c.name||c.email||t("noname"))}</div>
-       <div class="sub">${(c.roles||[]).map(roleTag).join(" ")} <span>${esc([c.city,c.country].filter(Boolean).join(", ")||c.email||"")}</span></div></div>
+       <div class="sub">${(c.roles||[]).map(roleTag).join(" ")} <span>${esc([c.city,c.country].filter(Boolean).join(", ")||c.email||"")}</span>${c.partner?` <span class="muted">· 💑 ${esc(c.partner)}</span>`:""}</div></div>
      <div style="text-align:right"><div class="sm" style="color:${REPC[c.rep]||"#64748b"}">${esc(rep(c.rep))}</div><div class="sm muted">${c.last?ago(c.last):""}</div></div></div>`).join("");
   if(reset)box.innerHTML=html||`<div class="empty">${t("nocontacts")}</div>`;else{box.querySelector(".more")?.remove();box.insertAdjacentHTML("beforeend",html)}
   ctOff+=r.rows.length;
@@ -361,6 +361,7 @@ function renderContact(){
     <div style="min-width:0;flex:1"><h2>${esc(name)}</h2>
       <div class="roles">${(c.roles||[]).map(roleTag).join("")}<span class="sm muted" style="margin-left:6px">👤 <b style="color:${REPC[c.rep]||"#94a3b8"}">${esc(rep(c.rep))}</b> ${c.wp_id?" · #"+c.wp_id:""}${c.language?" · 🌐 "+esc(c.language):""}</span></div>
       <div class="cstrip">${phones.map(p=>`<span class="cpill"><a href="tel:${esc(cleanTel(p))}">☎ ${esc(p)}</a><a class="wa" href="https://wa.me/${esc(waNum(p))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${!phones.length?`<span class="cpill nophone"><a data-cedit="1" title="${esc(t("addphone"))}">☎ ${t("nophone")} · <b>+ ${t("addphone")}</b></a></span>`:""}${emails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}${!emails.length?`<span class="cpill nophone"><a data-cedit="1">✉ ${t("noemail")} · <b>+ ${t("addemail")}</b></a></span>`:""}</div>
+      ${(CT.partners||[]).map(pt=>`<div class="introbar ptbar" data-c="${esc(pt.id)}">💑 ${t("pt.label")} <b>${esc(pt.name||pt.email||"—")}</b>${pt.phone?` · ${esc(pt.phone)}`:""}${pt.email?` · ${esc(pt.email)}`:""}<span class="go">${t("pt.open")}</span></div>`).join("")}
       ${intro?`<div class="introbar" data-c="${esc(intro.key||intro.wp_id)}">🤝 ${t("intro.by")} <b>${esc(intro.name||intro.email)}</b>${intro.phone?` · ${esc(intro.phone)}`:""}${intro.email?` · ${esc(intro.email)}`:""}<span class="go">${t("intro.open")}</span></div>`:""}</div>
     <div class="acts">${ME&&ME.role==="admin"?`<a class="act-new" data-newct="1">+ ${t("act.newct")}</a>`:""}<a class="act-edit" data-cedit="1">✎ ${t("act.pedit")}</a></div></div>
    <div class="subtabs">${tabs.map(x=>`<button class="st ${ctSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
@@ -428,7 +429,7 @@ function ctProps(){
   const nInt=p=>(byRef[p.reference]||[]).length;
   const rel=x=>`<div class="rel" data-c="${esc(x.key||x.wp_id)}"><div class="ini" style="background:${hue(x.name||"")};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||""))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||"")}</div><div class="sm muted">${esc(x.ref)} · ${t("x.requests",{n:x.n})}</div></div></div>`;
   return `<div class="hd" style="padding:0 0 8px"><h3>${t("h.owned",{n:own.length})}</h3>${ME&&ME.role==="admin"&&CT.core&&CT.core.id?`<button class="btn sm act-newpr" type="button" data-newpr="ct">+ ${t("act.addpr")}</button>`:""}</div>
-   ${own.length?`<div class="grid2">${own.map(p=>propCard(p,`<div style="margin-top:4px"><span class="role" style="--rc:var(${p.relation==="koper"?"--r-buyer":p.relation==="eigenaar"?"--r-seller":"--r-agent"})">${esc(relT(p.relation))}</span>${nInt(p)?` <span class="sm" style="margin-left:6px;color:var(--c-pr);font-weight:700">👥 ${t("x.interested",{n:nInt(p)})}</span>`:""}</div>`)).join("")}</div>`:`<div class="empty sm">${t("noowned")}</div>`}
+   ${own.length?`<div class="grid2">${own.map(p=>propCard(p,`<div style="margin-top:4px"><span class="role" style="--rc:var(${p.relation==="koper"||p.relation==="mede-koper (partner)"?"--r-buyer":p.relation==="eigenaar"||p.relation==="mede-eigenaar (partner)"?"--r-seller":"--r-agent"})">${esc(relT(p.relation))}</span>${nInt(p)?` <span class="sm" style="margin-left:6px;color:var(--c-pr);font-weight:700">👥 ${t("x.interested",{n:nInt(p)})}</span>`:""}</div>`)).join("")}</div>`:`<div class="empty sm">${t("noowned")}</div>`}
    ${im.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.intmine",{n:im.length})}</h3></div><div class="grid2">${im.map(rel).join("")}</div>`:""}
    ${it.length||!own.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.interest",{n:it.length})}</h3></div>
    ${it.length?`<div class="grid2">${it.map(p=>propCard(p,`<div class="sm" style="margin-top:4px">${p.n}× · ${esc((p.types||[]).map(rq).join(", "))} · ${ago(p.last)}</div>`)).join("")}</div>`:`<div class="empty sm">${t("nointerest")}</div>`}`:""}`}
@@ -550,7 +551,7 @@ function propFeatures(p,raw,o,K,XL,m){
   </div>
   <div class="pk-side"><div class="pk-sa">
     ${p.is_external?extBox(p,raw,XL):""}
-    ${ownerBox(o)}
+    ${ownerBox(o)}${(PR.co_owners||[]).filter(x=>x.relation!=="buyer").map(x=>ownerBox({...x,co:1})).join("")}
     <div class="card pk-card"><div class="hd"><h3>${L2("Aanbod","Listing")}</h3></div>${kv([
       [t("p.offeredby"),offered],
       [L2("Huidige prijs","Current price"),`<b class="pk-price">${eur(price)}</b>${p.price_from?` <span class="muted sm">(${L2("vanafprijs","from-price")})</span>`:""}`,1],
@@ -676,7 +677,7 @@ function ownerContactStrip(o,raw,p){
 }
 function ownerBox(o){
   if(!o)return `<div class="ownerbox" style="cursor:default;border-style:dashed"><span class="muted sm">${t("p.noowner")}</span></div>`;
-  const lbl=o.is_agent?t("p.agentc"):t("p.owner");
+  const lbl=o.co?t("o.coowner"):o.is_agent?t("p.agentc"):t("p.owner");
   return `<div class="ownerbox" data-c="${esc(o.id||o.wp_id)}"><div class="ini" style="background:${hue(o.name||o.email)};width:38px;height:38px">${esc(initials(o.name||o.email))}</div>
     <div style="min-width:0"><div class="sm muted">${lbl}</div><div style="font-weight:700">${esc(o.name||o.email)}</div>
     <div class="sm muted">${[o.email,o.phone].filter(Boolean).map(esc).join(" · ")}</div></div><span class="go">${t("p.openowner")}</span></div>`}
@@ -793,7 +794,7 @@ function renderProp(){
   if(prSub==="verrijking")prSub="kenmerken";
   const p=PR.property, raw=PR.raw||{}, d=$("#prDetail"), o=PR.owner, K=PR.catastro;
   const XL=p.is_external?extLink(p.external_agency,raw.external_url,raw.external_refnr):null;
-  const tabs=[["kenmerken",t("st.features")],["contacten",t("st.contacts"),(PR.interested||[]).length+(o?1:0)+(PR.buyer?1:0)],["website",L2("Website","Website")]];
+  const tabs=[["kenmerken",t("st.features")],["contacten",t("st.contacts"),(PR.interested||[]).length+(o?1:0)+(PR.buyer?1:0)+(PR.co_owners||[]).length],["website",L2("Website","Website")]];
   const D=PR.detail||{};
   d.innerHTML=`<div class="dh dh-pr" style="--acc:var(--c-pr)"><div class="dh-l">
      <div class="dh-r1"><h2>${esc(p.reference)} · ${esc(p.title||"")}</h2>${statusBar(p)}</div>
@@ -810,7 +811,7 @@ function renderProp(){
   if(prSub==="kenmerken"){B.innerHTML=propFeatures(p,raw,o,K,XL,m);loadPropPhotos(p,raw);loadPropLog(p);loadPropMarket(p)}
   if(prSub==="contacten"){const one=(x,w,rc)=>x?`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm">${roleTag(rc)} <span class="muted">${esc(w)}</span></div></div></div>`:"";
     const it=PR.interested||[], vw=PR.viewings||[];
-    B.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${one(o,o&&o.is_agent?t("o.agent"):t("o.owner"),o&&o.is_agent?"agent":"seller")}${one(PR.buyer,t("o.buyer"),"buyer")}</div>
+    B.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${one(o,o&&o.is_agent?t("o.agent"):t("o.owner"),o&&o.is_agent?"agent":"seller")}${(PR.co_owners||[]).filter(x=>x.relation!=="buyer").map(x=>one(x,t("o.coowner"),"seller")).join("")}${one(PR.buyer,t("o.buyer"),"buyer")}${(PR.co_owners||[]).filter(x=>x.relation==="buyer").map(x=>one(x,t("o.cobuyer"),"buyer")).join("")}</div>
       ${vw.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.viewings",{n:vw.length})}</h3></div>${vw.map(v=>`<div class="sm" style="padding:4px 0">${fdate(v.date)} ${esc(v.time||"")} · ${esc(v.client||"")} · <span class="muted">${esc(v.agent||"")}</span></div>`).join("")}`:""}
       <div class="hd" style="padding:16px 0 8px"><h3>${t("h.interested",{n:it.length})}</h3></div>
       ${it.length?`<div style="display:flex;flex-direction:column;gap:6px">${it.map(x=>`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name||x.email)};width:30px;height:30px;font-size:calc(11px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${x.n}× · ${esc((x.types||[]).map(rq).join(", "))}</div></div><span class="sm muted">${ago(x.last)}</span></div>`).join("")}</div>`:`<div class="empty sm">${t("norequests")}</div>`}`}

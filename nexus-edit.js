@@ -350,6 +350,8 @@ const CMAILS=[["weekly_news",["Wekelijks nieuws (vrijdag)","Weekly news (Friday)
   ["monthly_matches",["Maandelijkse woningmatches","Monthly property matches"]],["new_listing",["Nieuwe woning","New listing"]],
   ["market_report",["Marktbericht (alleen met expliciete opt-in)","Market report (explicit opt-in only)"]]];
 const CMAIL_DEF=["weekly_news","price_reduced","monthly_matches","new_listing"];
+/* Aanhef per persoon; "Mr & Mrs" bestaat niet meer — een echtpaar is twee contacten (partner) */
+const TITLES=[["",""],["Mr","Mr"],["Mrs","Mrs"],["Ms","Ms"],["Dhr.","Dhr."],["Mevr.","Mevr."],["Sr.","Sr."],["Sra.","Sra."],["Herr","Herr"],["Frau","Frau"],["Dr.","Dr."]];
 const SP_BUDGET=[["",""],["100k","€ 100k"],["150k","€ 150k"],["250k","€ 250k"],["more",["Meer","More"]]];
 const SP_PERIOD=[["",""],["0-3",["0-3 maanden","0-3 months"]],["3-6",["3-6 maanden","3-6 months"]],["longer",["Langer","Longer"]]];
 async function openContact(key,ctx){X=ctx;
@@ -370,7 +372,8 @@ async function openContact(key,ctx){X=ctx;
   const mailRows=()=>`<label class="ad-c"><input type="checkbox" data-cf="mailing_optin" ${v.mailing_optin?"checked":""}><span><b>${esc(tr(["Toestemming voor mailings (opt-in)","Consent to mailings (opt-in)"]))}</b></span></label>
        <div class="ad-row" style="margin-top:8px">${CMAILS.map(([sl,lab])=>`<label class="ad-c ${sl==="market_report"?"w2":""}"><input type="checkbox" data-ms="${sl}" ${MS[sl]?"checked":""} ${v.mailing_optin?"":"disabled"}><span>${esc(tr(lab))}</span></label>`).join("")}</div>
        <small class="muted">${esc(tr(["Zonder toestemming gaat er geen enkele nieuwsbrief uit. Transactionele mails (review, welkom verkoper, opvolging) vallen hier niet onder.","Without consent no newsletter is sent. Transactional mails (review, seller welcome, follow-up) are not covered here."]))}</small>`;
-  const cfIn=f=>`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" type="${f[2]||"text"}" value="${esc(v[f[0]]??"")}"></label>`;
+  const cfIn=f=>f[0]==="title"?`<label class="ad-f"><span>${esc(tr(f[1]))}</span>${optSel("data-cf","title",TITLES,v.title)}</label>`
+    :`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" type="${f[2]||"text"}" value="${esc(v[f[0]]??"")}"></label>`;
   /* labels: aan/uit; bij Seller/Suspect-Seller aan verschijnt de optie om meteen een woning aan te maken */
   const RL=[["suspect","Suspect"],["seller","Seller"],["buyer","Buyer"],["suspect_seller","Suspect-Seller"],["agent","Agent"]];
   const r0=new Set((C.contact.roles||[]).map(x=>String(x).replace(/-/g,"_")).filter(x=>RL.some(r=>r[0]===x)));
@@ -380,6 +383,22 @@ async function openContact(key,ctx){X=ctx;
   const EM=JSON.parse(JSON.stringify(ch0.emails||[])), PH=JSON.parse(JSON.stringify(ch0.phones||[]));
   const norm=a=>JSON.stringify(a.filter(x=>(x.email||x.phone||"").trim()).map(x=>[(x.email||x.phone||"").trim().toLowerCase(),x.kind||"",!!x.is_primary]));
   const chChanged=()=>norm(EM)!==norm(ch0.emails||[])||norm(PH)!==norm(ch0.phones||[]);
+  /* Partner / tweede persoon (Rick 19-10-2026): echtparen zijn twee losse contacten met eigen e-mail en mobiel,
+     gekoppeld via relatie 'partner'. De woningen van de één gelden in NEXUS als mede-eigendom van de ander.
+     Bij een duidelijk tweepersoonsrecord ("John & Heather") staat het voorstel al ingevuld; pas na Opslaan wordt het gesplitst. */
+  const PL0=C.partners||[], UNL=new Set();
+  const PT={mode:"none",title:"",first_name:"",last_name:o.last_name||"",email:"",ekind:"",phone:"",pick:null,res:[]};
+  let HINT=null, MOVED=null;
+  if(!PL0.length){try{HINT=await X.rpc("nexus_couple_split_hint",{p_id:o.id})}catch(_){HINT=null}}
+  const applyHint=on=>{
+    if(on){v.first_name=HINT.first_name_1;if(/&|\band\b|mr\s*mrs/i.test(String(o.title||"")))v.title=null;
+      Object.assign(PT,{mode:"new",first_name:HINT.first_name_2,last_name:HINT.last_name||o.last_name||""});
+      const m=(HINT.move_emails||[])[0];if(m){const i=EM.findIndex(x=>(x.email||"").toLowerCase()===String(m.email).toLowerCase());
+        if(i>=0){MOVED=EM.splice(i,1)[0];if(MOVED.is_primary&&EM.length)EM[0].is_primary=true;PT.email=MOVED.email;PT.ekind=MOVED.kind||""}}}
+    else{v.first_name=o.first_name;v.title=o.title;if(MOVED){EM.forEach(x=>x.is_primary=x.is_primary&&!MOVED.is_primary);EM.push(MOVED);MOVED=null}PT.email=""}};
+  if(HINT&&HINT.first_name_2)applyHint(true);
+  const ptOn=()=>PT.mode==="new"?!!(PT.first_name.trim()||PT.last_name.trim()):PT.mode==="link"?!!PT.pick:false;
+  const ptChanged=()=>ptOn()||UNL.size>0;
   const EK=[["",tr(["—","—"])],["private",tr(["Privé","Private"])],["work",tr(["Werk","Work"])]], PK=[["mobile",tr(["Mobiel","Mobile"])],["phone",tr(["Vast","Landline"])],["work",tr(["Werk","Work"])],["whatsapp","WhatsApp"],["",tr(["—","—"])]];
   const chRows=(arr,key,kinds,ph)=>arr.map((x,i)=>`<div class="pe-ch"><input data-ch="${key}" data-i="${i}" data-f="${key==="em"?"email":"phone"}" value="${esc(x.email||x.phone||"")}" placeholder="${esc(ph)}" type="${key==="em"?"email":"tel"}">
      <select data-ch="${key}" data-i="${i}" data-f="kind">${kinds.map(k=>`<option value="${k[0]}" ${String(x.kind||"")===k[0]?"selected":""}>${esc(k[1])}</option>`).join("")}</select>
@@ -388,7 +407,31 @@ async function openContact(key,ctx){X=ctx;
   const isSell=set=>set.has("seller")||set.has("suspect_seller");
   const rolesChanged=()=>r0.size!==rs.size||[...rs].some(x=>!r0.has(x));
   const propOpt=()=>isSell(rs)&&!isSell(r0)?`<label class="ad-c pe-mkprop"><input type="checkbox" id="peMkProp" ${mkProp?"checked":""}><span><b>${esc(tr(["Woning aanmaken voor dit contact","Create a property for this contact"]))}</b> · ${esc(tr(["na opslaan opent ‘Woning toevoegen’ met dit contact als eigenaar","after saving, ‘Add property’ opens with this contact as owner"]))}</span></label>`:(isSell(rs)&&!(C.properties||[]).some(p=>p.relation==="eigenaar")?`<button type="button" class="btn sm" id="peMkPropBtn">+ ${esc(tr(["Woning aanmaken voor dit contact","Create a property for this contact"]))}</button>`:"");
-  const draw=()=>{ROOT.innerHTML=`<div class="pe-box pe-small"><header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(C.contact.full_name||"—")}</div><div class="pe-tt">${esc(tr(["Contactgegevens bewerken","Edit contact details"]))}</div></div>
+  const ptSec=()=>{
+    const cards=PL0.map(x=>`<div class="ad-picked pe-ptc ${UNL.has(x.id)?"off":""}"><div class="ini" style="background:var(--r-buyer)">${esc((x.name||x.email||"?").slice(0,1).toUpperCase())}</div>
+       <div style="min-width:0"><b>${esc(x.name||"—")}</b><div class="sm muted">${esc([(x.roles||[]).join(", "),x.email,x.phone].filter(Boolean).join(" · ")||tr(["geen e-mail of telefoon","no e-mail or phone"]))}</div>
+       ${UNL.has(x.id)?`<div class="sm" style="color:#f87171">${esc(tr(["Wordt ontkoppeld bij opslaan (het contact zelf blijft bestaan)","Will be unlinked on save (the contact itself remains)"]))}</div>`:""}</div>
+       <div style="display:flex;gap:6px"><button type="button" class="btn sm" data-ptgo="${esc(x.id)}">${esc(tr(["Openen","Open"]))}</button>
+       <button type="button" class="btn sm" data-ptun="${esc(x.id)}">${esc(UNL.has(x.id)?tr(["Toch gekoppeld laten","Keep linked"]):tr(["Ontkoppelen","Unlink"]))}</button></div></div>`).join("");
+    const live=PL0.filter(x=>!UNL.has(x.id)).length;
+    const hint=HINT&&HINT.first_name_2&&PT.mode==="new"&&!live?`<div class="pe-pthint">💡 ${esc(tr([`Dit record bevat twee personen. Voorstel: ${HINT.first_name_1} blijft dit contact, ${HINT.first_name_2} wordt een eigen contact en als partner gekoppeld${MOVED?` (met e-mail ${MOVED.email})`:""}. Controleer de aanhef en vul eventueel e-mail en mobiel aan; er wordt pas gesplitst bij Opslaan.`,
+        `This record holds two people. Proposal: ${HINT.first_name_1} stays this contact, ${HINT.first_name_2} becomes a contact of their own, linked as partner${MOVED?` (with e-mail ${MOVED.email})`:""}. Check the titles and add e-mail and mobile if known; nothing is split until you Save.`]))}</div>`:"";
+    const seg=`<div class="seg ad-seg" style="margin:6px 0 10px">${[["none",["Geen partner","No partner"]],["new",["Nieuwe partner","New partner"]],["link",["Bestaand contact koppelen","Link existing contact"]]]
+       .map(m=>`<button type="button" data-ptm="${m[0]}" class="${PT.mode===m[0]?"on":""}">${esc(tr(m[1]))}</button>`).join("")}</div>`;
+    const fNew=`<div class="ad-row">
+         <label class="ad-f"><span>${esc(tr(["Aanhef","Title"]))}</span>${optSel("data-pt","title",TITLES,PT.title)}</label>
+         <label class="ad-f"><span>${esc(tr(["Voornaam","First name"]))}</span><input data-pt="first_name" value="${esc(PT.first_name)}" autocomplete="off"></label>
+         <label class="ad-f"><span>${esc(tr(["Achternaam","Last name"]))}</span><input data-pt="last_name" value="${esc(PT.last_name)}" autocomplete="off"></label></div>
+       <div class="ad-row">
+         <label class="ad-f w2"><span>${esc(tr(["Eigen e-mail","Own e-mail"]))}</span><input data-pt="email" type="email" value="${esc(PT.email)}" placeholder="naam@voorbeeld.com" autocomplete="off"></label>
+         <label class="ad-f w2"><span>${esc(tr(["Eigen mobiel","Own mobile"]))}</span><input data-pt="phone" type="tel" value="${esc(PT.phone)}" placeholder="+34 …" autocomplete="off"></label></div>
+       <small class="muted">${esc(tr(["Adres, taal, land, verantwoordelijk teamlid en labels worden overgenomen van dit contact. Mailing-toestemming niet: die geeft ieder zelf. E-mail en mobiel mogen leeg blijven.","Address, language, country, responsible team member and labels are copied from this contact. Mailing consent is not: everyone gives that themselves. E-mail and mobile may stay empty."]))}</small>`;
+    const fLink=PT.pick?`<div class="ad-picked"><div class="ini" style="background:var(--r-buyer)">${esc((PT.pick.name||"?").slice(0,1).toUpperCase())}</div><div style="min-width:0"><b>${esc(PT.pick.name||"—")}</b><div class="sm muted">${esc(PT.pick.sub||"")}</div></div><button type="button" class="btn sm" data-ptclr="1">×</button></div>`
+      :`<input class="ad-search" id="pePtQ" type="search" placeholder="${esc(tr(["Naam, e-mail of telefoon van de partner","Partner's name, e-mail or phone"]))}" autocomplete="off"><div class="ad-res" id="pePtRes">${PT.res.map((c,i)=>`<button type="button" class="ad-hit" data-ptpick="${i}"><div class="ini" style="background:var(--c-ct)">${esc((c.name||"?")[0].toUpperCase())}</div><div style="min-width:0"><b>${esc(c.name||"—")}</b><div class="sm muted">${esc([(c.roles||[]).join(", "),c.email,c.phone,c.city].filter(Boolean).join(" · "))}</div></div><span></span></button>`).join("")}</div>`;
+    return cards+(live?`<small class="muted">${esc(tr(["Beide contacten zijn los te vinden, met eigen e-mail en telefoon. De woningen van de één staan bij de ander als mede-eigendom.","Both contacts can be found separately, each with own e-mail and phone. Each partner's properties show on the other as co-owned."]))}</small>`
+      :hint+seg+(PT.mode==="new"?fNew:PT.mode==="link"?fLink:`<small class="muted">${esc(tr(["Heeft dit contact een partner die mede-eigenaar of mede-koper is? Leg die vast als eigen contact, niet als tweede naam in dit record.","Does this contact have a partner who co-owns or co-buys? Record them as a contact of their own, not as a second name in this record."]))}</small>`));
+  };
+  const draw=()=>{const sc=ROOT.querySelector(".pe-main");const top=sc?sc.scrollTop:0;ROOT.innerHTML=`<div class="pe-box pe-small"><header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(C.contact.full_name||"—")}</div><div class="pe-tt">${esc(tr(["Contactgegevens bewerken","Edit contact details"]))}</div></div>
      <button class="pe-x" data-act="cclose">×</button></header>
      <div class="pe-main"><div id="peErr"></div>
      <section class="ad-sec" style="--sc:#ec4899"><h4>${esc(tr(["Labels","Labels"]))}</h4><div class="pe-roles">${RL.map(r=>`<button type="button" class="pe-role ${rs.has(r[0])?"on":""}" data-role="${r[0]}" style="--rc:var(--r-${r[0].replace("_","-")})">${r[1]}</button>`).join("")}</div>
@@ -396,6 +439,7 @@ async function openContact(key,ctx){X=ctx;
      <section class="ad-sec" style="--sc:#3b82f6"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
        <div class="ad-row">${CPERSON.map(cfIn).join("")}</div>
 </section>
+     <section class="ad-sec" style="--sc:#e11d48"><h4>💑 ${esc(tr(["Partner / tweede persoon","Partner / second person"]))}</h4><div id="pePt">${ptSec()}</div></section>
      <section class="ad-sec" style="--sc:#06b6d4"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
        <div class="ad-row">${CADDR.map(cfIn).join("")}</div>
        <label class="ad-f w4"><span>${esc(tr(["Interne opmerking","Internal note"]))}</span><textarea data-cf="internal_comments" rows="4">${esc(v.internal_comments||"")}</textarea></label></section>
@@ -425,8 +469,8 @@ async function openContact(key,ctx){X=ctx;
      <footer class="pe-ft">${X.me&&X.me()&&X.me().role==="admin"?`<button class="btn pe-del" data-act="cdelete" title="${esc(tr(["Contact definitief verwijderen (alleen beheerder)","Delete contact permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
     const diff=()=>{const d={};for(const k of CEDIT){if(!(k in v))continue;const a=v[k]===""?null:v[k],b=o[k]===""?null:o[k];if(String(a??"")!==String(b??""))d[k]=a}return d};
-    const anyDirty=()=>Object.keys(diff()).length||rolesChanged()||chChanged()||spChanged()||msChanged();
-    const up=()=>{const n=Object.keys(diff()).length+(rolesChanged()?1:0)+(chChanged()?1:0)+(spChanged()?1:0)+(msChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
+    const anyDirty=()=>Object.keys(diff()).length||rolesChanged()||chChanged()||spChanged()||msChanged()||ptChanged();
+    const up=()=>{const n=Object.keys(diff()).length+(rolesChanged()?1:0)+(chChanged()?1:0)+(spChanged()?1:0)+(msChanged()?1:0)+(ptChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
     const wireMail=()=>{ROOT.querySelectorAll("#peMail [data-cf],[data-cf]").forEach(el=>el.oninput=el.onchange=()=>{v[el.dataset.cf]=el.type==="checkbox"?el.checked:el.value;
         if(el.dataset.cf==="mailing_optin"){if(!el.checked)CMAILS.forEach(([sl])=>MS[sl]=false);else if(!CMAILS.some(([sl])=>MS[sl]))CMAIL_DEF.forEach(sl=>MS[sl]=true);
           ROOT.querySelector("#peMail").innerHTML=mailRows();wireMail()}up()});
@@ -444,6 +488,22 @@ async function openContact(key,ctx){X=ctx;
         arr.splice(i,1);if(wasP&&arr.length)arr[0].is_primary=true;redrawCh(key);up()})};
     const redrawCh=key=>{ROOT.querySelector(key==="em"?"#peEm":"#pePh").innerHTML=key==="em"?chRows(EM,"em",EK,"naam@voorbeeld.com"):chRows(PH,"ph",PK,"+34 …");wireCh()};
     wireCh();
+    let ptT;
+    const wirePt=()=>{const B=ROOT.querySelector("#pePt");if(!B)return;
+      B.querySelectorAll("[data-ptm]").forEach(b=>b.onclick=()=>{const m=b.dataset.ptm;if(m===PT.mode)return;
+        if(HINT&&HINT.first_name_2){if(m==="new"&&PT.mode!=="new"&&v.first_name===o.first_name)applyHint(true);else if(m!=="new"&&PT.mode==="new")applyHint(false)}
+        PT.mode=m;if(m!=="link")PT.pick=null;draw()});
+      B.querySelectorAll("[data-pt]").forEach(el=>el.oninput=el.onchange=()=>{PT[el.dataset.pt]=el.value;up()});
+      B.querySelectorAll("[data-ptun]").forEach(b=>b.onclick=()=>{const id=b.dataset.ptun;UNL.has(id)?UNL.delete(id):UNL.add(id);draw()});
+      B.querySelectorAll("[data-ptgo]").forEach(b=>b.onclick=()=>{if(anyDirty()&&!confirm(tr(["Niet-opgeslagen wijzigingen. Toch naar de partner?","Unsaved changes. Go to the partner anyway?"])))return;closeC();location.hash="c/"+b.dataset.ptgo});
+      const clr=B.querySelector("[data-ptclr]");if(clr)clr.onclick=()=>{PT.pick=null;PT.res=[];draw()};
+      B.querySelectorAll("[data-ptpick]").forEach(b=>b.onclick=()=>{const c=PT.res[+b.dataset.ptpick];
+        if(!c||c.id===o.id)return;PT.pick={id:c.id,name:c.name,sub:[c.email,c.phone,c.city].filter(Boolean).join(" · ")};draw()});
+      const q=B.querySelector("#pePtQ");if(q)q.oninput=()=>{clearTimeout(ptT);ptT=setTimeout(async()=>{if(q.value.trim().length<2){PT.res=[];}
+        else{try{PT.res=((await X.rpc("nexus_contact_pick",{p_q:q.value,p_role:null}))||[]).filter(c=>c.id&&c.id!==o.id)}catch(_){PT.res=[]}}
+        const val=q.value;B.innerHTML=ptSec();wirePt();const q2=B.querySelector("#pePtQ");if(q2){q2.value=val;q2.focus()}
+        if(!PT.res.length&&val.trim().length>=2)B.querySelector("#pePtRes").innerHTML=`<div class="empty sm">${esc(tr(["Niets gevonden","Nothing found"]))}</div>`},260)}};
+    wirePt();
     const wireProp=()=>{const cb=ROOT.querySelector("#peMkProp");if(cb)cb.onchange=()=>{mkProp=cb.checked};
       const bt=ROOT.querySelector("#peMkPropBtn");if(bt)bt.onclick=()=>{closeC();goNewProp()}};
     ROOT.querySelectorAll("[data-role]").forEach(b=>b.onclick=()=>{const r=b.dataset.role;
@@ -460,13 +520,21 @@ async function openContact(key,ctx){X=ctx;
       catch(e){ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(e.message||String(e))}</div>`}};
     ROOT.querySelector('[data-act="csave"]').onclick=async()=>{const d=diff();if(spChanged())d.search_profile=spClean(SP);if(msChanged())d.mailing_prefs=Object.assign({},MS);if(!anyDirty())return;
       const badE=EM.map(x=>(x.email||"").trim()).filter(e=>e&&!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(e));
-      if(badE.length){ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(tr(["Ongeldig e-mailadres: ","Invalid e-mail: "])+badE.join(", "))}</div>`;return}const b=ROOT.querySelector("#peSave");b.disabled=true;b.textContent=tr(["Opslaan…","Saving…"]);
+      if(PT.mode==="new"&&PT.email.trim()&&!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(PT.email.trim()))badE.push(PT.email.trim());
+      if(badE.length){ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(tr(["Ongeldig e-mailadres: ","Invalid e-mail: "])+badE.join(", "))}</div>`;return}
+      if(PT.mode==="new"&&HINT&&!ptOn()){ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(tr(["Vul de naam van de partner in, of kies ‘Geen partner’.","Enter the partner's name, or choose ‘No partner’."]))}</div>`;return}const b=ROOT.querySelector("#peSave");b.disabled=true;b.textContent=tr(["Opslaan…","Saving…"]);
       try{if(Object.keys(d).length)await X.rpc("nexus_contact_save",{p_id:o.id,p_patch:d});
         if(rolesChanged())await X.rpc("nexus_contact_roles_set",{p_id:o.id,p_roles:[...rs]});
         if(chChanged())await X.rpc("nexus_contact_channels_set",{p_id:o.id,p_emails:EM.filter(x=>(x.email||"").trim()),p_phones:PH.filter(x=>(x.phone||"").trim())});
+        for(const id of UNL)await X.rpc("nexus_partner_unlink",{p_a:o.id,p_b:id});
+        if(PT.mode==="new"&&ptOn()){const f=Object.fromEntries(Object.entries({title:PT.title,first_name:PT.first_name.trim(),last_name:PT.last_name.trim()}).filter(([,x])=>x));
+          await X.rpc("nexus_partner_create",{p_main:o.id,p_fields:f,
+            p_emails:PT.email.trim()?[{email:PT.email.trim().toLowerCase(),kind:PT.ekind||null,is_primary:true}]:[],
+            p_phones:PT.phone.replace(/\D/g,"").length>=6?[{phone:PT.phone.trim(),kind:"mobile",is_primary:true}]:[]})}
+        else if(PT.mode==="link"&&PT.pick)await X.rpc("nexus_partner_link",{p_a:o.id,p_b:PT.pick.id});
         const go=mkProp&&isSell(rs);closeC();toast(tr(["Opgeslagen","Saved"]));X.onSaved&&X.onSaved(o.id);if(go)goNewProp()}
       catch(e){b.disabled=false;b.textContent=tr(["Opslaan","Save"]);ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(e.message||String(e))}</div>`}};
-    up()};
+    up();const sc2=ROOT.querySelector(".pe-main");if(sc2&&top)sc2.scrollTop=top};
   const closeC=()=>{ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")};
   const goNewProp=()=>{location.hash="ad";setTimeout(()=>{if(window.NEXUS_ADMIN&&NEXUS_ADMIN.startNewProperty)NEXUS_ADMIN.startNewProperty({id:o.id,wp_id:C.contact.wp_id||"",name:C.contact.full_name,email:C.contact.email,city:o.city,roles:[...rs].map(x=>x.replace("_","-"))})},0)};
   draw();
