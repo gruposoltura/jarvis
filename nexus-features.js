@@ -110,5 +110,23 @@ function handle(el,m){const d=el.dataset||{};const s=keysOf(m);
     const o=it.options.find(x=>x.v===d.fxv);if(o)o.keys.forEach(k=>s.add(k));write(m,s);return true}
   if(d.fxl){if(!el.checked){s.delete(d.fxl);write(m,s);return true}return false}
   return false}
-window.NEXUS_FEAT={html,handle,PANELS};
+/* alleen-lezen weergave voor het woningdetail: dezelfde 8 panelen en volgorde als bij invoer, alleen wat aan staat.
+   Panelen zonder keuze komen samen op één regel "Niet ingevuld". Zwembad toont altijd de keuze (ook "Geen"). */
+function view(features,opts,ctx){const tr=ctx.tr, m={get:()=>({features:features||[],opts:opts||{}})}, s=keysOf(m);
+  const legacy=[...s].filter(k=>!ALL_KEYS.has(k)&&!ALIAS[k]&&k!==O("feed",k.slice(7)));
+  const empty=[];
+  const out=PANELS.map(p=>{let sub=null;const parts=[];
+    p.items.forEach(i=>{
+      if(i.t==="sub"){sub=i;return}
+      if(i.t==="radio"){const v=radioVal(i,s), o=i.options.find(x=>x.v===v);
+        if(v===i.options[0].v&&p.id!=="pool")return;
+        parts.push(`<div class="fx-vr"><span>${esc(tr(i.label))}</span><b class="${v===i.options[0].v?"muted":""}">${esc(tr(o.label))}</b></div>`);return}
+      if(i.keys.every(k=>s.has(k))){if(sub){parts.push(`<div class="fx-sub">${esc(tr(sub.label))}</div>`);sub=null}
+        parts.push(`<span class="fx-chip on ro">${esc(tr(i.label))}</span>`)}});
+    const real=parts.some(x=>!/class="muted"/.test(x));
+    if(!parts.length||(!real&&p.id!=="pool")){empty.push(tr(p.title));return ""}
+    return `<div class="fx-panel fx-ro" style="--fx:${p.color}"><div class="fx-h"><b>${esc(tr(p.title))}</b></div><div class="fx-body">${parts.join("")}</div></div>`}).join("");
+  return `<div class="fx fx-view">${out}${legacy.length?`<div class="fx-panel fx-ro fx-legacy" style="--fx:#94a3b8"><div class="fx-h"><b>${esc(tr(["Uit de oude lijst","From the old list"]))}</b></div><div class="fx-body">${legacy.map(k=>`<span class="fx-chip on ro">${esc(k.replace(/^f:/,"").replace(/^o:/,"").replace(":"," · ").replace(/_/g," "))}</span>`).join("")}</div></div>`:""}</div>
+    ${empty.length?`<div class="fx-empty sm muted">${esc(tr(["Niet ingevuld: ","Not filled in: "]))}${esc(empty.join(" · "))}</div>`:""}`}
+window.NEXUS_FEAT={html,handle,view,PANELS};
 })();

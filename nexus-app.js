@@ -505,6 +505,12 @@ const viewHtml=v=>v?String(v).split(",").map(x=>{const n=VIEW[x.trim()];return n
 const MANDATE={multilist:["Multilist (via meerdere makelaars)","Multilist (several agents)"],open:["Open (niet exclusief)","Open (not exclusive)"],exclusive:["Exclusief bij Grupo Soltura","Exclusive to Grupo Soltura"]};
 const days=ts=>ts?Math.max(0,Math.round((Date.now()-new Date(ts))/864e5)):null;
 function since(ts){const d=days(ts);if(d==null)return "";if(d<60)return L2(d+" dagen",d+" days");const mo=Math.round(d/30.4);return mo<24?L2(mo+" maanden",mo+" months"):L2((d/365).toFixed(1).replace(".",",")+" jaar",(d/365).toFixed(1)+" years")}
+/* panelen in dezelfde volgorde en kleuren als het invoerscherm (Admin → Woning toevoegen); ✎ opent Bewerken op die sectie */
+const PKSEC=[["basis",["Basis","Basics"],"#3b82f6"],["prijs",["Prijs","Price"],"#22c55e"],["loc",["Locatie","Location"],"#06b6d4"],["ind",["Indeling","Layout"],"#f59e0b"],
+  ["ken",["Kenmerken","Features"],"#a855f7"],["tekst",["Teksten","Texts"],"#ec4899"],["media",["Foto's","Photos"],"#f97316"],["kost",["Kosten","Costs"],"#64748b"],["pub",["Publicatie","Publishing"],"#eab308"]];
+function pkSec(id,title,body,o){o=o||{};const c=(PKSEC.find(x=>x[0]===id)||[0,0,"#ef4444"])[2];
+  return `<div class="card pk-card pk-sec" id="pks-${id}" style="--sc:${c}"><div class="hd"><h3>${title}</h3><span class="pk-sec-r">${o.tag?`<span class="tag">${esc(o.tag)}</span>`:""}${o.aside||""}<a class="pk-sec-ed" data-pjump="${id}" title="${L2("Bewerken","Edit")}">✎</a></span></div>${body}</div>`}
+function grp(title,pairs){const f=pairs.filter(x=>x[1]!=null&&x[1]!=="");return f.length?`<div class="pk-grp">${title}</div>${kv(f)}`:""}
 function propFeatures(p,raw,o,K,XL,m){
   const price=p.price, prev=p.previous_price&&p.previous_price!=p.price?Number(p.previous_price):null;
   const chg=prev&&price?Math.round((price-prev)/prev*100):null;
@@ -530,7 +536,7 @@ function propFeatures(p,raw,o,K,XL,m){
   const fees=[[L2("Notaris","Notary"),D.fee_notary],[L2("Registro","Land registry"),D.fee_registry],[L2("Advocaat","Lawyer"),D.fee_legal],[L2("Overdrachtsbelasting","Transfer tax"),D.fee_transfer_tax]];
   const costs=[[L2("Gemeenschapskosten","Community fees"),D.cost_community],["IBI",D.cost_ibi],[L2("Vuilnisbelasting","Waste tax"),D.cost_garbage],[L2("Verzekering","Insurance"),D.cost_insurance]];
   const feeSum=fees.reduce((a,x)=>a+(Number(x[1])||0),0);
-  const featBox=propFeatureList(D);
+  const lst=D.listed_at||p.list_date;
   const desc=(LANG==="en"?D.desc_en||D.desc_nl:D.desc_nl||D.desc_en)||"";
   const descTxt=desc?(new DOMParser().parseFromString(desc.replace(/<\/(p|li|h\d)>|<br\s*\/?>/gi,"\n"),"text/html").body.textContent||"").replace(/\n{3,}/g,"\n\n").trim():"";
   return `<div class="pk">
@@ -547,27 +553,13 @@ function propFeatures(p,raw,o,K,XL,m){
     <div class="facts big">${tile("🛏",p.bedrooms??"—",t("fa.beds"))}${tile("🛁",p.bathrooms??"—",t("fa.baths"))}${(()=>{const F=areaFlag(p,PR.catastro);return F?`<div class="af-tile af-${F.lvl}" title="${esc(areaFlagTip(F))}"><span class="fi">${areaFlagIcon(F,20)}</span><b>${num(p.build_area)} m²</b><span>${t("fa.build")} · <b class="af-pct">${F.pct>0?"+":""}${F.pct}% ${L2("vs kadaster","vs cadastre")}</b></span></div>`:tile("📐",p.build_area?num(p.build_area)+" m²":"—",t("fa.build"))})()}${tile("🌳",p.plot_area?num(p.plot_area)+" m²":"—",t("fa.plot"))}</div>
     <div class="pk-sub">${L2("Belangstelling","Interest")}</div>
     <div class="facts">${tile("👁",num(raw.hits_total),t("fa.hits"))}${tile("⚡",raw.hits_today??"—",t("fa.today"))}${tile("✉",num(m.sent||0),t("fa.mailed"))}${tile("✓",num(m.converted||0),t("fa.conv"))}</div>
-    ${descTxt?`<div class="card pk-card"><div class="hd"><h3>${L2("Omschrijving","Description")}</h3>${D.desc_nl&&D.desc_en?`<span class="tag">${LANG==="en"?"EN":"NL"}</span>`:""}</div><div class="pk-desc">${esc(descTxt)}</div></div>`:""}
   </div>
-  <div class="pk-side"><div class="pk-sa">
+  <div class="pk-side">
+    <div class="pk-jump">${PKSEC.map(x=>`<a data-pks="${x[0]}" style="--sc:${x[2]}">${L2(...x[1])}</a>`).join("")}</div>
+    <div class="pk-sa">
     ${p.is_external?extBox(p,raw,XL):""}
     ${ownerBox(o)}${(PR.co_owners||[]).filter(x=>x.relation!=="buyer").map(x=>ownerBox({...x,co:1})).join("")}
-    <div class="card pk-card"><div class="hd"><h3>${L2("Aanbod","Listing")}</h3></div>${kv([
-      [t("p.offeredby"),offered],
-      [L2("Huidige prijs","Current price"),`<b class="pk-price">${eur(price)}</b>${p.price_from?` <span class="muted sm">(${L2("vanafprijs","from-price")})</span>`:""}`,1],
-      [t("p.prevprice"),prev?`${eur(prev)} <span class="muted sm">· ${L2("gewijzigd","changed")} ${fdate(p.price_changedate)}${chg!=null?` · ${chg>0?"+":""}${chg}%`:""}</span>`:null,1],
-      [t("p.mandate"),raw.authority?(MANDATE[raw.authority]?L2(...MANDATE[raw.authority]):raw.authority):null],
-      [t("p.listed"),p.list_date?`${fdate(p.list_date)} <span class="muted sm">· ${since(p.list_date)}</span>`:null,1],
-      [L2("Prijsweergave","Price display"),priceMode||null],
-      [L2("Labels","Labels"),(D.labels||[]).length?D.labels.map(x=>LBL[x]?L2(...LBL[x]):x).join(" · "):null],
-      [L2("Op de website","On the website"),p.is_own||D.published!=null?(D.published?`<span style="color:#22c55e">● ${L2("Gepubliceerd","Published")}</span>`:`<span class="muted">○ ${L2("Niet gepubliceerd","Not published")}</span>`):null,1],
-      [L2("Feeds","Feeds"),feeds],
-      [L2("Onder bod sinds","Under offer since"),D.under_offer_at?fdate(D.under_offer_at):null],
-      [L2("Ingetrokken op","Withdrawn on"),D.withdrawn_at?fdate(D.withdrawn_at):null],
-      [L2("Dossier","File"),p.is_own?(D.dossier_complete?L2("Compleet","Complete"):L2("Nog niet compleet","Not yet complete")):null],
-      [t("p.srccontact"),[raw.external_phone,raw.external_email].filter(Boolean).join(" · ")],
-      [t("p.notary"),S.notary?null:raw.sold_notary]])}</div>
-    ${Object.keys(S).length?`<div class="card pk-card pk-admin"><div class="hd"><h3>${L2("Verkoop & commissie","Sale & commission")}</h3><span class="tag">admin</span></div>${kv([
+    ${Object.keys(S).length?pkSec("status",L2("Status & verkoop","Status & sale"),kv([
       [L2("Verkoopprijs","Sale price"),S.sold_price!=null?eur(S.sold_price):null],
       [L2("Verkoopdatum","Sale date"),S.sold_date?fdate(S.sold_date):null],
       [L2("Waarde in akte","Deed value"),S.deed_price!=null?eur(S.deed_price):null],
@@ -577,50 +569,56 @@ function propFeatures(p,raw,o,K,XL,m){
       [L2("Commissie B","Commission B"),S.commission_b!=null?eur(S.commission_b):null],
       [L2("Commissie uit","Commission out"),S.commission_out!=null?eur(S.commission_out):null],
       ["Conveyancing",S.conveyancing!=null?eur(S.conveyancing):null],
-      [L2("Notitie","Note"),S.commission_note]])}</div>`:""}
-    <div class="card pk-card"><div class="hd"><h3>${L2("Woning","Property")}</h3></div>${kv([
+      [L2("Notitie","Note"),S.commission_note]]),{tag:"admin"}):""}
+    ${pkSec("basis",L2("Basis","Basics"),kv([
+      [L2("Status","Status"),stLabel(p.core_status)],
       [t("p.type"),p.property_type?esc(cap(p.property_type))+(D.object_style?` <span class="muted sm">· ${esc(cap(D.object_style))}</span>`:""):null,1],
       [L2("Bouw","Build"),p.is_newbuild?L2("Nieuwbouw","New build"):D.build_type==="resale"?L2("Bestaande bouw","Resale"):D.build_type],
-      [L2("Verdiepingen","Floors"),D.floors],
-      [L2("Op verdieping","On floor"),D.floor_level],
+      [t("p.mandate"),D.own_listing_type?(MANDATE[D.own_listing_type]?L2(...MANDATE[D.own_listing_type]):D.own_listing_type):raw.authority?(MANDATE[raw.authority]?L2(...MANDATE[raw.authority]):raw.authority):null],
+      [L2("Referentie","Reference"),`<b>${esc(p.reference)}</b>`,1],
+      [t("p.offeredby"),offered],
       [t("p.year"),yr?`${esc(yr)}${age!=null&&age>=0?` <span class="muted sm">· ${L2(age+" jaar oud",age+" years old")}</span>`:""}`:null,1],
-      [t("p.energy"),energyHtml(raw.energy_label),1],
-      [t("p.pool"),pool],
-      [t("p.orient"),orientHtml(raw.orientation),1],
-      [t("p.view"),viewHtml(raw.view),1]])}</div>
-    <div class="card pk-card"><div class="hd"><h3>${L2("Indeling & oppervlakte","Layout & areas")}</h3></div>${kv([
-      [L2("Slaapkamers","Bedrooms"),p.bedrooms],
-      [L2("Badkamers","Bathrooms"),nWith(p.bathrooms,D.ensuites,"en-suite"),1],
-      [L2("Losse toiletten","Separate toilets"),D.toilets],
-      [L2("Woonkamers","Living rooms"),D.living_rooms],
-      [L2("Keukens","Kitchens"),D.kitchens],
-      [L2("Kamers totaal","Rooms total"),D.rooms],
-      [L2("Terrassen","Terraces"),D.terraces],
-      [L2("Balkons","Balconies"),D.balconies],
-      [L2("Patio's","Patios"),D.patios],
-      [L2("Garages","Garages"),D.garages],
-      ["Carports",D.carports],
-      [L2("Open parkeerplekken","Open parking spaces"),D.parking_spaces],
-      [L2("Bebouwd","Built"),m2u(p.build_area)],
-      [L2("Woonoppervlak","Living area"),m2u(D.area_living)],
-      [L2("Terras","Terrace"),m2u(D.area_terrace)],
-      [L2("Tuin","Garden"),m2u(D.area_garden)],
-      [L2("Perceel","Plot"),m2u(p.plot_area)]])}</div>
-    ${featBox}</div><div class="pk-sb">
-    <div class="card pk-card"><div class="hd"><h3>${L2("Adres & ligging","Address & location")}</h3>${mapHref?`<a class="tag" href="${esc(mapHref)}" target="_blank" rel="noopener">${L2("Kaart","Map")} ↗</a>`:""}</div>${kv([
+      [L2("In aanbod sinds","Listed since"),lst?`${fdate(lst)} <span class="muted sm">· ${since(lst)}</span>`:null,1],
+      [L2("Makelaar","Listing agent"),p.rep?`<b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b>`:null,1],
+      [L2("Sleutelnummer","Key number"),D.key_number?`🔑 ${esc(D.key_number)}`:raw.keydetails||null,1],
+      [L2("Dossier","File"),p.is_own?(D.dossier_complete?L2("Compleet","Complete"):L2("Nog niet compleet","Not yet complete")):null],
+      [t("p.srccontact"),[raw.external_phone,raw.external_email].filter(Boolean).join(" · ")]]))}
+    ${pkSec("prijs",L2("Prijs","Price"),kv([
+      [L2("Vraagprijs","Asking price"),`<b class="pk-price">${eur(price)}</b>${p.price_from||D.price_from?` <span class="muted sm">(${L2("vanafprijs","from-price")})</span>`:""}`,1],
+      [t("p.prevprice"),prev?`${eur(prev)} <span class="muted sm">· ${L2("gewijzigd","changed")} ${fdate(p.price_changedate)}${chg!=null?` · ${chg>0?"+":""}${chg}%`:""}</span>`:null,1],
+      [L2("Per m²","Per m²"),m2?eur(m2):null],
+      [L2("Prijsweergave","Price display"),priceMode||null]]))}
+    ${pkSec("loc",L2("Locatie","Location"),kv([
+      [L2("Gemeente","Municipality"),D.loc_municipality||town],
+      [L2("Wijk / urbanisatie","Area / urbanisation"),area],
       [L2("Straat","Street"),[D.street||raw.street,D.street_number].filter(Boolean).join(" ")||null],
-      [L2("Urbanisatie","Urbanisation"),area],
       [L2("Postcode","Postcode"),D.postal_code||raw.postal_code],
-      [L2("Plaats","Town"),town],
       [L2("Provincie","Province"),D.province||p.province],
       [L2("Land","Country"),D.country?(D.country==="Spain"?L2("Spanje","Spain"):D.country):null],
-      [L2("Adres online","Address online"),p.is_own?(D.hide_address?L2("Verborgen","Hidden"):L2("Zichtbaar","Visible")):null],
-      [L2("Afstanden","Distances"),[sea&&L2("zee ","sea ")+sea,dist(D.dist_city)&&L2("centrum ","town ")+dist(D.dist_city),dist(D.dist_shops)&&L2("winkels ","shops ")+dist(D.dist_shops),dist(D.dist_airport)&&L2("luchthaven ","airport ")+dist(D.dist_airport)].filter(Boolean).join(" · ")],
-      [L2("Finca / registro","Finca / registry"),[D.finca_number&&"finca "+D.finca_number,D.registry_name].filter(Boolean).join(" · ")],
-      [t("p.keys"),raw.keydetails],
-      [L2("Interne notities","Internal notes"),raw.internal_notes?`<div class="pk-notes">${esc(raw.internal_notes)}</div>`:null,1]])}</div>
+      [t("p.orient"),orientHtml(D.orientation||raw.orientation),1],
+      [t("p.view"),viewHtml(D.views||raw.view),1],
+      [L2("Kaart","Map"),(D.lat&&D.lng?`${Number(D.lat).toFixed(5)}, ${Number(D.lng).toFixed(5)}`:L2("Geen coördinaten","No coordinates"))+(p.is_own?` <span class="muted sm">· ${D.hide_address?L2("verborgen op site","hidden on site"):L2("zichtbaar op site","visible on site")}</span>`:""),1]]),{aside:mapHref?`<a class="tag" href="${esc(mapHref)}" target="_blank" rel="noopener">${L2("Kaart","Map")} ↗</a>`:""})}
+    ${pkSec("ind",L2("Indeling en oppervlaktes","Layout and areas"),
+      grp(L2("Kamers","Rooms"),[[L2("Slaapkamers","Bedrooms"),p.bedrooms],[L2("Badkamers","Bathrooms"),p.bathrooms],[L2("Toiletten","Toilets"),D.toilets],["En-suite",D.ensuites],[L2("Woonkamers","Living rooms"),D.living_rooms],[L2("Keukens","Kitchens"),D.kitchens]])
+      +grp(L2("Oppervlakte","Surface"),[[L2("Bebouwd","Built"),(()=>{const F=areaFlag(p,PR.catastro);return p.build_area?`${num(p.build_area)} m²${F?` <span class="af-inl af-${F.lvl}" title="${esc(areaFlagTip(F))}">${areaFlagIcon(F,14)} ${F.pct>0?"+":""}${F.pct}%</span>`:""}`:null})(),1],[L2("Perceel","Plot"),m2u(p.plot_area)],[t("p.energy"),energyHtml(D.energy_label||raw.energy_label),1]])
+      +grp(L2("Overig","Other"),[[L2("Verdiepingen","Floors"),D.floors],[L2("Etage","Level"),D.floor_level],[L2("Balkons","Balconies"),D.balconies],[L2("Patio's","Patios"),D.patios],[L2("Terrassen","Terraces"),D.terraces],[L2("Garages","Garages"),D.garages],["Carports",D.carports],[L2("Open parkeerplekken","Open parking spaces"),D.parking_spaces]])
+      +grp(L2("Afstanden","Distances"),[[L2("Zee","Sea"),sea],[L2("Luchthaven","Airport"),dist(D.dist_airport)],[L2("Centrum","Town centre"),dist(D.dist_city)],[L2("Winkels","Shops"),dist(D.dist_shops)]]))}
+    ${pkSec("ken",L2("Kenmerken","Features"),window.NEXUS_FEAT&&NEXUS_FEAT.view?`<div class="pk-fx">${NEXUS_FEAT.view(D.features,D.feature_options,{tr:x=>L2(...x)})}</div>`:propFeatureList(D))}
+    ${pkSec("tekst",L2("Teksten","Texts"),(descTxt?`<div class="pk-desc">${esc(descTxt)}</div>`:`<div class="empty sm">${L2("Nog geen omschrijving","No description yet")}</div>`)
+      +((D.internal_notes||raw.internal_notes)?`<div class="pk-grp">${L2("Interne notities","Internal notes")}</div><div class="pk-notes" style="margin:0 14px 12px">${esc(D.internal_notes||raw.internal_notes)}</div>`:""),{tag:D.desc_nl&&D.desc_en?(LANG==="en"?"EN":"NL"):""})}
+    ${pkSec("kost",L2("Kosten en kadaster","Costs and land registry"),
+      grp(L2("Vaste lasten per jaar","Running costs per year"),costs.map(x=>[x[0],x[1]!=null?eur(x[1]):null]))
+      +grp(L2("Kosten koper","Buyer costs"),fees.map(x=>[x[0],x[1]!=null?eur(x[1]):null]).concat(feeSum?[[L2("Totaal","Total"),`<b>${eur(feeSum)}</b>`,1]]:[]))
+      +grp(L2("Eigendomsakte","Title deed"),[["Registro",D.registry_name],[L2("Fincanummer","Finca number"),D.finca_number],[L2("Kadastrale referentie","Cadastral ref."),D.cadastral_ref]]))}
     ${catSummary(K,p)}
     ${propExtData(p)}
+    ${pkSec("pub",L2("Publicatie","Publishing"),kv([
+      [L2("Op de website","On the website"),p.is_own||D.published!=null?(D.published?`<span style="color:#22c55e">● ${L2("Gepubliceerd","Published")}</span>${D.published_at?` <span class="muted sm">· ${L2("sinds","since")} ${fdate(D.published_at)}</span>`:""}`:`<span class="muted">○ ${L2("Niet gepubliceerd","Not published")}</span>`):null,1],
+      [L2("Labels","Labels"),(D.labels||[]).length?D.labels.map(x=>LBL[x]?L2(...LBL[x]):String(x).toUpperCase()).join(" · "):null],
+      [L2("Feeds","Feeds"),feeds],
+      [L2("Onder bod sinds","Under offer since"),D.under_offer_at?fdate(D.under_offer_at):null],
+      [L2("Ingetrokken op","Withdrawn on"),D.withdrawn_at?fdate(D.withdrawn_at):null],
+      [t("p.notary"),S.notary?null:raw.sold_notary]]))}
   </div></div>
   <aside class="pk-photos" id="pkPhotos" aria-label="${L2("Foto's","Photos")}"><div class="pk-ph-h">${L2("Foto's","Photos")}</div><div class="pk-ph-list"><div class="loader sm">…</div></div></aside>
   <div class="card pk-wide" id="pkLog"><div class="hd"><h3>${L2("Wijzigingslog","Change log")}</h3></div><div class="pk-log-nx"><div class="loader sm">…</div></div>${raw.changelog?`<div class="sm muted" style="margin-top:10px">${L2("Historie uit CPR (tot 18 okt 2026)","History from CPR (until 18 Oct 2026)")}</div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div>`:""}</div>
@@ -808,7 +806,9 @@ function renderProp(){
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{prSub=b.dataset.s;renderProp()});
   wirePropEdit(d,p);
   const B=$("#prBody"), m=PR.matches||{};
-  if(prSub==="kenmerken"){B.innerHTML=propFeatures(p,raw,o,K,XL,m);loadPropPhotos(p,raw);loadPropLog(p);loadPropMarket(p)}
+  if(prSub==="kenmerken"){B.innerHTML=propFeatures(p,raw,o,K,XL,m);loadPropPhotos(p,raw);loadPropLog(p);loadPropMarket(p);
+    B.querySelectorAll("[data-pks]").forEach(a=>a.onclick=()=>{const el=B.querySelector(a.dataset.pks==="media"?"#pkPhotos":"#pks-"+a.dataset.pks);if(el)el.scrollIntoView({behavior:"smooth",block:"start"})});
+    B.querySelectorAll("[data-pjump]").forEach(a=>a.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.open(p.reference,editCtx(a.dataset.pjump)))}
   if(prSub==="contacten"){const one=(x,w,rc)=>x?`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm">${roleTag(rc)} <span class="muted">${esc(w)}</span></div></div></div>`:"";
     const it=PR.interested||[], vw=PR.viewings||[];
     B.innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">${one(o,o&&o.is_agent?t("o.agent"):t("o.owner"),o&&o.is_agent?"agent":"seller")}${(PR.co_owners||[]).filter(x=>x.relation!=="buyer").map(x=>one(x,t("o.coowner"),"seller")).join("")}${one(PR.buyer,t("o.buyer"),"buyer")}${(PR.co_owners||[]).filter(x=>x.relation==="buyer").map(x=>one(x,t("o.cobuyer"),"buyer")).join("")}</div>

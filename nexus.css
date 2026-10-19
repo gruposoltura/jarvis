@@ -824,3 +824,25 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 html[data-theme="light"] .introbar.ptbar .go{color:#be123c}
 .pe-pthint{margin:2px 0 8px;padding:10px 12px;border-radius:10px;border:1.5px dashed #e11d48;background:color-mix(in srgb,#e11d48 9%,transparent);font-size:calc(13px*var(--fs,1));line-height:1.45}
 .pe-ptc{margin-bottom:8px}.pe-ptc.off{opacity:.55;border-style:dashed}
+
+/* woningdetail: panelen gelijk aan het invoerscherm (19-10-2026) */
+.pk-jump{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;column-span:all}
+.pk-jump a{--sc:#94a3b8;cursor:pointer;padding:4px 10px;border-radius:999px;font-size:calc(12px*var(--fs,1));font-weight:600;border:1px solid color-mix(in srgb,var(--sc) 45%,var(--line));background:color-mix(in srgb,var(--sc) 12%,var(--bg2));color:color-mix(in srgb,var(--sc) 55%,var(--hi,#e2e8f0))}
+.pk-jump a:hover{background:color-mix(in srgb,var(--sc) 24%,var(--bg2))}
+.pk-sec{--sc:#94a3b8;border-top:3px solid var(--sc)!important;scroll-margin-top:8px}
+.pk-sec>.hd{background:color-mix(in srgb,var(--sc) 9%,transparent)}
+.pk-sec>.hd h3{color:color-mix(in srgb,var(--sc) 55%,var(--hi,#e2e8f0))}
+.pk-sec-r{display:inline-flex;align-items:center;gap:6px}
+.pk-sec-ed{cursor:pointer;opacity:.55;padding:0 4px;font-size:calc(13px*var(--fs,1))}.pk-sec-ed:hover{opacity:1;color:var(--sc)}
+.pk-grp{padding:9px 14px 0;font-size:calc(11px*var(--fs,1));font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2)}
+.pk-grp+.kv{padding-top:6px}
+.pk-sec .pk-desc{padding:12px 14px}
+.pk-fx{padding:10px 12px 12px}
+.fx-view{grid-template-columns:1fr;gap:8px}
+.fx-ro .fx-h{padding:7px 12px;border-bottom:1px solid color-mix(in srgb,var(--fx) 25%,var(--line))}
+.fx-ro .fx-h b{color:color-mix(in srgb,var(--fx) 60%,var(--hi,#e2e8f0));font-size:calc(12.5px*var(--fs,1))}
+.fx-ro .fx-body{padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fx-ro .fx-sub{flex-basis:100%;margin:2px 0 -2px}
+.fx-chip.ro{cursor:default;font-size:calc(12px*var(--fs,1));padding:3px 9px}
+.fx-vr{flex-basis:100%;display:flex;gap:8px;align-items:baseline;font-size:calc(13px*var(--fs,1))}.fx-vr span{color:var(--tx2);min-width:90px}
+.fx-empty{margin-top:8px}
