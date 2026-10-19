@@ -507,7 +507,7 @@ const days=ts=>ts?Math.max(0,Math.round((Date.now()-new Date(ts))/864e5)):null;
 function since(ts){const d=days(ts);if(d==null)return "";if(d<60)return L2(d+" dagen",d+" days");const mo=Math.round(d/30.4);return mo<24?L2(mo+" maanden",mo+" months"):L2((d/365).toFixed(1).replace(".",",")+" jaar",(d/365).toFixed(1)+" years")}
 /* panelen in dezelfde volgorde en kleuren als het invoerscherm (Admin → Woning toevoegen); ✎ opent Bewerken op die sectie */
 const PKSEC=[["basis",["Basis","Basics"],"#3b82f6"],["prijs",["Prijs","Price"],"#22c55e"],["loc",["Locatie","Location"],"#06b6d4"],["ind",["Indeling","Layout"],"#f59e0b"],
-  ["ken",["Kenmerken","Features"],"#a855f7"],["tekst",["Teksten","Texts"],"#ec4899"],["media",["Foto's","Photos"],"#f97316"],["kost",["Kosten","Costs"],"#64748b"],["pub",["Publicatie","Publishing"],"#eab308"]];
+  ["ken",["Kenmerken","Features"],"#a855f7"],["tekst",["Teksten","Texts"],"#ec4899"],["media",["Foto's","Photos"],"#f97316"],["kost",["Eigendomsakte","Title deed"],"#64748b"],["pub",["Publicatie","Publishing"],"#eab308"]];
 function pkSec(id,title,body,o){o=o||{};const c=(PKSEC.find(x=>x[0]===id)||[0,0,"#ef4444"])[2];
   return `<div class="card pk-card pk-sec" id="pks-${id}" style="--sc:${c}"><div class="hd"><h3>${title}</h3><span class="pk-sec-r">${o.tag?`<span class="tag">${esc(o.tag)}</span>`:""}${o.aside||""}<a class="pk-sec-ed" data-pjump="${id}" title="${L2("Bewerken","Edit")}">✎</a></span></div>${body}</div>`}
 function grp(title,pairs){const f=pairs.filter(x=>x[1]!=null&&x[1]!=="");return f.length?`<div class="pk-grp">${title}</div>${kv(f)}`:""}
@@ -606,10 +606,9 @@ function propFeatures(p,raw,o,K,XL,m){
     ${pkSec("ken",L2("Kenmerken","Features"),window.NEXUS_FEAT&&NEXUS_FEAT.view?`<div class="pk-fx">${NEXUS_FEAT.view(D.features,D.feature_options,{tr:x=>L2(...x)})}</div>`:propFeatureList(D))}
     ${pkSec("tekst",L2("Teksten","Texts"),(descTxt?`<div class="pk-desc">${esc(descTxt)}</div>`:`<div class="empty sm">${L2("Nog geen omschrijving","No description yet")}</div>`)
       +((D.internal_notes||raw.internal_notes)?`<div class="pk-grp">${L2("Interne notities","Internal notes")}</div><div class="pk-notes" style="margin:0 14px 12px">${esc(D.internal_notes||raw.internal_notes)}</div>`:""),{tag:D.desc_nl&&D.desc_en?(LANG==="en"?"EN":"NL"):""})}
-    ${pkSec("kost",L2("Kosten en kadaster","Costs and land registry"),
-      grp(L2("Vaste lasten per jaar","Running costs per year"),costs.map(x=>[x[0],x[1]!=null?eur(x[1]):null]))
-      +grp(L2("Kosten koper","Buyer costs"),fees.map(x=>[x[0],x[1]!=null?eur(x[1]):null]).concat(feeSum?[[L2("Totaal","Total"),`<b>${eur(feeSum)}</b>`,1]]:[]))
-      +grp(L2("Eigendomsakte","Title deed"),[["Registro",D.registry_name],[L2("Fincanummer","Finca number"),D.finca_number],[L2("Kadastrale referentie","Cadastral ref."),D.cadastral_ref]]))}
+    ${/* BESLUIT Rick 18-10-2026 (herbevestigd 19-10): GEEN kosten koper en geen vaste lasten in het woningdetail. Niet terugzetten. */""}
+    ${pkSec("kost",L2("Eigendomsakte","Title deed"),
+      grp(L2("Eigendomsakte","Title deed"),[["Registro",D.registry_name],[L2("Fincanummer","Finca number"),D.finca_number],[L2("Kadastrale referentie","Cadastral ref."),D.cadastral_ref]]))}
     ${catSummary(K,p)}
     ${propExtData(p)}
     ${pkSec("pub",L2("Publicatie","Publishing"),kv([
