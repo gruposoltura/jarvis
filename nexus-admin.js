@@ -134,7 +134,13 @@ function chk(k,label){return `<label class="ad-c"><input type="checkbox" data-k=
 function multi(k,opts,o={}){const arr=getP(S,k)||[];
   return `<div class="ad-multi ${o.cols?"c"+o.cols:""}">${opts.map(x=>{const val=Array.isArray(x)?x[0]:x, lab=Array.isArray(x)?x[1]:x;
     return `<label class="ad-c"><input type="checkbox" data-k="${k}" data-arr="${esc(val)}" ${arr.includes(val)?"checked":""}><span>${esc(tr(lab))}</span></label>`}).join("")}</div>`}
-const sec=(title,body,o={})=>`<section class="ad-sec" ${o.id?`id="${o.id}"`:""}><h4>${esc(tr(title))}${o.aside?`<span class="sm muted">${o.aside}</span>`:""}</h4>${body}</section>`;
+/* 19-10-2026: elk invulblok een eigen kleur (dunne rand, ronde hoeken, lichte achtergrond) */
+const SEC_C={"pf-basis":"#3b82f6","pf-prijs":"#22c55e","pf-loc":"#06b6d4","pf-ind":"#f59e0b","pf-ken":"#a855f7","pf-tekst":"#ec4899","pf-media":"#f97316","pf-kost":"#64748b","pf-pub":"#eab308",
+  "ct-labels":"#ec4899","ct-person":"#3b82f6","ct-chan":"#22c55e","ct-addr":"#06b6d4","ct-search":"#f59e0b","ct-mail":"#a855f7","ct-note":"#64748b","ag":"#14b8a6"};
+const SEC_T={"Labels":"#ec4899","Persoon":"#3b82f6","E-mail en telefoon":"#22c55e","Adres":"#06b6d4","Zoekprofiel":"#f59e0b","Mailings":"#a855f7","Interne opmerking":"#64748b",
+  "Makelaar zoeken":"#14b8a6","Nieuwe makelaar":"#14b8a6","Of: vrij verwezen door":"#64748b","Verwezen door":"#64748b","Bestaand contact":"#3b82f6","Bestaande woning":"#f97316","Status":"#22c55e",
+  "Wat er geschreven wordt (core-schema)":"#64748b","Eigenaar":"#14b8a6","Contact":"#3b82f6","Woning":"#f97316","Koppeling":"#a855f7"};
+const sec=(title,body,o={})=>`<section class="ad-sec" ${o.id?`id="${o.id}"`:""} style="--sc:${SEC_C[o.id]||SEC_T[Array.isArray(title)?title[0]:title]||"#94a3b8"}"><h4>${esc(tr(title))}${o.aside?`<span class="sm muted">${o.aside}</span>`:""}</h4>${body}</section>`;
 const row=(...c)=>`<div class="ad-row">${c.join("")}</div>`;
 
 /* ================= LOCATIES ================= */
@@ -321,17 +327,15 @@ function propForm(base,media){
         .map(f=>inp(B(f[0]),f[1],{type:"number",min:0})).join("")}${inp(B("floor_level"),["Etage","Level"],{ph:["bijv. begane grond, 2e","e.g. ground, 2nd"]})}</div></div>
      <h5 class="ad-h5row">${esc(tr(["Afstanden (meter, hemelsbreed)","Distances (metres, straight line)"]))}<button class="btn sm" data-dist="${base}">⟳ ${esc(tr(["Bereken","Calculate"]))}</button></h5>${row(inp(B("distance_sea_m"),["Zee","Sea"],{type:"number",min:0}),inp(B("distance_airport_m"),["Luchthaven","Airport"],{type:"number",min:0}),inp(B("distance_city_m"),["Centrum","Town centre"],{type:"number",min:0}),inp(B("distance_shops_m"),["Winkels (supermarkt)","Shops (supermarket)"],{type:"number",min:0}))}
      <small class="muted" id="adDistInfo-${base.replace(".","_")}">${esc(distInfo(p))}</small>`,{id:"pf-ind"})}
-  ${sec(["Kenmerken","Features"],`<div class="ad-cols3"><div><h5>Indoor</h5>${multi(B("features"),F_INDOOR)}</div><div><h5>Outdoor</h5>${multi(B("features"),F_OUTDOOR)}</div><div><h5>${esc(tr(["Klimaat","Climatisation"]))}</h5>${multi(B("features"),F_CLIMATE)}</div></div>
-     ${Object.entries(OPT).map(([k,[lab,vals]])=>`<details class="ad-det" ${((p.opts||{})[k]||[]).length?"open":""}><summary>${esc(tr(lab))} <span class="sm muted">${((p.opts||{})[k]||[]).length||""}</span></summary>${multi(B("opts."+k),vals,{cols:k==="property"||k==="community"?4:3})}</details>`).join("")}`,{id:"pf-ken"})}
-  ${sec(["Teksten","Texts"],`<div class="ad-txbar"><div class="seg ad-seg sm">${TX_LANGS.map(l=>`<button data-tx="${l}" class="${txLang===l?"on":""}">${l.toUpperCase()}${txOk(p,l)?" ✓":""}</button>`).join("")}</div>
-       <button class="btn sm ad-gen" data-gen="${base}" ${GEN_BUSY?"disabled":""}>${GEN_BUSY?"… "+esc(tr(["Teksten worden geschreven (±30 sec)","Writing texts (±30 sec)"])):"✨ "+esc(tr(["Genereer teksten (EN, NL, SV)","Generate texts (EN, NL, SV)"]))}</button></div>
-     <div id="adGenMsg" class="sm"></div>
-     ${row(inp(B(`texts.${txLang}.heading`),["Kop","Heading"],{w:4,req:txLang==="en"?"pub":"",ph:["bijv. Vrijstaande villa met privézwembad in Benimar","e.g. Detached villa with private pool in Benimar"]}))}
-     ${row(area(B(`texts.${txLang}.description`),["Omschrijving","Description"],{rows:9,req:txLang==="en"?"pub":""}))}
+  ${sec(["Kenmerken","Features"],`<div data-fxbase="${base}">${window.NEXUS_FEAT?NEXUS_FEAT.html(featModel(base),{tr,category:p.category}):""}</div>`,{id:"pf-ken"})}
+  ${sec(["Teksten","Texts"],`<div class="ad-note sm" style="margin-bottom:10px">✨ ${esc(tr(["Je hoeft hier niets in te vullen. Direct na Opslaan haalt NEXUS het kadaster op en schrijft Agent SEO (dezelfde agent als bij de import) de Engelse kop, omschrijving met links naar de woonplaatsgids en de SEO-teksten. NL en SV volgen binnen enkele minuten via de vertaalagents. Wat je hier zelf invult, mag Agent SEO herschrijven; een kop die je invult blijft staan.","No need to fill this in. Right after Save, NEXUS fetches the cadastre and Agent SEO (the same agent as for imports) writes the English heading, description with links to the town guide and the SEO texts. NL and SV follow within minutes via the translation agents. Agent SEO may rewrite what you enter here; a heading you enter is kept."]))}</div>
+     <div class="ad-txbar"><div class="seg ad-seg sm">${TX_LANGS.map(l=>`<button data-tx="${l}" class="${txLang===l?"on":""}">${l.toUpperCase()}${txOk(p,l)?" ✓":""}</button>`).join("")}</div></div>
+     ${row(inp(B(`texts.${txLang}.heading`),["Kop","Heading"],{w:4,ph:["bijv. Vrijstaande villa met privézwembad in Benimar","e.g. Detached villa with private pool in Benimar"]}))}
+     ${row(area(B(`texts.${txLang}.description`),["Omschrijving","Description"],{rows:9}))}
      ${row(area(B(`texts.${txLang}.key_details`),["Kernpunten (één per regel, komen op de website)","Key points (one per line, shown on the website)"],{rows:5}))}
      ${row(inp(B(`texts.${txLang}.seo_title`),["SEO-titel","SEO title"],{w:2,hint:["max. ±60 tekens","max ±60 characters"]}),inp(B(`texts.${txLang}.seo_description`),["SEO-omschrijving","SEO description"],{w:2,hint:["max. ±155 tekens","max ±155 characters"]}))}
      ${row(area(B("internal_notes"),["Interne notities","Internal notes"],{rows:3,hint:["Alleen intern, nooit op de site of in teksten","Internal only, never on the site or in texts"]}))}
-     <small class="muted">${esc(tr(["Engels is de brontaal en verplicht voor publicatie. ✨ schrijft alle drie de talen op basis van de ingevulde gegevens; controleer en pas gerust aan. Na opslaan houden de vertaalagents NL en SV bij als je het Engels wijzigt.","English is the source language and required to publish. ✨ writes all three languages from the entered data; check and edit freely. After saving, the translation agents keep NL and SV in line when you change the English."]))}</small>`,{id:"pf-tekst"})}
+`,{id:"pf-tekst"})}
   ${sec(["Foto's en media","Photos and media"],`<div class="ad-drop" data-media="${base}"><input type="file" multiple accept="image/*,application/pdf" hidden>
        <div><b>${esc(tr(["Sleep foto's hierheen of klik om te kiezen","Drop photos here or click to choose"]))}</b><div class="sm muted">${esc(tr(["JPG/PNG/WebP, ook plattegronden en PDF (energiecertificaat). Eerste foto = hoofdfoto. Volgorde aanpassen door te slepen.","JPG/PNG/WebP, also floor plans and PDF (energy certificate). First photo = main photo. Drag to reorder."]))}</div></div></div>
      <div class="ad-media" id="adMedia-${base}"></div>
@@ -403,10 +407,8 @@ function validateProp(p,media,stepNo,out){
   if(!p.build_area&&p.category!=="plot")add(["Bebouwde oppervlakte","Building area"],"save","pf-ind");
   if(p.lat===""||p.lng==="")add(["Locatie op de kaart","Location on the map"],"pub","pf-loc");
   if(!p.energy_label&&p.category!=="plot")add(["Energielabel","Energy label"],"pub","pf-ind");
-  if(!txOk(p,"en"))add(["Kop + omschrijving EN","Heading + description EN"],"pub","pf-tekst");
-  else{if(!txOk(p,"nl"))add(["NL-tekst ontbreekt (wordt na opslaan vertaald)","NL text missing (translated after saving)"],"tip","pf-tekst");if(!txOk(p,"sv"))add(["SV-tekst ontbreekt (wordt na opslaan vertaald)","SV text missing (translated after saving)"],"tip","pf-tekst")}
+  if(!txOk(p,"en"))add(["Teksten schrijft Agent SEO direct na opslaan","Agent SEO writes the texts right after saving"],"tip","pf-tekst");
   if(p.key_on&&!/^\d{1,9}$/.test(String(p.key_number||"").trim()))add(["Sleutelnummer (alleen cijfers)","Key number (digits only)"],"save","pf-basis");
-  if(String((p.texts.en||{}).description||"").trim().length>0&&String(p.texts.en.description).trim().length<80)add(["EN-omschrijving is erg kort","EN description is very short"],"pub","pf-tekst");
   const photos=media.filter(m=>m.kind==="photo").length;
   if(photos<1)add(["Minstens één foto","At least one photo"],"pub","pf-media");
   else if(photos<5)add(["Minder dan 5 foto's","Fewer than 5 photos"],"tip","pf-media");
@@ -585,8 +587,10 @@ async function submit(){
   [...MEDIA,...WP_MEDIA].forEach(m=>m.url&&URL.revokeObjectURL(m.url));MEDIA=[];WP_MEDIA=[];DUPS=[];S=blank();S.flow=flow;
   if(X.me()){S.c.owner=S.p.listing_agent=S.wp.p.listing_agent=String(X.me().wp_author_id||"")}
   try{localStorage.removeItem(DRAFT_KEY)}catch(_){}
-  DONE={name:doneName||"",contact_id:res&&res.contact_id,reference:res&&res.reference,n:up.n,errors:up.errors,link:flow==="link"};
+  DONE={name:doneName||"",contact_id:res&&res.contact_id,reference:res&&res.reference,n:up.n,errors:up.errors,link:flow==="link",
+    enrich:res&&res.property_id&&payload.property&&payload.property.mode==="now"?{busy:true}:null};
   render();
+  if(DONE.enrich){const me=DONE;fnCall("property-enrich-now",{property_id:res.property_id}).then(r=>{me.enrich=r||{}}).catch(e=>{me.enrich={ok:false,error:e.message||String(e)}}).then(()=>{if(DONE===me)render()})}
   saveMsg(`<b>✓ ${esc(tr(["Opgeslagen","Saved"]))}</b>${esc(DONE.reference?DONE.reference+" · ":"")}${esc(DONE.name)}`,"ok");
 }
 function doneView(){const d=DONE;
@@ -596,7 +600,17 @@ function doneView(){const d=DONE;
   return `<div class="ad-done"><div class="ad-done-ic">✓</div><h2>${esc(tr(["Opgeslagen in NEXUS","Saved in NEXUS"]))}</h2>
     <p>${d.name?`<b>${esc(d.name)}</b>`:""}${d.name&&d.reference?" · ":""}${d.reference?`${esc(tr(["woning","property"]))} <b>${esc(d.reference)}</b>`:""}${d.n?esc(tr([` · ${d.n} bestand(en) geüpload`,` · ${d.n} file(s) uploaded`])):""}</p>
     ${d.errors&&d.errors.length?`<div class="ad-bad" style="text-align:left">${esc(tr(["Niet alle bestanden zijn geüpload — voeg ze toe via Bewerken bij de woning:","Not all files were uploaded — add them via Edit on the property:"]))}<br>${d.errors.map(esc).join("<br>")}</div>`:""}
+    ${d.enrich?enrichView(d.enrich):""}
     <div class="ad-done-btns">${btns}</div></div>`}
+function enrichView(e){
+  if(e.busy)return `<div class="ad-enrich busy"><span class="ad-spin"></span>${esc(tr(["Kadaster wordt opgehaald en Agent SEO schrijft de teksten (±1 minuut)…","Fetching cadastre and Agent SEO is writing the texts (±1 minute)…"]))}</div>`;
+  const c=e.catastro||null, seo=e.seo||{};
+  const cat=c?(c.status==="ok"?`✓ ${esc(tr(["Kadaster","Cadastre"]))}: ${esc(c.cadastral_ref||"")}${c.year_built?" · "+esc(tr(["bouwjaar ","built "]))+c.year_built:""}${c.build_area_m2?" · "+c.build_area_m2+" m²":""}${c.parcel_area_m2?" · "+esc(tr(["perceel ","plot "]))+c.parcel_area_m2+" m²":""}`
+      :`⚠ ${esc(tr(["Kadaster niet gevonden","Cadastre not found"]))}${c.error?": "+esc(c.error):""}`):(e.pending?"":`⚠ ${esc(tr(["Kadaster: geen resultaat","Cadastre: no result"]))}`);
+  const txt=(seo.written||[]).length?`✓ ${esc(tr(["Teksten geschreven door Agent SEO (EN); NL en SV volgen binnen enkele minuten","Texts written by Agent SEO (EN); NL and SV follow within minutes"]))}`
+      :e.pending?`… ${esc(tr(["Duurt langer dan verwacht; het loopt op de achtergrond door","Taking longer than expected; it continues in the background"]))}`
+      :`⚠ ${esc(tr(["Teksten nog niet geschreven","Texts not written yet"]))}${e.error?": "+esc(e.error):""}`;
+  return `<div class="ad-enrich ${e.ok?"ok":"warn"}">${cat?`<div>${cat}</div>`:""}<div>${txt}</div></div>`}
 
 /* ================= ZOEKEN (alleen-lezen via bestaande RPC's) ================= */
 let DUPS=[], dupT;
@@ -714,21 +728,7 @@ async function calcDist(base,force){const p=getP(S,base), info=ROOT.querySelecto
     if(info)info.textContent=p._dist_info;persist();updateChecks()}
   catch(e){if(info)info.textContent=tr(["Afstanden niet berekend: ","Distances not calculated: "])+(e.message||e)}}
 let GEN_BUSY=false;
-function genFacts(p){const nn=v=>v===""||v==null?null:Number(v);
-  return {category:p.category,build_type:p.build_type,status:p.status,year_built:nn(p.year_built),bedrooms:nn(p.bedrooms),bathrooms:nn(p.bathrooms),toilets:nn(p.toilets),ensuites:nn(p.ensuites),
-    living_rooms:nn(p.living_rooms),kitchens:nn(p.kitchens),floors:nn(p.floors),floor_level:p.floor_level||null,balconies:nn(p.balconies),terraces:nn(p.terraces),patios:nn(p.patios),
-    garages:nn(p.garages),carports:nn(p.carports),build_area:nn(p.build_area),plot_area:nn(p.plot_area),orientation:p.orientation||null,views:(p.views||[]).join(","),
-    energy_label:p.energy_label||null,features:p.features||[],feature_options:p.opts||{},municipality:p.municipality||null,area:areaName(p)||null,province:p.province||null,
-    distance_sea_m:nn(p.distance_sea_m),distance_airport_m:nn(p.distance_airport_m),distance_city_m:nn(p.distance_city_m),distance_shops_m:nn(p.distance_shops_m)}}
-async function genTexts(base){const p=getP(S,base);if(GEN_BUSY)return;
-  const has=TX_LANGS.some(l=>p.texts[l]&&(p.texts[l].heading||p.texts[l].description));
-  if(has&&!confirm(tr(["De bestaande teksten in EN, NL en SV worden vervangen. Doorgaan?","The existing EN, NL and SV texts will be replaced. Continue?"])))return;
-  GEN_BUSY=true;render();
-  try{const r=await fnCall("property-describe",{property:genFacts(p)});
-    TX_LANGS.forEach(l=>{const t=r.texts&&r.texts[l];if(!t)return;p.texts[l]=Object.assign({},p.texts[l],{heading:t.heading||"",description:t.description||"",key_details:t.key_details||"",seo_title:t.seo_title||"",seo_description:t.seo_description||""})});
-    GEN_BUSY=false;txLang="en";persist();render();
-    const m=ROOT.querySelector("#adGenMsg");if(m)m.innerHTML=`<span style="color:#34d399">✓ ${esc(tr(["Teksten geschreven in EN, NL en SV. Lees ze na en pas aan waar nodig.","Texts written in EN, NL and SV. Review and edit where needed."]))}</span>`}
-  catch(e){GEN_BUSY=false;render();const m=ROOT.querySelector("#adGenMsg");if(m)m.innerHTML=`<span class="ad-bad">${esc(tr(["Niet gelukt: ","Failed: "])+(e.message||e))}</span>`}}
+const featModel=base=>({get:()=>{const p=getP(S,base);return{features:p.features||[],opts:p.opts||{}}},set:(f,o)=>{const p=getP(S,base);p.features=f;p.opts=o}});
 async function keyToggle(base,on){const p=getP(S,base);
   if(!on){p.key_number="";persist();render();return}
   render();
@@ -739,6 +739,7 @@ async function keyToggle(base,on){const p=getP(S,base);
 function bind(){
   ROOT.addEventListener("input",e=>{const el=e.target, k=el.dataset&&el.dataset.k;
     if(el.id==="adGeoQ"){GEO_Q[el.dataset.base]=el.value;return}
+    if(el.dataset.fxc||el.dataset.fxl){const w=el.closest("[data-fxbase]");if(w&&window.NEXUS_FEAT&&NEXUS_FEAT.handle(el,featModel(w.dataset.fxbase))){persist();render()}return}
     if(!k)return;
     if(el.dataset.arr!=null){const a=getP(S,k)||[];const v=el.dataset.arr;const nx=el.checked?[...new Set([...a,v])]:a.filter(x=>x!==v);setP(S,k,nx);
       const ch=el.closest(".chip");if(ch)ch.classList.toggle("on",el.checked);
@@ -772,7 +773,7 @@ function bind(){
     if(d.usedup){const x=DUPS.find(y=>String(y.id||y.wp_id)===d.usedup);if(x){S.contactMode="existing";S.existing={id:x.id,wp_id:x.wp_id,name:x.name,email:x.email,city:x.city,roles:x.roles};S.step=2;S.flow="wizard";DUPS=[];persist();render()}return}
     if(d.save){e.preventDefault();submit().catch(err=>{BUSY=false;updateChecks();console.error("NEXUS admin submit",err);saveMsg(`<b>${esc(tr(["Niet opgeslagen","Not saved"]))}</b>${esc((err&&err.message)||String(err))}`,"err")});return}
     if(d.dist){e.preventDefault();calcDist(d.dist,true);return}
-    if(d.gen){e.preventDefault();genTexts(d.gen);return}
+    if(d.fxr){e.preventDefault();const w=t.closest("[data-fxbase]");if(w&&window.NEXUS_FEAT&&NEXUS_FEAT.handle(t,featModel(w.dataset.fxbase))){persist();render()}return}
     if(t.id==="adCopyJson"){navigator.clipboard&&navigator.clipboard.writeText(JSON.stringify(payload("wizard"),null,2));t.textContent="✓";return}
     if(t.id==="adReset"){if(confirm(tr(["Concept wissen? Alle ingevulde velden en foto's gaan weg.","Clear draft? All entered fields and photos are removed."]))){
       [...MEDIA,...WP_MEDIA].forEach(m=>m.url&&URL.revokeObjectURL(m.url));MEDIA=[];WP_MEDIA=[];DUPS=[];const f=S.flow;S=blank();S.flow=f;

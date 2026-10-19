@@ -47,7 +47,8 @@ function multi(k,opts,o={}){const arr=o.csv?String(P[k]||"").split(/\s*,\s*/).fi
   const extra=arr.filter(a=>!opts.some(x=>(Array.isArray(x)?x[0]:x)===a));
   return `<div class="ad-multi ${o.cols?"c"+o.cols:""}">${opts.concat(extra.map(e=>[e,e])).map(x=>{const val=Array.isArray(x)?x[0]:x, lab=Array.isArray(x)?x[1]:x;
     return `<label class="ad-c"><input type="checkbox" data-k="${k}" data-arr="${esc(val)}" ${o.csv?"data-csv":""} ${o.path?`data-path="${o.path}"`:""} ${arr.includes(val)?"checked":""}><span>${esc(tr(lab))}</span></label>`}).join("")}</div>`}
-const sec=(id,title,body,o={})=>`<section class="ad-sec" id="pe-${id}"><h4>${esc(tr(title))}${o.aside||""}</h4>${body}</section>`;
+const SEC_C={status:"#22c55e",basis:"#3b82f6",prijs:"#22c55e",loc:"#06b6d4",ind:"#f59e0b",ken:"#a855f7",tekst:"#ec4899",media:"#f97316",kost:"#64748b",con:"#14b8a6",pub:"#eab308",hist:"#94a3b8"};
+const sec=(id,title,body,o={})=>`<section class="ad-sec" id="pe-${id}" style="--sc:${SEC_C[id]||"#94a3b8"}"><h4>${esc(tr(title))}${o.aside||""}</h4>${body}</section>`;
 const row=(...c)=>`<div class="ad-row">${c.join("")}</div>`;
 
 /* ---------- opbouw ---------- */
@@ -125,16 +126,14 @@ function secLayout(){const l=L(), n=(k,lab)=>inp(k,lab,{type:"number",min:0});
     <div><h5>${esc(tr(["Oppervlakte (m²)","Surface (m²)"]))}</h5>${n("build_area",["Bebouwd","Built"])}${n("plot_area",["Perceel","Plot"])}
       ${sel("energy_label",["Energielabel","Energy label"],l.ENERGY||[])}</div>
     <div><h5>${esc(tr(["Overig","Other"]))}</h5>${n("floors",["Verdiepingen","Floors"])}${inp("floor_level",["Etage","Level"])}${n("balconies",["Balkons","Balconies"])}${n("terraces",["Terrassen","Terraces"])}${n("patios",["Patio's","Patios"])}${n("garages",["Garages","Garages"])}${n("carports","Carports")}${n("parking_spaces",["Open parkeerplekken","Open parking spaces"])}</div></div>`)}
-function secFeatures(){const l=L(), fo=P.feature_options||{}, known=Object.keys(l.OPT||{});
-  const other=Object.keys(fo).filter(k=>!known.includes(k)&&(fo[k]||[]).length);
-  return sec("ken",["Kenmerken","Features"],`<div class="ad-cols3"><div><h5>Indoor</h5>${multi("features",l.F_INDOOR||[])}</div><div><h5>Outdoor</h5>${multi("features",l.F_OUTDOOR||[])}</div><div><h5>${esc(tr(["Klimaat","Climate"]))}</h5>${multi("features",l.F_CLIMATE||[])}</div></div>
-    ${Object.entries(l.OPT||{}).map(([k,[lab,vals]])=>`<details class="ad-det" ${(fo[k]||[]).length?"open":""}><summary>${esc(tr(lab))} <span class="sm muted">${(fo[k]||[]).length||""}</span></summary>${multi("feature_options",vals,{path:k,cols:k==="property"||k==="community"?4:3})}</details>`).join("")}
-    ${other.map(k=>`<details class="ad-det"><summary>${esc(k)} <span class="sm muted">${fo[k].length} · ${esc(tr(["uit feed, alleen-lezen","from feed, read-only"]))}</span></summary><div class="ad-chips">${fo[k].map(v=>`<span class="tag">${esc(v)}</span>`).join("")}</div></details>`).join("")}`)}
+const featModel=()=>({get:()=>({features:P.features||[],opts:P.feature_options||{}}),set:(f,o)=>{set("features",f);set("feature_options",o)}});
+function secFeatures(){
+  return sec("ken",["Kenmerken","Features"],`<div data-fxbase="edit">${window.NEXUS_FEAT?NEXUS_FEAT.html(featModel(),{tr,category:P.category}):""}</div>`)}
 function secTexts(){const t=T[txL]||{};
   const f=(k,lab,o={})=>o.area?`<label class="ad-f w4"><span>${esc(tr(lab))}</span><textarea data-tx="${txL}.${k}" rows="${o.rows||4}">${esc(t[k]||"")}</textarea>${o.hint?`<small>${esc(tr(o.hint))}</small>`:""}</label>`
     :`<label class="ad-f ${o.w?"w"+o.w:"w4"}"><span>${esc(tr(lab))}</span><input data-tx="${txL}.${k}" value="${esc(t[k]||"")}">${o.hint?`<small>${esc(tr(o.hint))}</small>`:""}</label>`;
   return sec("tekst",["Teksten","Texts"],`<div class="ad-txbar"><div class="seg ad-seg sm">${LANGS_OF().map(l=>`<button data-txl="${l}" class="${txL===l?"on":""}">${l.toUpperCase()}${(T[l]||{}).description?" ✓":""}</button>`).join("")}</div>
-    ${P.origin==="partner"?"":`<button class="btn sm ad-gen" data-act="gen" ${GEN?"disabled":""}>${GEN?"… "+esc(tr(["Teksten worden geschreven (±30 sec)","Writing texts (±30 sec)"])):"✨ "+esc(tr(["Genereer teksten (EN, NL, SV)","Generate texts (EN, NL, SV)"]))}</button>`}</div><div id="peGenMsg" class="sm"></div>
+    ${P.origin==="partner"?"":`<button class="btn sm ad-gen" data-act="gen" ${GEN?"disabled":""}>${GEN?"… "+esc(tr(["Kadaster en Agent SEO bezig (±1 min)","Cadastre and Agent SEO running (±1 min)"])):"✨ "+esc(tr(["Kadaster + teksten opnieuw (Agent SEO)","Cadastre + texts again (Agent SEO)"]))}</button>`}</div><div id="peGenMsg" class="sm"></div>
     ${row(f("heading",["Kop","Heading"]))}${row(f("description",["Omschrijving","Description"],{area:true,rows:9,hint:P.origin==="partner"?["⟳ Wordt elke nacht door de feed overschreven","⟳ Overwritten nightly by the feed"]:null}))}
     ${row(f("key_details",["Kernpunten (één per regel)","Key points (one per line)"],{area:true,rows:5}))}
     ${row(f("seo_title",["SEO-titel","SEO title"],{w:2}),f("seo_keyword",["SEO-zoekwoord","SEO keyword"],{w:2}))}${row(f("seo_description",["SEO-omschrijving","SEO description"],{area:true,rows:2}))}`)}
@@ -217,19 +216,17 @@ async function calcDist(){const info=ROOT.querySelector("#peDistInfo");
     const i2=ROOT.querySelector("#peDistInfo");if(i2)i2.textContent=tr(["Hemelsbreed berekend","Straight line"])+" · "+[r.airport,r.centre,r.shop].filter(Boolean).join(" · ")+" — "+tr(["nog niet opgeslagen","not saved yet"])}
   catch(x){if(info)info.textContent=tr(["Afstanden niet berekend: ","Distances not calculated: "])+(x.message||x)}}
 async function genTexts(){if(GEN)return;
-  if(["en","nl","sv"].some(l=>T[l]&&(T[l].heading||T[l].description))&&!confirm(tr(["De bestaande teksten in EN, NL en SV worden vervangen. Doorgaan?","The existing EN, NL and SV texts will be replaced. Continue?"])))return;
-  GEN=true;render(true);
-  try{const f={category:P.category,build_type:P.build_type,status:P.status,year_built:P.year_built,bedrooms:P.bedrooms,bathrooms:P.bathrooms,toilets:P.toilets,ensuites:P.ensuites,
-      living_rooms:P.living_rooms,kitchens:P.kitchens,floors:P.floors,floor_level:P.floor_level,balconies:P.balconies,terraces:P.terraces,patios:P.patios,garages:P.garages,carports:P.carports,
-      parking_spaces:P.parking_spaces,build_area:P.build_area,plot_area:P.plot_area,orientation:P.orientation,views:P.views,energy_label:P.energy_label,features:P.features||[],
-      feature_options:P.feature_options||{},municipality:P.city,area:P.suburb||P.location_area||locName(P.location_id),province:P.province,
-      distance_sea_m:P.distance_sea_m,distance_airport_m:P.distance_airport_m,distance_city_m:P.distance_city_m,distance_shops_m:P.distance_shops_m};
-    const r=await fnCall("property-describe",{property:f});
-    ["en","nl","sv"].forEach(l=>{const t=r.texts&&r.texts[l];if(!t)return;T[l]=Object.assign({},T[l]||{});
-      ["heading","description","key_details","seo_title","seo_description"].forEach(k=>{T[l][k]=t[k]||"";TTOUCH[l+"."+k]=1})});
-    GEN=false;txL="en";render(true);upDirty();
-    const m=ROOT.querySelector("#peGenMsg");if(m)m.innerHTML=`<span style="color:#34d399">✓ ${esc(tr(["Teksten geschreven in EN, NL en SV — nog niet opgeslagen. Lees ze na en klik op Opslaan.","Texts written in EN, NL and SV — not saved yet. Review and click Save."]))}</span>`}
-  catch(x){GEN=false;render(true);const m=ROOT.querySelector("#peGenMsg");if(m)m.innerHTML=`<span class="ad-bad">${esc(tr(["Niet gelukt: ","Failed: "])+(x.message||x))}</span>`}}
+  if(dirtyCount()){err(tr(["Sla eerst je wijzigingen op; Agent SEO werkt met de opgeslagen gegevens.","Save your changes first; Agent SEO works from the saved data."]));return}
+  if(((T.en||{}).description||"").length>200&&!confirm(tr(["Agent SEO herschrijft de Engelse omschrijving en SEO-teksten (de kop blijft staan). NL en SV worden daarna opnieuw vertaald. Doorgaan?","Agent SEO rewrites the English description and SEO texts (the heading stays). NL and SV are then translated again. Continue?"])))return;
+  GEN=true;render(true);let r,msg;
+  try{r=await fnCall("property-enrich-now",{property_id:P.id})}catch(x){r={ok:false,error:x.message||String(x)}}
+  GEN=false;
+  const c=r.catastro;const parts=[];
+  parts.push(c?(c.status==="ok"?"✓ "+tr(["Kadaster","Cadastre"])+": "+(c.cadastral_ref||""):"⚠ "+tr(["Kadaster niet gevonden","Cadastre not found"])+(c.error?": "+c.error:"")):(r.pending?"…":"⚠ "+tr(["Kadaster: geen resultaat","Cadastre: no result"])));
+  parts.push(((r.seo||{}).written||[]).length?"✓ "+tr(["Teksten geschreven (EN); NL en SV volgen binnen enkele minuten","Texts written (EN); NL and SV follow within minutes"]):"⚠ "+(r.error||tr(["Teksten niet geschreven","Texts not written"])));
+  msg=parts.join(" · ");
+  await load(P.reference);
+  const m=ROOT.querySelector("#peGenMsg");if(m)m.innerHTML=`<span style="color:${r.ok?"#34d399":"#fbbf24"}">${esc(msg)}</span>`}
 
 /* ---------- events ---------- */
 let PICKED={};
@@ -239,6 +236,7 @@ function bind(){
   ROOT.addEventListener("input",e=>{const el=e.target;
     if(el.dataset.tx){const [l,f]=el.dataset.tx.split(".");(T[l]=T[l]||{})[f]=el.value;TTOUCH[el.dataset.tx]=1;upDirty();return}
     if(el.dataset.pick!=null){pickSearch(el);return}
+    if((el.dataset.fxc||el.dataset.fxl)&&window.NEXUS_FEAT){if(NEXUS_FEAT.handle(el,featModel()))render(true);return}
     const k=el.dataset.k;if(!k)return;
     if(el.dataset.arr!=null){const v=el.dataset.arr;
       if(el.dataset.csv!=null){let a=String(P[k]||"").split(/\s*,\s*/).filter(Boolean);a=el.checked?[...new Set([...a,v])]:a.filter(x=>x!==v);set(k,a.join(",")||null)}
@@ -259,6 +257,7 @@ function bind(){
     if(d.act==="save"){e.preventDefault();save();return}
     if(d.act==="reload"){e.preventDefault();load(P.reference);return}
     if(d.act==="dist"){e.preventDefault();calcDist();return}
+    if(d.fxr&&window.NEXUS_FEAT){e.preventDefault();if(NEXUS_FEAT.handle(b,featModel()))render(true);return}
     if(d.act==="gen"){e.preventDefault();genTexts();return}
     if(d.act==="keynext"){e.preventDefault();(async()=>{try{const n=await X.rpc("nexus_key_number_next",{});set("key_number",String(n));render(true)}catch(x){err(x.message||String(x))}})();return}
     if(d.act==="delete"){e.preventDefault();delProp();return}
@@ -392,15 +391,15 @@ async function openContact(key,ctx){X=ctx;
   const draw=()=>{ROOT.innerHTML=`<div class="pe-box pe-small"><header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(C.contact.full_name||"—")}</div><div class="pe-tt">${esc(tr(["Contactgegevens bewerken","Edit contact details"]))}</div></div>
      <button class="pe-x" data-act="cclose">×</button></header>
      <div class="pe-main"><div id="peErr"></div>
-     <section class="ad-sec"><h4>${esc(tr(["Labels","Labels"]))}</h4><div class="pe-roles">${RL.map(r=>`<button type="button" class="pe-role ${rs.has(r[0])?"on":""}" data-role="${r[0]}" style="--rc:var(--r-${r[0].replace("_","-")})">${r[1]}</button>`).join("")}</div>
+     <section class="ad-sec" style="--sc:#ec4899"><h4>${esc(tr(["Labels","Labels"]))}</h4><div class="pe-roles">${RL.map(r=>`<button type="button" class="pe-role ${rs.has(r[0])?"on":""}" data-role="${r[0]}" style="--rc:var(--r-${r[0].replace("_","-")})">${r[1]}</button>`).join("")}</div>
        <small class="muted">${esc(tr(["Een contact kan op elk moment een ander label krijgen. Minstens één label.","A contact can get another label at any time. At least one label."]))}</small><div id="peProp">${propOpt()}</div></section>
-     <section class="ad-sec"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
+     <section class="ad-sec" style="--sc:#3b82f6"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
        <div class="ad-row">${CPERSON.map(cfIn).join("")}</div>
 </section>
-     <section class="ad-sec"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
+     <section class="ad-sec" style="--sc:#06b6d4"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
        <div class="ad-row">${CADDR.map(cfIn).join("")}</div>
        <label class="ad-f w4"><span>${esc(tr(["Interne opmerking","Internal note"]))}</span><textarea data-cf="internal_comments" rows="4">${esc(v.internal_comments||"")}</textarea></label></section>
-     <section class="ad-sec"><h4>${esc(tr(["Zoekprofiel","Search profile"]))}</h4>
+     <section class="ad-sec" style="--sc:#f59e0b"><h4>${esc(tr(["Zoekprofiel","Search profile"]))}</h4>
        <div class="ad-row">
          <label class="ad-f"><span>${esc(tr(["Budget","Budget"]))}</span>${optSel("data-sp","budget",SP_BUDGET,SP.budget)}</label>
          <label class="ad-f"><span>${esc(tr(["Woningtype","Property type"]))}</span>${optSel("data-sp","property_type",cats(),SP.property_type)}</label>
@@ -409,19 +408,19 @@ async function openContact(key,ctx){X=ctx;
          <label class="ad-f w2"><span>${esc(tr(["Gewenste gebieden","Preferred areas"]))}</span><input data-sp="areas" value="${esc(SP.areas??"")}" placeholder="${esc(tr(["bijv. Rojales, Ciudad Quesada","e.g. Rojales, Ciudad Quesada"]))}"></label>
          <label class="ad-f w2"><span>${esc(tr(["Must-haves","Must-haves"]))}</span><input data-sp="must_haves" value="${esc(SP.must_haves??"")}" placeholder="${esc(tr(["bijv. zwembad, zeezicht","e.g. pool, sea view"]))}"></label></div>
        <div class="ad-row">${[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]].map(b=>`<label class="ad-c"><input type="checkbox" data-spb="${b[0]}" ${(SP.build||[]).includes(b[0])?"checked":""}><span>${esc(tr(b[1]))}</span></label>`).join("")}</div></section>
-     <section class="ad-sec"><h4>${esc(tr(["Mailings","Mailings"]))}</h4><div id="peMail">${mailRows()}</div></section>
-     <section class="ad-sec"><h4>${esc(tr(["CPR en verkoop","CPR and sales"]))}</h4>
+     <section class="ad-sec" style="--sc:#a855f7"><h4>${esc(tr(["Mailings","Mailings"]))}</h4><div id="peMail">${mailRows()}</div></section>
+     <section class="ad-sec" style="--sc:#64748b"><h4>${esc(tr(["CPR en verkoop","CPR and sales"]))}</h4>
        <div class="ad-row">
          <label class="ad-f"><span>${esc(tr(["Bron","Source"]))}</span><input data-cf="source" value="${esc(v.source??"")}"></label>
          <label class="ad-f"><span>${esc(tr(["Verkoopwaarde (€)","Sales value (€)"]))}</span><input data-cf="sales_value" type="number" min="0" step="1000" value="${esc(v.sales_value??"")}"></label>
          <label class="ad-c" style="align-self:center"><input type="checkbox" data-cf="keyholder" ${v.keyholder?"checked":""}><span>${esc(tr(["Sleutelhouder","Keyholder"]))}</span></label></div></section>
-     <section class="ad-sec"><h4>${esc(tr(["Online en vrije velden","Online and custom fields"]))}</h4>
+     <section class="ad-sec" style="--sc:#14b8a6"><h4>${esc(tr(["Online en vrije velden","Online and custom fields"]))}</h4>
        <div class="ad-row">${CEXTRA.map(cfIn).join("")}</div></section>
-     <section class="ad-sec"><h4>${esc(tr(["E-mail en telefoon","E-mail and phone"]))}</h4>
+     <section class="ad-sec" style="--sc:#22c55e"><h4>${esc(tr(["E-mail en telefoon","E-mail and phone"]))}</h4>
        <div class="pe-chs" id="peEm">${chRows(EM,"em",EK,"naam@voorbeeld.com")}</div>
        <div class="pe-chs" id="pePh" style="margin-top:10px">${chRows(PH,"ph",PK,"+34 …")}</div>
        <small class="muted">${esc(tr(["★ = hoofdadres (gebruikt voor mailings en WhatsApp). Telefoon met landcode, bijv. +34 of +31.","★ = primary (used for mailings and WhatsApp). Phone with country code, e.g. +34 or +31."]))}</small></section>
-     ${(C.team||[]).length?`<section class="ad-sec"><h4>${esc(tr(["Verantwoordelijk","Responsible"]))}</h4><label class="ad-f" style="max-width:320px"><span>${esc(tr(["Teamlid","Team member"]))}</span><select data-cf="owner_id"><option value="">—</option>${C.team.map(t=>`<option value="${t.id}" ${o.owner_id===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label></section>`:""}
+     ${(C.team||[]).length?`<section class="ad-sec" style="--sc:#f97316"><h4>${esc(tr(["Verantwoordelijk","Responsible"]))}</h4><label class="ad-f" style="max-width:320px"><span>${esc(tr(["Teamlid","Team member"]))}</span><select data-cf="owner_id"><option value="">—</option>${C.team.map(t=>`<option value="${t.id}" ${o.owner_id===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label></section>`:""}
      </div>
      <footer class="pe-ft">${X.me&&X.me()&&X.me().role==="admin"?`<button class="btn pe-del" data-act="cdelete" title="${esc(tr(["Contact definitief verwijderen (alleen beheerder)","Delete contact permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;

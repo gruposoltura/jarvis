@@ -746,3 +746,56 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .ad-h5row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .ad-txbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}.ad-txbar .ad-seg{margin:0}
 .ad-gen{background:linear-gradient(90deg,#a855f7,#3b82f6);border:0;color:#fff;font-weight:600}.ad-gen:disabled{opacity:.7;cursor:wait}
+
+/* ===== 19-10-2026 (Rick): duidelijke invulpanelen — dunne rand, ronde hoeken, lichte achtergrondkleur per blok =====
+   Geldt voor invoer (Admin: contact, woning) en alle bewerkschermen (woning, contact). Kleur per blok via --sc. */
+.ad-sec{--sc:#94a3b8;border:1px solid color-mix(in srgb,var(--sc) 32%,var(--line));border-radius:14px;
+  background:color-mix(in srgb,var(--sc) 6%,var(--card));box-shadow:inset 4px 0 0 var(--sc);padding:14px 16px 10px 20px}
+.ad-sec>h4{color:color-mix(in srgb,var(--sc) 65%,var(--hi,#e2e8f0));display:flex;align-items:center;gap:8px}
+.ad-sec>h4::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--sc);flex:0 0 auto}
+/* deelblokken binnen een paneel */
+.ad-sec .ad-cols3>div,.ad-sec .ad-list,.ad-sec .ad-mapwrap,.ad-sec .ad-key,.ad-sec .pe-roles,.ad-sec .ad-chips,.ad-sec .ad-multi.c3,.ad-sec .ad-multi.c4,.ad-sec .ad-multi.c5{
+  border:1px solid color-mix(in srgb,var(--sc) 22%,var(--line));border-radius:10px;padding:10px 12px;
+  background:color-mix(in srgb,var(--sc) 3%,var(--bg2))}
+.ad-sec .ad-cols3{gap:12px}
+.ad-sec .ad-list{margin-bottom:10px}
+.ad-sec h5{color:color-mix(in srgb,var(--sc) 55%,var(--tx2));text-transform:uppercase;letter-spacing:.06em;font-size:calc(11px*var(--fs,1))}
+.ad-sec .ad-f input:focus,.ad-sec .ad-f select:focus,.ad-sec .ad-f textarea:focus{border-color:var(--sc);box-shadow:0 0 0 3px color-mix(in srgb,var(--sc) 22%,transparent)}
+.ad-sec .ad-note{border-radius:10px;border:1px dashed color-mix(in srgb,var(--sc) 45%,var(--line));background:color-mix(in srgb,var(--sc) 8%,transparent);padding:8px 12px}
+
+/* kenmerken: panelen (nexus-features.js) */
+.fx{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.fx-panel{--fx:#94a3b8;border:1px solid color-mix(in srgb,var(--fx) 35%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--fx) 7%,var(--bg2));overflow:hidden}
+.fx-panel>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:9px 12px;
+  background:color-mix(in srgb,var(--fx) 14%,transparent);border-bottom:1px solid transparent;font-size:calc(13px*var(--fs,1))}
+.fx-panel>summary::-webkit-details-marker{display:none}
+.fx-panel>summary b{display:flex;align-items:center;gap:8px;color:color-mix(in srgb,var(--fx) 60%,var(--hi,#e2e8f0))}
+.fx-panel>summary b::before{content:"▸";font-size:10px;transition:transform .15s}
+.fx-panel[open]>summary b::before{transform:rotate(90deg)}
+.fx-panel[open]>summary{border-bottom-color:color-mix(in srgb,var(--fx) 25%,var(--line))}
+.fx-n{min-width:20px;padding:1px 7px;border-radius:999px;background:var(--fx);color:#fff;font-size:11px;font-weight:700;text-align:center}
+.fx-n:empty{display:none}
+.fx-hint{padding:8px 12px 0;font-size:calc(11.5px*var(--fs,1));color:var(--tx3)}
+.fx-body{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 12px}
+.fx-sub{flex:0 0 100%;margin-top:4px;font-size:calc(11px*var(--fs,1));text-transform:uppercase;letter-spacing:.06em;color:color-mix(in srgb,var(--fx) 55%,var(--tx2));font-weight:600}
+.fx-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line2);border-radius:999px;background:var(--card);cursor:pointer;
+  font-size:calc(12.5px*var(--fs,1));color:var(--tx2);user-select:none;transition:background .12s,border-color .12s}
+.fx-chip input{display:none}
+.fx-chip:hover{border-color:var(--fx)}
+.fx-chip.on{background:color-mix(in srgb,var(--fx) 22%,var(--card));border-color:var(--fx);color:var(--hi,#e2e8f0);font-weight:600}
+.fx-chip.on::before{content:"✓";font-size:11px;color:var(--fx)}
+.fx-radio{flex:0 0 100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.fx-radio>span{font-size:calc(12px*var(--fs,1));font-weight:600;color:var(--tx2);min-width:92px}
+.fx-seg{display:inline-flex;border:1px solid color-mix(in srgb,var(--fx) 40%,var(--line2));border-radius:10px;overflow:hidden;background:var(--card)}
+.fx-seg button{border:0;background:none;padding:6px 12px;font-size:calc(12.5px*var(--fs,1));color:var(--tx2);cursor:pointer;border-right:1px solid var(--line)}
+.fx-seg button:last-child{border-right:0}
+.fx-seg button.on{background:var(--fx);color:#fff;font-weight:600}
+.fx-legacy .fx-chip{font-size:calc(11.5px*var(--fs,1))}
+@media (max-width:1100px){.fx{grid-template-columns:1fr}}
+
+/* na opslaan: kadaster + Agent SEO */
+.ad-enrich{margin:4px auto 18px;max-width:480px;text-align:left;font-size:calc(13px*var(--fs,1));padding:10px 14px;border-radius:10px;border:1px solid var(--line2);background:var(--card);display:flex;flex-direction:column;gap:4px}
+.ad-enrich.busy{flex-direction:row;align-items:center;gap:10px;color:var(--tx2)}
+.ad-enrich.ok{border-color:rgba(52,211,153,.5)}.ad-enrich.warn{border-color:rgba(251,191,36,.55)}
+.ad-spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--line2);border-top-color:#34d399;animation:adspin .8s linear infinite;flex:0 0 auto}
+@keyframes adspin{to{transform:rotate(360deg)}}
