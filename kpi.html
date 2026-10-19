@@ -492,8 +492,7 @@
     { id:'floor',         label:'FLOOR',         url:'/floor.html',         title:'FLOOR' },
     { id:'office',        label:'OFFICE',        url:'/office-v2.html',     title:'OFFICE' },
     { id:'usage',         label:'USAGE',         url:'/usage.html',         title:'VERBRUIK TOOLS' },
-    // NEXUS-team (nexus_team): eigen apps met eigen login, niet aankleden (raw)
-    { id:'team',          label:'TEAM DASHBOARD', url:'/nexus.html',        raw:true },
+    // facturatie (alleen nexus_team): eigen app, niet aankleden (raw)
     { id:'factura',       label:'FACTURATIE',    url:'/facturacion.html',   raw:true }
   ];
   var PANEL_BY_ID = {};
@@ -519,7 +518,6 @@
       { label:'Paneel - Meta',                icon:'M', color:'#ff3f9a', zone:'z-ads' },
       { label:'Paneel - Jarvis',              icon:'J', color:'#a37bff', zone:'z-jarvis' },
       // alleen zichtbaar voor een account in nexus_team (NEXUS-wachtwoord)
-      { label:'Team Dashboard',               icon:'T', color:'#14b8a6', panel:'team',    team:true },
       { label:'Facturatie',                   icon:'\u20AC', color:'#e8231a', panel:'factura', team:true } ]},
     { sec:'VIEWS', items:[
       { label:'Office V2',                    icon:'O', color:'#00d4ff', panel:'office' },
@@ -761,7 +759,7 @@
   }
 
   function dressPanel(frame, p){
-    if(p.raw) return;   // NEXUS en facturatie zijn eigen apps: niets aankleden
+    if(p.raw) return;   // facturatie is een eigen app: niets aankleden
     var pass = function(){
       try{
         var doc = frame.contentDocument;
@@ -1733,7 +1731,7 @@
     $('work').classList.remove('hidden');
     $('navBtn').classList.remove('hidden');
     buildPanes();
-    // Team Dashboard + Facturatie in het menu voor elk NEXUS-teamaccount
+    // Facturatie in het menu voor elk NEXUS-teamaccount
     sb.rpc('nexus_me').then(function(r){
       if(r && r.data && !r.error){ IS_TEAM = true; buildNav(); updateNav(); }
     }).catch(function(){});
