@@ -191,8 +191,8 @@ function renderInner(){
      <div class="sm muted" id="adStamp" style="padding:8px 14px"></div>
      <button class="ad-reset" id="adReset">${esc(tr(["Concept wissen","Clear draft"]))}</button>
    </aside>
-   <div class="card ad-main"><div class="ad-scroll" id="adMain">${S.flow==="wizard"?wizard():S.flow==="prop"?propFlow():linkFlow()}</div>
-     ${S.flow==="wizard"?`<div class="ad-foot">${S.step>1?`<button class="btn" data-step="${prevStep()}">← ${esc(tr(["Vorige","Back"]))}</button>`:"<span></span>"}
+   <div class="card ad-main"><div class="ad-scroll" id="adMain">${DONE?doneView():S.flow==="wizard"?wizard():S.flow==="prop"?propFlow():linkFlow()}</div>
+     ${DONE?"":S.flow==="wizard"?`<div class="ad-foot">${S.step>1?`<button class="btn" data-step="${prevStep()}">← ${esc(tr(["Vorige","Back"]))}</button>`:"<span></span>"}
        ${S.step<4?`<button class="btn ad-next" data-step="${nextStep()}">${esc(tr(["Volgende","Next"]))} →</button>`:saveBtn()}</div>`:S.flow==="prop"?`<div class="ad-foot"><span></span>${saveBtn()}</div>`:`<div class="ad-foot"><span></span>${saveBtn(tr(["Koppeling opslaan","Save link"]))}</div>`}
    </div>
    <aside class="card ad-side"><div class="hd"><h3>${esc(tr(["Controle","Checks"]))}</h3></div><div class="ad-scroll" id="adChecks"></div></aside></div>`;
@@ -436,7 +436,7 @@ function updateChecks(){
     +grp("save",["Verplicht om op te slaan","Required to save"],"bad")+grp("pub",["Nodig om te publiceren","Needed to publish"],"warn")+grp("tip",["Aandachtspunten","Points of attention"],"tip")
     +(DUPS.length&&S.flow==="wizard"?`<div class="ad-chk tip"><h5>${esc(tr(["Mogelijk al in NEXUS","Possibly already in NEXUS"]))}</h5>${DUPS.map(d=>`<a data-usedup="${d.id||d.wp_id}">${esc(d.name||d.email)}<span class="sm muted"> · ${esc(d.why)}</span></a>`).join("")}</div>`:"");
   ROOT.querySelectorAll(".ad-step").forEach(b=>b.classList.toggle("ok",stepDone(+b.dataset.step)));
-  ROOT.querySelectorAll(".ad-save").forEach(b=>{b.disabled=!canSave();b.textContent=(BUSY?"… ":"💾 ")+(BUSY?tr(["Opslaan…","Saving…"]):b.dataset.lbl||tr(["Opslaan","Save"]))});
+  ROOT.querySelectorAll(".ad-save").forEach(b=>{b.disabled=!canSave();b.textContent=(BUSY?"… ":"💾 ")+(BUSY?(PROG||tr(["Opslaan…","Saving…"])):b.dataset.lbl||tr(["Opslaan","Save"]))});
 }
 
 /* ================= PAYLOAD (voorbeeld van de schrijfactie) ================= */
@@ -485,7 +485,7 @@ function payload(flow){
 }
 
 /* ================= OPSLAAN (gekoppeld 18-10-2026, migratie 019) ================= */
-let BUSY=false;
+let BUSY=false, DONE=null, PROG="";
 const nul=v=>v===""||v==null?null:v;
 const CONTACT_KEYS=["title","first_name","last_name","company","language","birthday","street","street_number","postcode","city","state","country","website","referred_by","internal_comments"];
 function contactFields(c){
@@ -540,7 +540,7 @@ async function uploadMedia(pid,arr){
   const items=arr.filter(m=>m.file);if(!pid||!items.length)return {n:0,errors:[]};
   if(!X.sb)return {n:0,errors:[tr(["Foto's niet geüpload: verbinding met Storage ontbreekt","Photos not uploaded: no Storage connection"])]};
   const ids=[],errors=[];
-  for(const m of items){try{
+  let i=0;for(const m of items){i++;PROG=tr([`Foto's uploaden ${i}/${items.length}…`,`Uploading photos ${i}/${items.length}…`]);updateChecks();try{
     const ext=(m.file.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
     const path=`${pid}/nexus-${crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(36).slice(2)}.${ext}`;
     const up=await X.sb.storage.from("property-media").upload(path,m.file,{contentType:m.file.type,upsert:false});
@@ -552,7 +552,7 @@ async function uploadMedia(pid,arr){
   if(ok.length){try{let main=false;
     await X.rpc("nexus_property_media_save",{p_property_id:pid,p_items:ok.map((x,i)=>{const im=!main&&x.kind==="photo";if(im)main=true;return {id:x.id,sort:i,is_main:im,caption:x.caption,kind:x.kind}})})
   }catch(e){errors.push(tr(["Volgorde foto's: ","Photo order: "])+(e.message||e))}}
-  return {n:ok.length,errors};
+  PROG="";return {n:ok.length,errors};
 }
 function saveMsg(html,cls){const el=ROOT&&ROOT.querySelector("#adSaveMsg");if(el){el.innerHTML=html;el.className="ad-off sm"+(cls?" "+cls:"")}}
 async function submit(){
@@ -566,6 +566,7 @@ async function submit(){
   let res;
   try{res=await X.rpc("nexus_admin_submit",{p:payload})}
   catch(e){BUSY=false;updateChecks();saveMsg(`<b>${esc(tr(["Niet opgeslagen","Not saved"]))}</b>${esc(e.message||String(e))}`,"err");return}
+  const doneName=flow==="wizard"?(S.contactMode==="existing"?(S.existing&&S.existing.name):[S.c.first_name,S.c.last_name].filter(Boolean).join(" ")||S.c.company):flow==="prop"?(S.wp.owner&&S.wp.owner.name):(S.lk.contact&&S.lk.contact.name);
   const media=flow==="wizard"?MEDIA:flow==="prop"?WP_MEDIA:[];
   const up=res&&res.property_id&&(flow==="prop"||pm()==="now")?await uploadMedia(res.property_id,media):{n:0,errors:[]};
   BUSY=false;
@@ -573,13 +574,18 @@ async function submit(){
   [...MEDIA,...WP_MEDIA].forEach(m=>m.url&&URL.revokeObjectURL(m.url));MEDIA=[];WP_MEDIA=[];DUPS=[];S=blank();S.flow=flow;
   if(X.me()){S.c.owner=S.p.listing_agent=S.wp.p.listing_agent=String(X.me().wp_author_id||"")}
   try{localStorage.removeItem(DRAFT_KEY)}catch(_){}
+  DONE={name:doneName||"",contact_id:res&&res.contact_id,reference:res&&res.reference,n:up.n,errors:up.errors,link:flow==="link"};
   render();
-  const links=[];
-  if(res&&res.contact_id)links.push(`<a href="#c/${esc(res.contact_id)}">${esc(tr(["Open contact","Open contact"]))}</a>`);
-  if(res&&res.reference)links.push(`<a href="#p/${encodeURIComponent(res.reference)}">${esc(tr(["Open woning","Open property"]))} ${esc(res.reference)}</a>`);
-  saveMsg(`<b>✓ ${esc(tr(["Opgeslagen","Saved"]))}</b>${up.n?esc(tr([` · ${up.n} bestand(en) geüpload`,` · ${up.n} file(s) uploaded`])):""} ${links.join(" · ")}`
-    +(up.errors.length?`<div class="ad-bad">${esc(tr(["Niet alle bestanden zijn geüpload — voeg ze toe via Bewerken bij de woning:","Not all files were uploaded — add them via Edit on the property:"]))}<br>${up.errors.map(esc).join("<br>")}</div>`:""),"ok");
+  saveMsg(`<b>✓ ${esc(tr(["Opgeslagen","Saved"]))}</b>${esc(DONE.reference?DONE.reference+" · ":"")}${esc(DONE.name)}`,"ok");
 }
+function doneView(){const d=DONE;
+  const btns=[d.reference?`<a class="btn ad-done-go" href="#p/${encodeURIComponent(d.reference)}">${esc(tr(["Open woning","Open property"]))} ${esc(d.reference)}</a>`:"",
+    d.contact_id?`<a class="btn" href="#c/${esc(d.contact_id)}">${esc(tr(["Open contact","Open contact"]))}</a>`:"",
+    `<button class="btn" id="adDoneNew">${esc(tr(["Nieuwe invoer","New entry"]))}</button>`].join("");
+  return `<div class="ad-done"><div class="ad-done-ic">✓</div><h2>${esc(tr(["Opgeslagen in NEXUS","Saved in NEXUS"]))}</h2>
+    <p>${d.name?`<b>${esc(d.name)}</b>`:""}${d.name&&d.reference?" · ":""}${d.reference?`${esc(tr(["woning","property"]))} <b>${esc(d.reference)}</b>`:""}${d.n?esc(tr([` · ${d.n} bestand(en) geüpload`,` · ${d.n} file(s) uploaded`])):""}</p>
+    ${d.errors&&d.errors.length?`<div class="ad-bad" style="text-align:left">${esc(tr(["Niet alle bestanden zijn geüpload — voeg ze toe via Bewerken bij de woning:","Not all files were uploaded — add them via Edit on the property:"]))}<br>${d.errors.map(esc).join("<br>")}</div>`:""}
+    <div class="ad-done-btns">${btns}</div></div>`}
 
 /* ================= ZOEKEN (alleen-lezen via bestaande RPC's) ================= */
 let DUPS=[], dupT;
@@ -685,6 +691,8 @@ function bind(){
     if(/\.reference$/.test(k)){clearTimeout(dupT);dupT=setTimeout(()=>checkRef(k.replace(/\.reference$/,"")),500)}
     persist();updateChecks()});
   ROOT.addEventListener("click",e=>{const t=e.target.closest("button,a");if(!t||!ROOT.contains(t))return;const d=t.dataset;
+    if(t.id==="adDoneNew"){DONE=null;render();return}
+    if(DONE&&(d.flow||d.step))DONE=null;
     if(d.flow){S.flow=d.flow;persist();render();ROOT.querySelector("#adMain").scrollTop=0;return}
     if(d.step){S.step=+d.step;if(S.step===3&&!isSeller())S.step=4;S.flow="wizard";persist();render();ROOT.querySelector("#adMain").scrollTop=0;
       if(d.jump)setTimeout(()=>{const s=ROOT.querySelector("#"+d.jump);if(s)s.scrollIntoView({behavior:"smooth",block:"start"})},50);return}
