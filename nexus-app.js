@@ -535,7 +535,7 @@ function propFeatures(p,raw,o,K,XL,m){
         ${p.list_date?`<div><b>${since(p.list_date)}</b><span>${L2("op de markt, sinds","on the market, since")} ${fdate(p.list_date)}</span></div>`:""}
       </div>
     </div>
-    <div class="facts big">${tile("🛏",p.bedrooms??"—",t("fa.beds"))}${tile("🛁",p.bathrooms??"—",t("fa.baths"))}${tile("📐",p.build_area?num(p.build_area)+" m²":"—",t("fa.build"))}${tile("🌳",p.plot_area?num(p.plot_area)+" m²":"—",t("fa.plot"))}</div>
+    <div class="facts big">${tile("🛏",p.bedrooms??"—",t("fa.beds"))}${tile("🛁",p.bathrooms??"—",t("fa.baths"))}${(()=>{const F=areaFlag(p,PR.catastro);return F?`<div class="af-tile af-${F.lvl}" title="${esc(areaFlagTip(F))}"><span class="fi">${areaFlagIcon(F,20)}</span><b>${num(p.build_area)} m²</b><span>${t("fa.build")} · <b class="af-pct">${F.pct>0?"+":""}${F.pct}% ${L2("vs kadaster","vs cadastre")}</b></span></div>`:tile("📐",p.build_area?num(p.build_area)+" m²":"—",t("fa.build"))})()}${tile("🌳",p.plot_area?num(p.plot_area)+" m²":"—",t("fa.plot"))}</div>
     <div class="pk-sub">${L2("Belangstelling","Interest")}</div>
     <div class="facts">${tile("👁",num(raw.hits_total),t("fa.hits"))}${tile("⚡",raw.hits_today??"—",t("fa.today"))}${tile("✉",num(m.sent||0),t("fa.mailed"))}${tile("✓",num(m.converted||0),t("fa.conv"))}</div>
     ${descTxt?`<div class="card pk-card"><div class="hd"><h3>${L2("Omschrijving","Description")}</h3>${D.desc_nl&&D.desc_en?`<span class="tag">${LANG==="en"?"EN":"NL"}</span>`:""}</div><div class="pk-desc">${esc(descTxt)}</div></div>`:""}
@@ -678,6 +678,19 @@ function extBox(p,raw,L){
     <div class="sm">${raw.external_refnr?`${t("ext.theirref")}: <b class="mono">${esc(raw.external_refnr)}</b>`:""}${phone?` · <a href="tel:${esc(String(phone).replace(/[^\d+]/g,""))}">☎ ${esc(phone)}</a>`:""}${mail?` · <a href="mailto:${esc(mail)}">✉ ${esc(mail)}</a>`:""}</div>
     ${L&&!L.exact?`<div class="sm muted" style="margin-top:3px">${t("ext.nourl")}</div>`:""}</div>
     ${L?`<a class="go-ext" href="${esc(L.href)}" target="_blank" rel="noopener">${L.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div>`}
+/* oppervlakte-signaal (besluit Rick 19-10): afwijking geadverteerd bebouwd m² t.o.v. Catastro.
+   >20% = rood stopbord, 10-20% = amber, <10% = geen signaal */
+function areaFlag(p,k){
+  if(!k||!k.cadastral_ref||!(k.build_area_m2>0)||!(p&&p.build_area>0))return null;
+  const r=(p.build_area-k.build_area_m2)/k.build_area_m2*100, a=Math.abs(r);
+  if(a<10)return null;
+  return {lvl:a>20?"red":"amber",pct:Math.round(r),adv:p.build_area,cat:k.build_area_m2};
+}
+function areaFlagIcon(f,sz){if(!f)return "";sz=sz||18;
+  return `<svg class="af-oct af-${f.lvl}" width="${sz}" height="${sz}" viewBox="0 0 24 24" aria-hidden="true"><polygon points="7,1 17,1 23,7 23,17 17,23 7,23 1,17 1,7" fill="currentColor" stroke="#fff" stroke-width="1.5"/>${f.lvl==="red"?'<rect x="5" y="10.5" width="14" height="3" rx="1" fill="#fff"/>':'<rect x="10.75" y="5.5" width="2.5" height="8.5" rx="1" fill="#fff"/><circle cx="12" cy="17.5" r="1.5" fill="#fff"/>'}</svg>`}
+function areaFlagTip(f){return f?L2(`Bebouwde oppervlakte wijkt ${f.pct>0?"+":""}${f.pct}% af van het kadaster: geadverteerd ${num(f.adv)} m², Catastro ${num(f.cat)} m²`,`Built area deviates ${f.pct>0?"+":""}${f.pct}% from the cadastre: advertised ${num(f.adv)} m², Catastro ${num(f.cat)} m²`):""}
+function areaFlagBadge(f){if(!f)return "";
+  return `<span class="af-badge af-${f.lvl}" title="${esc(areaFlagTip(f))}">${areaFlagIcon(f,18)}<b>m² ${f.pct>0?"+":""}${f.pct}% ${L2("vs kadaster","vs cadastre")}</b></span>`}
 function catSummary(k,p){
   if(!k)return "";
   if(!k.cadastral_ref)return `<div class="catbox off"><b>Catastro</b> <span class="sm muted">· ${esc(k.status==="not_found"?t("k.notfound"):k.status||"")}${k.error?" · "+esc(k.error):""}${k.checked_at?" · "+ago(k.checked_at):""}</span></div>`;
@@ -686,7 +699,7 @@ function catSummary(k,p){
       <a class="mono cat-ref" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener" title="Sede Electrónica del Catastro">${esc(k.cadastral_ref)} ↗</a>
       <a class="sm" href="${esc(catMap(k.cadastral_ref))}" target="_blank" rel="noopener">${t("k.map")} ↗</a></div>
     <div class="facts" style="margin:10px 0 0">
-      <div><b>${k.build_area_m2!=null?num(k.build_area_m2)+" m²":"—"}</b><span>${t("k.built")}${diff!=null&&Math.abs(diff)>=5?` · <span style="color:${diff>0?"#f87171":"#34d399"}">CPR ${diff>0?"+":""}${diff}%</span>`:""}</span></div>
+      <div><b>${k.build_area_m2!=null?num(k.build_area_m2)+" m²":"—"}</b><span>${t("k.built")}${(()=>{const F=areaFlag(p,k);return F?` · <span class="af-inl af-${F.lvl}" title="${esc(areaFlagTip(F))}">${areaFlagIcon(F,13)} ${L2("geadv.","adv.")} ${F.pct>0?"+":""}${F.pct}%</span>`:""})()}</span></div>
       <div><b>${k.living_area_m2!=null?num(k.living_area_m2)+" m²":"—"}</b><span>${t("k.living.w")}</span></div>
       <div><b>${k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":"—"}</b><span>${t("k.plot")}</span></div>
       <div><b>${k.year_built||"—"}</b><span>${t("k.year")}</span></div></div>
@@ -775,7 +788,7 @@ function renderProp(){
   const D=PR.detail||{};
   d.innerHTML=`<div class="dh dh-pr" style="--acc:var(--c-pr)"><div class="dh-l">
      <div class="dh-r1"><h2>${esc(p.reference)} · ${esc(p.title||"")}</h2>${statusBar(p)}</div>
-     <div class="meta"><span>📍 ${esc([p.suburb,p.town,p.province].filter(Boolean).join(", "))}</span>
+     <div class="meta"><span>📍 ${esc([p.suburb,p.town,p.province].filter(Boolean).join(", "))}</span>${areaFlagBadge(areaFlag(p,K))}
        ${o?`<a class="ownerlink" data-c="${esc(o.id||o.wp_id)}">👤 ${esc(o.name||o.email)}</a>`:""}
        <span>🏷 <b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b></span>${p.is_newbuild?`<span>${t("pb.new")}</span>`:""}
        ${ownerContactStrip(o,raw,p)}</div></div>

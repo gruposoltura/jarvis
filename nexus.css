@@ -799,3 +799,19 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .ad-enrich.ok{border-color:rgba(52,211,153,.5)}.ad-enrich.warn{border-color:rgba(251,191,36,.55)}
 .ad-spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--line2);border-top-color:#34d399;animation:adspin .8s linear infinite;flex:0 0 auto}
 @keyframes adspin{to{transform:rotate(360deg)}}
+
+/* oppervlakte-signaal geadverteerd vs kadaster */
+.af-oct{flex:none;vertical-align:middle}
+.af-oct.af-red,.af-red .af-oct{color:#dc2626}
+.af-oct.af-amber,.af-amber .af-oct{color:#f59e0b}
+.af-badge{display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 4px;border-radius:999px;font-size:calc(12px*var(--fs,1));cursor:help}
+.af-badge.af-red{background:rgba(220,38,38,.14);border:1px solid rgba(220,38,38,.55);color:#ef4444}
+.af-badge.af-amber{background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.55);color:#d97706}
+.af-badge b{font-weight:700}
+.pk .facts .af-tile .fi{opacity:1}
+.af-tile.af-red{border-color:rgba(220,38,38,.65)!important;box-shadow:inset 0 0 0 1px rgba(220,38,38,.35)}
+.af-tile.af-amber{border-color:rgba(245,158,11,.65)!important;box-shadow:inset 0 0 0 1px rgba(245,158,11,.3)}
+.af-tile.af-red .af-pct{color:#ef4444;display:inline;font:inherit;font-weight:700}
+.af-tile.af-amber .af-pct{color:#d97706;display:inline;font:inherit;font-weight:700}
+.af-inl{display:inline-flex;align-items:center;gap:3px;font-weight:700;cursor:help}
+.af-inl.af-red{color:#ef4444}.af-inl.af-amber{color:#d97706}
