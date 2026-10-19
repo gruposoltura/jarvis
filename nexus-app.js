@@ -687,9 +687,10 @@ function extBox(p,raw,L){
     ${L&&!L.exact?`<div class="sm muted" style="margin-top:3px">${t("ext.nourl")}</div>`:""}</div>
     ${L?`<a class="go-ext" href="${esc(L.href)}" target="_blank" rel="noopener">${L.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div>`}
 /* oppervlakte-signaal (besluit Rick 19-10): afwijking geadverteerd bebouwd m² t.o.v. Catastro.
-   >20% = rood stopbord, 10-20% = amber, <10% = geen signaal */
+   >20% = rood stopbord, 10-20% = amber, <10% = geen signaal. Alleen eigen woningen. */
 function areaFlag(p,k){
-  if(!k||!k.cadastral_ref||!(k.build_area_m2>0)||!(p&&p.build_area>0))return null;
+  if(!p||!p.is_own)return null; /* alleen eigen woningen (Rick 19-10): op partnerwoningen hebben we geen invloed */
+  if(!k||!k.cadastral_ref||!(k.build_area_m2>0)||!(p.build_area>0))return null;
   const r=(p.build_area-k.build_area_m2)/k.build_area_m2*100, a=Math.abs(r);
   if(a<10)return null;
   return {lvl:a>20?"red":"amber",pct:Math.round(r),adv:p.build_area,cat:k.build_area_m2};
