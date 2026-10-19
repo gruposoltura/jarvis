@@ -613,7 +613,7 @@ function propFeatures(p,raw,o,K,XL,m){
     ${catSummary(K,p)}
     ${propExtData(p)}
     ${pkSec("pub",L2("Publicatie","Publishing"),kv([
-      [L2("Op de website","On the website"),p.is_own||D.published!=null?(D.published?`<span style="color:#22c55e">● ${L2("Gepubliceerd","Published")}</span>${D.published_at?` <span class="muted sm">· ${L2("sinds","since")} ${fdate(D.published_at)}</span>`:""}`:`<span class="muted">○ ${L2("Niet gepubliceerd","Not published")}</span>`):null,1],
+      [L2("Op de website","On the website"),p.is_own||D.published!=null?(D.published?`<span style="color:#22c55e">● ${L2("Online","Online")}</span>${D.published_at?` <span class="muted sm">· ${L2("sinds","since")} ${fdate(D.published_at)}</span>`:""}`:`<span class="muted">○ ${L2("Offline","Offline")}</span>`)+` <span class="muted sm">(${L2("volgt status","follows status")})</span>`:null,1],
       [L2("Labels","Labels"),(D.labels||[]).length?D.labels.map(x=>LBL[x]?L2(...LBL[x]):String(x).toUpperCase()).join(" · "):null],
       [L2("Feeds","Feeds"),feeds],
       [L2("Onder bod sinds","Under offer since"),D.under_offer_at?fdate(D.under_offer_at):null],

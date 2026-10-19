@@ -33,8 +33,8 @@ const MAILINGS=[["weekly_news",["Wekelijks nieuws (vrijdag)","Weekly news (Frida
   ["monthly_matches",["Maandelijkse woningmatches","Monthly property matches"]],["new_listing",["Nieuwe woning","New listing"]],
   ["market_report",["Marktbericht (alleen met expliciete opt-in)","Market report (explicit opt-in only)"]]];
 const MAILING_DEFAULT_ON=["weekly_news","price_reduced","monthly_matches","new_listing"];
-const STATUS=[["draft",["Concept","Draft"]],["available",["In aanbod (current)","For sale (current)"]],["under_offer",["Onder bod","Under offer"]],
-  ["sold",["Verkocht","Sold"]],["withdrawn",["Ingetrokken","Withdrawn"]],["off_market",["Off-market","Off-market"]]];
+const STATUS=[["draft",["Concept (offline)","Draft (offline)"]],["available",["Actief (online)","Active (online)"]],["under_offer",["Gereserveerd (online)","Reserved (online)"]],
+  ["sold",["Verkocht (offline)","Sold (offline)"]],["withdrawn",["Ingetrokken (offline)","Withdrawn (offline)"]]];
 const CATS=[["apartment",["Appartement","Apartment"]],["penthouse","Penthouse"],["bungalow","Bungalow"],["townhouse",["Geschakelde woning","Townhouse"]],
   ["quadrant",["Quad (kwadrant)","Quad house"]],["semi-detached",["Halfvrijstaand","Semi-detached"]],["detached",["Vrijstaand","Detached"]],["villa","Villa"],
   ["duplex","Duplex"],["finca","Finca"],["studio","Studio"],["plot",["Bouwgrond","Plot"]],["commercial",["Bedrijfspand","Commercial"]],["other",["Overig","Other"]]];
@@ -368,7 +368,8 @@ function propForm(base,media){
      <div><h5>${esc(tr(["Eigendomsakte","Title deed"]))}</h5>${inp(B("registry_name"),["Registro de la Propiedad","Land registry"],{list:"adRegistros",ph:["kies of typ, bijv. Torrevieja nº 2","pick or type, e.g. Torrevieja nº 2"]})}<datalist id="adRegistros">${(LOOKUPS.registry||[]).map(x=>`<option value="${esc(x)}">`).join("")}</datalist>${inp(B("finca_number"),["Fincanummer","Finca number"])}
        ${inp(B("cadastral_ref"),["Kadastrale referentie","Cadastre number"],{hint:["20 tekens; hiermee worden de kadastergegevens opgehaald","20 characters; used to fetch the cadastral data"]})}</div></div>
      <div class="ad-note sm">${esc(tr(["Verkoopprijs, notaris en commissies vul je later in via ✎ Bewerken op de woning (alleen beheerder).","Sale price, notary and commissions are entered later via ✎ Edit on the property (admin only)."]))}</div>`,{id:"pf-kost"})}
-  ${sec(["Publicatie","Publishing"],`<div class="ad-multi c3">${chk(B("published"),["Publiceren op de website","Publish on website"])}${chk(B("no_export"),["Uitsluiten van XML-feeds","Exclude from XML feeds"])}</div>
+  ${sec(["Publicatie","Publishing"],`<div class="ad-multi c3">${chk(B("no_export"),["Uitsluiten van XML-feeds","Exclude from XML feeds"])}</div>
+     <div class="ad-note sm">${esc(tr(["Online/offline volgt de status: Actief en Gereserveerd staan online, Concept, Verkocht en Ingetrokken offline.","Online/offline follows the status: Active and Reserved are online, Draft, Sold and Withdrawn offline."]))}</div>
      <div class="ad-f w4"><span>${esc(tr(["Labels","Labels"]))}</span>${multi(B("labels"),[["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:4})}<small>${esc(tr(["NEW zet NEXUS zelf: de eerste 7 dagen na de eerste publicatie.","NEXUS sets NEW itself: the first 7 days after first publication."]))}</small></div>
      <div class="ad-f w4"><span>${esc(tr(["Exportfeeds","Export feeds"]))}</span>${multi(B("export_feeds"),[["idealista","Idealista"]],{cols:4})}</div>`,{id:"pf-pub"})}`;
 }

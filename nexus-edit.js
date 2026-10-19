@@ -8,7 +8,7 @@ const tr=v=>Array.isArray(v)?(X&&X.lang()==="en"?v[1]:v[0]):v;
 const LS=()=>window.NEXUS_LISTS||{};   /* niet "L": dat is Leaflet (kaart) */
 
 const STATUS=[["available",["Actief","Active"],"#22c55e"],["under_offer",["Gereserveerd","Reserved"],"#ec4899"],["reserved",["Gereserveerd","Reserved"],"#f43f5e"],["sold",["Verkocht","Sold"],"#a855f7"],
-  ["withdrawn",["Ingetrokken","Withdrawn"],"#64748b"],["draft",["Concept","Draft"],"#f59e0b"],["off_market",["Off-market","Off-market"],"#475569"]];
+  ["withdrawn",["Ingetrokken","Withdrawn"],"#64748b"],["draft",["Concept","Draft"],"#f59e0b"]];
 /* Besluit Rick 18-10: Gereserveerd = Onder bod. De database kent sinds 18-10 ook "reserved" (nieuwe site);
    die knop verschijnt alleen als een woning al op reserved staat. Zet SHOW_RESERVED op true om hem altijd te tonen. */
 const SHOW_RESERVED=false;
@@ -88,7 +88,7 @@ function upDirty(){const n=dirtyCount(), el=ROOT.querySelector("#peDirty"), b=RO
 function secStatus(){const p=P;
   const seg=`<div class="pe-seg">${STATUS.filter(s=>s[0]!=="reserved"||SHOW_RESERVED||p.status==="reserved").map(s=>`<button data-status="${s[0]}" class="${p.status===s[0]?"on":""}" style="--sc:${s[2]}">${esc(tr(s[1]))}</button>`).join("")}</div>`;
   return sec("status",["Status","Status"],seg
-    +row(chk("published",["Gepubliceerd op de website","Published on website"]),chk("dossier_complete",["Dossier compleet","Dossier complete"])).replace('class="ad-row"','class="ad-row pe-chkrow"')
+    +row(chk("dossier_complete",["Dossier compleet","Dossier complete"]))+`<small class="muted">${esc(tr(["Online/offline volgt de status: Actief en Gereserveerd staan online, Concept, Verkocht en Ingetrokken offline.","Online/offline follows the status: Active and Reserved are online, Draft, Sold and Withdrawn offline."]))}</small>`.replace('class="ad-row"','class="ad-row pe-chkrow"')
     +row(inp("listed_at",["In aanbod sinds","Listed since"],{type:"date"}),inp("under_offer_at",["Onder bod sinds","Under offer since"],{type:"date"}),(p.status==="reserved"||p.reserved_at)?inp("reserved_at",["Gereserveerd sinds","Reserved since"],{type:"date"}):"",inp("sold_at",["Verkocht op (status)","Sold on (status)"],{type:"date"}),inp("withdrawn_at",["Ingetrokken op","Withdrawn on"],{type:"date"})))}
 function secSale(){const p=P;
   return sec("sale",["Verkoop","Sale"],row(inp("sold_price",["Verkoopprijs (€)","Sold price (€)"],{type:"number",min:0,step:1000}),inp("sold_date",["Verkoopdatum","Sale date"],{type:"date"}),
