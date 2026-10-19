@@ -741,3 +741,8 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .ad-done-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .ad-done .btn{text-decoration:none}
 .ad-done-go{background:#34d399;border:0;color:#0a0f1e;font-weight:600}
+/* 19-10-2026: sleutelnummer, afstanden, teksten genereren */
+.ad-key{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:6px 0 8px}.ad-key .ad-f{width:160px;margin:0}
+.ad-h5row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ad-txbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}.ad-txbar .ad-seg{margin:0}
+.ad-gen{background:linear-gradient(90deg,#a855f7,#3b82f6);border:0;color:#fff;font-weight:600}.ad-gen:disabled{opacity:.7;cursor:wait}

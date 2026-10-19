@@ -45,26 +45,27 @@ const VIEWS=[["bay",["Baai","Bay"]],["country",["Platteland","Country"]],["golf"
 const ENERGY=["A","B","C","D","E","F","G"].map(x=>[x,x]).concat([["R","R"],["X","X"]]);
 const RANK=[["top","TOP"],["high","HIGH"],["normal","NORMAL"],["low","LOW"],["bottom","BOTTOM"]];
 const LISTING=[["direct",["Direct (eigen opdracht)","Direct (own mandate)"]],["indirect",["Indirect (via derde)","Indirect (via third party)"]]];
-/* zelfde sleutels als core.properties.features (import_wp.php) */
-const F_INDOOR=[["security_system","Security system"],["family_room","Family room"],["study","Study"],["workshop","Workshop"],["basement","Basement"],
-  ["furnished","Fully furnished"],["semi_furnished","Semi furnished"]];
-const F_OUTDOOR=[["pool","Private pool"],["communal_pool","Communal pool"],["solarium","Solarium"],["deck","Deck"],["courtyard","Courtyard"],
-  ["outdoor_entertaining","Outdoor entertaining"],["storage_shed","Shed"],["remote_garage","Remote garage"],["secure_parking","Secure parking"],["intercom","Intercom"],["fully_fenced","Fully fenced"]];
-const F_CLIMATE=[["air_conditioning","Air conditioning"],["air_conditioning_preinstalled","Air conditioning pre"],["underfloor_heating","Underfloor heating"],
-  ["central_heating","Central heating"],["ducted_heating","Ducted heating"],["ducted_cooling","Ducted cooling"],["split_heating","Split system heating"],
-  ["hydronic_heating","Hydronic heating"],["split_aircon","Split system airco"],["gas_heating","Gas heating"],["reverse_cycle_aircon","Reverse cycle aircon"],
-  ["evaporative_cooling","Evaporative cooling"],["fireplace","Fire place"]];
-/* zelfde groepen als core.properties.feature_options */
+/* zelfde sleutels als core.properties.features (import_wp.php); labels [NL, EN] */
+const F_INDOOR=[["security_system",["Beveiligingssysteem","Security system"]],["family_room",["Familiekamer","Family room"]],["study",["Studeerkamer","Study"]],["workshop",["Werkplaats","Workshop"]],["basement",["Kelder","Basement"]],
+  ["furnished",["Volledig gemeubileerd","Fully furnished"]],["semi_furnished",["Deels gemeubileerd","Semi furnished"]]];
+const F_OUTDOOR=[["pool",["Privézwembad","Private pool"]],["communal_pool",["Gemeenschappelijk zwembad","Communal pool"]],["solarium","Solarium"],["deck",["Houten terras (deck)","Deck"]],["courtyard",["Binnenplaats","Courtyard"]],
+  ["outdoor_entertaining",["Buitenleven / buitenkeuken","Outdoor entertaining"]],["storage_shed",["Berging / schuur","Shed"]],["remote_garage",["Garage met afstandsbediening","Remote garage"]],["secure_parking",["Afgesloten parkeerplaats","Secure parking"]],["intercom","Intercom"],["fully_fenced",["Volledig omheind","Fully fenced"]]];
+const F_CLIMATE=[["air_conditioning",["Airconditioning","Air conditioning"]],["air_conditioning_preinstalled",["Airco voorbereid","Air conditioning pre-installed"]],["underfloor_heating",["Vloerverwarming","Underfloor heating"]],
+  ["central_heating",["Centrale verwarming","Central heating"]],["ducted_heating",["Verwarming via kanalen","Ducted heating"]],["ducted_cooling",["Koeling via kanalen","Ducted cooling"]],["split_heating",["Verwarming via split-units","Split system heating"]],
+  ["hydronic_heating",["Waterverwarming (radiatoren)","Hydronic heating"]],["split_aircon",["Airco via split-units","Split system airco"]],["gas_heating",["Gasverwarming","Gas heating"]],["reverse_cycle_aircon",["Airco met warmtepomp (koelen/verwarmen)","Reverse cycle aircon"]],
+  ["evaporative_cooling",["Verdampingskoeling","Evaporative cooling"]],["fireplace",["Open haard","Fire place"]],["radiant_panels",["Stralingspanelen","Radiant panels"]]];
+/* zelfde groepen en waarden als core.properties.feature_options; de waarde blijft Engels (feeds), het label is NL/EN */
+const o_=(v,nl)=>[v,[nl,v.charAt(0).toUpperCase()+v.slice(1)]];
 const OPT={
-  kitchen:[["Keuken","Kitchen"],["closed","open","island","american","fully equipped"]],
-  pool:[["Zwembad","Pool"],["infinity","heated","covered","salted","free","community","countercurrent swimming system"]],
-  floor:[["Vloer","Floor"],["marble","wood","laminate","gres","porcelain stoneware","tiled","carpets","boards"]],
-  garden:[["Tuin","Garden"],["plot - garden","plot - grass","planters","watersystem","waterfall","natural park","no","community","fruit trees","cypress trees","exotic plants","palms","japanese garden"]],
-  terrace:[["Terras","Terrace"],["covered","glazed","open","solarium"]],
-  aircon:[["Airco","Airco"],["conductor","pre-installed","split unit"]],
-  heating:[["Verwarming","Heating"],["central heating","radiator","electric","gas","gasoil","oil","underfloor heating","pre-installation","heat pump","gas fireplace","wood fireplace"]],
-  property:[["Overige kenmerken","Other property features"],["alarm","armored door","balcony","barbecue","built-in wardrobes","ceiling fan","centralised security","disabled access","dishwasher","domotic system","double glass windows","dressing room","electric blinds","electric gate","elevator","employees room","frontline beach","game room","garden","guesthouse apartment","independent guesthouse","gym","home-cinema","internet connection","jacuzzi","laundry room","library","mosquito nets","osmosis","outside jacuzzi","outside kitchen","outside shower","private parking","reformed","reform needed","roof terrace","safe-deposit box","sauna","softener limescale","solar panels","spa","storage room","technical room","tennis court","terrace","tv satellite","vacuum system","video surveillance","walk-in closet","waterdeposit","white goods","wifi","wine cellar"]],
-  community:[["Gemeenschap","Community features"],["15 min beach","15 min market","15 min shops","24h security","barbecue","concierge","closed community","controlled access","direct beach access","disabled access","elevator","frontline beach","game area","gardens","golf court","gym","hotel","indoor swimming pool","jacuzzi","paddle court","parking","public transport","social club","sport center","swimming pool","tennis court"]]
+  kitchen:[["Keuken","Kitchen"],[o_("closed","Gesloten"),o_("open","Open"),o_("island","Kookeiland"),o_("american","Amerikaanse keuken"),o_("fully equipped","Volledig ingericht")]],
+  pool:[["Zwembad","Pool"],[o_("private","Privé"),o_("community","Gemeenschappelijk"),o_("infinity","Infinity"),o_("heated","Verwarmd"),o_("covered","Overdekt"),o_("salted","Zoutwater"),o_("countercurrent swimming system","Tegenstroominstallatie")]],
+  floor:[["Vloer","Floor"],[o_("marble","Marmer"),o_("wood","Hout"),o_("laminate","Laminaat"),o_("gres","Gres"),o_("porcelain stoneware","Porseleintegels"),o_("tiled","Tegels"),o_("carpets","Tapijt"),o_("boards","Planken")]],
+  garden:[["Tuin","Garden"],[o_("plot - garden","Perceel met tuin"),o_("plot - grass","Perceel met gras"),o_("planters","Plantenbakken"),o_("watersystem","Bewateringssysteem"),o_("waterfall","Waterval"),o_("natural park","Natuurpark"),o_("no","Geen tuin"),o_("community","Gemeenschappelijke tuin"),o_("fruit trees","Fruitbomen"),o_("cypress trees","Cipressen"),o_("exotic plants","Exotische planten"),o_("palms","Palmen"),o_("japanese garden","Japanse tuin")]],
+  terrace:[["Terras","Terrace"],[o_("covered","Overdekt"),o_("glazed","Ingeglaasd"),o_("open","Open"),o_("solarium","Solarium")]],
+  aircon:[["Airco","Airco"],[o_("conductor","Kanalensysteem"),o_("pre-installed","Voorbereid"),o_("split unit","Split-unit")]],
+  heating:[["Verwarming","Heating"],[o_("central heating","Centrale verwarming"),o_("radiator","Radiatoren"),o_("electric","Elektrisch"),o_("radiant panels","Stralingspanelen"),o_("gas","Gas"),o_("gasoil","Gasolie"),o_("oil","Olie"),o_("underfloor heating","Vloerverwarming"),o_("pre-installation","Voorbereid"),o_("heat pump","Warmtepomp"),o_("gas fireplace","Gashaard"),o_("wood fireplace","Houthaard")]],
+  property:[["Overige kenmerken","Other property features"],[o_("alarm","Alarm"),o_("armored door","Veiligheidsdeur"),o_("balcony","Balkon"),o_("barbecue","Barbecue"),o_("built-in wardrobes","Inbouwkasten"),o_("ceiling fan","Plafondventilator"),o_("centralised security","Centrale beveiliging"),o_("disabled access","Rolstoeltoegankelijk"),o_("dishwasher","Vaatwasser"),o_("domotic system","Domotica"),o_("double glass windows","Dubbel glas"),o_("dressing room","Kleedkamer"),o_("electric blinds","Elektrische rolluiken"),o_("electric gate","Elektrisch hek"),o_("elevator","Lift"),o_("employees room","Personeelskamer"),o_("frontline beach","Eerstelijns strand"),o_("game room","Spelkamer"),o_("garden","Tuin"),o_("guesthouse apartment","Gastenappartement"),o_("independent guesthouse","Vrijstaand gastenverblijf"),o_("gym","Fitnessruimte"),o_("home-cinema","Thuisbioscoop"),o_("internet connection","Internetaansluiting"),o_("jacuzzi","Jacuzzi"),o_("laundry room","Wasruimte"),o_("library","Bibliotheek"),o_("mosquito nets","Horren"),o_("osmosis","Osmosefilter"),o_("outside jacuzzi","Buitenjacuzzi"),o_("outside kitchen","Buitenkeuken"),o_("outside shower","Buitendouche"),o_("private parking","Eigen parkeerplaats"),o_("reformed","Gerenoveerd"),o_("reform needed","Renovatie nodig"),o_("roof terrace","Dakterras"),o_("safe-deposit box","Kluis"),o_("sauna","Sauna"),o_("softener limescale","Waterontharder"),o_("solar panels","Zonnepanelen"),o_("spa","Spa"),o_("storage room","Berging"),o_("technical room","Technische ruimte"),o_("tennis court","Tennisbaan"),o_("terrace","Terras"),o_("tv satellite","Satelliet-tv"),o_("vacuum system","Centraal stofzuigsysteem"),o_("video surveillance","Camerabewaking"),o_("walk-in closet","Inloopkast"),o_("waterdeposit","Waterreservoir"),o_("white goods","Witgoed"),o_("wifi","Wifi"),o_("wine cellar","Wijnkelder")]],
+  community:[["Gemeenschap","Community features"],[o_("15 min beach","Strand binnen 15 min"),o_("15 min market","Markt binnen 15 min"),o_("15 min shops","Winkels binnen 15 min"),o_("24h security","24-uursbewaking"),o_("barbecue","Barbecue"),o_("concierge","Conciërge"),o_("closed community","Afgesloten complex"),o_("controlled access","Gecontroleerde toegang"),o_("direct beach access","Directe toegang tot strand"),o_("disabled access","Rolstoeltoegankelijk"),o_("elevator","Lift"),o_("frontline beach","Eerstelijns strand"),o_("game area","Speelplaats"),o_("gardens","Tuinen"),o_("golf court","Golfbaan"),o_("gym","Fitnessruimte"),o_("hotel","Hotel"),o_("indoor swimming pool","Binnenzwembad"),o_("jacuzzi","Jacuzzi"),o_("paddle court","Padelbaan"),o_("parking","Parkeren"),o_("public transport","Openbaar vervoer"),o_("social club","Sociale club"),o_("sport center","Sportcentrum"),o_("swimming pool","Zwembad"),o_("tennis court","Tennisbaan")]]
 };
 /* Terugvallijst gemeente > wijk (opgeschoond uit de huidige woningdata). Bij openen wordt de live taxonomie 'location'
    van de website gelezen (zelfde boom als in wp-admin); lukt dat niet, dan geldt deze lijst. */
@@ -95,16 +96,18 @@ const blankProp=()=>({status:"draft",published:false,category:"",build_type:"res
   energy_label:"",energy_rating:"",floors:"",floor_level:"",staircases:"",balconies:"",patios:"",terraces:"",
   area_living:"",area_kitchen:"",area_terrace:"",area_garden:"",distance_airport_m:"",distance_sea_m:"",distance_city_m:"",distance_shops_m:"",
   features:[],opts:{},
-  texts:{nl:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""},en:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""},es:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""}},
+  texts:{en:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""},nl:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""},sv:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""}},key_on:false,key_number:"",
   cost_community:"",cost_garbage:"",cost_ibi:"",cost_insurance:"",fee_transfer_tax:"",fee_legal:"",fee_notary:"",fee_registry:"",
   registry_name:"",finca_number:"",cadastral_ref:"",video_url:"",tour_360_url:"",video_embed:""});
 function blank(){return{flow:"wizard",step:1,agentMode:"none",agent:null,newAgent:{company:"",first_name:"",last_name:"",email:"",phone:"",website:"",language:"es"},
   contactMode:"new",existing:null,c:blankContact(),propMode:null,linkProp:null,linkRel:"owner",p:blankProp(),
   /* losse schermen */
   wp:{owner:null,p:blankProp()},lk:{contact:null,prop:null,rel:"owner"}};}
-let S=blank(), MEDIA=[], WP_MEDIA=[], txLang="nl";
+let S=blank(), MEDIA=[], WP_MEDIA=[], txLang="en";
+const TX_LANGS=["en","nl","sv"];
 function load(){try{const d=JSON.parse(localStorage.getItem(DRAFT_KEY)||"null");if(d){S=Object.assign(blank(),d);
-  S.c=Object.assign(blankContact(),d.c);S.c.roles=(S.c.roles||[]).filter(r=>ROLES.some(x=>x[0]===r));S.p=Object.assign(blankProp(),d.p);S.wp.p=Object.assign(blankProp(),(d.wp||{}).p)}}catch(e){}}
+  S.c=Object.assign(blankContact(),d.c);S.c.roles=(S.c.roles||[]).filter(r=>ROLES.some(x=>x[0]===r));S.p=Object.assign(blankProp(),d.p);S.wp.p=Object.assign(blankProp(),(d.wp||{}).p);
+  [S.p,S.wp.p].forEach(p=>{const b=blankProp().texts;p.texts=Object.assign({},b,p.texts||{});TX_LANGS.forEach(l=>p.texts[l]=Object.assign({},b[l],p.texts[l]||{}))})}}catch(e){}}
 let saveT;function persist(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(DRAFT_KEY,JSON.stringify(S));stamp()}catch(e){}},250)}
 function stamp(){const el=ROOT&&ROOT.querySelector("#adStamp");if(el)el.textContent=tr(["Concept bewaard in deze browser · ","Draft kept in this browser · "])+new Date().toLocaleTimeString(X.lang()==="en"?"en-GB":"nl-NL",{hour:"2-digit",minute:"2-digit"})}
 const getP=(o,path)=>path.split(".").reduce((a,k)=>a==null?a:a[k],o);
@@ -288,7 +291,9 @@ function propForm(base,media){
       sel(B("build_type"),["Bouw","Build"],[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]],{req:"save",empty:false}),sel(B("own_listing_type"),["Soort opdracht","Mandate"],LISTING,{empty:false}))
     +row(inp(B("reference"),["Referentie","Reference"],{req:"save",list:"adRefPfx",ph:"RH995",hint:["Plaatsprefix + nummer; uniek","Location prefix + number; unique"]}),inp(B("year_built"),["Bouwjaar","Year built"],{type:"number",min:1800}),
       inp(B("listed_at"),["In aanbod sinds","Date listed"],{type:"date"}),sel(B("listing_agent"),["Makelaar (verantwoordelijk)","Listing agent"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}))
-    +`<div id="adRefCheck" class="sm"></div>`+chk(B("dossier_complete"),["Dossier compleet","Dossier complete"])
+    +`<div id="adRefCheck" class="sm"></div>`
+    +`<div class="ad-key">${chk(B("key_on"),["Sleutel in beheer: sleutelnummer toekennen","Keys held: assign a key number"])}${p.key_on?`<label class="ad-f"><span>${esc(tr(["Sleutelnummer","Key number"]))}${mark("save")}</span><input data-k="${B("key_number")}" value="${esc(p.key_number||"")}" inputmode="numeric" placeholder="…"><small>${esc(tr(["Eerste vrije nummer; je mag het aanpassen","First free number; you may change it"]))}</small></label>`:""}</div>`
+    +chk(B("dossier_complete"),["Dossier compleet","Dossier complete"])
     +`<datalist id="adRefPfx">${REF_PFX.map(x=>`<option value="${x}">`).join("")}</datalist>`,{id:"pf-basis"})}
   ${sec(["Prijs","Price"],row(inp(B("price"),["Vraagprijs (€)","Asking price (€)"],{type:"number",min:0,step:1000,req:"save"}),
       inp(B("price_original"),["Oorspronkelijke vraagprijs (€)","Original price (€)"],{type:"number",min:0,step:1000}))
@@ -301,7 +306,7 @@ function propForm(base,media){
     +(p.area==="__new"?row(inp(B("area_new"),["Naam nieuwe wijk","New area name"],{w:2,req:"save",hint:["Wordt als voorstel aangemaakt; de PropertyGuard-normalisatie moet hem goedkeuren","Created as a proposal; PropertyGuard normalisation must approve it"]})):"")
     +row(inp(B("street"),["Straat","Street"],{w:2}),inp(B("street_number"),["Nr.","No."]),inp(B("postal_code"),["Postcode","Post code"]))
     +row(inp(B("province"),["Provincie","Province"]),inp(B("country"),["Land","Country"]),sel(B("orientation"),["Oriëntatie","Orientation"],ORIENT))
-    +`<div class="ad-mapwrap"><div class="ad-maptools"><input id="adGeoQ" type="search" placeholder="${esc(tr(["Zoek adres of plak een Google Maps-link / ‘lat, lng’","Search address or paste a Google Maps link / ‘lat, lng’"]))}"><button class="btn sm" id="adGeoBtn">${esc(tr(["Zoek","Find"]))}</button></div>
+    +`<div class="ad-mapwrap"><div class="ad-maptools"><input id="adGeoQ" type="search" value="${esc(geoAddr(p))}" data-base="${base}" placeholder="${esc(tr(["Zoek adres of plak een Google Maps-link / ‘lat, lng’","Search address or paste a Google Maps link / ‘lat, lng’"]))}"><button class="btn sm" id="adGeoBtn">${esc(tr(["Zoek","Find"]))}</button></div>
       <div id="adMap" data-base="${base}"></div><div class="ad-row">${inp(B("lat"),["Breedtegraad","Latitude"],{req:"pub",type:"number",step:"any"})}${inp(B("lng"),["Lengtegraad","Longitude"],{req:"pub",type:"number",step:"any"})}</div>
       <small class="muted">${esc(tr(["Klik op de kaart of sleep de pin. Zonder coördinaten staat een woning niet op de NEXUS-kaart.","Click the map or drag the pin. Without coordinates a property is not on the NEXUS map."]))}</small></div>`
     +`<div class="ad-multi c3">${chk(B("hide_address"),["Kaart verbergen","Hide map"])}</div>`
@@ -309,21 +314,24 @@ function propForm(base,media){
   ${sec(["Indeling en oppervlaktes","Layout and areas"],
      `<div class="ad-cols3"><div><h5>${esc(tr(["Kamers","Rooms"]))}</h5>${[["bedrooms",["Slaapkamers","Bedrooms"],"save"],["bathrooms",["Badkamers","Bathrooms"],"save"],["toilets",["Toiletten","Toilets"]],["ensuites","En-suite"],["living_rooms",["Woonkamers","Livings"]],["kitchens",["Keukens","Kitchens"]]]
         .map(f=>inp(B(f[0]),f[1],{type:"number",min:0,req:f[2]})).join("")}</div>
-      <div><h5>${esc(tr(["Oppervlakte (m²)","Surface (m²)"]))}</h5>${[["build_area",["Bebouwd","Building area"],"save"],["plot_area",["Perceel","Land area"]],["area_living",["Woonoppervlak","Living area"]],["area_kitchen",["Keuken","Kitchen area"]],["area_terrace",["Terras","Terrace area"]],["area_garden",["Tuin","Garden area"]]]
+      <div><h5>${esc(tr(["Oppervlakte (m²)","Surface (m²)"]))}</h5>${[["build_area",["Bebouwd","Building area"],"save"],["plot_area",["Perceel","Land area"]]]
         .map(f=>inp(B(f[0]),f[1],{type:"number",min:0,req:f[2]})).join("")}
         ${sel(B("energy_label"),["Energielabel C.E.E.","Energy label C.E.E."],ENERGY,{req:"pub",hint:["Wettelijk verplicht in advertenties","Legally required in adverts"]})}</div>
       <div><h5>${esc(tr(["Overig","Other"]))}</h5>${[["floors",["Verdiepingen","Floors"]],["balconies",["Balkons","Balconies"]],["patios",["Patio's","Patios"]],["terraces",["Terrassen","Terraces"]],["garages",["Garages","Garage"]],["carports","Carport"]]
         .map(f=>inp(B(f[0]),f[1],{type:"number",min:0})).join("")}${inp(B("floor_level"),["Etage","Level"],{ph:["bijv. begane grond, 2e","e.g. ground, 2nd"]})}</div></div>
-     <h5>${esc(tr(["Afstanden (meter)","Distances (metres)"]))}</h5>${row(inp(B("distance_sea_m"),["Zee","Sea"],{type:"number",min:0}),inp(B("distance_airport_m"),["Luchthaven","Airport"],{type:"number",min:0}),inp(B("distance_city_m"),["Centrum","Town centre"],{type:"number",min:0}),inp(B("distance_shops_m"),["Winkels","Shops"],{type:"number",min:0}))}`,{id:"pf-ind"})}
+     <h5 class="ad-h5row">${esc(tr(["Afstanden (meter, hemelsbreed)","Distances (metres, straight line)"]))}<button class="btn sm" data-dist="${base}">⟳ ${esc(tr(["Bereken","Calculate"]))}</button></h5>${row(inp(B("distance_sea_m"),["Zee","Sea"],{type:"number",min:0}),inp(B("distance_airport_m"),["Luchthaven","Airport"],{type:"number",min:0}),inp(B("distance_city_m"),["Centrum","Town centre"],{type:"number",min:0}),inp(B("distance_shops_m"),["Winkels (supermarkt)","Shops (supermarket)"],{type:"number",min:0}))}
+     <small class="muted" id="adDistInfo-${base.replace(".","_")}">${esc(distInfo(p))}</small>`,{id:"pf-ind"})}
   ${sec(["Kenmerken","Features"],`<div class="ad-cols3"><div><h5>Indoor</h5>${multi(B("features"),F_INDOOR)}</div><div><h5>Outdoor</h5>${multi(B("features"),F_OUTDOOR)}</div><div><h5>${esc(tr(["Klimaat","Climatisation"]))}</h5>${multi(B("features"),F_CLIMATE)}</div></div>
      ${Object.entries(OPT).map(([k,[lab,vals]])=>`<details class="ad-det" ${((p.opts||{})[k]||[]).length?"open":""}><summary>${esc(tr(lab))} <span class="sm muted">${((p.opts||{})[k]||[]).length||""}</span></summary>${multi(B("opts."+k),vals,{cols:k==="property"||k==="community"?4:3})}</details>`).join("")}`,{id:"pf-ken"})}
-  ${sec(["Teksten","Texts"],`<div class="seg ad-seg sm">${["nl","en","es"].map(l=>`<button data-tx="${l}" class="${txLang===l?"on":""}">${l.toUpperCase()}${txOk(p,l)?" ✓":""}</button>`).join("")}</div>
-     ${row(inp(B(`texts.${txLang}.heading`),["Kop","Heading"],{w:4,req:txLang==="es"?"":"pub",ph:["bijv. Vrijstaande villa met privézwembad in Benimar","e.g. Detached villa with private pool in Benimar"]}))}
-     ${row(area(B(`texts.${txLang}.description`),["Omschrijving","Description"],{rows:8,req:txLang==="es"?"":"pub"}))}
-     ${row(area(B(`texts.${txLang}.key_details`),["Kernpunten (één per regel)","Key details (one per line)"],{rows:3}))}
-     ${row(area(B("internal_notes"),["Interne notities (bijv. wie de sleutelhouder is)","Internal notes (e.g. who holds the keys)"],{rows:3,hint:["Alleen intern, nooit op de site","Internal only, never on the site"]}))}
+  ${sec(["Teksten","Texts"],`<div class="ad-txbar"><div class="seg ad-seg sm">${TX_LANGS.map(l=>`<button data-tx="${l}" class="${txLang===l?"on":""}">${l.toUpperCase()}${txOk(p,l)?" ✓":""}</button>`).join("")}</div>
+       <button class="btn sm ad-gen" data-gen="${base}" ${GEN_BUSY?"disabled":""}>${GEN_BUSY?"… "+esc(tr(["Teksten worden geschreven (±30 sec)","Writing texts (±30 sec)"])):"✨ "+esc(tr(["Genereer teksten (EN, NL, SV)","Generate texts (EN, NL, SV)"]))}</button></div>
+     <div id="adGenMsg" class="sm"></div>
+     ${row(inp(B(`texts.${txLang}.heading`),["Kop","Heading"],{w:4,req:txLang==="en"?"pub":"",ph:["bijv. Vrijstaande villa met privézwembad in Benimar","e.g. Detached villa with private pool in Benimar"]}))}
+     ${row(area(B(`texts.${txLang}.description`),["Omschrijving","Description"],{rows:9,req:txLang==="en"?"pub":""}))}
+     ${row(area(B(`texts.${txLang}.key_details`),["Kernpunten (één per regel, komen op de website)","Key points (one per line, shown on the website)"],{rows:5}))}
      ${row(inp(B(`texts.${txLang}.seo_title`),["SEO-titel","SEO title"],{w:2,hint:["max. ±60 tekens","max ±60 characters"]}),inp(B(`texts.${txLang}.seo_description`),["SEO-omschrijving","SEO description"],{w:2,hint:["max. ±155 tekens","max ±155 characters"]}))}
-     <small class="muted">${esc(tr(["NL en EN zijn nodig voor de site en de Kyero-feed naar partners; ES is optioneel.","NL and EN are needed for the site and the Kyero feed to partners; ES is optional."]))}</small>`,{id:"pf-tekst"})}
+     ${row(area(B("internal_notes"),["Interne notities","Internal notes"],{rows:3,hint:["Alleen intern, nooit op de site of in teksten","Internal only, never on the site or in texts"]}))}
+     <small class="muted">${esc(tr(["Engels is de brontaal en verplicht voor publicatie. ✨ schrijft alle drie de talen op basis van de ingevulde gegevens; controleer en pas gerust aan. Na opslaan houden de vertaalagents NL en SV bij als je het Engels wijzigt.","English is the source language and required to publish. ✨ writes all three languages from the entered data; check and edit freely. After saving, the translation agents keep NL and SV in line when you change the English."]))}</small>`,{id:"pf-tekst"})}
   ${sec(["Foto's en media","Photos and media"],`<div class="ad-drop" data-media="${base}"><input type="file" multiple accept="image/*,application/pdf" hidden>
        <div><b>${esc(tr(["Sleep foto's hierheen of klik om te kiezen","Drop photos here or click to choose"]))}</b><div class="sm muted">${esc(tr(["JPG/PNG/WebP, ook plattegronden en PDF (energiecertificaat). Eerste foto = hoofdfoto. Volgorde aanpassen door te slepen.","JPG/PNG/WebP, also floor plans and PDF (energy certificate). First photo = main photo. Drag to reorder."]))}</div></div></div>
      <div class="ad-media" id="adMedia-${base}"></div>
@@ -338,7 +346,7 @@ function propForm(base,media){
        ${inp(B("cadastral_ref"),["Kadastrale referentie","Cadastre number"],{hint:["20 tekens; hiermee worden de kadastergegevens opgehaald","20 characters; used to fetch the cadastral data"]})}</div></div>
      <div class="ad-note sm">${esc(tr(["Verkoopprijs, notaris en commissies vul je later in via ✎ Bewerken op de woning (alleen beheerder).","Sale price, notary and commissions are entered later via ✎ Edit on the property (admin only)."]))}</div>`,{id:"pf-kost"})}
   ${sec(["Publicatie","Publishing"],`<div class="ad-multi c3">${chk(B("published"),["Publiceren op de website","Publish on website"])}${chk(B("no_export"),["Uitsluiten van XML-feeds","Exclude from XML feeds"])}</div>
-     <div class="ad-f w4"><span>${esc(tr(["Labels","Labels"]))}</span>${multi(B("labels"),[["new","NEW"],["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:5})}</div>
+     <div class="ad-f w4"><span>${esc(tr(["Labels","Labels"]))}</span>${multi(B("labels"),[["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:4})}<small>${esc(tr(["NEW zet NEXUS zelf: de eerste 7 dagen na de eerste publicatie.","NEXUS sets NEW itself: the first 7 days after first publication."]))}</small></div>
      <div class="ad-f w4"><span>${esc(tr(["Exportfeeds","Export feeds"]))}</span>${multi(B("export_feeds"),[["idealista","Idealista"]],{cols:4})}</div>`,{id:"pf-pub"})}`;
 }
 const txOk=(p,l)=>!!(p.texts[l]&&p.texts[l].heading&&p.texts[l].description);
@@ -395,8 +403,10 @@ function validateProp(p,media,stepNo,out){
   if(!p.build_area&&p.category!=="plot")add(["Bebouwde oppervlakte","Building area"],"save","pf-ind");
   if(p.lat===""||p.lng==="")add(["Locatie op de kaart","Location on the map"],"pub","pf-loc");
   if(!p.energy_label&&p.category!=="plot")add(["Energielabel","Energy label"],"pub","pf-ind");
-  if(!txOk(p,"nl"))add(["Kop + omschrijving NL","Heading + description NL"],"pub","pf-tekst");
   if(!txOk(p,"en"))add(["Kop + omschrijving EN","Heading + description EN"],"pub","pf-tekst");
+  else{if(!txOk(p,"nl"))add(["NL-tekst ontbreekt (wordt na opslaan vertaald)","NL text missing (translated after saving)"],"tip","pf-tekst");if(!txOk(p,"sv"))add(["SV-tekst ontbreekt (wordt na opslaan vertaald)","SV text missing (translated after saving)"],"tip","pf-tekst")}
+  if(p.key_on&&!/^\d{1,9}$/.test(String(p.key_number||"").trim()))add(["Sleutelnummer (alleen cijfers)","Key number (digits only)"],"save","pf-basis");
+  if(String((p.texts.en||{}).description||"").trim().length>0&&String(p.texts.en.description).trim().length<80)add(["EN-omschrijving is erg kort","EN description is very short"],"pub","pf-tekst");
   const photos=media.filter(m=>m.kind==="photo").length;
   if(photos<1)add(["Minstens één foto","At least one photo"],"pub","pf-media");
   else if(photos<5)add(["Minder dan 5 foto's","Fewer than 5 photos"],"tip","pf-media");
@@ -448,15 +458,15 @@ function propPayload(p,media,owner){
     price:n(p.price),price_previous:n(p.price_original),price_from:p.price_from,price_on_request:p.price_on_request,price_fixed:p.price_fixed,price_hidden:p.price_hidden,
     bedrooms:n(p.bedrooms),bathrooms:n(p.bathrooms),toilets:n(p.toilets),ensuites:n(p.ensuites),living_rooms:n(p.living_rooms),kitchens:n(p.kitchens),floors:n(p.floors),floor_level:p.floor_level||null,
     balconies:n(p.balconies),terraces:n(p.terraces),patios:n(p.patios),garages:n(p.garages),carports:n(p.carports),build_area:n(p.build_area),plot_area:n(p.plot_area),
-    area_living:n(p.area_living),area_terrace:n(p.area_terrace),area_garden:n(p.area_garden),area_kitchen:n(p.area_kitchen),year_built:n(p.year_built),orientation:p.orientation||null,
+    year_built:n(p.year_built),orientation:p.orientation||null,
     views:(p.views||[]).join(",")||null,energy_label:p.energy_label||null,features:p.features,feature_options:opts,
     country:p.country||null,province:p.province||null,city:p.municipality||null,location_area:p.area==="__new"?p.area_new:p.area==="__mun"?null:p.area||null,
     location_id:"← core.locations (gemeente/wijk)",street:p.street||null,street_number:p.street_number||null,postal_code:p.postal_code||null,lat:n(p.lat),lng:n(p.lng),hide_address:p.hide_address,
     distance_sea_m:n(p.distance_sea_m),distance_airport_m:n(p.distance_airport_m),distance_city_m:n(p.distance_city_m),distance_shops_m:n(p.distance_shops_m),
     fee_legal:n(p.fee_legal),fee_notary:n(p.fee_notary),fee_registry:n(p.fee_registry),fee_transfer_tax:n(p.fee_transfer_tax),cost_community:n(p.cost_community),cost_ibi:n(p.cost_ibi),
-    cost_garbage:n(p.cost_garbage),cost_insurance:n(p.cost_insurance),cadastral_ref:p.cadastral_ref||null,finca_number:p.finca_number||null,labels:p.labels,export_feeds:p.export_feeds,
+    cost_garbage:n(p.cost_garbage),cost_insurance:n(p.cost_insurance),cadastral_ref:p.cadastral_ref||null,finca_number:p.finca_number||null,key_number:p.key_on?(p.key_number||null):null,labels:(p.labels||[]).filter(x=>x!=="new"),export_feeds:p.export_feeds,
     no_export:p.no_export,video_url:p.video_url||null,tour_360_url:p.tour_360_url||null,registry_name:p.registry_name||null,owner_contact_id:owner,listing_agent_id:teamName(p.listing_agent),listed_at:p.listed_at||null},
-   "core.property_texts":["nl","en","es"].filter(l=>Object.values(p.texts[l]).some(Boolean)).map(l=>Object.assign({lang:l},p.texts[l])),
+   "core.property_texts":TX_LANGS.filter(l=>Object.values(p.texts[l]||{}).some(Boolean)).map(l=>Object.assign({lang:l},p.texts[l])),
    "core.property_price_history":p.price?[{price:n(p.price),source:"nexus"}]:[],
    "core.property_media":media.map((m,i)=>({kind:m.kind,sort:i,is_main:i===0,caption:m.caption||null,storage_path:`property-media/<property_id>/<media_id>.${(m.name.split(".").pop()||"jpg").toLowerCase()}`,file:m.name,bytes:m.size})),
    "_nog_geen_kolom":Object.fromEntries(Object.entries({price_text:p.price_text,price_temp:p.price_temp,price_temp_until:p.price_temp_until,price_coming_soon:p.price_coming_soon||null,
@@ -515,9 +525,10 @@ function propFields(p){
   if(p.dossier_complete)f.dossier_complete=true;
   const loc=locationId(p);if(loc)f.location_id=loc;
   if(p.listing_agent)f.listing_agent_id=String(p.listing_agent);
+  if(p.key_on&&String(p.key_number||"").trim())f.key_number=String(p.key_number).trim();
   return f;
 }
-function propTexts(p){const t={};["nl","en","es"].forEach(l=>{const x=p.texts&&p.texts[l];if(!x)return;
+function propTexts(p){const t={};TX_LANGS.forEach(l=>{const x=p.texts&&p.texts[l];if(!x)return;
   const y={};Object.entries(x).forEach(([k,v])=>{if(v&&String(v).trim())y[k]=String(v).trim()});if(Object.keys(y).length)t[l]=y});return t}
 function buildSubmit(flow){
   if(flow==="link"){const k=S.lk;return {contact:{mode:"existing",id:k.contact&&k.contact.id,roles:[]},property:{mode:"link",id:k.prop&&k.prop.id,rel:k.rel||"owner"}}}
@@ -634,7 +645,7 @@ function initMap(){
   const place=(lat,lng,fly)=>{lat=+(+lat).toFixed(6);lng=+(+lng).toFixed(6);setP(S,base+".lat",String(lat));setP(S,base+".lng",String(lng));
     if(!PIN||!MAP.hasLayer(PIN)){PIN=L.marker([lat,lng],{draggable:true}).addTo(MAP);PIN.on("dragend",e=>{const ll=e.target.getLatLng();place(ll.lat,ll.lng)})}else PIN.setLatLng([lat,lng]);
     ROOT.querySelectorAll(`[data-k="${base}.lat"]`).forEach(x=>x.value=lat);ROOT.querySelectorAll(`[data-k="${base}.lng"]`).forEach(x=>x.value=lng);
-    if(fly)MAP.setView([lat,lng],17);persist();updateChecks()};
+    if(fly)MAP.setView([lat,lng],17);persist();updateChecks();autoDist(base)};
   PIN=null;if(has)place(p.lat,p.lng);
   MAP.on("click",e=>place(e.latlng.lat,e.latlng.lng));
   MAP._place=place;setTimeout(()=>MAP&&MAP.invalidateSize(),60);
@@ -674,17 +685,71 @@ function renderMedia(){[["p",MEDIA],["wp.p",WP_MEDIA]].forEach(([base,arr])=>{co
     el.ondragover=e=>e.preventDefault();el.ondrop=e=>{e.preventDefault();e.stopPropagation();const to=+el.dataset.mi;if(from==null||from===to)return;const m=arr.splice(from,1)[0];arr.splice(to,0,m);renderMedia()}});
 });}
 
+/* ================= ADRES · AFSTANDEN · TEKSTEN (19-10-2026) ================= */
+const GEO_Q={};             // handmatig getypte zoektekst per formulier; anders volgt het zoekveld het adres
+const areaName=p=>p.area==="__new"?p.area_new:p.area==="__mun"?"":p.area;
+function geoAddr(p){const base=p===S.p?"p":"wp.p";if(GEO_Q[base]!=null)return GEO_Q[base];
+  const st=[p.street,p.street_number].filter(Boolean).join(" ");
+  return [st,[p.postal_code,p.municipality].filter(Boolean).join(" "),st?"":areaName(p)].filter(Boolean).join(", ")}
+function syncGeo(base){if(GEO_Q[base]!=null)return;const q=ROOT.querySelector("#adGeoQ");if(q&&q.dataset.base===base)q.value=geoAddr(getP(S,base))}
+const distInfo=p=>p._dist_info||"";
+async function fnCall(name,body){
+  if(!X||!X.sb)throw new Error(tr(["Geen verbinding met de server","No connection to the server"]));
+  const {data,error}=await X.sb.functions.invoke(name,{body});
+  if(error){let m=error.message;try{const j=await error.context.json();m=j.error||m}catch(_){}throw new Error(m)}
+  if(data&&data.ok===false)throw new Error(data.error||"error");
+  return data;
+}
+let DIST_T={}, DIST_TRIED={};
+function autoDist(base){const p=getP(S,base);if(["distance_sea_m","distance_airport_m","distance_city_m","distance_shops_m"].some(k=>p[k]!==""&&p[k]!=null))return;
+  const key=base+"|"+p.lat+"|"+p.lng;if(DIST_TRIED[key])return;
+  clearTimeout(DIST_T[base]);DIST_T[base]=setTimeout(()=>{DIST_TRIED[key]=1;calcDist(base,false)},900)}
+async function calcDist(base,force){const p=getP(S,base), info=ROOT.querySelector(`#adDistInfo-${base.replace(".","_")}`);
+  if(p.lat===""||p.lng===""){if(info)info.textContent=tr(["Zet eerst de pin op de kaart.","Place the pin on the map first."]);return}
+  if(info)info.textContent=tr(["Afstanden worden berekend…","Calculating distances…"]);
+  try{const r=await fnCall("property-distances",{lat:+p.lat,lng:+p.lng,municipality:p.municipality||null,area:areaName(p)||null});
+    const map={distance_sea_m:r.sea_m,distance_airport_m:r.airport_m,distance_city_m:r.city_m,distance_shops_m:r.shops_m};
+    Object.entries(map).forEach(([k,v])=>{if(v==null)return;if(force||p[k]===""||p[k]==null){setP(S,base+"."+k,String(v));ROOT.querySelectorAll(`[data-k="${base}.${k}"]`).forEach(x=>x.value=v)}});
+    p._dist_info=tr(["Hemelsbreed berekend","Straight line"])+" · "+[r.airport&&tr(["luchthaven ","airport "])+r.airport,r.centre&&tr(["centrum ","centre "])+r.centre,r.shop&&tr(["winkel ","shop "])+r.shop].filter(Boolean).join(" · ");
+    if(info)info.textContent=p._dist_info;persist();updateChecks()}
+  catch(e){if(info)info.textContent=tr(["Afstanden niet berekend: ","Distances not calculated: "])+(e.message||e)}}
+let GEN_BUSY=false;
+function genFacts(p){const nn=v=>v===""||v==null?null:Number(v);
+  return {category:p.category,build_type:p.build_type,status:p.status,year_built:nn(p.year_built),bedrooms:nn(p.bedrooms),bathrooms:nn(p.bathrooms),toilets:nn(p.toilets),ensuites:nn(p.ensuites),
+    living_rooms:nn(p.living_rooms),kitchens:nn(p.kitchens),floors:nn(p.floors),floor_level:p.floor_level||null,balconies:nn(p.balconies),terraces:nn(p.terraces),patios:nn(p.patios),
+    garages:nn(p.garages),carports:nn(p.carports),build_area:nn(p.build_area),plot_area:nn(p.plot_area),orientation:p.orientation||null,views:(p.views||[]).join(","),
+    energy_label:p.energy_label||null,features:p.features||[],feature_options:p.opts||{},municipality:p.municipality||null,area:areaName(p)||null,province:p.province||null,
+    distance_sea_m:nn(p.distance_sea_m),distance_airport_m:nn(p.distance_airport_m),distance_city_m:nn(p.distance_city_m),distance_shops_m:nn(p.distance_shops_m)}}
+async function genTexts(base){const p=getP(S,base);if(GEN_BUSY)return;
+  const has=TX_LANGS.some(l=>p.texts[l]&&(p.texts[l].heading||p.texts[l].description));
+  if(has&&!confirm(tr(["De bestaande teksten in EN, NL en SV worden vervangen. Doorgaan?","The existing EN, NL and SV texts will be replaced. Continue?"])))return;
+  GEN_BUSY=true;render();
+  try{const r=await fnCall("property-describe",{property:genFacts(p)});
+    TX_LANGS.forEach(l=>{const t=r.texts&&r.texts[l];if(!t)return;p.texts[l]=Object.assign({},p.texts[l],{heading:t.heading||"",description:t.description||"",key_details:t.key_details||"",seo_title:t.seo_title||"",seo_description:t.seo_description||""})});
+    GEN_BUSY=false;txLang="en";persist();render();
+    const m=ROOT.querySelector("#adGenMsg");if(m)m.innerHTML=`<span style="color:#34d399">✓ ${esc(tr(["Teksten geschreven in EN, NL en SV. Lees ze na en pas aan waar nodig.","Texts written in EN, NL and SV. Review and edit where needed."]))}</span>`}
+  catch(e){GEN_BUSY=false;render();const m=ROOT.querySelector("#adGenMsg");if(m)m.innerHTML=`<span class="ad-bad">${esc(tr(["Niet gelukt: ","Failed: "])+(e.message||e))}</span>`}}
+async function keyToggle(base,on){const p=getP(S,base);
+  if(!on){p.key_number="";persist();render();return}
+  render();
+  try{const n=await X.rpc("nexus_key_number_next",{});if(n&&!p.key_number)p.key_number=String(n)}catch(e){saveMsg(esc(tr(["Sleutelnummer ophalen lukt nog niet: ","Could not fetch a key number yet: "])+(e.message||e)),"err")}
+  persist();render()}
+
 /* ================= EVENTS ================= */
 function bind(){
-  ROOT.addEventListener("input",e=>{const el=e.target, k=el.dataset&&el.dataset.k;if(!k)return;
+  ROOT.addEventListener("input",e=>{const el=e.target, k=el.dataset&&el.dataset.k;
+    if(el.id==="adGeoQ"){GEO_Q[el.dataset.base]=el.value;return}
+    if(!k)return;
     if(el.dataset.arr!=null){const a=getP(S,k)||[];const v=el.dataset.arr;const nx=el.checked?[...new Set([...a,v])]:a.filter(x=>x!==v);setP(S,k,nx);
       const ch=el.closest(".chip");if(ch)ch.classList.toggle("on",el.checked);
       if(k==="c.roles"&&S.flow==="wizard"&&S.step===2){persist();render();return}
       if(k==="c.prefs"||/\.opts\./.test(k)){const d=el.closest("details");if(d){const s=d.querySelector("summary .sm");if(s)s.textContent=(getP(S,k)||[]).length||""}}}
-    else if(el.dataset.bool!=null){setP(S,k,el.checked);if(k==="c.mailing_optin"){const cur=(S.c.prefs||[]).filter(x=>MAILINGS.some(m=>m[0]===x));S.c.prefs=el.checked&&!cur.length?[...MAILING_DEFAULT_ON]:cur;persist();render();return}}
+    else if(el.dataset.bool!=null){setP(S,k,el.checked);if(/\.key_on$/.test(k)){keyToggle(k.replace(/\.key_on$/,""),el.checked);return}if(k==="c.mailing_optin"){const cur=(S.c.prefs||[]).filter(x=>MAILINGS.some(m=>m[0]===x));S.c.prefs=el.checked&&!cur.length?[...MAILING_DEFAULT_ON]:cur;persist();render();return}}
     else{let v=el.value;if(/\.reference$/.test(k)){v=v.toUpperCase().replace(/\s/g,"");if(el.value!==v)el.value=v}setP(S,k,v)}
+    if(/\.(street|street_number|postal_code)$/.test(k))syncGeo(k.replace(/\.[a-z_]+$/,""));
     if(/\.(municipality|area)$/.test(k)){if(/municipality$/.test(k))setP(S,k.replace(/municipality$/,"area"),"");persist();render();return}
     if(/\.(lat|lng)$/.test(k)&&MAP&&MAP._place){const b=k.replace(/\.(lat|lng)$/,""),p=getP(S,b);if(p.lat!==""&&p.lng!==""&&!isNaN(+p.lat)&&!isNaN(+p.lng))MAP._place(p.lat,p.lng,true)}
+    if(/\.(lat|lng)$/.test(k))autoDist(k.replace(/\.(lat|lng)$/,""));
     if(/\.texts\./.test(k)){const b=ROOT.querySelector(`[data-tx="${txLang}"]`);if(b){const base=k.split(".texts.")[0];b.textContent=txLang.toUpperCase()+(txOk(getP(S,base),txLang)?" ✓":"")}}
     if(/^newAgent\./.test(k))agentDup();
     if(/^c\.(emails|phones|first_name|last_name)/.test(k)){clearTimeout(dupT);dupT=setTimeout(checkDups,600)}
@@ -706,6 +771,8 @@ function bind(){
     if(d.clear){({agent:()=>S.agent=null,existing:()=>S.existing=null,linkProp:()=>S.linkProp=null,wpOwner:()=>S.wp.owner=null,lkContact:()=>S.lk.contact=null,lkProp:()=>S.lk.prop=null})[d.clear]();persist();render();return}
     if(d.usedup){const x=DUPS.find(y=>String(y.id||y.wp_id)===d.usedup);if(x){S.contactMode="existing";S.existing={id:x.id,wp_id:x.wp_id,name:x.name,email:x.email,city:x.city,roles:x.roles};S.step=2;S.flow="wizard";DUPS=[];persist();render()}return}
     if(d.save){e.preventDefault();submit().catch(err=>{BUSY=false;updateChecks();console.error("NEXUS admin submit",err);saveMsg(`<b>${esc(tr(["Niet opgeslagen","Not saved"]))}</b>${esc((err&&err.message)||String(err))}`,"err")});return}
+    if(d.dist){e.preventDefault();calcDist(d.dist,true);return}
+    if(d.gen){e.preventDefault();genTexts(d.gen);return}
     if(t.id==="adCopyJson"){navigator.clipboard&&navigator.clipboard.writeText(JSON.stringify(payload("wizard"),null,2));t.textContent="✓";return}
     if(t.id==="adReset"){if(confirm(tr(["Concept wissen? Alle ingevulde velden en foto's gaan weg.","Clear draft? All entered fields and photos are removed."]))){
       [...MEDIA,...WP_MEDIA].forEach(m=>m.url&&URL.revokeObjectURL(m.url));MEDIA=[];WP_MEDIA=[];DUPS=[];const f=S.flow;S=blank();S.flow=f;

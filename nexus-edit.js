@@ -13,11 +13,13 @@ const STATUS=[["available",["Actief","Active"],"#22c55e"],["under_offer",["Geres
    die knop verschijnt alleen als een woning al op reserved staat. Zet SHOW_RESERVED op true om hem altijd te tonen. */
 const SHOW_RESERVED=false;
 const statusOf=s=>STATUS.find(x=>x[0]===s)||[s,[s,s],"#64748b"];
-const LANGS=["nl","en","es","de","fr"];
+const TXL=["en","nl","sv"];
+/* oudere talen (es/de/fr) alleen tonen als er al tekst in staat */
+const LANGS_OF=()=>TXL.concat(["es","de","fr"].filter(l=>T&&T[l]&&Object.values(T[l]).some(Boolean)));
 const ADMIN_ONLY=["sold_price","sold_price_display","sold_date","deed_price","sold_agent_id","sold_agent_text","notary","notary_protocol","commission_a","commission_b","commission_out","conveyancing","commission_note"];
 const FEED_FIELDS=["price","bedrooms","bathrooms","build_area","plot_area","energy_label","city","location_area","location_id","lat","lng","feature_options","build_type","category","province","country"];
 
-let D=null, P=null, T=null, M=null, TOUCH={}, TTOUCH={}, MEDIA_DIRTY=false, txL="nl", ROOT=null, busy=false, MAP=null;
+let D=null, P=null, T=null, M=null, TOUCH={}, TTOUCH={}, MEDIA_DIRTY=false, txL="en", ROOT=null, busy=false, MAP=null;
 
 /* ---------- waarden ---------- */
 const isNum=k=>/^(price|price_previous|bedrooms|bathrooms|toilets|ensuites|rooms|kitchens|living_rooms|floors|balconies|terraces|patios|garages|carports|parking_spaces|build_area|plot_area|area_\w+|year_built|distance_\w+|fee_\w+|cost_\w+|lat|lng|sold_price|deed_price|commission_\w+|conveyancing|location_id)$/.test(k)&&k!=="commission_note";
@@ -99,7 +101,8 @@ function secBasis(){const l=L();
   return sec("basis",["Basis","Basics"],row(sel("category",["Woningtype","Property type"],l.CATS||[]),sel("build_type",["Bouw","Build"],[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]]),
       sel("own_listing_type",["Soort opdracht","Mandate"],[["direct",["Direct","Direct"]],["indirect",["Indirect","Indirect"]]]),sel("listing_agent_id",["Verantwoordelijk","Responsible"],D.team.map(t=>[t.id,t.name])))
     +row(inp("reference",["Referentie","Reference"],{ro:true,hint:["Vast: wordt gebruikt in links en feeds","Fixed: used in links and feeds"]}),inp("year_built",["Bouwjaar","Year built"],{type:"number",min:1800}),inp("object_style",["Stijl","Style"]),
-      P.origin==="partner"?inp("external_ref",["Partnerreferentie","Partner reference"],{ro:true}):""))}
+      P.origin==="partner"?inp("external_ref",["Partnerreferentie","Partner reference"],{ro:true}):""))
+    +("key_number" in P&&P.origin!=="partner"?row(inp("key_number",["Sleutelnummer","Key number"],{hint:["Leeg = geen sleutel in beheer","Empty = no keys held"]}),`<div class="ad-f"><span>&nbsp;</span><button class="btn sm" data-act="keynext" ${P.key_number?"disabled":""}>${esc(tr(["Vrij nummer toekennen","Assign free number"]))}</button></div>`):"")}
 function secPrice(){const h=D.price_history||[];
   return sec("prijs",["Prijs","Price"],row(inp("price",["Vraagprijs (€)","Asking price (€)"],{type:"number",min:0,step:1000}),inp("price_previous",["Vorige prijs (€)","Previous price (€)"],{type:"number",min:0,step:1000,hint:["Wordt automatisch gevuld bij een prijswijziging","Filled automatically when the price changes"]}))
     +`<div class="ad-multi c4">${chk("price_hidden",["Prijs verbergen","Hide price"])}${chk("price_fixed",["Vaste prijs","Price FIXED"])}${chk("price_from",["Prijs vanaf","Price FROM"])}${chk("price_on_request",["Prijs op aanvraag","Price ON REQUEST"])}</div>`
@@ -116,10 +119,10 @@ function secLoc(){const l=L(), locs=D.locations||[], cur=locs.find(x=>x.id===Num
        `<div class="ad-f w2"><span>&nbsp;</span>${chk("hide_address",["Adres/kaart verbergen op de site","Hide address/map on site"])}</div>`)
     +`<small class="muted">${esc(tr(["Klik op de kaart of sleep de pin om de coördinaten te zetten.","Click the map or drag the pin to set the coordinates."]))}</small>`
     +`<h5>${esc(tr(["Uitzicht","Views"]))}</h5>`+multi("views",l.VIEWS||[],{csv:true,cols:4})
-    +`<h5>${esc(tr(["Afstanden (meter)","Distances (metres)"]))}</h5>`+row(inp("distance_sea_m",["Zee","Sea"],{type:"number",min:0}),inp("distance_airport_m",["Luchthaven","Airport"],{type:"number",min:0}),inp("distance_city_m",["Centrum","Centre"],{type:"number",min:0}),inp("distance_shops_m",["Winkels","Shops"],{type:"number",min:0})))}
+    +`<h5 class="ad-h5row">${esc(tr(["Afstanden (meter, hemelsbreed)","Distances (metres, straight line)"]))}<button class="btn sm" data-act="dist">⟳ ${esc(tr(["Bereken","Calculate"]))}</button></h5>`+`<small class="muted" id="peDistInfo"></small>`+row(inp("distance_sea_m",["Zee","Sea"],{type:"number",min:0}),inp("distance_airport_m",["Luchthaven","Airport"],{type:"number",min:0}),inp("distance_city_m",["Centrum","Centre"],{type:"number",min:0}),inp("distance_shops_m",["Winkels (supermarkt)","Shops (supermarket)"],{type:"number",min:0})))}
 function secLayout(){const l=L(), n=(k,lab)=>inp(k,lab,{type:"number",min:0});
   return sec("ind",["Indeling en oppervlaktes","Layout and areas"],`<div class="ad-cols3"><div><h5>${esc(tr(["Kamers","Rooms"]))}</h5>${n("bedrooms",["Slaapkamers","Bedrooms"])}${n("bathrooms",["Badkamers","Bathrooms"])}${n("toilets",["Toiletten","Toilets"])}${n("ensuites","En-suite")}${n("rooms",["Kamers totaal","Rooms total"])}${n("living_rooms",["Woonkamers","Living rooms"])}${n("kitchens",["Keukens","Kitchens"])}</div>
-    <div><h5>${esc(tr(["Oppervlakte (m²)","Surface (m²)"]))}</h5>${n("build_area",["Bebouwd","Built"])}${n("plot_area",["Perceel","Plot"])}${n("area_living",["Woonoppervlak","Living"])}${n("area_terrace",["Terras","Terrace"])}${n("area_garden",["Tuin","Garden"])}${n("area_kitchen",["Keuken","Kitchen"])}
+    <div><h5>${esc(tr(["Oppervlakte (m²)","Surface (m²)"]))}</h5>${n("build_area",["Bebouwd","Built"])}${n("plot_area",["Perceel","Plot"])}
       ${sel("energy_label",["Energielabel","Energy label"],l.ENERGY||[])}</div>
     <div><h5>${esc(tr(["Overig","Other"]))}</h5>${n("floors",["Verdiepingen","Floors"])}${inp("floor_level",["Etage","Level"])}${n("balconies",["Balkons","Balconies"])}${n("terraces",["Terrassen","Terraces"])}${n("patios",["Patio's","Patios"])}${n("garages",["Garages","Garages"])}${n("carports","Carports")}${n("parking_spaces",["Open parkeerplekken","Open parking spaces"])}</div></div>`)}
 function secFeatures(){const l=L(), fo=P.feature_options||{}, known=Object.keys(l.OPT||{});
@@ -130,9 +133,10 @@ function secFeatures(){const l=L(), fo=P.feature_options||{}, known=Object.keys(
 function secTexts(){const t=T[txL]||{};
   const f=(k,lab,o={})=>o.area?`<label class="ad-f w4"><span>${esc(tr(lab))}</span><textarea data-tx="${txL}.${k}" rows="${o.rows||4}">${esc(t[k]||"")}</textarea>${o.hint?`<small>${esc(tr(o.hint))}</small>`:""}</label>`
     :`<label class="ad-f ${o.w?"w"+o.w:"w4"}"><span>${esc(tr(lab))}</span><input data-tx="${txL}.${k}" value="${esc(t[k]||"")}">${o.hint?`<small>${esc(tr(o.hint))}</small>`:""}</label>`;
-  return sec("tekst",["Teksten","Texts"],`<div class="seg ad-seg sm">${LANGS.map(l=>`<button data-txl="${l}" class="${txL===l?"on":""}">${l.toUpperCase()}${(T[l]||{}).description?" ✓":""}</button>`).join("")}</div>
+  return sec("tekst",["Teksten","Texts"],`<div class="ad-txbar"><div class="seg ad-seg sm">${LANGS_OF().map(l=>`<button data-txl="${l}" class="${txL===l?"on":""}">${l.toUpperCase()}${(T[l]||{}).description?" ✓":""}</button>`).join("")}</div>
+    ${P.origin==="partner"?"":`<button class="btn sm ad-gen" data-act="gen" ${GEN?"disabled":""}>${GEN?"… "+esc(tr(["Teksten worden geschreven (±30 sec)","Writing texts (±30 sec)"])):"✨ "+esc(tr(["Genereer teksten (EN, NL, SV)","Generate texts (EN, NL, SV)"]))}</button>`}</div><div id="peGenMsg" class="sm"></div>
     ${row(f("heading",["Kop","Heading"]))}${row(f("description",["Omschrijving","Description"],{area:true,rows:9,hint:P.origin==="partner"?["⟳ Wordt elke nacht door de feed overschreven","⟳ Overwritten nightly by the feed"]:null}))}
-    ${row(f("key_details",["Kernpunten / sleutels","Key details / keys"],{area:true,rows:3}))}
+    ${row(f("key_details",["Kernpunten (één per regel)","Key points (one per line)"],{area:true,rows:5}))}
     ${row(f("seo_title",["SEO-titel","SEO title"],{w:2}),f("seo_keyword",["SEO-zoekwoord","SEO keyword"],{w:2}))}${row(f("seo_description",["SEO-omschrijving","SEO description"],{area:true,rows:2}))}`)}
 function secMedia(){
   return sec("media",["Foto's en media","Photos and media"],`<div class="ad-drop" id="peDrop"><input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
@@ -152,7 +156,7 @@ function secContacts(){const C=D.contacts||{};
     +row(box("agency","agency_contact_id",["Aanbiedend kantoor (partner)","Listing agency (partner)"],"agent"))
     +row(`<label class="ad-f w4"><span>${esc(tr(["Interne notities (bijv. wie de sleutelhouder is)","Internal notes (e.g. who holds the keys)"]))}</span><textarea data-k="internal_notes" rows="4">${esc(P.internal_notes||"")}</textarea><small>${esc(tr(["Alleen intern, nooit op de site","Internal only, never on the site"]))}</small></label>`))}
 function secPub(){
-  return sec("pub",["Publicatie","Publishing"],`<h5>Labels</h5>`+multi("labels",[["new","NEW"],["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:5})
+  return sec("pub",["Publicatie","Publishing"],`<h5>Labels</h5>`+multi("labels",[["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:4})+`<small class="muted">${esc(tr(["NEW zet NEXUS zelf: de eerste 7 dagen na de eerste publicatie","NEXUS sets NEW itself: the first 7 days after first publication"]))}${P.published_at?" ("+new Date(P.published_at).toLocaleDateString("nl-NL")+")":""}.</small>`
     +`<h5>${esc(tr(["Exportfeeds","Export feeds"]))}</h5>`+multi("export_feeds",[["idealista","Idealista"]],{cols:4})+chk("no_export",["Uitsluiten van alle XML-feeds","Exclude from all XML feeds"])
     +row(inp("video_url",["Video-URL","Video URL"],{w:2,ph:"https://"}),inp("tour_360_url",["360°/3D-link","360°/3D link"],{w:2,ph:"https://"})))}
 function secHist(){const a=D.audit||[];
@@ -199,6 +203,34 @@ function wireMedia(){const box=ROOT.querySelector("#peMedia"), drop=ROOT.querySe
     ch();wireMedia()}
 }
 
+/* ---------- afstanden en teksten (19-10-2026) ---------- */
+let GEN=false;
+async function fnCall(name,body){const {data,error}=await X.sb.functions.invoke(name,{body});
+  if(error){let m=error.message;try{const j=await error.context.json();m=j.error||m}catch(_){}throw new Error(m)}
+  if(data&&data.ok===false)throw new Error(data.error||"error");return data}
+const locName=id=>{const l=(D.locations||[]).find(x=>x.id===Number(id));return l?l.name:null};
+async function calcDist(){const info=ROOT.querySelector("#peDistInfo");
+  if(P.lat==null||P.lng==null||P.lat===""||P.lng===""){if(info)info.textContent=tr(["Zet eerst de pin op de kaart.","Place the pin on the map first."]);return}
+  if(info)info.textContent=tr(["Afstanden worden berekend…","Calculating distances…"]);
+  try{const r=await fnCall("property-distances",{lat:+P.lat,lng:+P.lng,municipality:P.city||null,area:P.suburb||P.location_area||null});
+    [["distance_sea_m",r.sea_m],["distance_airport_m",r.airport_m],["distance_city_m",r.city_m],["distance_shops_m",r.shops_m]].forEach(([k,v])=>{if(v!=null){set(k,v);ROOT.querySelectorAll(`[data-k="${k}"]`).forEach(x=>x.value=v)}});
+    const i2=ROOT.querySelector("#peDistInfo");if(i2)i2.textContent=tr(["Hemelsbreed berekend","Straight line"])+" · "+[r.airport,r.centre,r.shop].filter(Boolean).join(" · ")+" — "+tr(["nog niet opgeslagen","not saved yet"])}
+  catch(x){if(info)info.textContent=tr(["Afstanden niet berekend: ","Distances not calculated: "])+(x.message||x)}}
+async function genTexts(){if(GEN)return;
+  if(["en","nl","sv"].some(l=>T[l]&&(T[l].heading||T[l].description))&&!confirm(tr(["De bestaande teksten in EN, NL en SV worden vervangen. Doorgaan?","The existing EN, NL and SV texts will be replaced. Continue?"])))return;
+  GEN=true;render(true);
+  try{const f={category:P.category,build_type:P.build_type,status:P.status,year_built:P.year_built,bedrooms:P.bedrooms,bathrooms:P.bathrooms,toilets:P.toilets,ensuites:P.ensuites,
+      living_rooms:P.living_rooms,kitchens:P.kitchens,floors:P.floors,floor_level:P.floor_level,balconies:P.balconies,terraces:P.terraces,patios:P.patios,garages:P.garages,carports:P.carports,
+      parking_spaces:P.parking_spaces,build_area:P.build_area,plot_area:P.plot_area,orientation:P.orientation,views:P.views,energy_label:P.energy_label,features:P.features||[],
+      feature_options:P.feature_options||{},municipality:P.city,area:P.suburb||P.location_area||locName(P.location_id),province:P.province,
+      distance_sea_m:P.distance_sea_m,distance_airport_m:P.distance_airport_m,distance_city_m:P.distance_city_m,distance_shops_m:P.distance_shops_m};
+    const r=await fnCall("property-describe",{property:f});
+    ["en","nl","sv"].forEach(l=>{const t=r.texts&&r.texts[l];if(!t)return;T[l]=Object.assign({},T[l]||{});
+      ["heading","description","key_details","seo_title","seo_description"].forEach(k=>{T[l][k]=t[k]||"";TTOUCH[l+"."+k]=1})});
+    GEN=false;txL="en";render(true);upDirty();
+    const m=ROOT.querySelector("#peGenMsg");if(m)m.innerHTML=`<span style="color:#34d399">✓ ${esc(tr(["Teksten geschreven in EN, NL en SV — nog niet opgeslagen. Lees ze na en klik op Opslaan.","Texts written in EN, NL and SV — not saved yet. Review and click Save."]))}</span>`}
+  catch(x){GEN=false;render(true);const m=ROOT.querySelector("#peGenMsg");if(m)m.innerHTML=`<span class="ad-bad">${esc(tr(["Niet gelukt: ","Failed: "])+(x.message||x))}</span>`}}
+
 /* ---------- events ---------- */
 let PICKED={};
 function set(k,v){P[k]=v;TOUCH[k]=1;upDirty()}
@@ -226,6 +258,9 @@ function bind(){
     if(d.act==="close"){if(b.tagName!=="A")e.preventDefault();close();return}
     if(d.act==="save"){e.preventDefault();save();return}
     if(d.act==="reload"){e.preventDefault();load(P.reference);return}
+    if(d.act==="dist"){e.preventDefault();calcDist();return}
+    if(d.act==="gen"){e.preventDefault();genTexts();return}
+    if(d.act==="keynext"){e.preventDefault();(async()=>{try{const n=await X.rpc("nexus_key_number_next",{});set("key_number",String(n));render(true)}catch(x){err(x.message||String(x))}})();return}
     if(d.act==="delete"){e.preventDefault();delProp();return}
     if(d.jump){e.preventDefault();const s=ROOT.querySelector("#pe-"+d.jump);if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
     if(d.status){e.preventDefault();set("status",d.status);render(true);return}
