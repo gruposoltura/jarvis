@@ -373,7 +373,7 @@ function renderContact(){
       <div class="cstrip">${phones.map(p=>`<span class="cpill"><a href="tel:${esc(cleanTel(p))}">☎ ${esc(p)}</a><a class="wa" href="https://wa.me/${esc(waNum(p))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${!phones.length?`<span class="cpill nophone"><a data-cedit="1" title="${esc(t("addphone"))}">☎ ${t("nophone")} · <b>+ ${t("addphone")}</b></a></span>`:""}${emails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}${!emails.length?`<span class="cpill nophone"><a data-cedit="1">✉ ${t("noemail")} · <b>+ ${t("addemail")}</b></a></span>`:""}</div>
       ${(CT.partners||[]).map(pt=>`<div class="introbar ptbar" data-c="${esc(pt.id)}">💑 ${t("pt.label")} <b>${esc(pt.name||pt.email||"—")}</b>${pt.phone?` · ${esc(pt.phone)}`:""}${pt.email?` · ${esc(pt.email)}`:""}<span class="go">${t("pt.open")}</span></div>`).join("")}
       ${intro?`<div class="introbar" data-c="${esc(intro.key||intro.wp_id)}">🤝 ${t("intro.by")} <b>${esc(intro.name||intro.email)}</b>${intro.phone?` · ${esc(intro.phone)}`:""}${intro.email?` · ${esc(intro.email)}`:""}<span class="go">${t("intro.open")}</span></div>`:""}</div>
-    <div class="acts">${ME&&ME.role==="admin"?`<a class="act-new" data-newct="1">+ ${t("act.newct")}</a>`:""}<a class="act-edit" data-cedit="1">✎ ${t("act.pedit")}</a></div></div>
+    <div class="acts"><a class="act-edit" data-cedit="1">✎ ${t("act.pedit")}</a></div></div>
    <div class="subtabs">${tabs.map(x=>`<button class="st ${ctSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
    <div class="dbody scroll" id="ctBody"></div>`;
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{ctSub=b.dataset.s;renderContact()});
@@ -507,7 +507,8 @@ function ctProfile(c,raw){
   if(isBuyer)blocks.push([bought.some(p=>p.core_status!=="sold")?1:3,buyBlock]);
   if(isAgent)blocks.push([4,agentBlock]);
   if(!isSeller&&!isBuyer&&!isAgent)blocks.push([0,leadBlock]);
-  blocks.sort((a,b)=>a[0]-b[0]).forEach(b=>out.push(b[1]()));
+  let halves=0;
+  blocks.sort((a,b)=>a[0]-b[0]).forEach(b=>{const h=b[1]();if(!/cp-wide/.test(h.slice(0,80)))halves++;out.push(h)});
 
   /* Persoonsgegevens: alleen wat de kop niet al toont */
   const addr=[D.street,[D.postcode,D.city].filter(Boolean).join(" "),D.suburb,D.state,D.country].filter(Boolean).map(esc).join("<br>");
@@ -525,7 +526,9 @@ function ctProfile(c,raw){
     [L2("Mailings","Mailings"),`<span class="mpill ${mailOn?"in":"out"}">${mailOn?L2("Ingeschreven","Subscribed"):L2("Niet ingeschreven","Not subscribed")}</span>${(M.events||{}).last_delivered?` <span class="muted sm">· ${L2("laatste","last")} ${fdate(M.events.last_delivered)}</span>`:""}`,1],
     [t("f.referred"),D.referred_by],[t("f.keyholder"),D.keyholder?L2("Ja — sleutel bij ons","Yes — we hold a key"):null],[t("f.value"),D.sales_value?eur(D.sales_value):null],
     [L2("In systeem sinds","In system since"),raw.created_wp?fdate(raw.created_wp):null],[t("f.modified"),c.wp_modified?fdate(c.wp_modified):null]];
-  out.push(`<div class="cp-pair">${cpSec("person",L2("Persoonsgegevens","Personal details"),persBody,{edit:1})}${cpSec("file",L2("Dossier","File"),kv(file))}</div>`);
+  /* Laat een halve rolkaart (bv. Makelaar) een gat rechts, dan schuift Dossier daarin en krijgt Persoonsgegevens de volle breedte */
+  if(halves%2)out.push(cpSec("file",L2("Dossier","File"),kv(file)),cpSec("person",L2("Persoonsgegevens","Personal details"),persBody,{edit:1,wide:1}));
+  else out.push(`<div class="cp-pair">${cpSec("person",L2("Persoonsgegevens","Personal details"),persBody,{edit:1})}${cpSec("file",L2("Dossier","File"),kv(file))}</div>`);
 
   const notes=raw.internal_comments?esc(raw.internal_comments.replace(/<br\s*\/?>/gi,"\n")):"";
   out.push(cpSec("notes",t("h.notes"),notes?`<div class="note">${notes}</div>`:`<div class="cp-empty">${t("nonotes")}</div>`,{wide:1,edit:1}));
