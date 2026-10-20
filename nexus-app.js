@@ -558,7 +558,7 @@ function propFeatures(p,raw,o,K,XL,m){
     <div class="pk-jump">${PKSEC.map(x=>`<a data-pks="${x[0]}" style="--sc:${x[2]}">${L2(...x[1])}</a>`).join("")}</div>
     <div class="pk-sa">
     ${p.is_external?extBox(p,raw,XL):""}
-    ${ownerBox(o)}${(PR.co_owners||[]).filter(x=>x.relation!=="buyer").map(x=>ownerBox({...x,co:1})).join("")}
+    ${/* Rick 20-10-2026: eigenaarspaneel weg, de eigenaar staat al in de kop van de woning */""}
     ${Object.keys(S).length?pkSec("status",L2("Status & verkoop","Status & sale"),kv([
       [L2("Verkoopprijs","Sale price"),S.sold_price!=null?eur(S.sold_price):null],
       [L2("Verkoopdatum","Sale date"),S.sold_date?fdate(S.sold_date):null],
@@ -608,7 +608,13 @@ function propFeatures(p,raw,o,K,XL,m){
       +((D.internal_notes||raw.internal_notes)?`<div class="pk-grp">${L2("Interne notities","Internal notes")}</div><div class="pk-notes" style="margin:0 14px 12px">${esc(D.internal_notes||raw.internal_notes)}</div>`:""),{tag:D.desc_nl&&D.desc_en?(LANG==="en"?"EN":"NL"):""})}
     ${/* BESLUIT Rick 18-10-2026 (herbevestigd 19-10): GEEN kosten koper en geen vaste lasten in het woningdetail. Niet terugzetten. */""}
     ${pkSec("kost",L2("Eigendomsakte","Title deed"),
-      grp(L2("Eigendomsakte","Title deed"),[["Registro",D.registry_name],[L2("Fincanummer","Finca number"),D.finca_number],[L2("Kadastrale referentie","Cadastral ref."),D.cadastral_ref]]))}
+      grp(L2("Kadaster en registro","Cadastre and registry"),[["Registro",D.registry_name],[L2("Fincanummer","Finca number"),D.finca_number],[L2("Kadastrale referentie","Cadastral ref."),D.cadastral_ref],["IDUFIR / CRU",D.idufir],
+        [L2("Inschrijving","Inscription"),[D.registry_tomo&&"Tomo "+D.registry_tomo,D.registry_libro&&"Libro "+D.registry_libro,D.registry_folio&&"Folio "+D.registry_folio,D.registry_inscription&&L2("Inscr. ","Inscr. ")+D.registry_inscription].filter(Boolean).join(" · ")||null]])
+      +grp(L2("Oppervlakte volgens akte","Areas per deed"),[[L2("Bebouwd","Built"),m2u(D.deed_build_area)],[L2("Kavel","Plot"),m2u(D.deed_plot_area)]])
+      +grp(L2("Aankoop huidige eigenaar","Purchase by current owner"),[[L2("Datum aankoop","Purchase date"),D.purchase_date?fdate(D.purchase_date):null],[L2("Aankoopprijs","Purchase price"),D.purchase_price!=null?eur(D.purchase_price):null],
+        [L2("Overdrachtsbelasting","Transfer tax"),D.purchase_tax!=null?eur(D.purchase_tax)+(D.purchase_tax_type?` <span class="muted sm">· ${esc(D.purchase_tax_type)}</span>`:""):null,1],
+        [L2("Notaris","Notary"),[D.purchase_notary,D.purchase_notary_protocol&&("prot. "+D.purchase_notary_protocol)].filter(Boolean).join(" · ")||null]])
+      +(D.deed_read_at?`<div class="muted sm" style="margin:0 14px 10px">📄 ${L2("Akte ingelezen op ","Deed read on ")}${fdate(D.deed_read_at)}</div>`:""))}
     ${catSummary(K,p)}
     ${propExtData(p)}
     ${pkSec("pub",L2("Publicatie","Publishing"),kv([
