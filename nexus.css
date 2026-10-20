@@ -1003,7 +1003,7 @@ html[data-theme="light"] .dd-now,html[data-theme="light"] .dd-warn{color:#b45309
 .rp-t .mut{color:var(--tx3)}
 .rp-t .b{font-weight:700;color:var(--hi)}
 .rp-t tbody tr:hover td{background:color-mix(in srgb,var(--c-rp) 7%,transparent)}
-.rp-t a{color:var(--hi);font-weight:600;text-decoration:none}.rp-t a:hover{color:var(--c-rp)}
+.rp-t a{color:var(--hi);font-weight:600;text-decoration:none;cursor:pointer}.rp-t a:hover{color:var(--c-rp);text-decoration:underline}
 .rp-t td.neg{color:#f59e0b}.rp-t td.bad{color:#f87171;font-weight:600}.rp-t td.pos{color:#22c55e}
 .rp-t tfoot td{font-weight:700;color:var(--hi);border-top:2px solid var(--line2);background:var(--card2)}
 .rp-tot .rp-yr th:first-child{color:var(--hi);font-size:calc(12.5px*var(--fs,1))}

@@ -57,7 +57,7 @@ function render(){
   const tot=k=>sum(rows.map(r=>r[k]));
   const sales=rows.length?`<table class="rp-t rp-sales"><thead><tr>${cols.map(c=>`<th class="${NUMC.has(c[0])?"n":""}">${esc(c[1])}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(r=>{const d=diff(r);return `<tr>${cols.map(c=>{const v=cell(r,c[0]);
-      if(c[0]==="reference")return `<td><a href="#p/${encodeURIComponent(r.reference)}">${esc(v)}</a></td>`;
+      if(c[0]==="reference")return r.reference?`<td><a class="rp-ref" data-p="${esc(r.reference)}" title="${esc(tr(["Woning openen","Open property"]))}">${esc(v)}</a></td>`:`<td>${esc(v)}</td>`;
       if(c[0]==="diff")return `<td class="n ${d==null?"":d<-15||d>15?"bad":d<0?"neg":"pos"}">${esc(v)}</td>`;
       return `<td class="${NUMC.has(c[0])?"n":""}${v==="—"||v==="€0"?" mut":""}">${esc(v)}</td>`}).join("")}</tr>`}).join("")}</tbody>
     <tfoot><tr><td colspan="6">${esc(tr([`${rows.length} verkopen`,`${rows.length} sales`]))}</td><td class="n">${eur(tot("price"))}</td><td class="n">${eur(tot("sold_price"))}</td><td></td>
