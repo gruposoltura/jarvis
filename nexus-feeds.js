@@ -20,12 +20,12 @@ const TOWN_ST={accepted:["Komt binnen","Imported","#22c55e"],excluded:["Uitgeslo
   build:["Bouwfilter","Build filter","#64748b"],ref:["Ref-uitsluiting","Ref exclusion","#64748b"]};
 
 function when(ts){if(!ts)return tr(["nooit","never"]);const d=new Date(ts), s=(Date.now()-d)/1000;
-  const abs=d.toLocaleString(LOC(),{day:"numeric",month:"short",year:d.getFullYear()!==new Date().getFullYear()?"numeric":undefined,hour:"2-digit",minute:"2-digit"});
+  const abs=NEXUS_DMYT(d);
   if(s<60)return tr(["zojuist","just now"]);if(s<3600)return tr([`${Math.round(s/60)} min geleden`,`${Math.round(s/60)} min ago`]);
   if(s<86400)return tr([`${Math.round(s/3600)} uur geleden`,`${Math.round(s/3600)} h ago`])+` · ${d.toLocaleTimeString(LOC(),{hour:"2-digit",minute:"2-digit"})}`;
   if(s<86400*30)return tr([`${Math.round(s/86400)} dagen geleden`,`${Math.round(s/86400)} days ago`])+` · ${abs}`;return abs}
 function dt(ts){if(!ts)return tr(["nooit","never"]);const d=new Date(ts);
-  return d.toLocaleString(LOC(),{day:"numeric",month:"short",year:d.getFullYear()!==new Date().getFullYear()?"numeric":undefined,hour:"2-digit",minute:"2-digit"})}
+  return NEXUS_DMYT(d)}
 function stale(ts,days){return !ts||(Date.now()-new Date(ts))/86400000>days}
 function n(v){return v==null?"—":Number(v).toLocaleString(LOC())}
 async function copy(text,btn){try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement("textarea");t.value=text;document.body.appendChild(t);t.select();try{document.execCommand("copy")}catch(_){}t.remove()}
@@ -140,10 +140,10 @@ function logTable(){
   if(LOG==null)return `<div class="loader">${esc(tr(["Laden…","Loading…"]))}</div>`;
   if(!LOG.length)return `<div class="empty sm">${esc(KIND==="export"?tr(["Nog geen aanroepen gelogd (log loopt sinds 18-10-2026).","No calls logged yet (log runs since 18 Oct 2026)."]):tr(["Nog geen runs gelogd (log loopt sinds 18-10-2026).","No runs logged yet (log runs since 18 Oct 2026)."]))}</div>`;
   if(KIND==="export")return `<div class="scroll"><table class="mtable"><thead><tr><th>${esc(tr(["Moment","When"]))}</th><th>${esc(tr(["Status","Status"]))}</th><th style="text-align:right">${esc(tr(["Woningen","Listings"]))}</th><th>${esc(tr(["Ophaler","Fetcher"]))}</th></tr></thead><tbody>
-    ${LOG.map(h=>`<tr><td>${esc(new Date(h.at).toLocaleString(LOC(),{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))}</td><td>${h.status===200?`<span class="xm-ok">OK</span>`:`<span class="xm-bad">${h.status===404?esc(tr(["geweigerd (uit)","refused (off)"])):h.status}</span>`}</td><td style="text-align:right">${n(h.item_count)}</td><td class="muted xm-ua" title="${esc(h.user_agent||"")}">${esc(h.user_agent||"—")}</td></tr>`).join("")}</tbody></table></div>`;
+    ${LOG.map(h=>`<tr><td>${esc(NEXUS_DMYT(h.at))}</td><td>${h.status===200?`<span class="xm-ok">OK</span>`:`<span class="xm-bad">${h.status===404?esc(tr(["geweigerd (uit)","refused (off)"])):h.status}</span>`}</td><td style="text-align:right">${n(h.item_count)}</td><td class="muted xm-ua" title="${esc(h.user_agent||"")}">${esc(h.user_agent||"—")}</td></tr>`).join("")}</tbody></table></div>`;
   return `<div class="scroll"><table class="mtable"><thead><tr><th>${esc(tr(["Moment","When"]))}</th><th>${esc(tr(["Soort","Kind"]))}</th><th style="text-align:right">${esc(tr(["Nieuw","New"]))}</th><th style="text-align:right">${esc(tr(["Bijgewerkt","Updated"]))}</th><th style="text-align:right">${esc(tr(["Ingetrokken","Withdrawn"]))}</th><th style="text-align:right">${esc(tr(["Uitgesloten","Excluded"]))}</th><th>${esc(tr(["Resultaat","Result"]))}</th></tr></thead><tbody>
     ${LOG.map(r=>{const p=r.report||{};const kind=r.source==="nexus"?tr(["proefrun","test run"]):r.dry_run?tr(["proef (n8n)","dry (n8n)"]):tr(["nacht","nightly"]);
-      return `<tr><td>${esc(new Date(r.at).toLocaleString(LOC(),{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))}</td><td class="muted">${esc(kind)}</td>
+      return `<tr><td>${esc(NEXUS_DMYT(r.at))}</td><td class="muted">${esc(kind)}</td>
       <td style="text-align:right">${n(p.inserted??p.new)}</td><td style="text-align:right">${n(p.updated??p.existing)}</td><td style="text-align:right">${n(p.withdrawn??p.would_withdraw)}</td>
       <td style="text-align:right">${n((p.skipped_excluded||0)+(p.skipped_city||0))}</td>
       <td>${r.ok?(p.withdraw_guard?`<span class="xm-warn" title="${esc(p.withdraw_guard)}">${esc(tr(["OK · intrekbeveiliging","OK · withdraw guard"]))}</span>`:`<span class="xm-ok">OK</span>`):`<span class="xm-bad" title="${esc(r.error||"")}">⚠ ${esc((r.error||"").slice(0,60))}</span>`}</td></tr>`}).join("")}</tbody></table></div>`;

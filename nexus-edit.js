@@ -89,7 +89,7 @@ function secStatus(){const p=P;
   const seg=`<div class="pe-seg">${STATUS.filter(s=>s[0]!=="reserved"||SHOW_RESERVED||p.status==="reserved").map(s=>`<button data-status="${s[0]}" class="${p.status===s[0]?"on":""}" style="--sc:${s[2]}">${esc(tr(s[1]))}</button>`).join("")}</div>`;
   return sec("status",["Status","Status"],seg
     +row(chk("dossier_complete",["Dossier compleet","Dossier complete"]))+`<small class="muted">${esc(tr(["Online/offline volgt de status: Actief en Gereserveerd staan online, Concept, Verkocht en Ingetrokken offline.","Online/offline follows the status: Active and Reserved are online, Draft, Sold and Withdrawn offline."]))}</small>`.replace('class="ad-row"','class="ad-row pe-chkrow"')
-    +row(inp("listed_at",["In aanbod sinds","Listed since"],{type:"date"}),inp("under_offer_at",["Gereserveerd sinds","Reserved since"],{type:"date"}),(p.status==="reserved"||p.reserved_at)?inp("reserved_at",["Gereserveerd sinds","Reserved since"],{type:"date"}):"",inp("sold_at",["Verkocht op (status)","Sold on (status)"],{type:"date"}),inp("withdrawn_at",["Ingetrokken op","Withdrawn on"],{type:"date"})))}
+    +row(inp("listed_at",["In aanbod sinds","Listed since"],{type:"date"}),inp("under_offer_at",["Gereserveerd sinds","Reserved since"],{type:"date"}),(p.status==="reserved"||p.reserved_at)?inp("reserved_at",["Gereserveerd sinds","Reserved since"],{type:"date"}):"",inp("withdrawn_at",["Ingetrokken op","Withdrawn on"],{type:"date"})))}
 function secSale(){const p=P;
   return sec("sale",["Verkoop","Sale"],row(inp("sold_price",["Verkoopprijs (€)","Sold price (€)"],{type:"number",min:0,step:1000}),inp("sold_date",["Verkoopdatum","Sale date"],{type:"date"}),
          sel("sold_agent_id",["Verkocht door","Sold by"],D.team.map(t=>[t.id,t.name])),inp("sold_agent_text",["Verkocht door (vrij)","Sold by (free text)"]))
@@ -109,7 +109,7 @@ function secPrice(){const h=D.price_history||[];
   return sec("prijs",["Prijs","Price"],row(inp("price",["Vraagprijs (€)","Asking price (€)"],{type:"number",min:0,step:1000}),inp("price_previous",["Vorige prijs (€)","Previous price (€)"],{type:"number",min:0,step:1000,hint:["Wordt automatisch gevuld bij een prijswijziging","Filled automatically when the price changes"]}),
       inp("cost_community",["Gemeenschapskosten per JAAR (€)","Community fees per YEAR (€)"],{type:"number",min:0,step:1,hint:["Altijd het jaarbedrag","Always the yearly amount"]}))
     +`<div class="ad-multi c4">${chk("price_hidden",["Prijs verbergen","Hide price"])}${chk("price_fixed",["Vaste prijs","Price FIXED"])}${chk("price_from",["Prijs vanaf","Price FROM"])}${chk("price_on_request",["Prijs op aanvraag","Price ON REQUEST"])}</div>`
-    +(h.length?`<div class="pe-hist">${h.map(x=>`<span>${new Date(x.at).toLocaleDateString("nl-NL")} · <b>€ ${Number(x.price).toLocaleString("nl-NL")}</b> <span class="muted">${esc(x.source||"")}</span></span>`).join("")}</div>`:""))}
+    +(h.length?`<div class="pe-hist">${h.map(x=>`<span>${NEXUS_DMY(x.at)} · <b>€ ${Number(x.price).toLocaleString("nl-NL")}</b> <span class="muted">${esc(x.source||"")}</span></span>`).join("")}</div>`:""))}
 function secLoc(){const l=LS(), locs=D.locations||[], cur=locs.find(x=>x.id===Number(P.location_id));
   const mun=cur?(cur.parent?locs.find(x=>x.id===cur.parent):cur):null, area=cur&&cur.parent?cur:null;
   const munis=locs.filter(x=>!x.parent), areas=mun?locs.filter(x=>x.parent===mun.id):[];
@@ -147,7 +147,7 @@ function secCosts(){
   /* BESLUIT Rick 18/19-10-2026: geen kosten koper en geen vaste lasten in NEXUS. Niet terugzetten.
      Uitzondering 20-10-2026 (Rick): gemeenschapskosten PER JAAR (cost_community) staan bij Prijs, voor de Idealista-feed.
      20-10-2026: aktegegevens (registro, inschrijving, oppervlakte volgens akte, aankoop huidige eigenaar) + knop Akte inlezen. */
-  return sec("kost",["Eigendomsakte","Title deed"],`<div class="dd-bar">${window.NEXUS_DEED?NEXUS_DEED.button(tr):""}<span class="sm muted">${esc(tr(["PDF of foto van de escritura; je ziet eerst wat er gevonden is.","PDF or photo of the escritura; you review what was found first."]))}${P.deed_read_at?" · "+esc(tr(["laatst ingelezen ","last read "]))+new Date(P.deed_read_at).toLocaleDateString("nl-NL"):""}</span></div>
+  return sec("kost",["Eigendomsakte","Title deed"],`<div class="dd-bar">${window.NEXUS_DEED?NEXUS_DEED.button(tr):""}<span class="sm muted">${esc(tr(["PDF of foto van de escritura; je ziet eerst wat er gevonden is.","PDF or photo of the escritura; you review what was found first."]))}${P.deed_read_at?" · "+esc(tr(["laatst ingelezen ","last read "]))+NEXUS_DMY(P.deed_read_at):""}</span></div>
     <div class="ad-cols3">
     <div><h5>${esc(tr(["Kadaster en registro","Cadastre and registry"]))}</h5>${inp("cadastral_ref",["Kadastrale referentie","Cadastral reference"])}${inp("finca_number",["Fincanummer","Finca number"])}${inp("registry_name",["Registro de la Propiedad","Land registry"],{list:"peRegistros",ph:["kies of typ","pick or type"]})}${inp("idufir","IDUFIR / CRU")}${inp("drive_folder_id",["Klantmap op de Drive","Client folder on Drive"],{ph:["plak de link van de map","paste the folder link"],hint:["Map in ‘1. KLANTEN’; de knop 📁 in de woningkop opent hem","Folder in ‘1. KLANTEN’; the 📁 button in the property header opens it"]})}</div>
     <div><h5>${esc(tr(["Inschrijving en oppervlakte","Inscription and areas"]))}</h5>${row(inp("registry_tomo","Tomo"),inp("registry_libro","Libro"))}${row(inp("registry_folio","Folio"),inp("registry_inscription",["Inscripción","Inscription"]))}
@@ -165,10 +165,10 @@ function secContacts(){const C=D.contacts||{};
     +row(box("agency","agency_contact_id",["Aanbiedend kantoor (partner)","Listing agency (partner)"],"agent"))
     +row(`<label class="ad-f w4"><span>${esc(tr(["Interne notities (bijv. wie de sleutelhouder is)","Internal notes (e.g. who holds the keys)"]))}</span><textarea data-k="internal_notes" rows="4">${esc(P.internal_notes||"")}</textarea><small>${esc(tr(["Alleen intern, nooit op de site","Internal only, never on the site"]))}</small></label>`))}
 function secPub(){
-  return sec("pub",["Publicatie","Publishing"],`<h5>Labels</h5>`+multi("labels",[["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:4})+`<small class="muted">${esc(tr(["NEW zet NEXUS zelf: de eerste 7 dagen na de eerste publicatie","NEXUS sets NEW itself: the first 7 days after first publication"]))}${P.published_at?" ("+new Date(P.published_at).toLocaleDateString("nl-NL")+")":""}.</small>`
+  return sec("pub",["Publicatie","Publishing"],`<h5>Labels</h5>`+multi("labels",[["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:4})+`<small class="muted">${esc(tr(["NEW zet NEXUS zelf: de eerste 7 dagen na de eerste publicatie","NEXUS sets NEW itself: the first 7 days after first publication"]))}${P.published_at?" ("+NEXUS_DMY(P.published_at)+")":""}.</small>`
     +`<h5>${esc(tr(["Exportfeeds","Export feeds"]))}</h5>`+multi("export_feeds",[["idealista","Idealista"]],{cols:4})+chk("no_export",["Uitsluiten van alle XML-feeds","Exclude from all XML feeds"]))}
 function secHist(){const a=D.audit||[];
-  return sec("hist",["Historie","History"],a.length?`<div class="pe-audit">${a.map(x=>`<div><b>${new Date(x.at).toLocaleString("nl-NL",{day:"numeric",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"})}</b> · ${esc(x.who||"?")} <span class="muted">· ${esc((x.fields||[]).join(", "))}</span></div>`).join("")}</div>`
+  return sec("hist",["Historie","History"],a.length?`<div class="pe-audit">${a.map(x=>`<div><b>${NEXUS_DMYT(x.at)}</b> · ${esc(x.who||"?")} <span class="muted">· ${esc((x.fields||[]).join(", "))}</span></div>`).join("")}</div>`
     :`<div class="sm muted">${esc(tr(["Nog geen wijzigingen via NEXUS.","No changes via NEXUS yet."]))}</div>`)}
 
 /* ---------- kaart ---------- */
@@ -265,7 +265,10 @@ async function genTexts(){if(GEN)return;
 
 /* ---------- events ---------- */
 let PICKED={};
-function set(k,v){P[k]=v;TOUCH[k]=1;upDirty()}
+function set(k,v){P[k]=v;TOUCH[k]=1;
+  /* Rick 20-10: Verkoopdatum en "Verkocht op (status)" zijn hetzelfde; NEXUS toont alleen Verkoopdatum en houdt sold_at gelijk */
+  if(k==="sold_date"){P.sold_at=v;TOUCH.sold_at=1}
+  upDirty()}
 function err(msg){const e=ROOT.querySelector("#peErr");if(!e)return;e.innerHTML=msg?`<div class="pe-errbox">${esc(msg)}</div>`:"";if(msg)e.scrollIntoView({block:"nearest"})}
 function bind(){
   ROOT.addEventListener("input",e=>{const el=e.target;
@@ -300,7 +303,13 @@ function bind(){
     if(d.act==="keynext"){e.preventDefault();(async()=>{try{const n=await X.rpc("nexus_key_number_next",{});set("key_number",String(n));render(true)}catch(x){err(x.message||String(x))}})();return}
     if(d.act==="delete"){e.preventDefault();delProp();return}
     if(d.jump){e.preventDefault();const s=ROOT.querySelector("#pe-"+d.jump);if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
-    if(d.status){e.preventDefault();set("status",d.status);render(true);return}
+    if(d.status){e.preventDefault();const was=P.status;set("status",d.status);
+      /* Rick 20-10: bij Verkocht direct door naar de sectie Verkoop; Verkoopdatum = vandaag als die nog leeg is */
+      if(d.status==="sold"&&was!=="sold"&&!P.sold_date&&!ro("sold_date")){const t=new Date();set("sold_date",`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`)}
+      render(true);
+      if(d.status==="sold"&&was!=="sold")setTimeout(()=>{const s=ROOT.querySelector("#pe-sale");if(s)s.scrollIntoView({behavior:"smooth",block:"start"});
+        const f=ROOT.querySelector('[data-k="sold_price"]');if(f&&!f.disabled)setTimeout(()=>f.focus({preventScroll:true}),350)},30);
+      return}
     if(d.txl){e.preventDefault();txL=d.txl;render(true);return}
     if(d.unlink){e.preventDefault();set(d.unlink,null);render(true);return}
     if(d.pickid){e.preventDefault();const c=JSON.parse(d.pickid);PICKED[d.col]=c;set(d.col,c.id);render(true);return}
@@ -319,7 +328,7 @@ async function load(ref){
   await loadLK();
   try{D=await X.rpc("nexus_property_edit",{p_ref:ref})}catch(e){ROOT.querySelector(".pe-box").innerHTML=`<div class="pe-load">${esc(e.message)} <button class="btn" data-act="close">×</button></div>`;return}
   if(!D){ROOT.querySelector(".pe-box").innerHTML=`<div class="pe-load">${esc(tr(["Woning niet gevonden","Property not found"]))} <button class="btn" data-act="close">×</button></div>`;return}
-  P=JSON.parse(JSON.stringify(D.property));T=JSON.parse(JSON.stringify(D.texts||{}));M=JSON.parse(JSON.stringify(D.media||[]));
+  P=JSON.parse(JSON.stringify(D.property));if(!P.sold_date&&P.sold_at)P.sold_date=String(P.sold_at).slice(0,10);T=JSON.parse(JSON.stringify(D.texts||{}));M=JSON.parse(JSON.stringify(D.media||[]));
   render();
   if(X.jump)setTimeout(()=>{const s=ROOT.querySelector("#pe-"+X.jump);if(s)s.scrollIntoView({block:"start"})},60);
 }
@@ -339,7 +348,7 @@ async function delProp(){
     alert(tr([`Woning ${ref} verwijderd`,`Property ${ref} deleted`]));location.hash="pr";location.reload()}
   catch(e){err(e.message||String(e))}}
 async function save(){
-  if(busy)return;const pt=patch(), tt=tpatch();
+  if(busy)return;if(D.is_admin&&!D.property.sold_date&&P.sold_date)TOUCH.sold_date=1;const pt=patch(), tt=tpatch();
   if(!dirtyCount())return;
   if(pt.status==="sold"&&D.is_admin&&!P.sold_date&&!confirm(tr(["Status Verkocht zonder verkoopdatum. Toch opslaan?","Status Sold without sale date. Save anyway?"])))return;
   busy=true;upDirty();const btn=ROOT.querySelector("#peSave");btn.textContent=tr(["Opslaan…","Saving…"]);err("");
@@ -360,7 +369,7 @@ async function save(){
     }
     if(fresh){D=fresh}
     TOUCH={};TTOUCH={};MEDIA_DIRTY=false;PICKED={};
-    P=JSON.parse(JSON.stringify(D.property));T=JSON.parse(JSON.stringify(D.texts||{}));M=JSON.parse(JSON.stringify(D.media||[]));
+    P=JSON.parse(JSON.stringify(D.property));if(!P.sold_date&&P.sold_at)P.sold_date=String(P.sold_at).slice(0,10);T=JSON.parse(JSON.stringify(D.texts||{}));M=JSON.parse(JSON.stringify(D.media||[]));
     busy=false;render(true);toast(tr(["Opgeslagen","Saved"]));
     X.onSaved&&X.onSaved(P.reference);
   }catch(e){busy=false;btn.textContent=tr(["Opslaan","Save"]);upDirty();

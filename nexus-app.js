@@ -60,11 +60,11 @@ const ROLE={suspect:["Suspect","--r-suspect"],prospect:["Prospect","--r-prospect
 const roleTag=r=>{const x=ROLE[r]||[r,"--tx3"];return `<span class="role" style="--rc:var(${x[1]})">${esc(x[0])}</span>`};
 const REPC={Rick:"#f97316",Marco:"#3b82f6",Ingrid:"#a855f7",Lisette:"#ec4899",Kantoor:"#475569"};
 const rep=r=>r==="Kantoor"?t("Kantoor"):r;
-function ago(ts){if(!ts)return"";const d=(Date.now()-new Date(ts))/1000;if(d<0){return new Date(ts).toLocaleDateString(LOC(),{day:"numeric",month:"short"})}
+function ago(ts){if(!ts)return"";const d=(Date.now()-new Date(ts))/1000;if(d<0){return NEXUS_DMY(ts)}
   const en=LANG==="en";
   if(d<3600)return Math.max(1,Math.round(d/60))+" min";if(d<86400)return Math.round(d/3600)+(en?" h":" u");if(d<86400*30)return Math.round(d/86400)+" d";
-  return new Date(ts).toLocaleDateString(LOC(),{day:"numeric",month:"short",year:"2-digit"})}
-function fdate(ts){return ts?new Date(ts).toLocaleDateString(LOC(),{day:"numeric",month:"short",year:"numeric"}):"—"}
+  return NEXUS_DMY(ts)}
+function fdate(ts){return ts?NEXUS_DMY(ts):"—"}   /* overal DD/MM/YYYY (Rick 20-10) */
 function initials(n){n=(n||"?").trim();const p=n.split(/\s+/);return ((p[0]||"")[0]||"?").toUpperCase()+((p.length>1?p[p.length-1][0]:"")||"").toUpperCase()}
 function hue(s){let h=0;for(const c of String(s||""))h=(h*31+c.charCodeAt(0))%360;return `hsl(${h} 55% 42%)`}
 /* serverteksten (NL) vertalen */
@@ -405,12 +405,12 @@ function cpPropRow(p,mode){
                p.last_viewing?`${L2("Laatste bezichtiging","Last viewing")} ${fdate(p.last_viewing)}`:null,
                p.last_request?`${L2("Laatste aanvraag","Last enquiry")} ${ago(p.last_request)}`:null,
                chg!=null?`${L2("Prijs aangepast","Price changed")} ${chg>0?"+":""}${chg}% ${p.price_changed_at?"("+fdate(p.price_changed_at)+")":""}`:null,
-               sold&&p.sold_at?`${L2("Verkocht op","Sold on")} ${fdate(p.sold_at)}${p.sold_price?" · "+eur(p.sold_price):""}`:null].filter(Boolean);
+               sold&&(p.sold_date||p.sold_at)?`${L2("Verkocht op","Sold on")} ${fdate(p.sold_date||p.sold_at)}${p.sold_price?" · "+eur(p.sold_price):""}`:null].filter(Boolean);
     if(sub.length)stats+=`<div class="cp-sub">${sub.join(" · ")}</div>`;
   }else{
     const sub=[offer?L2("Bod geaccepteerd","Offer accepted"):sold?L2("Gekocht","Purchased"):null,
                p.sold_price?`${L2("Koopprijs","Purchase price")} <b>${eur(p.sold_price)}</b>${p.price&&Number(p.price)!==Number(p.sold_price)?` <span class="muted">(${L2("vraagprijs","asking")} ${eur(p.price)})</span>`:""}`:null,
-               p.sold_at?`${L2("Datum","Date")} ${fdate(p.sold_at)}`:null].filter(Boolean);
+               (p.sold_date||p.sold_at)?`${L2("Datum","Date")} ${fdate(p.sold_date||p.sold_at)}`:null].filter(Boolean);
     stats=sub.length?`<div class="cp-sub">${sub.join(" · ")}</div>`:"";
   }
   return `<div class="cp-pr" data-p="${esc(p.key||p.reference)}">${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="">`:'<div class="ph"></div>'}
@@ -812,7 +812,7 @@ const PHOTO_CACHE={};
 /* wijzigingslog: live uit core.audit_log + core.property_price_history via nexus_property_edit (zelfde bron als Historie in het bewerkscherm).
    Prijswijzigingen door de partnerfeed staan alleen in de prijshistorie; die komen hier ook bij. */
 async function loadPropLog(p){const box=document.querySelector("#pkLog .pk-log-nx");if(!box||!p.reference)return;
-  const fmt=d=>new Date(d).toLocaleString("nl-NL",{day:"numeric",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"});
+  const fmt=d=>NEXUS_DMYT(d);
   try{const d=await rpc("nexus_property_edit",{p_ref:p.reference});
     const ev=((d&&d.audit)||[]).map(x=>({at:x.at,html:`${esc(x.who||L2("systeem","system"))} <span class="muted">· ${esc((x.fields||[]).join(", "))}</span>`}));
     const ph=((d&&d.price_history)||[]).slice().sort((a,b)=>new Date(a.changed_at||a.at)-new Date(b.changed_at||b.at));

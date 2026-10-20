@@ -9,7 +9,7 @@
 const esc=v=>v==null?"":String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur=v=>v==null||v===""?"":"€ "+Number(v).toLocaleString("nl-NL",{maximumFractionDigits:2});
 const m2=v=>v==null||v===""?"":Number(v).toLocaleString("nl-NL")+" m²";
-const dt=v=>{if(!v)return"";const d=new Date(String(v).slice(0,10)+"T12:00:00");return isNaN(d)?String(v):d.toLocaleDateString("nl-NL",{day:"numeric",month:"long",year:"numeric"})};
+const dt=v=>{if(!v)return"";const d=new Date(String(v).slice(0,10)+"T12:00:00");return isNaN(d)?String(v):NEXUS_DMY(d)};
 const txt=v=>v==null?"":String(v);
 /* [kolom in core.properties, label, veld uit de akte, weergave] */
 const ROWS=[
