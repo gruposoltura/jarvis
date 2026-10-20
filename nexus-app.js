@@ -462,7 +462,7 @@ function ctProfile(c,raw){
     const anyAct=act.some(x=>x[1]>0);
     let body="";
     if(done)body+=`<div class="cp-prs">${bought.map(p=>cpPropRow(p,"buy")).join("")}</div>`;
-    if(anyAct)body+=`<div class="cp-tiles${done?" cp-dim":""}">${act.filter(x=>x[1]>0||!done).map(x=>cpTile(x[0],num(x[1]))).join("")}${ip.engagement_score!=null?cpTile(L2("Engagement","Engagement"),Number(ip.engagement_score).toFixed(0),ip.data_confidence?L2("betrouwbaarheid ","confidence ")+esc(ip.data_confidence):""):""}</div>`;
+    if(anyAct)body+=`<div class="cp-tiles${done?" cp-dim":""}">${act.filter(x=>x[1]>0||!done).map(x=>cpTile(x[0],num(x[1]))).join("")}${Number(ip.engagement_score)>0?cpTile(L2("Engagement","Engagement"),Number(ip.engagement_score).toFixed(0),ip.data_confidence?L2("betrouwbaarheid ","confidence ")+esc(ip.data_confidence):""):""}</div>`;
     if(!done||prof.length){body+=`<div class="pk-grp">${t("h.search")}${done?` <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">· ${L2("vóór de aankoop","before the purchase")}</span>`:""}</div>`+(prof.length?kv(prof):`<div class="cp-empty">${L2("Nog geen zoekprofiel vastgelegd.","No search profile yet.")} <a class="cp-add" data-cedit="1">+ ${L2("Invullen","Add")}</a></div>`)}
     if(ip.first_request_at)body+=`<div class="cp-foot">${L2("Zoekt actief van","Searching from")} ${fdate(ip.first_request_at)} ${L2("tot","to")} ${fdate(ip.last_request_at)}</div>`;
     return cpSec("buy",done?L2("Aankoop","Purchase"):L2("Zoekt een woning","Looking for a home"),body,{wide:!!done||anyAct,edit:!done})};
