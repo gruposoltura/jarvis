@@ -344,8 +344,8 @@ let LK={};
 async function loadLK(){if(LK.registry)return;try{LK=await X.rpc("nexus_lookups",{})||{}}catch(_){LK={}}}
 async function delProp(){
   const ref=P.reference;
-  const typed=prompt(tr([`Woning ${ref} definitief verwijderen? Teksten, foto-verwijzingen en prijshistorie gaan mee; aanvragen en bezichtigingen blijven bestaan zonder woning. Er wordt een volledige kopie in het auditlog bewaard.\n\nTyp ${ref} om te bevestigen:`,
-    `Permanently delete property ${ref}? Texts, photo references and price history go with it; requests and viewings remain without a property. A full copy is kept in the audit log.\n\nType ${ref} to confirm:`]));
+  const typed=prompt(tr([`Woning ${ref} definitief verwijderen? Teksten, foto's, prijshistorie, kadaster- en marktdata gaan mee; aanvragen en bezichtigingen blijven als contactmoment bij het contact. Er wordt een volledige kopie in het auditlog bewaard.\n\nTyp ${ref} om te bevestigen:`,
+    `Permanently delete property ${ref}? Texts, photos, price history, cadastre and market data go with it; requests and viewings stay as contact moments on the contact. A full copy is kept in the audit log.\n\nType ${ref} to confirm:`]));
   if(typed==null)return;if(typed.trim().toUpperCase()!==String(ref).toUpperCase()){alert(tr(["Referentie klopt niet; niets verwijderd.","Reference does not match; nothing deleted."]));return}
   try{await X.rpc("nexus_property_delete",{p_id:P.id});
     M&&M.forEach(m=>m.file&&m.url&&URL.revokeObjectURL(m.url));if(MAP){MAP.remove();MAP=null}
@@ -567,8 +567,8 @@ async function openContact(key,ctx){X=ctx;
     ROOT.querySelectorAll('[data-act="cclose"]').forEach(b=>b.onclick=()=>{if(anyDirty()&&!confirm(tr(["Niet-opgeslagen wijzigingen. Toch sluiten?","Unsaved changes. Close anyway?"])))return;ROOT.className="";ROOT.innerHTML="";document.body.classList.remove("pe-open")});
     const delB=ROOT.querySelector('[data-act="cdelete"]');
     if(delB)delB.onclick=async()=>{const nm=C.contact.full_name||C.contact.email||"dit contact";
-      if(!confirm(tr([`Contact "${nm}" definitief verwijderen?\n\nE-mails, telefoons, labels, relaties en notities gaan mee; aanvragen en bezichtigingen blijven bestaan zonder contact. Er wordt een volledige kopie in het auditlog bewaard.`,
-        `Permanently delete contact "${nm}"?\n\nE-mails, phones, labels, relations and notes go with it; requests and viewings remain without a contact. A full copy is kept in the audit log.`])))return;
+      if(!confirm(tr([`Contact "${nm}" definitief verwijderen?\n\nAlles gaat mee: e-mails, telefoons, labels, relaties en alle contactmomenten (aanvragen, bezichtigingen, mails, notities). Er wordt een volledige kopie in het auditlog bewaard.`,
+        `Permanently delete contact "${nm}"?\n\nEverything goes: e-mails, phones, labels, relations and all contact moments (requests, viewings, mails, notes). A full copy is kept in the audit log.`])))return;
       try{await X.rpc("nexus_contact_delete",{p_id:o.id});closeC();alert(tr(["Contact verwijderd","Contact deleted"]));location.hash="ct";location.reload()}
       catch(e){ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(e.message||String(e))}</div>`}};
     ROOT.querySelector('[data-act="csave"]').onclick=async()=>{const d=diff();if(spChanged())d.search_profile=spClean(SP);if(msChanged())d.mailing_prefs=Object.assign({},MS);if(!anyDirty())return;

@@ -1108,3 +1108,7 @@ html[data-theme="light"] .dd-now,html[data-theme="light"] .dd-warn{color:#b45309
 .vw-chip.bad{border-color:#ef4444;color:#ef4444}.vw-chip.dim{opacity:.6}
 .vw-empty{border:1px dashed var(--line2);border-radius:14px}
 @media (max-width:700px){.vw-ev{grid-template-columns:1fr}.vw-ev .vw-m{grid-column:1}}
+
+/* Verwijderen-knop in de kop van contact en woning (20-10-2026) */
+.dh .acts a.act-del{background:transparent;border-color:#dc2626;color:#f87171;font-weight:700;cursor:pointer}
+.dh .acts a.act-del:hover{background:#dc2626;color:#fff;border-color:#dc2626}

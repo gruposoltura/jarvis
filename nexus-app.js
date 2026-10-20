@@ -375,11 +375,12 @@ function renderContact(){
       <div class="cstrip">${phones.map(p=>`<span class="cpill"><a href="tel:${esc(cleanTel(p))}">☎ ${esc(p)}</a><a class="wa" href="https://wa.me/${esc(waNum(p))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${!phones.length?`<span class="cpill nophone"><a data-cedit="1" title="${esc(t("addphone"))}">☎ ${t("nophone")} · <b>+ ${t("addphone")}</b></a></span>`:""}${emails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}${!emails.length?`<span class="cpill nophone"><a data-cedit="1">✉ ${t("noemail")} · <b>+ ${t("addemail")}</b></a></span>`:""}</div>
       ${(CT.partners||[]).map(pt=>`<div class="introbar ptbar" data-c="${esc(pt.id)}">💑 ${t("pt.label")} <b>${esc(pt.name||pt.email||"—")}</b>${pt.phone?` · ${esc(pt.phone)}`:""}${pt.email?` · ${esc(pt.email)}`:""}<span class="go">${t("pt.open")}</span></div>`).join("")}
       ${intro?`<div class="introbar" data-c="${esc(intro.key||intro.wp_id)}">🤝 ${t("intro.by")} <b>${esc(intro.name||intro.email)}</b>${intro.phone?` · ${esc(intro.phone)}`:""}${intro.email?` · ${esc(intro.email)}`:""}<span class="go">${t("intro.open")}</span></div>`:""}</div>
-    <div class="acts"><a class="act-edit" data-cedit="1">✎ ${t("act.pedit")}</a></div></div>
+    <div class="acts"><a class="act-edit" data-cedit="1">✎ ${t("act.pedit")}</a>${ME&&ME.role==="admin"?`<a class="act-del" data-cdel="1" title="${esc(L2("Contact definitief verwijderen, met al zijn contactmomenten","Delete contact permanently, with all its contact moments"))}">🗑 ${L2("Verwijderen","Delete")}</a>`:""}</div></div>
    <div class="subtabs">${tabs.map(x=>`<button class="st ${ctSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
    <div class="dbody scroll" id="ctBody"></div>`;
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{ctSub=b.dataset.s;renderContact()});
   d.querySelectorAll("[data-cedit]").forEach(ce=>ce.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.openContact(c.key||c.id||c.wp_id,{sb,rpc,lang:()=>LANG,me:()=>ME,onSaved:()=>{openContact(ctSel);loadContacts(true)}}));
+  const cdel=d.querySelector("[data-cdel]");if(cdel)cdel.onclick=()=>delContact(c,name);
   const B=$("#ctBody");
   if(ctSub==="profiel")B.innerHTML=ctProfile(c,raw);
   if(ctSub==="woningen")B.innerHTML=ctProps();
@@ -388,6 +389,28 @@ function renderContact(){
   if(ctSub==="mailings")B.innerHTML=ctMailings(c);
   B.querySelectorAll("[data-cedit]").forEach(ce=>ce.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.openContact(c.key||c.id||c.wp_id,{sb,rpc,lang:()=>LANG,me:()=>ME,onSaved:()=>{openContact(ctSel);loadContacts(true)}}));
 }
+/* ---------- Verwijderen vanuit de kop (Rick, 20-10-2026) ----------
+   Contact: eerst controleren of er een woning aan hangt; zo ja alleen een waarschuwing, niets verwijderen.
+   Anders gaan alle contactmomenten (aanvragen, bezichtigingen, mails, notities) en overige gekoppelde rijen mee. */
+async function delContact(c,name){
+  let chk=null;try{chk=await rpc("nexus_contact_delete_check",{p_id:c.id})}catch(e){chk=null}
+  if(chk&&chk.properties&&chk.properties.length){
+    alert(L2(`"${name}" kan niet verwijderd worden: er is een woning aan gekoppeld.\n\n${chk.properties.map(x=>"• "+x.reference+" ("+x.as+")").join("\n")}\n\nVerwijder of ontkoppel eerst die woning.`,
+      `"${name}" cannot be deleted: a property is linked to this contact.\n\n${chk.properties.map(x=>"• "+x.reference+" ("+({eigenaar:"owner",koper:"buyer",makelaar:"agent"}[x.as]||x.as)+")").join("\n")}\n\nDelete or unlink that property first.`));return}
+  if(chk&&chk.feed){alert(L2(`"${name}" is een partnermakelaar met een XML-feed en kan niet verwijderd worden.`,`"${name}" is a partner agency with an XML feed and cannot be deleted.`));return}
+  const n=chk?chk.moments:null;
+  if(!confirm(L2(`Contact "${name}" definitief verwijderen?\n\nAlles gaat mee: e-mails, telefoons, labels, relaties${n!=null?` en ${n} contactmoment(en)`:" en alle contactmomenten"} (aanvragen, bezichtigingen, mails, notities). Er blijft alleen een kopie in het auditlog.`,
+    `Permanently delete contact "${name}"?\n\nEverything goes: e-mails, phones, labels, relations${n!=null?` and ${n} contact moment(s)`:" and all contact moments"} (requests, viewings, mails, notes). Only a copy in the audit log remains.`)))return;
+  try{await rpc("nexus_contact_delete",{p_id:c.id})}catch(e){alert(e.message||String(e));return}
+  CT=null;ctSel=null;$("#ctDetail").innerHTML=`<div class="empty">${L2("Contact verwijderd","Contact deleted")}</div>`;location.hash="ct";loadContacts(true)}
+async function delProperty(p){
+  const ref=p.reference;
+  const typed=prompt(L2(`Woning ${ref} definitief verwijderen?\n\nTeksten, foto's, prijshistorie, kadaster- en marktdata gaan mee. Aanvragen en bezichtigingen blijven als contactmoment bij het contact staan. Er blijft een kopie in het auditlog.\n\nTyp ${ref} om te bevestigen:`,
+    `Permanently delete property ${ref}?\n\nTexts, photos, price history, cadastre and market data go with it. Requests and viewings stay as contact moments on the contact. A copy remains in the audit log.\n\nType ${ref} to confirm:`));
+  if(typed==null)return;
+  if(typed.trim().toUpperCase()!==String(ref).toUpperCase()){alert(L2("Referentie klopt niet; niets verwijderd.","Reference does not match; nothing deleted."));return}
+  try{await rpc("nexus_property_delete",{p_id:p.id})}catch(e){alert(e.message||String(e));return}
+  PR=null;$("#prDetail").innerHTML=`<div class="empty">${L2(`Woning ${ref} verwijderd`,`Property ${ref} deleted`)}</div>`;location.hash="pr";location.reload()}
 function kv(pairs){const f=pairs.filter(p=>p[1]!=null&&p[1]!=="");return f.length?`<dl class="kv">${f.map(p=>`<dt>${p[0]}</dt><dd>${p[2]?p[1]:esc(p[1])}</dd>`).join("")}</dl>`:`<div class="empty sm">${t("nodata")}</div>`}
 /* ---------- Contact · Profiel (20-10-2026, Rick) ----------
    Het profiel volgt de rol(len): per rol een eigen gekleurd paneel (zelfde stijl als de woningdetail),
@@ -918,6 +941,7 @@ function statusBar(p){const S=["available","under_offer","sold","withdrawn","dra
   return `<div class="stbar">${S.map(s=>`<button data-qs="${s}" class="${p.core_status===s?"on":""}" style="--sc:${STC[s]}">${esc(stLabel(s))}</button>`).join("")}${["off_market","reserved"].includes(p.core_status)?`<button class="on" style="--sc:${STC[p.core_status]}">${esc(stLabel(p.core_status))}</button>`:""}</div>`}
 function editCtx(jump){return {sb,rpc,lang:()=>LANG,me:()=>ME,jump,onSaved:ref=>{if(String(prSel).toUpperCase()===String(ref).toUpperCase()||prSel===String(PR&&PR.property&&PR.property.wp_id))openProp(ref);loadProps(true);ovLoaded=false;mpData=null}}}
 function wirePropEdit(d,p){
+  const pdel=d.querySelector("[data-pdel]");if(pdel)pdel.onclick=()=>delProperty(p);
   const e=d.querySelector("[data-edit]");if(e)e.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.open(p.reference,editCtx());
   d.querySelectorAll("[data-qs]").forEach(b=>b.onclick=async()=>{const s=b.dataset.qs;if(s===p.core_status)return;
     /* Rick 20-10-2026: Verkocht nooit zonder verkoopdatum -> naar het bewerkscherm, sectie Verkoop, status staat al op Verkocht */
@@ -998,7 +1022,7 @@ function renderProp(){
        ${o?`<a class="ownerlink" data-c="${esc(o.id||o.wp_id)}">👤 ${esc(o.name||o.email)}</a>`:""}
        <span>🏷 <b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b></span>${p.is_newbuild?`<span>${t("pb.new")}</span>`:""}
        ${ownerContactStrip(o,raw,p)}</div></div>
-     <div class="acts"><a class="act-edit" data-edit="1">✎ ${t("act.pedit")}</a>${p.is_own?`<a class="act-drive" href="${raw.drive_folder_id?`https://drive.google.com/drive/folders/${encodeURIComponent(raw.drive_folder_id)}`:`https://drive.google.com/drive/search?q=${encodeURIComponent(p.reference)}`}" target="_blank" rel="noopener" title="${esc(raw.drive_folder_id?L2("Klantmap op de Drive openen (documenten van deze woning)","Open the client folder on Drive"):L2("Nog geen map gekoppeld: zoekt op de Drive naar ","No folder linked yet: searches Drive for ")+p.reference)}">📁 ${raw.drive_folder_id?L2("Documenten (Drive)","Documents (Drive)"):L2("Zoek map op Drive","Find folder on Drive")}</a>`:""}${raw.url_new?`<a href="${esc(raw.url_new)}" target="_blank" rel="noopener">${t("act.site")}</a>`:raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">${t("act.site")}</a>`:""}${p.is_external&&XL?`<a class="act-ext" href="${esc(XL.href)}" target="_blank" rel="noopener">${XL.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div></div>
+     <div class="acts"><a class="act-edit" data-edit="1">✎ ${t("act.pedit")}</a>${ME&&ME.role==="admin"&&!p.is_external?`<a class="act-del" data-pdel="1" title="${esc(L2("Woning definitief verwijderen","Delete property permanently"))}">🗑 ${L2("Verwijderen","Delete")}</a>`:""}${p.is_own?`<a class="act-drive" href="${raw.drive_folder_id?`https://drive.google.com/drive/folders/${encodeURIComponent(raw.drive_folder_id)}`:`https://drive.google.com/drive/search?q=${encodeURIComponent(p.reference)}`}" target="_blank" rel="noopener" title="${esc(raw.drive_folder_id?L2("Klantmap op de Drive openen (documenten van deze woning)","Open the client folder on Drive"):L2("Nog geen map gekoppeld: zoekt op de Drive naar ","No folder linked yet: searches Drive for ")+p.reference)}">📁 ${raw.drive_folder_id?L2("Documenten (Drive)","Documents (Drive)"):L2("Zoek map op Drive","Find folder on Drive")}</a>`:""}${raw.url_new?`<a href="${esc(raw.url_new)}" target="_blank" rel="noopener">${t("act.site")}</a>`:raw.url?`<a href="${esc(raw.url)}" target="_blank" rel="noopener">${t("act.site")}</a>`:""}${p.is_external&&XL?`<a class="act-ext" href="${esc(XL.href)}" target="_blank" rel="noopener">${XL.exact?t("ext.open",{a:esc(p.external_agency||t("external"))}):t("ext.search")} ↗</a>`:""}</div></div>
    <div class="subtabs" style="--acc:var(--c-pr)">${tabs.map(x=>`<button class="st ${prSub===x[0]?"on":""}" data-s="${x[0]}">${x[1]}${x[2]!=null?`<span class="cnt">${x[2]}</span>`:""}</button>`).join("")}</div>
    <div class="dbody scroll" id="prBody"></div>`;
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{prSub=b.dataset.s;renderProp()});
