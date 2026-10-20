@@ -901,11 +901,13 @@ function editCtx(jump){return {sb,rpc,lang:()=>LANG,me:()=>ME,jump,onSaved:ref=>
 function wirePropEdit(d,p){
   const e=d.querySelector("[data-edit]");if(e)e.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.open(p.reference,editCtx());
   d.querySelectorAll("[data-qs]").forEach(b=>b.onclick=async()=>{const s=b.dataset.qs;if(s===p.core_status)return;
-    if(!confirm(t("qs.confirm",{r:p.reference,s:stLabel(s)})))return;
+    /* Rick 20-10-2026: Verkocht nooit zonder verkoopdatum -> naar het bewerkscherm, sectie Verkoop, status staat al op Verkocht */
+    if(s==="sold"){const c=editCtx("sale");c.preset={status:"sold"};NEXUS_EDIT.open(p.reference,c);return}
+    const sd=PR&&PR.property&&PR.property.sold_date;
+    if(!confirm(t("qs.confirm",{r:p.reference,s:stLabel(s)})+(p.core_status==="sold"&&sd?"\n\n"+L2(`De verkoopdatum (${fdate(sd)}) wordt leeggemaakt.`,`The sale date (${fdate(sd)}) will be cleared.`):"")))return;
     b.disabled=true;
-    try{await rpc("nexus_property_save",{p_id:p.id,p_patch:{status:s},p_texts:{},p_base:p.updated_at});
+    try{await rpc("nexus_property_save",{p_id:p.id,p_patch:p.core_status==="sold"&&sd?{status:s,sold_date:null}:{status:s},p_texts:{},p_base:p.updated_at});
       await openProp(p.reference);loadProps(true);ovLoaded=false;mpData=null;
-      if(s==="sold"&&ME&&ME.role==="admin"&&confirm(t("qs.solddetails")))NEXUS_EDIT.open(p.reference,editCtx("status"));
     }catch(err){b.disabled=false;alert(err.code==="40001"?t("qs.conflict"):(err.message||String(err)));if(err.code==="40001")openProp(p.reference)}});
 }
 /* kadaster- en marktgegevens: staan bij de kenmerken (besluit Rick 18-10), niet op foto's of in een aparte tab */

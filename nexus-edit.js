@@ -264,6 +264,17 @@ async function genTexts(){if(GEN)return;
   const m=ROOT.querySelector("#peGenMsg");if(m)m.innerHTML=`<span style="color:${r.ok?"#34d399":"#fbbf24"}">${esc(msg)}</span>`}
 
 /* ---------- events ---------- */
+/* Rick 20-10-2026: status Verkocht en Verkoopdatum altijd samen (ook afgedwongen in de database, migratie 044).
+   Naar Verkocht: door naar Verkoop en de verkoopdatum (geen automatische datum van vandaag meer).
+   Weg van Verkocht met een verkoopdatum: de verkoopdatum gaat leeg, na bevestiging. */
+function setStatus(st){const was=P.status;
+  if(was==="sold"&&st!=="sold"&&P.sold_date){
+    if(!confirm(tr([`De verkoopdatum (${window.NEXUS_DMY(P.sold_date)}) hoort bij Verkocht en wordt leeggemaakt. Doorgaan?`,`The sale date (${window.NEXUS_DMY(P.sold_date)}) belongs to Sold and will be cleared. Continue?`])))return;
+    set("sold_date",null)}
+  set("status",st);render(true);
+  if(st==="sold"&&was!=="sold")setTimeout(()=>{const s=ROOT.querySelector("#pe-sale");if(s)s.scrollIntoView({behavior:"smooth",block:"start"});
+    const f=ROOT.querySelector('[data-k="sold_date"]'),v=f&&(f.previousElementSibling&&f.previousElementSibling.classList.contains("dmy-txt")?f.previousElementSibling:f);
+    if(v&&!v.disabled)setTimeout(()=>v.focus({preventScroll:true}),350)},30)}
 let PICKED={};
 function set(k,v){P[k]=v;TOUCH[k]=1;
   /* Rick 20-10: Verkoopdatum en "Verkocht op (status)" zijn hetzelfde; NEXUS toont alleen Verkoopdatum en houdt sold_at gelijk */
@@ -303,13 +314,7 @@ function bind(){
     if(d.act==="keynext"){e.preventDefault();(async()=>{try{const n=await X.rpc("nexus_key_number_next",{});set("key_number",String(n));render(true)}catch(x){err(x.message||String(x))}})();return}
     if(d.act==="delete"){e.preventDefault();delProp();return}
     if(d.jump){e.preventDefault();const s=ROOT.querySelector("#pe-"+d.jump);if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
-    if(d.status){e.preventDefault();const was=P.status;set("status",d.status);
-      /* Rick 20-10: bij Verkocht direct door naar de sectie Verkoop; Verkoopdatum = vandaag als die nog leeg is */
-      if(d.status==="sold"&&was!=="sold"&&!P.sold_date&&!ro("sold_date")){const t=new Date();set("sold_date",`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`)}
-      render(true);
-      if(d.status==="sold"&&was!=="sold")setTimeout(()=>{const s=ROOT.querySelector("#pe-sale");if(s)s.scrollIntoView({behavior:"smooth",block:"start"});
-        const f=ROOT.querySelector('[data-k="sold_price"]');if(f&&!f.disabled)setTimeout(()=>f.focus({preventScroll:true}),350)},30);
-      return}
+    if(d.status){e.preventDefault();setStatus(d.status);return}
     if(d.txl){e.preventDefault();txL=d.txl;render(true);return}
     if(d.unlink){e.preventDefault();set(d.unlink,null);render(true);return}
     if(d.pickid){e.preventDefault();const c=JSON.parse(d.pickid);PICKED[d.col]=c;set(d.col,c.id);render(true);return}
@@ -330,6 +335,7 @@ async function load(ref){
   if(!D){ROOT.querySelector(".pe-box").innerHTML=`<div class="pe-load">${esc(tr(["Woning niet gevonden","Property not found"]))} <button class="btn" data-act="close">×</button></div>`;return}
   P=JSON.parse(JSON.stringify(D.property));if(!P.sold_date&&P.sold_at)P.sold_date=String(P.sold_at).slice(0,10);T=JSON.parse(JSON.stringify(D.texts||{}));M=JSON.parse(JSON.stringify(D.media||[]));
   render();
+  if(X.preset&&X.preset.status&&P.status!==X.preset.status){setStatus(X.preset.status);return}
   if(X.jump)setTimeout(()=>{const s=ROOT.querySelector("#pe-"+X.jump);if(s)s.scrollIntoView({block:"start"})},60);
 }
 function close(){if(dirtyCount()&&!confirm(tr(["Er zijn niet-opgeslagen wijzigingen. Toch sluiten?","There are unsaved changes. Close anyway?"])))return;
@@ -350,7 +356,8 @@ async function delProp(){
 async function save(){
   if(busy)return;if(D.is_admin&&!D.property.sold_date&&P.sold_date)TOUCH.sold_date=1;const pt=patch(), tt=tpatch();
   if(!dirtyCount())return;
-  if(pt.status==="sold"&&D.is_admin&&!P.sold_date&&!confirm(tr(["Status Verkocht zonder verkoopdatum. Toch opslaan?","Status Sold without sale date. Save anyway?"])))return;
+  if(P.status==="sold"&&!P.sold_date){err(tr(["Status Verkocht vraagt om een verkoopdatum. Vul de verkoopdatum in bij Verkoop.","Status Sold needs a sale date. Fill in the sale date under Sale."]));const s=ROOT.querySelector("#pe-sale");if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
+  if(P.status!=="sold"&&P.sold_date){err(tr(["Een verkoopdatum mag alleen bij status Verkocht. Zet de status op Verkocht of maak de verkoopdatum leeg.","A sale date is only allowed with status Sold. Set the status to Sold or clear the sale date."]));return}
   busy=true;upDirty();const btn=ROOT.querySelector("#peSave");btn.textContent=tr(["Opslaan…","Saving…"]);err("");
   try{
     let fresh=null;
