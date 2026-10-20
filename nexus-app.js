@@ -343,6 +343,8 @@ async function openContact(id){
   if(!ctLoaded)loadContacts(true);
   const d=$("#ctDetail");d.innerHTML=`<div class="loader">${t("loading.ct")}</div>`;
   try{CT=await rpc("nexus_contact_by_key",{p_key:id})}catch(e){d.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
+  /* MySoltura bestaat niet meer: wachtwoord-resets van het oude klantaccount zijn geen contactmoment (Rick, 20-10-2026) */
+  if(CT&&CT.timeline)CT.timeline=CT.timeline.filter(e=>!(e.kind==="request"&&(e.title==="cprreset"||e.title==="dashboard")));
   if(!CT){d.innerHTML=`<div class="empty">${t("notfound.ct")}</div>`;return}
   renderContact();
   if(innerWidth<1100)d.scrollIntoView({behavior:"smooth",block:"start"});
@@ -420,8 +422,12 @@ function ctProfile(c,raw){
   const has=r=>roles.includes(r);
   const props=CT.properties||[], own=props.filter(p=>/eigenaar/.test(p.relation)), bought=props.filter(p=>/koper/.test(p.relation)), offered=props.filter(p=>p.relation==="aanbiedend makelaar");
   const tl=CT.timeline||[], rels=CT.relations||[], ints=CT.interests||[];
-  const reqs=tl.filter(e=>e.kind==="request"), views=tl.filter(e=>e.kind==="viewing");
-  const tlSorted=tl.filter(e=>e.ts&&!isNaN(new Date(e.ts))).sort((a,b)=>new Date(a.ts)-new Date(b.ts));
+  /* Rick 20-10-2026: 'aanvragen' = vragen over woningen. Accountverkeer van het oude MySoltura (wachtwoord-reset)
+     en een nieuwsbriefinschrijving zijn geen interesse en tellen niet mee. */
+  const NOINT=new Set(["cprreset","dashboard","newsletter"]);
+  const reqs=tl.filter(e=>e.kind==="request"&&!NOINT.has(e.title)), views=tl.filter(e=>e.kind==="viewing");
+  const reqProp=reqs.filter(e=>e.ref), reqOther=reqs.filter(e=>!e.ref), nPropAsked=new Set(reqProp.map(e=>e.ref)).size;
+  const tlSorted=tl.filter(e=>e.ts&&!isNaN(new Date(e.ts))&&!(e.kind==="request"&&NOINT.has(e.title))).sort((a,b)=>new Date(a.ts)-new Date(b.ts));
   const firstEv=tlSorted[0]||null, lastTouch=tlSorted.length?tlSorted[tlSorted.length-1].ts:null;
   const firstTouch=[firstEv&&firstEv.ts,...(CT.properties||[]).filter(p=>/koper/.test(p.relation)).map(p=>p.last_request)].filter(Boolean).sort((a,b)=>new Date(a)-new Date(b))[0]||null;
   const isSeller=has("seller")||has("suspect-seller")||own.length, isBuyer=has("buyer")||bought.length, isAgent=has("agent")||offered.length;
@@ -458,7 +464,7 @@ function ctProfile(c,raw){
       [t("f.musthaves"),raw.sd_musthaves||(ip.declared_must_haves?[].concat(ip.declared_must_haves).join(", "):null)],
       [t("f.period"),ip.declared_period||raw.sd_period],
       [t("f.feedback"),Object.keys(fb).length?Object.entries(fb).map(([k,v])=>k+": "+v).join(" · "):null]].filter(x=>x[1]);
-    const act=[[L2("Aanvragen","Enquiries"),reqs.length||ip.total_requests||0],[L2("Woningen bekeken","Properties viewed"),ip.distinct_properties_viewed||ints.length||0],[L2("Bezichtigingen","Viewings"),views.length],[L2("Matches verstuurd","Matches sent"),m.sent||0]];
+    const act=[[L2("Woningaanvragen","Property enquiries"),reqProp.length],[L2("Overige vragen","Other enquiries"),reqOther.length],[L2("Woningen bekeken","Properties viewed"),ip.distinct_properties_viewed||ints.length||0],[L2("Bezichtigingen","Viewings"),views.length],[L2("Matches verstuurd","Matches sent"),m.sent||0]];
     const anyAct=act.some(x=>x[1]>0);
     let body="";
     if(done)body+=`<div class="cp-prs">${bought.map(p=>cpPropRow(p,"buy")).join("")}</div>`;
@@ -477,7 +483,7 @@ function ctProfile(c,raw){
   /* Lead: alleen Suspect zonder andere rol */
   const leadBlock=()=>{
     const top=ints.slice(0,4);
-    const tiles=`<div class="cp-tiles">${cpTile(L2("Aanvragen","Enquiries"),num(reqs.length))}${cpTile(L2("Eerste contact","First contact"),firstTouch?fdate(firstTouch):"—")}${cpTile(L2("Laatst actief","Last active"),lastTouch?ago(lastTouch):"—")}</div>`;
+    const tiles=`<div class="cp-tiles">${cpTile(L2("Woningaanvragen","Property enquiries"),num(reqProp.length),nPropAsked?L2(`over ${nPropAsked} woning${nPropAsked>1?"en":""}`,`about ${nPropAsked} propert${nPropAsked>1?"ies":"y"}`):"")}${reqOther.length?cpTile(L2("Overige vragen","Other enquiries"),num(reqOther.length),L2("algemeen, zonder woning","general, no property")):""}${cpTile(L2("Eerste contact","First contact"),firstTouch?fdate(firstTouch):"—")}${cpTile(L2("Laatst actief","Last active"),lastTouch?ago(lastTouch):"—")}</div>`;
     const list=top.length?`<div class="pk-grp">${L2("Interesse in","Interested in")}</div><div class="cp-chips">${top.map(p=>`<a class="cp-chip" data-p="${esc(p.key||p.reference)}"><b>${esc(p.reference)}</b> ${eur(p.price)} · ${p.n}×</a>`).join("")}</div>`:"";
     return cpSec("lead",L2("Lead","Lead"),tiles+list,{wide:1})};
 
