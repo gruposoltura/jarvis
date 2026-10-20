@@ -63,7 +63,7 @@ function show(o,r,fname){const tr=o.tr, f=r.fields||{}, cur=o.current||{};
   const missing=ROWS.filter(x=>!found.includes(x)&&!(x[0]==="deed_plot_area"&&f.property_kind==="apartment"));
   /* Rick 20-10-2026: de oppervlakte uit de akte vervangt altijd ook de geadverteerde oppervlakte (bebouwd en kavel). */
   const extra=[];
-  const rowHtml=(x,i)=>{const val=f[x[2]], now=x[0]==="deed_build_area"?(cur.deed_build_area??cur.build_area):x[0]==="deed_plot_area"?(cur.deed_plot_area??cur.plot_area):cur[x[0]], diff=now!=null&&now!==""&&!same(now,val), eq=now!=null&&now!==""&&same(now,val);
+  const rowHtml=(x,i)=>{const val=f[x[2]], now=x[0]==="deed_build_area"?cur.build_area:x[0]==="deed_plot_area"?cur.plot_area:cur[x[0]], diff=now!=null&&now!==""&&!same(now,val), eq=now!=null&&now!==""&&same(now,val);
     return `<label class="dd-row ${eq?"eq":""}"><input type="checkbox" data-ddi="${i}" ${eq?"":"checked"}>
       <span class="dd-l">${esc(tr(x[1]))}</span><span class="dd-v"><b>${esc(x[3](val))}</b>${diff?`<small class="dd-now">${esc(tr(["nu: ","now: "]))}${esc(x[3](now))}</small>`:eq?`<small class="muted">${esc(tr(["staat er al","already set"]))}</small>`:""}</span></label>`};
   const exHtml=(x,i)=>{const empty=x[3]==null||x[3]==="";const eq=!empty&&same(x[3],x[2]);if(eq)return"";
