@@ -40,8 +40,8 @@ function model(c){
   else if(has("agent_registered"))S.push({k:"ag",st:"done",t:tr(["Geregistreerd als Agent","Registered as agent"]),d:dmyt(lastOf(s=>s.outcome==="agent_registered").at)});
   else if(has("skipped")&&st.every(s=>s.outcome==="skipped"))S.push({k:"ag",st:"na",t:"—",d:""});
   else{const r=lastOf(s=>/^registration_/.test(s.outcome));
-    S.push({k:"ag",st:"wait",t:r&&r.outcome==="registration_incomplete"?tr(["Registratie incompleet","Registration incomplete"]):tr(["Onbekend · registratie gevraagd","Unknown · registration requested"]),
-      d:r&&r.outcome==="registration_incomplete"?tr(["Ontbreekt: ","Missing: "])+missTxt(r.missing):tr(["Wacht op gegevens makelaar","Waiting for agent details"])})}
+    S.push({k:"ag",st:"wait",t:r&&r.outcome==="registration_incomplete"?tr(["Registratie incompleet","Registration incomplete"]):tr(["Onbekend","Unknown"]),
+      d:r&&r.outcome==="registration_incomplete"?tr(["Ontbreekt: ","Missing: "])+missTxt(r.missing):tr(["Registratie gevraagd, wacht op gegevens","Registration requested, waiting for details"])})}
   // gegevens compleet
   if(!known)S.push({k:"cp",st:"todo",t:tr(["Gegevens aanvraag","Request details"]),d:tr(["na registratie","after registration"])});
   else if(view&&view.outcome==="incomplete")S.push({k:"cp",st:"wait",t:tr(["Incompleet","Incomplete"]),d:tr(["Ontbreekt: ","Missing: "])+missTxt(view.missing)});
@@ -79,7 +79,7 @@ const ICON={done:"✓",wait:"…",fail:"!",stop:"✕",todo:"",na:"–"};
 function stepCell(s){
   const inner=`<b>${esc(s.t)}</b>${s.d?`<small>${esc(s.d)}</small>`:""}`;
   const extra=s.ref?` data-p="${esc(s.ref)}"`:(s.cid?` data-c="${esc(s.cid)}"`:"");
-  return `<div class="vw-st ${s.st}${extra?" lnk":""}"${extra}><i aria-hidden="true">${ICON[s.st]||""}</i><div>${inner}</div></div>`;
+  return `<div class="vw-st ${s.st}${extra?" lnk":""}"${extra}><div class="vw-tx">${inner}</div><div class="vw-tr"><i aria-hidden="true">${ICON[s.st]||""}</i></div></div>`;
 }
 function detail(c){
   return `<div class="vw-det">${(c.steps||[]).map(s=>`<div class="vw-ev"><span class="vw-t">${esc(dmyt(s.at))}</span>
