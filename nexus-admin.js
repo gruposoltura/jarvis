@@ -97,7 +97,7 @@ const blankProp=()=>({status:"draft",published:false,category:"",build_type:"res
   price:"",price_text:"",price_original:"",price_temp:"",price_temp_until:"",price_hidden:false,price_fixed:false,price_from:false,price_on_request:false,price_coming_soon:false,
   labels:[],search_rank:"normal",no_export:false,export_feeds:[],
   municipality:"",area:"",area_new:"",street:"",street_number:"",postal_code:"",province:"Alicante",country:"Spain",lat:"",lng:"",hide_address:false,show_street:false,
-  orientation:"",views:[],
+  orientation:"",condition:"good",views:[],
   bedrooms:"",bathrooms:"",toilets:"",ensuites:"",living_rooms:"",kitchens:"",utility_rooms:"",build_area:"",plot_area:"",garages:"",carports:"",parking_open:"",
   energy_label:"",energy_rating:"",floors:"",floor_level:"",staircases:"",balconies:"",patios:"",terraces:"",
   area_living:"",area_kitchen:"",area_terrace:"",area_garden:"",distance_airport_m:"",distance_sea_m:"",distance_city_m:"",distance_shops_m:"",
@@ -321,10 +321,12 @@ function propForm(base,media){
       inp(B("listed_at"),["In aanbod sinds","Date listed"],{type:"date"}),sel(B("listing_agent"),["Makelaar (verantwoordelijk)","Listing agent"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}))
     +`<div id="adRefCheck" class="sm"></div>`
     +`<div class="ad-key">${chk(B("key_on"),["Sleutel in beheer: sleutelnummer toekennen","Keys held: assign a key number"])}${p.key_on?`<label class="ad-f"><span>${esc(tr(["Sleutelnummer","Key number"]))}${mark("save")}</span><input data-k="${B("key_number")}" value="${esc(p.key_number||"")}" inputmode="numeric" placeholder="…"><small>${esc(tr(["Eerste vrije nummer; je mag het aanpassen","First free number; you may change it"]))}</small></label>`:""}</div>`
+    +row(sel(B("condition"),["Staat van de woning","Condition"],[["new",["Nieuw","New"]],["good",["Goed","Good"]],["to_restore",["Op te knappen","To restore"]]],{empty:false}),`<div></div>`,`<div></div>`,`<div></div>`)
     +chk(B("dossier_complete"),["Dossier compleet","Dossier complete"])
     +`<datalist id="adRefPfx">${REF_PFX.map(x=>`<option value="${x}">`).join("")}</datalist>`,{id:"pf-basis"})}
   ${sec(["Prijs","Price"],row(inp(B("price"),["Vraagprijs (€)","Asking price (€)"],{type:"number",min:0,step:1000,req:"save"}),
-      inp(B("price_original"),["Oorspronkelijke vraagprijs (€)","Original price (€)"],{type:"number",min:0,step:1000}))
+      inp(B("price_original"),["Oorspronkelijke vraagprijs (€)","Original price (€)"],{type:"number",min:0,step:1000}),
+      inp(B("cost_community"),["Gemeenschapskosten per JAAR (€)","Community fees per YEAR (€)"],{type:"number",min:0,step:1,hint:["Altijd het jaarbedrag (uitzondering op geen vaste lasten, Rick 20-10-2026)","Always the yearly amount"]}))
     +`<div class="ad-multi c3">${chk(B("price_hidden"),["Prijs verbergen","Hide price"])}${chk(B("price_fixed"),["Vaste prijs","Price FIXED"])}${chk(B("price_from"),["Prijs vanaf","Price FROM"])}
       ${chk(B("price_on_request"),["Prijs op aanvraag","Price ON REQUEST"])}</div>`,{id:"pf-prijs"})}
   ${sec(["Locatie","Location"],row(`<label class="ad-f w2"><span>${esc(tr(["Gemeente","Municipality"]))}${mark("save")}</span><select data-k="${B("municipality")}" id="adMuni"><option value="">${esc(tr(["— kies —","— choose —"]))}</option>
@@ -548,7 +550,7 @@ function propFields(p){
   const f={reference:p.reference};
   ["own_listing_type","status","published","category","build_type","price","price_previous","price_from","price_on_request","price_fixed","price_hidden",
    "bedrooms","bathrooms","toilets","ensuites","living_rooms","kitchens","floors","floor_level","balconies","terraces","patios","garages","carports",
-   "build_area","plot_area","area_living","area_terrace","area_garden","area_kitchen","year_built","orientation","views","energy_label","features","feature_options",
+   "build_area","plot_area","area_living","area_terrace","area_garden","area_kitchen","year_built","orientation","condition","views","energy_label","features","feature_options",
    "country","province","city","location_area","street","street_number","postal_code","lat","lng","hide_address",
    "distance_sea_m","distance_airport_m","distance_city_m","distance_shops_m","fee_legal","fee_notary","fee_registry","fee_transfer_tax",
    "cost_community","cost_ibi","cost_garbage","cost_insurance","cadastral_ref","finca_number","labels","export_feeds","no_export",

@@ -103,9 +103,11 @@ function secBasis(){const l=LS();
       sel("own_listing_type",["Soort opdracht","Mandate"],[["direct",["Direct","Direct"]],["indirect",["Indirect","Indirect"]]]),sel("listing_agent_id",["Verantwoordelijk","Responsible"],D.team.map(t=>[t.id,t.name])))
     +row(inp("reference",["Referentie","Reference"],{ro:true,hint:["Vast: wordt gebruikt in links en feeds","Fixed: used in links and feeds"]}),inp("year_built",["Bouwjaar","Year built"],{type:"number",min:1800}),inp("object_style",["Stijl","Style"]),
       P.origin==="partner"?inp("external_ref",["Partnerreferentie","Partner reference"],{ro:true}):""))
+    +row(sel("condition",["Staat van de woning","Condition"],[["new",["Nieuw","New"]],["good",["Goed","Good"]],["to_restore",["Op te knappen","To restore"]]],{empty:false}),`<div></div>`,`<div></div>`,`<div></div>`)
     +("key_number" in P&&P.origin!=="partner"?row(inp("key_number",["Sleutelnummer","Key number"],{hint:["Leeg = geen sleutel in beheer","Empty = no keys held"]}),`<div class="ad-f"><span>&nbsp;</span><button class="btn sm" data-act="keynext" ${P.key_number?"disabled":""}>${esc(tr(["Vrij nummer toekennen","Assign free number"]))}</button></div>`):"")}
 function secPrice(){const h=D.price_history||[];
-  return sec("prijs",["Prijs","Price"],row(inp("price",["Vraagprijs (€)","Asking price (€)"],{type:"number",min:0,step:1000}),inp("price_previous",["Vorige prijs (€)","Previous price (€)"],{type:"number",min:0,step:1000,hint:["Wordt automatisch gevuld bij een prijswijziging","Filled automatically when the price changes"]}))
+  return sec("prijs",["Prijs","Price"],row(inp("price",["Vraagprijs (€)","Asking price (€)"],{type:"number",min:0,step:1000}),inp("price_previous",["Vorige prijs (€)","Previous price (€)"],{type:"number",min:0,step:1000,hint:["Wordt automatisch gevuld bij een prijswijziging","Filled automatically when the price changes"]}),
+      inp("cost_community",["Gemeenschapskosten per JAAR (€)","Community fees per YEAR (€)"],{type:"number",min:0,step:1,hint:["Altijd het jaarbedrag","Always the yearly amount"]}))
     +`<div class="ad-multi c4">${chk("price_hidden",["Prijs verbergen","Hide price"])}${chk("price_fixed",["Vaste prijs","Price FIXED"])}${chk("price_from",["Prijs vanaf","Price FROM"])}${chk("price_on_request",["Prijs op aanvraag","Price ON REQUEST"])}</div>`
     +(h.length?`<div class="pe-hist">${h.map(x=>`<span>${new Date(x.at).toLocaleDateString("nl-NL")} · <b>€ ${Number(x.price).toLocaleString("nl-NL")}</b> <span class="muted">${esc(x.source||"")}</span></span>`).join("")}</div>`:""))}
 function secLoc(){const l=LS(), locs=D.locations||[], cur=locs.find(x=>x.id===Number(P.location_id));
@@ -143,6 +145,7 @@ function secMedia(){
     <div class="ad-media" id="peMedia"></div>`,{aside:`<span class="sm muted">${M.filter(m=>!m.del).length}</span>`})}
 function secCosts(){
   /* BESLUIT Rick 18/19-10-2026: geen kosten koper en geen vaste lasten in NEXUS. Niet terugzetten.
+     Uitzondering 20-10-2026 (Rick): gemeenschapskosten PER JAAR (cost_community) staan bij Prijs, voor de Idealista-feed.
      20-10-2026: aktegegevens (registro, inschrijving, oppervlakte volgens akte, aankoop huidige eigenaar) + knop Akte inlezen. */
   return sec("kost",["Eigendomsakte","Title deed"],`<div class="dd-bar">${window.NEXUS_DEED?NEXUS_DEED.button(tr):""}<span class="sm muted">${esc(tr(["PDF of foto van de escritura; je ziet eerst wat er gevonden is.","PDF or photo of the escritura; you review what was found first."]))}${P.deed_read_at?" · "+esc(tr(["laatst ingelezen ","last read "]))+new Date(P.deed_read_at).toLocaleDateString("nl-NL"):""}</span></div>
     <div class="ad-cols3">
