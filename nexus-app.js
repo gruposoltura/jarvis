@@ -347,6 +347,7 @@ async function openContact(id){
   if(CT&&CT.timeline)CT.timeline=CT.timeline.filter(e=>!(e.kind==="request"&&(e.title==="cprreset"||e.title==="dashboard")));
   if(!CT){d.innerHTML=`<div class="empty">${t("notfound.ct")}</div>`;return}
   renderContact();
+  loadCampaigns(id);
   if(innerWidth<1100)d.scrollIntoView({behavior:"smooth",block:"start"});
 }
 function renderContact(){
@@ -557,9 +558,55 @@ function ctProps(){
    ${it.length||!own.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.interest",{n:it.length})}</h3></div>
    ${it.length?`<div class="grid2">${it.map(p=>propCard(p,`<div class="sm" style="margin-top:4px">${p.n}× · ${esc((p.types||[]).map(rq).join(", "))} · ${ago(p.last)}</div>`)).join("")}</div>`:`<div class="empty sm">${t("nointerest")}</div>`}`:""}`}
 function timeline(list){
-  const C={request:"#ec4899",viewing:"#22c55e",mail:"#3b82f6",lead:"#f59e0b",hot:"#ef4444",note:"#a855f7"};
+  const C={request:"#ec4899",viewing:"#22c55e",mail:"#3b82f6",mailing:"#06b6d4",lead:"#f59e0b",hot:"#ef4444",note:"#a855f7"};
   if(!list||!list.length)return`<div class="empty">${t("notimeline")}</div>`;
-  return `<div class="tl">${list.map(e=>`<div class="e" style="--ec:${C[e.kind]||"#64748b"}"><div class="h"><span class="k">${esc(t("k."+e.kind))} · ${esc(e.kind==="request"?rq(e.title||""):tlTitle(e.title||""))}</span>${e.ref?`<span class="tag">${esc(e.ref)}</span>`:""}<span class="w">${fdate(e.ts)} · ${ago(e.ts)}</span>${e.id!=null&&(e.kind!=="mail"||e.src==="communication")?delBtn(e.kind==="mail"?"communication":e.kind,e.id):""}</div>${e.text?`<div class="x">${esc(e.text)}</div>`:""}</div>`).join("")}</div>`}
+  /* mail-preview (20-10-2026): transactionele mail (uuid) en mailing (campaign_id) openen in een popup */
+  const mv=e=>e.uuid?` data-mv-uuid="${esc(e.uuid)}"`:e.campaign_id?` data-mv-camp="${esc(e.campaign_id)}" data-mv-email="${esc(e.email||"")}"`:"";
+  return `<div class="tl">${list.map(e=>`<div class="e${mv(e)?" mv":""}"${mv(e)}${mv(e)?` title="${esc(t("mv.open"))}"`:""} style="--ec:${C[e.kind]||"#64748b"}"><div class="h"><span class="k">${esc(t("k."+e.kind))} · ${esc(e.kind==="request"?rq(e.title||""):tlTitle(e.title||""))}</span>${e.ref?`<span class="tag">${esc(e.ref)}</span>`:""}<span class="w">${fdate(e.ts)} · ${ago(e.ts)}</span>${mv(e)?`<span class="mv-ic">👁</span>`:""}${e.id!=null&&(e.kind!=="mail"||e.src==="communication")?delBtn(e.kind==="mail"?"communication":e.kind,e.id):""}</div>${e.text?`<div class="x">${esc(e.text)}</div>`:""}</div>`).join("")}</div>`}
+/* Mailings (Brevo-campagnes) die dit contact ontving, in de tijdlijn zetten. Bron: Edge Function mail-preview -> Brevo contacts/{email}. */
+const MT_LABEL={weekly_news:["Nieuwsbrief","Newsletter"],price_reduced:["Prijsverlaging","Price reduced"],monthly_matches:["Woningmatches","Property matches"],new_listing:["Nieuwe woning","New listing"],market_report:["Marktbericht","Market report"]};
+const tsN=x=>{const n=new Date(x||0).getTime();return isNaN(n)?0:n};
+async function loadCampaigns(id){
+  const em=CT&&CT.contact&&CT.contact.email;if(!em)return;
+  let r;try{const {data,error}=await sb.functions.invoke("mail-preview",{body:{action:"campaigns",email:em}});if(error||!data||!data.ok)return;r=data}catch(e){return}
+  if(ctSel!==id||!CT)return;
+  const lb=s=>MT_LABEL[s]?MT_LABEL[s][LANG==="nl"?0:1]:(s||"mailing").replace(/_/g," ");
+  const items=(r.rows||[]).filter(x=>x.sent_at).map(x=>({kind:"mailing",ts:x.sent_at,title:lb(x.mailing_type),campaign_id:x.campaign_id,email:em,
+    text:[x.subject||"#"+x.campaign_id,x.opens?t("mv.opens",{n:x.opens}):"",x.clicks?t("mv.clicks",{n:x.clicks}):"",x.unsubscribed?t("mv.unsub"):""].filter(Boolean).join(" · ")}));
+  if(!items.length)return;
+  CT.timeline=(CT.timeline||[]).filter(e=>e.kind!=="mailing").concat(items).sort((a,b)=>tsN(b.ts)-tsN(a.ts));
+  if(ctSub==="tijdlijn")renderContact();
+  else{const c=document.querySelector('#ctDetail .st[data-s="tijdlijn"] .cnt');if(c)c.textContent=CT.timeline.length}
+}
+function closeMail(){document.querySelector(".mvp")?.remove();document.body.classList.remove("pe-open");document.removeEventListener("keydown",mailEsc)}
+function mailEsc(e){if(e.key==="Escape")closeMail()}
+async function openMail(body){
+  closeMail();document.body.classList.add("pe-open");
+  const o=document.createElement("div");o.className="mvp";
+  o.innerHTML=`<div class="mvp-box"><div class="mvp-hd"><div style="min-width:0;flex:1"><div class="mvp-sj">${t("loading")}</div><div class="mvp-meta"></div></div><button class="pe-x" aria-label="${esc(t("mv.close"))}">×</button></div><div class="mvp-ev"></div><div class="mvp-bd"><div class="pe-load">${t("loading")}</div></div></div>`;
+  document.body.appendChild(o);document.addEventListener("keydown",mailEsc);
+  o.addEventListener("click",e=>{if(e.target===o||e.target.closest(".pe-x"))closeMail()});
+  let r;try{const {data,error}=await sb.functions.invoke("mail-preview",{body});if(error)throw error;r=data}catch(e){r={ok:false,error:e.message||"error"}}
+  if(!o.isConnected)return;
+  if(!r||!r.ok||!r.html){o.querySelector(".mvp-sj").textContent=(r&&r.subject)||t("mv.na");o.querySelector(".mvp-bd").innerHTML=`<div class="empty">${esc(t(r&&r.error==="not_found"?"mv.gone":r&&r.error==="no_key"?"mv.nokey":"mv.na"))}</div>`;return}
+  o.querySelector(".mvp-sj").textContent=r.subject||"—";
+  const camp=r.kind==="campaign";
+  o.querySelector(".mvp-meta").innerHTML=[r.sender?esc(r.sender):"",r.recipient?"→ "+esc(r.recipient):"",r.sent_at?fdate(r.sent_at)+" "+new Date(r.sent_at).toLocaleTimeString(LOC(),{hour:"2-digit",minute:"2-digit"}):"",
+    camp?`<span class="mvp-tag">${t(r.personal?"mv.camp.personal":"mv.camp")}</span>`:""].filter(Boolean).join(" · ");
+  const EVN={sent:"mv.ev.sent",delivered:"mv.ev.delivered",opened:"mv.ev.opened",proxy_open:"mv.ev.proxy",clicks:"mv.ev.click",click:"mv.ev.click",softBounce:"mv.ev.bounce",hardBounce:"mv.ev.bounce",soft_bounce:"mv.ev.bounce",hard_bounce:"mv.ev.bounce",unsubscribed:"mv.ev.unsub",spam:"mv.ev.spam"};
+  const ev=!camp&&Array.isArray(r.events)?r.events:[];
+  o.querySelector(".mvp-ev").innerHTML=ev.length?ev.map(x=>`<span class="mvp-e"><b>${esc(EVN[x.name]?t(EVN[x.name]):x.name)}</b> ${fdate(x.time)} ${new Date(x.time).toLocaleTimeString(LOC(),{hour:"2-digit",minute:"2-digit"})}</span>`).join(""):"";
+  if(!ev.length)o.querySelector(".mvp-ev").remove();
+  const f=document.createElement("iframe");f.setAttribute("sandbox","allow-popups allow-popups-to-escape-sandbox");f.setAttribute("referrerpolicy","no-referrer");f.title=r.subject||"mail";
+  /* links in de mail openen in een nieuw tabblad; scripts draaien niet (sandbox zonder allow-scripts) */
+  const H=String(r.html);f.srcdoc=/<head[^>]*>/i.test(H)?H.replace(/<head([^>]*)>/i,'<head$1><base target="_blank">'):'<base target="_blank">'+H;
+  const bd=o.querySelector(".mvp-bd");bd.innerHTML="";bd.appendChild(f);
+}
+document.addEventListener("click",e=>{
+  const el=e.target.closest(".tl .e.mv");if(!el||e.target.closest(".act-del")||e.target.closest("a"))return;
+  if(el.dataset.mvUuid)openMail({uuid:el.dataset.mvUuid});
+  else if(el.dataset.mvCamp)openMail({campaign_id:Number(el.dataset.mvCamp),email:el.dataset.mvEmail||undefined});
+});
 function ctRelations(c){
   const r=CT.relations||[], im=CT.interested_in_mine||[];
   const rel=x=>`<div class="rel" data-c="${esc(x.key||x.wp_id)}"><div class="ini" style="background:${hue(x.name||x.email)};width:32px;height:32px;font-size:calc(12px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${esc(x.why||"")}</div></div></div>`;
