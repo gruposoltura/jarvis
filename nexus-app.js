@@ -421,13 +421,15 @@ function ctProfile(c,raw){
   const props=CT.properties||[], own=props.filter(p=>/eigenaar/.test(p.relation)), bought=props.filter(p=>/koper/.test(p.relation)), offered=props.filter(p=>p.relation==="aanbiedend makelaar");
   const tl=CT.timeline||[], rels=CT.relations||[], ints=CT.interests||[];
   const reqs=tl.filter(e=>e.kind==="request"), views=tl.filter(e=>e.kind==="viewing");
-  const lastTouch=tl.length?tl[0].ts:null, firstTouch=tl.length?tl[tl.length-1].ts:null;
+  const tlSorted=tl.filter(e=>e.ts&&!isNaN(new Date(e.ts))).sort((a,b)=>new Date(a.ts)-new Date(b.ts));
+  const firstEv=tlSorted[0]||null, lastTouch=tlSorted.length?tlSorted[tlSorted.length-1].ts:null;
+  const firstTouch=[firstEv&&firstEv.ts,...(CT.properties||[]).filter(p=>/koper/.test(p.relation)).map(p=>p.last_request)].filter(Boolean).sort((a,b)=>new Date(a)-new Date(b))[0]||null;
   const isSeller=has("seller")||has("suspect-seller")||own.length, isBuyer=has("buyer")||bought.length, isAgent=has("agent")||offered.length;
   const out=[];
 
   /* Klantreis: in één regel hoe dit contact zich ontwikkelde — lost het "was koper, nu verkoper"-probleem op */
   const steps=[];
-  if(firstTouch)steps.push([firstTouch,L2("Eerste contact","First contact"),reqs.length?rq(reqs[reqs.length-1].title||""):"","journey"]);
+  if(firstTouch)steps.push([firstTouch,L2("Eerste contact","First contact"),firstEv&&firstEv.ts===firstTouch&&firstEv.kind==="request"?rq(firstEv.title||""):"","journey"]);
   bought.forEach(p=>steps.push([p.sold_at||p.last_request||p.listed_at,`${L2("Koper","Buyer")} ${p.reference}`,stLabel(p.core_status),"buy"]));
   own.forEach(p=>steps.push([p.listed_at,`${L2("Verkoper","Seller")} ${p.reference}`,stLabel(p.core_status),"sell"]));
   steps.sort((a,b)=>new Date(a[0]||0)-new Date(b[0]||0));
