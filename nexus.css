@@ -904,3 +904,56 @@ html[data-theme="light"] .dd-now,html[data-theme="light"] .dd-warn{color:#b45309
 /* Drive-knop in de woningkop (20-10-2026) */
 .dh .acts a.act-drive{background:#1a73e8;border-color:#1a73e8;color:#fff;font-weight:700}
 .dh .acts a.act-drive:hover{background:#1557b0}
+
+/* ---------- Contact · Profiel per rol (20-10-2026) ----------
+   Zelfde paneeltaal als de woningdetail (pk-sec): gekleurde bovenrand, getinte kop. Kleur per rol via --sc. */
+.cp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.cp>.cp-wide,.cp>.cp-journey,.cp>.cp-pair{grid-column:1/-1}
+.cp-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+.cp-sec{background:color-mix(in srgb,var(--sc) 4%,var(--card));border-color:color-mix(in srgb,var(--sc) 28%,var(--line))}
+.cp-sec>.hd{border-bottom-color:color-mix(in srgb,var(--sc) 22%,var(--line))}
+.cp-sec .kv{padding:10px 14px}
+.cp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;padding:12px 14px 4px}
+.cp-tiles.cp-dim{opacity:.75}
+.cp-t{border:1px solid color-mix(in srgb,var(--sc) 25%,var(--line));border-radius:10px;padding:8px 11px;background:color-mix(in srgb,var(--sc) 7%,var(--bg2))}
+.cp-t .l{font-size:calc(10.5px*var(--fs,1));text-transform:uppercase;letter-spacing:.06em;color:color-mix(in srgb,var(--sc) 45%,var(--tx2));font-weight:600}
+.cp-t .v{font-size:calc(19px*var(--fs,1));font-weight:700;color:var(--hi);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-t .s{font-size:calc(11px*var(--fs,1));color:var(--tx3)}
+.cp-t.warn{border-color:rgba(245,158,11,.6);background:rgba(245,158,11,.1)}.cp-t.warn .v{color:#f59e0b}
+.cp-prs{display:flex;flex-direction:column;gap:8px;padding:12px 14px}
+.cp-pr{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:start;padding:8px;border-radius:12px;cursor:pointer;
+  border:1px solid color-mix(in srgb,var(--sc) 22%,var(--line));background:color-mix(in srgb,var(--sc) 3%,var(--bg2));transition:border-color .12s}
+.cp-pr:hover{border-color:var(--sc)}
+.cp-pr img,.cp-pr .ph{width:96px;height:72px;object-fit:cover;border-radius:8px;background:var(--card2)}
+.cp-pb{min-width:0}
+.cp-ph{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}.cp-ph .muted{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.cp-st{margin-left:auto;padding:1px 8px;border-radius:999px;font-size:calc(11px*var(--fs,1));font-weight:700;border:1px solid var(--line2);color:var(--tx2)}
+.cp-st.st-available{border-color:rgba(34,197,94,.5);color:#22c55e;background:rgba(34,197,94,.1)}
+.cp-st.st-under_offer,.cp-st.st-reserved{border-color:rgba(245,158,11,.55);color:#f59e0b;background:rgba(245,158,11,.1)}
+.cp-st.st-sold{border-color:rgba(239,68,68,.5);color:#ef4444;background:rgba(239,68,68,.1)}
+.cp-pp{margin-top:2px}.cp-pp>b{font-size:calc(15px*var(--fs,1));color:var(--hi)}
+.cp-ms{display:flex;flex-wrap:wrap;gap:14px;margin-top:6px}
+.cp-m{font-size:calc(12px*var(--fs,1));color:var(--tx2)}.cp-m b{color:var(--hi);font-size:calc(14px*var(--fs,1))}
+.cp-m.warn,.cp-m.warn b{color:#f59e0b}
+.cp-sub{margin-top:4px;font-size:calc(12px*var(--fs,1));color:var(--tx2)}
+.cp-empty{padding:12px 14px;color:var(--tx3);font-size:calc(13px*var(--fs,1));display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cp-empty .act-newpr{margin-left:0}
+.cp-add{cursor:pointer;color:var(--sc);font-weight:600;white-space:nowrap}.cp-add:hover{text-decoration:underline}
+.cp-miss{margin:0 14px 12px;padding:8px 12px;border-radius:10px;border:1px dashed rgba(245,158,11,.55);background:rgba(245,158,11,.08);font-size:calc(12.5px*var(--fs,1))}
+.cp-foot{padding:0 14px 12px;font-size:calc(12px*var(--fs,1));color:var(--tx3)}
+.cp-chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 14px 12px}
+.cp-chip{cursor:pointer;padding:4px 10px;border-radius:999px;font-size:calc(12px*var(--fs,1));border:1px solid color-mix(in srgb,var(--sc) 40%,var(--line));background:color-mix(in srgb,var(--sc) 10%,var(--bg2));color:var(--tx)}
+.cp-chip:hover{border-color:var(--sc)}
+.cp-sec .pk-grp{color:color-mix(in srgb,var(--sc) 50%,var(--tx2))}
+.cp-sec .note{margin:10px 14px 12px}
+/* klantreis */
+.cp-journey{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg2)}
+.cp-step{--sc:#94a3b8;display:flex;flex-direction:column;padding:6px 12px;border-radius:10px;border:1px solid color-mix(in srgb,var(--sc) 45%,var(--line));
+  background:color-mix(in srgb,var(--sc) 11%,var(--card));box-shadow:inset 3px 0 0 var(--sc)}
+.cp-step .d{font-size:calc(10.5px*var(--fs,1));color:var(--tx3);text-transform:uppercase;letter-spacing:.05em}
+.cp-step b{font-size:calc(13px*var(--fs,1));color:var(--hi)}
+.cp-step .x{font-size:calc(11.5px*var(--fs,1));color:color-mix(in srgb,var(--sc) 55%,var(--tx2))}
+.cp-arrow{color:var(--tx3)}
+@container (max-width:760px){.cp,.cp-pair{grid-template-columns:1fr}}
+@media (max-width:900px){.cp,.cp-pair{grid-template-columns:1fr}}
+#ctBody{container-type:inline-size}
