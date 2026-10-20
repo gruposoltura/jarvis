@@ -96,9 +96,9 @@ function detailExp(f){
   const v=(VARIANTS.find(x=>x[0]===f.variant)||[f.variant,f.variant])[1];
   return `<div class="xm-scroll">${head(f.name,`${agentLink(f)} · ${esc(tr(v))}`,f)}
    ${!f.active?`<div class="xm-note">${esc(tr(["Deze feed staat uit: de makelaar krijgt nu 'not found'.","This feed is off: the agent now gets 'not found'."]))}</div>`:""}
-   ${urlBox(tr(["Link voor de makelaar","Link for the agent"]),f.url,tr(["Dit is dezelfde link als in de oude CPR; bestaande makelaars hoeven niets te wijzigen.","Same link as in the old CPR; existing agents need not change anything."]))}
+   ${urlBox(tr(["Link voor de makelaar","Link for the agent"]),f.url,tr(["Dit is dezelfde link als op de oude WordPress-site; bestaande makelaars hoeven niets te wijzigen.","Same link as on the old WordPress site; existing agents need not change anything."]))}
    <div class="xm-grid">
-     ${kv(tr(["Laatst opgehaald","Last fetched"]),esc(when(f.last_accessed_at))+(f.last_accessed_legacy?` <span class="muted sm">(CPR)</span>`:""))}
+     ${kv(tr(["Laatst opgehaald","Last fetched"]),esc(when(f.last_accessed_at))+(f.last_accessed_legacy?` <span class="muted sm">(WordPress)</span>`:""))}
      ${kv(tr(["Aanroepen sinds overstap","Calls since cutover"]),n(f.access_count))}
      ${kv(tr(["Aanroepen laatste 7 dagen","Calls last 7 days"]),n(f.hits_7d))}
      ${kv(tr(["Woningen in laatste levering","Listings in last delivery"]),n(f.last_item_count))}

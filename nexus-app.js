@@ -515,7 +515,7 @@ function ctProfile(c,raw){
   out.push(`<div class="cp-pair">${cpSec("person",L2("Persoonsgegevens","Personal details"),persBody,{edit:1})}${cpSec("file",L2("Dossier","File"),kv(file))}</div>`);
 
   const notes=raw.internal_comments?esc(raw.internal_comments.replace(/<br\s*\/?>/gi,"\n")):"";
-  out.push(cpSec("notes",t("h.notes").replace(" (CPR)",""),notes?`<div class="note">${notes}</div>`:`<div class="cp-empty">${t("nonotes")}</div>`,{wide:1,edit:1}));
+  out.push(cpSec("notes",t("h.notes"),notes?`<div class="note">${notes}</div>`:`<div class="cp-empty">${t("nonotes")}</div>`,{wide:1,edit:1}));
   return `<div class="cp">${out.join("")}</div>`;
 }
 function cprDate(v){if(!v)return null;let m;
@@ -795,7 +795,7 @@ function propFeatures(p,raw,o,K,XL,m){
       [t("p.notary"),S.notary?null:raw.sold_notary]]))}
   </div></div></div>
   <aside class="pk-photos" id="pkPhotos" aria-label="${L2("Foto's","Photos")}"><div class="pk-ph-h">${L2("Foto's","Photos")}</div><div class="pk-ph-list"><div class="loader sm">…</div></div></aside>
-  <div class="card pk-wide" id="pkLog"><div class="hd"><h3>${L2("Wijzigingslog","Change log")}</h3></div><div class="pk-log-nx"><div class="loader sm">…</div></div>${raw.changelog?`<div class="sm muted" style="margin-top:10px">${L2("Historie uit CPR (tot 18 okt 2026)","History from CPR (until 18 Oct 2026)")}</div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div>`:""}</div>
+  <div class="card pk-wide" id="pkLog"><div class="hd"><h3>${L2("Wijzigingslog","Change log")}</h3></div><div class="pk-log-nx"><div class="loader sm">…</div></div>${raw.changelog?`<div class="sm muted" style="margin-top:10px">${L2("Historie uit het oude WordPress (tot 18 okt 2026)","History from the old WordPress (until 18 Oct 2026)")}</div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div>`:""}</div>
   </div>`;
 }
 const FEAT={pool:["Privé zwembad","Private pool"],communal_pool:["Gemeenschappelijk zwembad","Communal pool"],air_conditioning:["Airco","Air conditioning"],air_conditioning_preinstalled:["Airco voorbereid","A/C pre-installed"],split_aircon:["Split-airco","Split A/C"],ducted_cooling:["Kanaalkoeling","Ducted cooling"],ducted_heating:["Kanaalverwarming","Ducted heating"],central_heating:["Centrale verwarming","Central heating"],gas_heating:["Gasverwarming","Gas heating"],split_heating:["Split-verwarming","Split heating"],underfloor_heating:["Vloerverwarming","Underfloor heating"],fireplace:["Open haard","Fireplace"],furnished:["Gemeubileerd","Furnished"],semi_furnished:["Deels gemeubileerd","Semi-furnished"],secure_parking:["Afgesloten parkeren","Secure parking"],remote_garage:["Garage met afstandsbediening","Remote garage"],fully_fenced:["Volledig omheind","Fully fenced"],security_system:["Alarmsysteem","Security system"],intercom:["Intercom","Intercom"],solarium:["Solarium","Solarium"],courtyard:["Binnenplaats","Courtyard"],outdoor_entertaining:["Buitenleven","Outdoor entertaining"],basement:["Kelder","Basement"],storage_shed:["Berging","Storage shed"],study:["Studeerkamer","Study"],workshop:["Werkplaats","Workshop"]};
@@ -817,7 +817,7 @@ async function loadPropLog(p){const box=document.querySelector("#pkLog .pk-log-n
     const ev=((d&&d.audit)||[]).map(x=>({at:x.at,html:`${esc(x.who||L2("systeem","system"))} <span class="muted">· ${esc((x.fields||[]).join(", "))}</span>`}));
     const ph=((d&&d.price_history)||[]).slice().sort((a,b)=>new Date(a.changed_at||a.at)-new Date(b.changed_at||b.at));
     ph.forEach((h,k)=>{if(!k)return;const at=h.changed_at||h.at, prev=ph[k-1].price;if(prev==h.price)return;
-      const src=String(h.source||"");const who=src.startsWith("feed:")?L2("partnerfeed ","partner feed ")+src.slice(5):src==="nexus"?"NEXUS":src==="cpr_import"?"CPR":src;
+      const src=String(h.source||"");const who=src.startsWith("feed:")?L2("partnerfeed ","partner feed ")+src.slice(5):src==="nexus"?"NEXUS":src==="cpr_import"?"WordPress-import":src;
       const pct=prev?Math.round((h.price-prev)/prev*100):null;
       ev.push({at,html:`${L2("Prijs","Price")} ${eur(prev)} → <b>${eur(h.price)}</b>${pct!=null?` <span class="muted">(${pct>0?"+":""}${pct}%)</span>`:""} <span class="muted">· ${esc(who)}</span>`})});
     ev.sort((a,b)=>new Date(b.at)-new Date(a.at));
@@ -907,7 +907,7 @@ function wirePropEdit(d,p){
 }
 /* kadaster- en marktgegevens: staan bij de kenmerken (besluit Rick 18-10), niet op foto's of in een aparte tab */
 function propExtData(p){const k=PR.catastro;
-    const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${L2("Kadastergegevens","Cadastral details")}</h3><span class="tag">Catastro · ${ago(k.checked_at)}</span></div>${kv([[t("k.cadref"),`<a class="mono" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener">${esc(k.cadastral_ref)} ↗</a>`,1],[t("k.parcel"),k.parcel_ref],[t("k.unit"),[k.cat_block&&"bl. "+k.cat_block,k.cat_stair&&"esc. "+k.cat_stair,k.cat_floor&&"pl. "+k.cat_floor,k.cat_door&&"pta. "+k.cat_door].filter(Boolean).join(" · ")],[t("k.landclass"),k.land_class],[t("k.share"),k.participation_pct!=null?k.participation_pct+" %":null],[t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.year"),k.year_built],[t("k.built"),k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(CPR: ${num(p.build_area)} m²)</span>`:""):null,1],[t("k.living"),[k.living_area_m2&&num(k.living_area_m2)+" m² "+t("k.living.w"),k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],[t("k.plot"),k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],[t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
+    const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${L2("Kadastergegevens","Cadastral details")}</h3><span class="tag">Catastro · ${ago(k.checked_at)}</span></div>${kv([[t("k.cadref"),`<a class="mono" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener">${esc(k.cadastral_ref)} ↗</a>`,1],[t("k.parcel"),k.parcel_ref],[t("k.unit"),[k.cat_block&&"bl. "+k.cat_block,k.cat_stair&&"esc. "+k.cat_stair,k.cat_floor&&"pl. "+k.cat_floor,k.cat_door&&"pta. "+k.cat_door].filter(Boolean).join(" · ")],[t("k.landclass"),k.land_class],[t("k.share"),k.participation_pct!=null?k.participation_pct+" %":null],[t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.year"),k.year_built],[t("k.built"),k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(${L2("advertentie","listing")}: ${num(p.build_area)} m²)</span>`:""):null,1],[t("k.living"),[k.living_area_m2&&num(k.living_area_m2)+" m² "+t("k.living.w"),k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],[t("k.plot"),k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],[t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
       :"";
     const pc=`<div class="card" id="pkMarket" style="margin-bottom:12px"><div class="hd"><h3>${L2("Markt","Market")}</h3></div><div class="pk-mk"><div class="loader sm">…</div></div></div>`;
     return kc+catElements(k)+pc+((PR.enrichment||[]).length?enrichList(PR.enrichment,"property"):"");}
@@ -1008,7 +1008,7 @@ async function renderPropWeb(p,B){
 }
 
 /* ================= MAP ================= */
-/* Eigen woningen: CPR-coördinaten, anders Catastro-geocode (benadering). Externe woningen: alleen opgeslagen coördinaten.
+/* Pins: opgeslagen coördinaten, anders kadastraal perceel, anders Catastro-geocode, anders de plaats (benadering). Geldt voor eigen én externe woningen (20-10-2026).
    Alles wordt één keer geladen (nexus_map('all')); het filter Eigen/Extern/Alles werkt in de browser. */
 const MPC={own:"#22c55e",ext:"#3b82f6"};
 let mpData=null, mpMap=null, mpLayer=null, mpMarkers={}, mpHideT=null, mpFitted={}, mpQ="", mpQT=null;
@@ -1083,7 +1083,7 @@ function renderMap(fit){
     on.forEach(p=>{
       const c=p.is_own?MPC.own:MPC.ext;
       const icon=L.divIcon({className:"",iconSize:null,iconAnchor:[0,0],
-        html:`<div class="mp-pin ${p.is_own?"own":"ext"} ${p.src==="catastro"?"approx":""}" style="--pc:${c};transform:translate(-50%,-100%)"><b>${esc(p.reference)}${p.under_offer?'<s title="'+esc(t("underoffer"))+'"></s>':""}</b><i></i></div>`});
+        html:`<div class="mp-pin ${p.is_own?"own":"ext"} ${p.src==="catastro"||p.src==="area"?"approx":""}" style="--pc:${c};transform:translate(-50%,-100%)"><b>${esc(p.reference)}${p.under_offer?'<s title="'+esc(t("underoffer"))+'"></s>':""}</b><i></i></div>`});
       const m=L.marker([p.lat,p.lng],{icon,title:p.reference,riseOnHover:true,zIndexOffset:p.is_own?1000:0}).addTo(mpLayer);
       const pp=L.popup({offset:[0,-26],autoPan:true,closeButton:true,maxWidth:280,minWidth:260}).setContent(popupHtml(p));pp._nx=p;
       m.bindPopup(pp);
@@ -1099,7 +1099,7 @@ function renderMap(fit){
   const it=(p,extra,attr)=>`<div class="mp-it" ${attr}><div class="th" style="${p.image?`background-image:url('${esc(p.image)}')`:""}"></div>
     <div style="min-width:0"><div class="t"><span class="dot" style="background:${p.is_own?MPC.own:MPC.ext}"></span>${esc(p.reference)} · ${eur(p.price)}</div><div class="d">${extra}</div></div><span class="sm" style="color:var(--c-ac)">${p.under_offer?"●":""}</span></div>`;
   const onOwn=on.filter(p=>p.is_own), onExt=on.filter(p=>!p.is_own);
-  const sec=(lbl,list)=>list.length?`<div class="mp-sec">${lbl}</div>`+list.map(p=>it(p,sub(p)+(p.src==="catastro"?" · ≈":""),`data-fly="${esc(p.reference)}"`)).join(""):"";
+  const sec=(lbl,list)=>list.length?`<div class="mp-sec">${lbl}</div>`+list.map(p=>it(p,sub(p)+(p.src==="catastro"||p.src==="area"?" · ≈":""),`data-fly="${esc(p.reference)}"`)).join(""):"";
   $("#mpList").innerHTML=(rows.length?"":`<div class="empty">${mpQ?t("mp.nomatch",{q:esc(mpQ)}):t("mp.none")}</div>`)
     +(elsewhere?`<div class="mp-else"><button data-allq="1">${t("mp.elsewhere",{n:num(elsewhere)})}</button></div>`:"")
     +sec(t("mp.located.own",{n:onOwn.length}),onOwn)+sec(t("mp.located.ext",{n:onExt.length}),onExt)

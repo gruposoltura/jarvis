@@ -500,7 +500,7 @@ async function openContact(key,ctx){X=ctx;
          <label class="ad-f w2"><span>${esc(tr(["Must-haves","Must-haves"]))}</span><input data-sp="must_haves" value="${esc(SP.must_haves??"")}" placeholder="${esc(tr(["bijv. zwembad, zeezicht","e.g. pool, sea view"]))}"></label></div>
        <div class="ad-row">${[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]].map(b=>`<label class="ad-c"><input type="checkbox" data-spb="${b[0]}" ${(SP.build||[]).includes(b[0])?"checked":""}><span>${esc(tr(b[1]))}</span></label>`).join("")}</div></section>
      <section class="ad-sec" style="--sc:#a855f7"><h4>${esc(tr(["Mailings","Mailings"]))}</h4><div id="peMail">${mailRows()}</div></section>
-     <section class="ad-sec" style="--sc:#64748b"><h4>${esc(tr(["CPR en verkoop","CPR and sales"]))}</h4>
+     <section class="ad-sec" style="--sc:#64748b"><h4>${esc(tr(["Herkomst en verkoop","Origin and sales"]))}</h4>
        <div class="ad-row">
          <label class="ad-f"><span>${esc(tr(["Bron","Source"]))}</span><input data-cf="source" value="${esc(v.source??"")}"></label>
          <label class="ad-f"><span>${esc(tr(["Verkoopwaarde (€)","Sales value (€)"]))}</span><input data-cf="sales_value" type="number" min="0" step="1000" value="${esc(v.sales_value??"")}"></label>
