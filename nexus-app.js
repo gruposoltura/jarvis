@@ -433,16 +433,22 @@ function ctProfile(c,raw){
   const reqProp=reqs.filter(e=>e.ref), reqOther=reqs.filter(e=>!e.ref), nPropAsked=new Set(reqProp.map(e=>e.ref)).size;
   const tlSorted=tl.filter(e=>e.ts&&!isNaN(new Date(e.ts))&&!(e.kind==="request"&&NOINT.has(e.title))).sort((a,b)=>new Date(a.ts)-new Date(b.ts));
   const firstEv=tlSorted[0]||null, lastTouch=tlSorted.length?tlSorted[tlSorted.length-1].ts:null;
-  const firstTouch=[firstEv&&firstEv.ts,...(CT.properties||[]).filter(p=>/koper/.test(p.relation)).map(p=>p.last_request)].filter(Boolean).sort((a,b)=>new Date(a)-new Date(b))[0]||null;
+  /* Rick 20-10-2026: eerste contact = de vroegste datum die we van dit contact kennen, ook een rol- of woningdatum.
+     Je kunt geen verkoper of koper zijn vóór het eerste contact, dus de klantreis begint hier altijd. */
+  const dOk=d=>d&&!isNaN(new Date(d));
+  const firstTouch=[firstEv&&firstEv.ts,...bought.flatMap(p=>[p.last_request,p.sold_at,p.listed_at]),...own.map(p=>p.listed_at)].filter(dOk).sort((a,b)=>new Date(a)-new Date(b))[0]||null;
+  /* Signaal: rol of woning ligt vóór het eerste vastgelegde contactmoment → er ontbreekt een contactmoment */
+  const noFirstMoment=!!firstTouch&&(!firstEv||new Date(firstEv.ts)>new Date(firstTouch));
   const isSeller=has("seller")||has("suspect-seller")||own.length, isBuyer=has("buyer")||bought.length, isAgent=has("agent")||offered.length;
   const out=[];
 
   /* Klantreis: in één regel hoe dit contact zich ontwikkelde — lost het "was koper, nu verkoper"-probleem op */
   const steps=[];
-  if(firstTouch)steps.push([firstTouch,L2("Eerste contact","First contact"),firstEv&&firstEv.ts===firstTouch&&firstEv.kind==="request"?rq(firstEv.title||""):"","journey"]);
   bought.forEach(p=>steps.push([p.sold_at||p.last_request||p.listed_at,`${L2("Koper","Buyer")} ${p.reference}`,stLabel(p.core_status),"buy"]));
   own.forEach(p=>steps.push([p.listed_at,`${L2("Verkoper","Seller")} ${p.reference}`,stLabel(p.core_status),"sell"]));
   steps.sort((a,b)=>new Date(a[0]||0)-new Date(b[0]||0));
+  /* Eerste contact staat altijd vooraan, los van de sortering */
+  if(firstTouch)steps.unshift([firstTouch,L2("Eerste contact","First contact"),noFirstMoment?L2("geen contactmoment vastgelegd","no contact moment logged"):(firstEv&&firstEv.ts===firstTouch&&firstEv.kind==="request"?rq(firstEv.title||""):""),"journey"]);
   if(steps.length>1)out.push(`<div class="cp-journey">${steps.map(s=>`<div class="cp-step" style="--sc:${CPSEC[s[3]]}"><span class="d">${s[0]?fdate(s[0]):"—"}</span><b>${esc(s[1])}</b>${s[2]?`<span class="x">${esc(s[2])}</span>`:""}</div>`).join('<span class="cp-arrow">→</span>')}</div>`);
 
   /* Verkoop */
