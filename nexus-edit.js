@@ -16,7 +16,7 @@ const statusOf=s=>STATUS.find(x=>x[0]===s)||[s,[s,s],"#64748b"];
 const TXL=["en","nl","sv"];
 /* oudere talen (es/de/fr) alleen tonen als er al tekst in staat */
 const LANGS_OF=()=>TXL.concat(["es","de","fr"].filter(l=>T&&T[l]&&Object.values(T[l]).some(Boolean)));
-const ADMIN_ONLY=["sold_price","sold_price_display","sold_date","deed_price","sold_agent_id","sold_agent_text","notary","notary_protocol","commission_a","commission_b","commission_out","conveyancing","commission_note"];
+const ADMIN_ONLY=["sold_price","sold_price_display","sold_date","deed_price","sold_agent_id","sold_agent_text","sold_agency_id","sold_agency_agent_id","notary","notary_protocol","commission_a","commission_b","commission_out","conveyancing","commission_note"];
 const FEED_FIELDS=["price","bedrooms","bathrooms","build_area","plot_area","energy_label","city","location_area","location_id","lat","lng","feature_options","build_type","category","province","country"];
 
 let D=null, P=null, T=null, M=null, TOUCH={}, TTOUCH={}, MEDIA_DIRTY=false, txL="en", ROOT=null, busy=false, MAP=null;
@@ -89,9 +89,32 @@ function secStatus(){const p=P;
   return sec("status",["Status","Status"],seg
     +row(chk("dossier_complete",["Dossier compleet","Dossier complete"]))+`<small class="muted">${esc(tr(["Online/offline volgt de status: Actief en Gereserveerd staan online, Concept, Verkocht en Ingetrokken offline.","Online/offline follows the status: Active and Reserved are online, Draft, Sold and Withdrawn offline."]))}</small>`.replace('class="ad-row"','class="ad-row pe-chkrow"')
     +row(inp("listed_at",["In aanbod sinds","Listed since"],{type:"date"}),inp("under_offer_at",["Gereserveerd sinds","Reserved since"],{type:"date"}),(p.status==="reserved"||p.reserved_at)?inp("reserved_at",["Gereserveerd sinds","Reserved since"],{type:"date"}):"",inp("withdrawn_at",["Ingetrokken op","Withdrawn on"],{type:"date"})))}
+/* Rick 20-10-2026: Verkocht door (intern) = teamlid; Verkocht door (extern) = kantoor uit core.agencies + agent van dat kantoor.
+   Is de koper door een agent aangebracht, dan vult de database kantoor en agent zelf in zodra de koper gekoppeld wordt. */
+const AGL={}, AGL_BUSY={};
+function loadAgents(id){const A=window.NEXUS_AGENCIES;if(!A||!id||AGL[id]||AGL_BUSY[id])return;AGL_BUSY[id]=1;
+  A.agents(X.rpc,id).then(r=>{AGL[id]=r||[];delete AGL_BUSY[id];if(ROOT&&P&&P.sold_agency_id===id)render(true)}).catch(()=>{AGL[id]=[];delete AGL_BUSY[id]})}
+function secSaleExt(){const p=P, A=window.NEXUS_AGENCIES, ags=A?A.cached():[], bi=D.buyer_intro||null;
+  const agOpts=ags.filter(a=>a.active!==false||a.id===p.sold_agency_id).map(a=>[a.id,a.name+(a.city?" · "+a.city:"")]);
+  if(p.sold_agency_id&&!AGL[p.sold_agency_id])loadAgents(p.sold_agency_id);
+  let ppl=(p.sold_agency_id?AGL[p.sold_agency_id]:null)||[];
+  if(p.sold_agency_agent_id&&!ppl.some(c=>c.id===p.sold_agency_agent_id)&&bi&&bi.agent_id===p.sold_agency_agent_id)ppl=ppl.concat([{id:bi.agent_id,name:bi.agent}]);
+  const pplOpts=ppl.map(c=>[c.id,c.name+(c.email?" · "+c.email:"")]);
+  const same=bi&&(bi.agency_id||null)===(p.sold_agency_id||null)&&bi.agent_id===p.sold_agency_agent_id;
+  const hint=TOUCH.buyer_contact_id&&p.buyer_contact_id&&!p.sold_agency_id
+      ?tr(["Nieuwe koper gekozen: is die door een agent aangebracht, dan worden kantoor en agent bij Opslaan automatisch ingevuld.","New buyer picked: if introduced by an agent, office and agent are filled in automatically on Save."])
+    :bi&&!same?`${esc(tr(["Koper aangebracht door ","Buyer introduced by "]))}<b>${esc(bi.agent||"—")}</b>${bi.agency?` (${esc(bi.agency)})`:""} ${ro("sold_agency_id")?"":`<button class="btn sm" data-act="agintro">${esc(tr(["Overnemen","Apply"]))}</button>`}`
+    :bi&&same?"✓ "+esc(tr(["Overgenomen van de aanbrenger van de koper","Taken from the agent who introduced the buyer"]))
+    :esc(tr(["Wordt automatisch ingevuld zodra er een koper gekoppeld is die door een agent is aangebracht.","Filled in automatically once a buyer introduced by an agent is linked."]));
+  const legacy=p.sold_agent_text&&!p.sold_agency_id&&!/^wp_user:/.test(p.sold_agent_text)?` · ${esc(tr(["oude vrije tekst: ","old free text: "]))}<i>${esc(p.sold_agent_text)}</i>`:"";
+  return row(sel("sold_agency_id",["Verkocht door (extern) · kantoor","Sold by (external) · office"],agOpts,{w:2}),
+      p.sold_agency_id?sel("sold_agency_agent_id",["Agent van dit kantoor","Agent of this office"],pplOpts,{w:2,hint:AGL[p.sold_agency_id]&&!pplOpts.length?["Nog geen agents gekoppeld aan dit kantoor","No agents linked to this office yet"]:null})
+        :`<label class="ad-f w2"><span>${esc(tr(["Agent van dit kantoor","Agent of this office"]))}</span><select disabled><option>${esc(tr(["kies eerst een kantoor","pick an office first"]))}</option></select></label>`)
+    +`<div class="pe-aghint sm muted">${hint}${legacy} <a class="pe-aglink" data-agm="p">🏢 ${esc(tr(["Kantoren beheren","Manage offices"]))}</a></div>`}
 function secSale(){const p=P;
   return sec("sale",["Verkoop","Sale"],row(inp("sold_price",["Verkoopprijs (€)","Sold price (€)"],{type:"number",min:0,step:1000}),inp("sold_date",["Verkoopdatum","Sale date"],{type:"date"}),
-         sel("sold_agent_id",["Verkocht door","Sold by"],D.team.map(t=>[t.id,t.name])),inp("sold_agent_text",["Verkocht door (vrij)","Sold by (free text)"]))
+         sel("sold_agent_id",["Verkocht door (intern)","Sold by (internal)"],D.team.map(t=>[t.id,t.name])),`<div></div>`)
+    +secSaleExt()
     +row(inp("notary",["Notaris","Notary"],{w:2,list:"peNotaries",ph:["kies of typ","pick or type"]}),inp("notary_protocol",["Protocolnummer","Protocol number"]))
     +chk("sold_price_display",["Verkoopprijs tonen op de site","Display sold price"])
     +(D.is_admin?`<h5>${esc(tr(["Commissie","Commission"]))}</h5>`+row(inp("commission_a",["Commissie A (€)","Commission A (€)"],{type:"number",step:"any"}),inp("commission_b",["Commissie B (€)","Commission B (€)"],{type:"number",step:"any"}),
@@ -296,6 +319,7 @@ function bind(){
     set(k,el.value)});
   ROOT.addEventListener("change",e=>{const el=e.target;
     if(el.tagName==="SELECT"&&el.dataset.k)set(el.dataset.k,el.value===""?null:el.value);
+    if(el.dataset.k==="sold_agency_id"){set("sold_agency_agent_id",null);if(P.sold_agency_id)loadAgents(P.sold_agency_id);render(true);return}
     if(el.dataset.loc){const locs=D.locations;
       if(el.dataset.loc==="mun"){const m=locs.find(x=>x.id===+el.value);set("location_id",m?m.id:null);set("city",m?m.name:null);set("suburb",null)}
       else{const a=locs.find(x=>x.id===+el.value), mun=ROOT.querySelector('[data-loc="mun"]').value, m=locs.find(x=>x.id===+mun);
@@ -312,6 +336,11 @@ function bind(){
       const s=ROOT.querySelector("#pe-kost");if(s)s.scrollIntoView({block:"start"});toast(tr(["Overgenomen; vergeet niet op te slaan","Applied; remember to save"]))}});return}
     if(d.act==="keynext"){e.preventDefault();(async()=>{try{const n=await X.rpc("nexus_key_number_next",{});set("key_number",String(n));render(true)}catch(x){err(x.message||String(x))}})();return}
     if(d.act==="delete"){e.preventDefault();delProp();return}
+    if(d.act==="agintro"&&D.buyer_intro){e.preventDefault();const bi=D.buyer_intro;set("sold_agency_id",bi.agency_id||null);set("sold_agency_agent_id",bi.agent_id||null);
+      if(bi.agency_id)loadAgents(bi.agency_id);render(true);return}
+    if(d.agm==="p"&&window.NEXUS_AGENCIES){e.preventDefault();NEXUS_AGENCIES.manage({rpc:X.rpc,tr,isAdmin:()=>!!D.is_admin},{noFocus:false,
+      onPick:a=>{if(!ro("sold_agency_id")){set("sold_agency_id",a.id);set("sold_agency_agent_id",null);loadAgents(a.id)}render(true)},
+      onClose:()=>{Object.keys(AGL).forEach(k=>delete AGL[k]);render(true)}});return}
     if(d.jump){e.preventDefault();const s=ROOT.querySelector("#pe-"+d.jump);if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
     if(d.status){e.preventDefault();setStatus(d.status);return}
     if(d.txl){e.preventDefault();txL=d.txl;render(true);return}
@@ -330,6 +359,7 @@ let pT;function pickSearch(el){clearTimeout(pT);pT=setTimeout(async()=>{const co
 async function load(ref){
   shell();TOUCH={};TTOUCH={};MEDIA_DIRTY=false;PICKED={};
   await loadLK();
+  if(window.NEXUS_AGENCIES){try{await NEXUS_AGENCIES.list(X.rpc,true)}catch(_){}}
   try{D=await X.rpc("nexus_property_edit",{p_ref:ref})}catch(e){ROOT.querySelector(".pe-box").innerHTML=`<div class="pe-load">${esc(e.message)} <button class="btn" data-act="close">×</button></div>`;return}
   if(!D){ROOT.querySelector(".pe-box").innerHTML=`<div class="pe-load">${esc(tr(["Woning niet gevonden","Property not found"]))} <button class="btn" data-act="close">×</button></div>`;return}
   P=JSON.parse(JSON.stringify(D.property));if(!P.sold_date&&P.sold_at)P.sold_date=String(P.sold_at).slice(0,10);T=JSON.parse(JSON.stringify(D.texts||{}));M=JSON.parse(JSON.stringify(D.media||[]));
@@ -425,7 +455,14 @@ async function openContact(key,ctx){X=ctx;
   const mailRows=()=>`<label class="ad-c"><input type="checkbox" data-cf="mailing_optin" ${v.mailing_optin?"checked":""}><span><b>${esc(tr(["Toestemming voor mailings (opt-in)","Consent to mailings (opt-in)"]))}</b></span></label>
        <div class="ad-row" style="margin-top:8px">${CMAILS.map(([sl,lab])=>`<label class="ad-c ${sl==="market_report"?"w2":""}"><input type="checkbox" data-ms="${sl}" ${MS[sl]?"checked":""} ${v.mailing_optin?"":"disabled"}><span>${esc(tr(lab))}</span></label>`).join("")}</div>
        <small class="muted">${esc(tr(["Zonder toestemming gaat er geen enkele nieuwsbrief uit. Transactionele mails (review, welkom verkoper, opvolging) vallen hier niet onder.","Without consent no newsletter is sent. Transactional mails (review, seller welcome, follow-up) are not covered here."]))}</small>`;
-  const cfIn=f=>f[0]==="title"?`<label class="ad-f"><span>${esc(tr(f[1]))}</span>${optSel("data-cf","title",TITLES,v.title)}</label>`
+  /* Bedrijf (Rick 20-10-2026): keuzelijst uit core.agencies; een nieuwe naam bij een Agent wordt bij Opslaan een nieuw kantoor */
+  if(window.NEXUS_AGENCIES){try{await NEXUS_AGENCIES.list(X.rpc,true)}catch(_){}}
+  const agHint=()=>{const n=String(v.company||"").trim(), A=window.NEXUS_AGENCIES;if(!n||!A)return "";
+    const hit=A.byName(n);if(hit)return "✓ "+esc(tr(["kantoor uit de lijst","office from the list"]))+(hit.city?" · "+esc(hit.city):"");
+    return typeof rs!=="undefined"&&rs.has("agent")?esc(tr(["Nieuw kantoor: wordt bij Opslaan aan de lijst toegevoegd","New office: added to the list on Save"])):""};
+  const cfCompany=f=>`<label class="ad-f"><span>${esc(tr(typeof rs!=="undefined"&&rs.has("agent")?["Bedrijf (kantoor)","Company (office)"]:f[1]))} <a class="pe-aglink" data-agm="c">🏢 ${esc(tr(["beheren","manage"]))}</a></span>
+     <input data-cf="company" list="peAgList" value="${esc(v.company??"")}" autocomplete="off" placeholder="${esc(tr(["kies of typ","pick or type"]))}"><small id="peAgHint" class="muted">${agHint()}</small></label>`;
+  const cfIn=f=>f[0]==="company"?cfCompany(f):f[0]==="title"?`<label class="ad-f"><span>${esc(tr(f[1]))}</span>${optSel("data-cf","title",TITLES,v.title)}</label>`
     :`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" type="${f[2]||"text"}" value="${esc(v[f[0]]??"")}"></label>`;
   /* labels: aan/uit; bij Seller/Suspect-Seller aan verschijnt de optie om meteen een woning aan te maken */
   const RL=[["suspect","Suspect"],["seller","Seller"],["buyer","Buyer"],["suspect_seller","Suspect-Seller"],["agent","Agent"]];
@@ -486,7 +523,7 @@ async function openContact(key,ctx){X=ctx;
   };
   const draw=()=>{const sc=ROOT.querySelector(".pe-main");const top=sc?sc.scrollTop:0;ROOT.innerHTML=`<div class="pe-box pe-small"><header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(C.contact.full_name||"—")}</div><div class="pe-tt">${esc(tr(["Contactgegevens bewerken","Edit contact details"]))}</div></div>
      <button class="pe-x" data-act="cclose">×</button></header>
-     <div class="pe-main"><div id="peErr"></div>
+     <div class="pe-main"><div id="peErr"></div>${window.NEXUS_AGENCIES?NEXUS_AGENCIES.datalist("peAgList"):""}
      <section class="ad-sec" style="--sc:#ec4899"><h4>${esc(tr(["Labels","Labels"]))}</h4><div class="pe-roles">${RL.map(r=>`<button type="button" class="pe-role ${rs.has(r[0])?"on":""}" data-role="${r[0]}" style="--rc:var(--r-${r[0].replace("_","-")})">${r[1]}</button>`).join("")}</div>
        <small class="muted">${esc(tr(["Een contact kan op elk moment een ander label krijgen. Minstens één label.","A contact can get another label at any time. At least one label."]))}</small><div id="peProp">${propOpt()}</div></section>
      <section class="ad-sec" style="--sc:#3b82f6"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
@@ -523,12 +560,15 @@ async function openContact(key,ctx){X=ctx;
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
     const diff=()=>{const d={};for(const k of CEDIT){if(!(k in v))continue;const a=v[k]===""?null:v[k],b=o[k]===""?null:o[k];if(String(a??"")!==String(b??""))d[k]=a}return d};
     const anyDirty=()=>Object.keys(diff()).length||rolesChanged()||chChanged()||spChanged()||msChanged()||ptChanged();
-    const up=()=>{const n=Object.keys(diff()).length+(rolesChanged()?1:0)+(chChanged()?1:0)+(spChanged()?1:0)+(msChanged()?1:0)+(ptChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
+    const up=()=>{const h=ROOT.querySelector("#peAgHint");if(h)h.innerHTML=agHint();const n=Object.keys(diff()).length+(rolesChanged()?1:0)+(chChanged()?1:0)+(spChanged()?1:0)+(msChanged()?1:0)+(ptChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
     const wireMail=()=>{ROOT.querySelectorAll("#peMail [data-cf],[data-cf]").forEach(el=>el.oninput=el.onchange=()=>{v[el.dataset.cf]=el.type==="checkbox"?el.checked:el.value;
         if(el.dataset.cf==="mailing_optin"){if(!el.checked)CMAILS.forEach(([sl])=>MS[sl]=false);else if(!CMAILS.some(([sl])=>MS[sl]))CMAIL_DEF.forEach(sl=>MS[sl]=true);
           ROOT.querySelector("#peMail").innerHTML=mailRows();wireMail()}up()});
       ROOT.querySelectorAll("[data-ms]").forEach(el=>el.onchange=()=>{MS[el.dataset.ms]=el.checked;up()})};
     wireMail();
+    const agm=ROOT.querySelector('[data-agm="c"]');
+    if(agm)agm.onclick=e=>{e.preventDefault();e.stopPropagation();NEXUS_AGENCIES.manage({rpc:X.rpc,tr,isAdmin:()=>!!(X.me&&X.me()&&X.me().role==="admin")},{q:String(v.company||""),
+      onPick:a=>{v.company=a.name;draw()},onClose:()=>draw()})};
     ROOT.querySelectorAll("[data-sp]").forEach(el=>el.oninput=el.onchange=()=>{SP[el.dataset.sp]=el.value;up()});
     ROOT.querySelectorAll("[data-spb]").forEach(el=>el.onchange=()=>{const a=new Set(SP.build||[]);el.checked?a.add(el.dataset.spb):a.delete(el.dataset.spb);SP.build=[...a];up()});
     const wireCh=()=>{
