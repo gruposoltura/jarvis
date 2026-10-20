@@ -858,3 +858,27 @@ html[data-theme="light"] .introbar.ptbar .go{color:#be123c}
 .fx-empty{margin-top:8px}
 
 .mp-else{padding:8px 12px}.mp-else button{width:100%;padding:7px 10px;border-radius:9px;border:1px dashed var(--line2);background:var(--bg2);color:var(--acc);cursor:pointer;font-weight:600}
+
+/* ---------- Akte inlezen (nexus-deed.js, 20-10-2026) ---------- */
+.dd-ov{position:fixed;inset:0;z-index:70;background:rgba(5,8,18,.6);backdrop-filter:blur(2px);display:grid;place-items:center;padding:18px}
+.dd-box{width:min(620px,100%);max-height:100%;overflow:auto;background:var(--card);border:1px solid var(--line2);border-radius:16px;padding:20px 22px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.dd-box h3{margin:0 0 2px;font-size:calc(18px*var(--fs,1))}
+.dd-sub{margin-bottom:12px}
+.dd-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.dd-row{display:grid;grid-template-columns:22px minmax(140px,42%) 1fr;gap:10px;align-items:center;padding:8px 12px;border-top:1px solid var(--line);cursor:pointer}
+.dd-row:first-child{border-top:0}
+.dd-row:hover{background:var(--bg2)}
+.dd-row.eq{opacity:.6}
+.dd-row.dd-ex{background:color-mix(in srgb,var(--c-pr,#a855f7) 6%,transparent)}
+.dd-l{color:var(--tx2)}
+.dd-v{display:flex;flex-direction:column;min-width:0;word-break:break-word}
+.dd-now{color:#fbbf24}
+.dd-warn{margin-top:10px;padding:8px 12px;border-radius:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.4);color:#fcd34d;font-size:calc(13px*var(--fs,1))}
+.dd-miss{margin-top:10px}
+.dd-ft{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+.dd-busy{display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 6px;text-align:center}
+.dd-spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--line2);border-top-color:var(--c-pr,#a855f7);animation:ddspin 1s linear infinite}
+@keyframes ddspin{to{transform:rotate(360deg)}}
+.dd-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+html[data-theme="light"] .dd-now,html[data-theme="light"] .dd-warn{color:#b45309}
+@media (max-width:600px){.dd-row{grid-template-columns:22px 1fr}.dd-v{grid-column:2}}

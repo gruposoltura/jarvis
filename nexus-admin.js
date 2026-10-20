@@ -104,7 +104,8 @@ const blankProp=()=>({status:"draft",published:false,category:"",build_type:"res
   features:[],opts:{},
   texts:{en:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""},nl:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""},sv:{heading:"",description:"",key_details:"",seo_title:"",seo_description:""}},key_on:false,key_number:"",
   cost_community:"",cost_garbage:"",cost_ibi:"",cost_insurance:"",fee_transfer_tax:"",fee_legal:"",fee_notary:"",fee_registry:"",
-  registry_name:"",finca_number:"",cadastral_ref:""});
+  registry_name:"",finca_number:"",cadastral_ref:"",idufir:"",registry_tomo:"",registry_libro:"",registry_folio:"",registry_inscription:"",deed_build_area:"",deed_plot_area:"",
+  purchase_date:"",purchase_price:"",purchase_tax:"",purchase_tax_type:"",purchase_notary:"",purchase_notary_protocol:"",deed_read_at:""});
 function blank(){return{flow:"wizard",step:1,agentMode:"none",agent:null,newAgent:{company:"",first_name:"",last_name:"",email:"",phone:"",website:"",language:"es"},
   contactMode:"new",existing:null,c:blankContact(),propMode:null,linkProp:null,linkRel:"owner",p:blankProp(),
   /* losse schermen */
@@ -312,7 +313,7 @@ function propForm(base,media){
   const p=getP(S,base), B=k=>base+"."+k;
   const mun=p.municipality, areas=(LOCS||LOC_FALLBACK)[mun]||[];
   const nav=[["pf-basis",["Basis","Basics"]],["pf-prijs",["Prijs","Price"]],["pf-loc",["Locatie","Location"]],["pf-ind",["Indeling","Layout"]],["pf-ken",["Kenmerken","Features"]],
-    ["pf-tekst",["Teksten","Texts"]],["pf-media",["Foto's","Photos"]],["pf-kost",["Kosten","Costs"]],["pf-pub",["Publicatie","Publishing"]]];
+    ["pf-tekst",["Teksten","Texts"]],["pf-media",["Foto's","Photos"]],["pf-kost",["Eigendomsakte","Title deed"]],["pf-pub",["Publicatie","Publishing"]]];
   return `<div class="ad-jump">${nav.map(n=>`<a data-jump="${n[0]}">${esc(tr(n[1]))}</a>`).join("")}</div>
   ${sec(["Basis","Basics"],row(sel(B("status"),["Status","Status"],STATUS,{req:"save",empty:false}),sel(B("category"),["Woningtype","Property type"],CATS,{req:"save"}),
       sel(B("build_type"),["Bouw","Build"],[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]],{req:"save",empty:false}),sel(B("own_listing_type"),["Soort opdracht","Mandate"],LISTING,{empty:false}))
@@ -362,10 +363,16 @@ function propForm(base,media){
      <div class="ad-media" id="adMedia-${base}"></div>
      <small class="muted">${esc(tr(["Foto's blijven alleen in dit venster; ze worden pas geüpload naar Supabase Storage (bucket property-media) na koppeling.","Photos stay in this window only; they are uploaded to Supabase Storage (bucket property-media) once connected."]))}</small>`,{id:"pf-media"})}
   ${/* BESLUIT Rick 18/19-10-2026: geen kosten koper en geen vaste lasten in NEXUS. Niet terugzetten. */""}
-  ${sec(["Eigendomsakte","Title deed"],`<div class="ad-cols3">
-     <div><h5>${esc(tr(["Eigendomsakte","Title deed"]))}</h5>${inp(B("registry_name"),["Registro de la Propiedad","Land registry"],{list:"adRegistros",ph:["kies of typ, bijv. Torrevieja nº 2","pick or type, e.g. Torrevieja nº 2"]})}<datalist id="adRegistros">${(LOOKUPS.registry||[]).map(x=>`<option value="${esc(x)}">`).join("")}</datalist>${inp(B("finca_number"),["Fincanummer","Finca number"])}
-       ${inp(B("cadastral_ref"),["Kadastrale referentie","Cadastre number"],{hint:["20 tekens; hiermee worden de kadastergegevens opgehaald","20 characters; used to fetch the cadastral data"]})}</div></div>
-     <div class="ad-note sm">${esc(tr(["Verkoopprijs, notaris en commissies vul je later in via ✎ Bewerken op de woning (alleen beheerder).","Sale price, notary and commissions are entered later via ✎ Edit on the property (admin only)."]))}</div>`,{id:"pf-kost"})}
+  ${sec(["Eigendomsakte","Title deed"],`<div class="dd-bar">${window.NEXUS_DEED?NEXUS_DEED.button(tr).replace('data-deed="1"',`data-deed="${base}"`):""}<span class="sm muted">${esc(tr(["PDF of foto van de escritura; je ziet eerst wat er gevonden is.","PDF or photo of the escritura; you review what was found first."]))}</span></div>
+    <div class="ad-cols3">
+     <div><h5>${esc(tr(["Kadaster en registro","Cadastre and registry"]))}</h5>${inp(B("registry_name"),["Registro de la Propiedad","Land registry"],{list:"adRegistros",ph:["kies of typ, bijv. Torrevieja nº 2","pick or type, e.g. Torrevieja nº 2"]})}<datalist id="adRegistros">${(LOOKUPS.registry||[]).map(x=>`<option value="${esc(x)}">`).join("")}</datalist>${inp(B("finca_number"),["Fincanummer","Finca number"])}
+       ${inp(B("cadastral_ref"),["Kadastrale referentie","Cadastre number"],{hint:["20 tekens; hiermee worden de kadastergegevens opgehaald","20 characters; used to fetch the cadastral data"]})}${inp(B("idufir"),"IDUFIR / CRU")}</div>
+     <div><h5>${esc(tr(["Inschrijving en oppervlakte","Inscription and areas"]))}</h5>${row(inp(B("registry_tomo"),"Tomo"),inp(B("registry_libro"),"Libro"))}${row(inp(B("registry_folio"),"Folio"),inp(B("registry_inscription"),["Inscripción","Inscription"]))}
+       ${inp(B("deed_build_area"),["Bebouwd volgens akte (m²)","Built area per deed (m²)"],{type:"number",min:0})}${inp(B("deed_plot_area"),["Kavel volgens akte (m²)","Plot per deed (m²)"],{type:"number",min:0,hint:["Leeg bij een appartement","Empty for an apartment"]})}</div>
+     <div><h5>${esc(tr(["Aankoop huidige eigenaar","Purchase by current owner"]))}</h5>${inp(B("purchase_date"),["Datum aankoop","Purchase date"],{type:"date"})}${inp(B("purchase_price"),["Aankoopprijs (€)","Purchase price (€)"],{type:"number",min:0,step:"any"})}
+       ${row(inp(B("purchase_tax"),["Overdrachtsbelasting (€)","Transfer tax (€)"],{type:"number",min:0,step:"any"}),sel(B("purchase_tax_type"),["Soort","Type"],[["ITP","ITP"],["IVA","IVA"],["IVA+AJD","IVA + AJD"]],{empty:["—","—"]}))}
+       ${inp(B("purchase_notary"),["Notaris aankoop","Notary (purchase)"])}${inp(B("purchase_notary_protocol"),["Protocolnummer","Protocol number"])}</div></div>
+     <div class="ad-note sm">${esc(tr(["Verkoopprijs, notaris en commissies van onze verkoop vul je later in via ✎ Bewerken op de woning (alleen beheerder).","Our sale price, notary and commissions are entered later via ✎ Edit on the property (admin only)."]))}</div>`,{id:"pf-kost"})}
   ${sec(["Publicatie","Publishing"],`<div class="ad-multi c3">${chk(B("no_export"),["Uitsluiten van XML-feeds","Exclude from XML feeds"])}</div>
      <div class="ad-note sm">${esc(tr(["Online/offline volgt de status: Actief en Gereserveerd staan online, Concept, Verkocht en Ingetrokken offline.","Online/offline follows the status: Active and Reserved are online, Draft, Sold and Withdrawn offline."]))}</div>
      <div class="ad-f w4"><span>${esc(tr(["Labels","Labels"]))}</span>${multi(B("labels"),[["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:4})}<small>${esc(tr(["NEW zet NEXUS zelf: de eerste 7 dagen na de eerste publicatie.","NEXUS sets NEW itself: the first 7 days after first publication."]))}</small></div>
@@ -488,7 +495,9 @@ function propPayload(p,media,owner){
     distance_sea_m:n(p.distance_sea_m),distance_airport_m:n(p.distance_airport_m),distance_city_m:n(p.distance_city_m),distance_shops_m:n(p.distance_shops_m),
     fee_legal:n(p.fee_legal),fee_notary:n(p.fee_notary),fee_registry:n(p.fee_registry),fee_transfer_tax:n(p.fee_transfer_tax),cost_community:n(p.cost_community),cost_ibi:n(p.cost_ibi),
     cost_garbage:n(p.cost_garbage),cost_insurance:n(p.cost_insurance),cadastral_ref:p.cadastral_ref||null,finca_number:p.finca_number||null,key_number:p.key_on?(p.key_number||null):null,labels:(p.labels||[]).filter(x=>x!=="new"),export_feeds:p.export_feeds,
-    no_export:p.no_export,registry_name:p.registry_name||null,owner_contact_id:owner,listing_agent_id:teamName(p.listing_agent),listed_at:p.listed_at||null},
+    no_export:p.no_export,registry_name:p.registry_name||null,idufir:p.idufir||null,registry_tomo:p.registry_tomo||null,registry_libro:p.registry_libro||null,registry_folio:p.registry_folio||null,
+    registry_inscription:p.registry_inscription||null,deed_build_area:n(p.deed_build_area),deed_plot_area:n(p.deed_plot_area),purchase_date:p.purchase_date||null,purchase_price:n(p.purchase_price),
+    purchase_tax:n(p.purchase_tax),purchase_tax_type:p.purchase_tax_type||null,purchase_notary:p.purchase_notary||null,purchase_notary_protocol:p.purchase_notary_protocol||null,deed_read_at:p.deed_read_at||null,owner_contact_id:owner,listing_agent_id:teamName(p.listing_agent),listed_at:p.listed_at||null},
    "core.property_texts":TX_LANGS.filter(l=>Object.values(p.texts[l]||{}).some(Boolean)).map(l=>Object.assign({lang:l},p.texts[l])),
    "core.property_price_history":p.price?[{price:n(p.price),source:"nexus"}]:[],
    "core.property_media":media.map((m,i)=>({kind:m.kind,sort:i,is_main:i===0,caption:m.caption||null,storage_path:`property-media/<property_id>/<media_id>.${(m.name.split(".").pop()||"jpg").toLowerCase()}`,file:m.name,bytes:m.size})),
@@ -543,7 +552,8 @@ function propFields(p){
    "country","province","city","location_area","street","street_number","postal_code","lat","lng","hide_address",
    "distance_sea_m","distance_airport_m","distance_city_m","distance_shops_m","fee_legal","fee_notary","fee_registry","fee_transfer_tax",
    "cost_community","cost_ibi","cost_garbage","cost_insurance","cadastral_ref","finca_number","labels","export_feeds","no_export",
-   "listed_at","internal_notes","registry_name"].forEach(k=>{const v=pl[k];if(v!==undefined&&v!==null&&v!=="")f[k]=v});
+   "listed_at","internal_notes","registry_name","idufir","registry_tomo","registry_libro","registry_folio","registry_inscription","deed_build_area","deed_plot_area",
+   "purchase_date","purchase_price","purchase_tax","purchase_tax_type","purchase_notary","purchase_notary_protocol","deed_read_at"].forEach(k=>{const v=pl[k];if(v!==undefined&&v!==null&&v!=="")f[k]=v});
   if(f.cadastral_ref)f.cadastral_ref=String(f.cadastral_ref).replace(/\s/g,"").toUpperCase();
   if(p.dossier_complete)f.dossier_complete=true;
   const loc=locationId(p);if(loc)f.location_id=loc;
@@ -785,6 +795,9 @@ function bind(){
     persist();updateChecks()});
   ROOT.addEventListener("click",e=>{const t=e.target.closest("button,a");if(!t||!ROOT.contains(t))return;const d=t.dataset;
     if(t.id==="adDoneNew"){DONE=null;render();return}
+    if(d.deed&&window.NEXUS_DEED){e.preventDefault();const base=d.deed, p=getP(S,base);
+      NEXUS_DEED.run({sb:X.sb,tr,current:p,onApply:v=>{Object.entries(v).forEach(([k,x])=>setP(S,base+"."+k,x==null?"":String(x)));persist();render();
+        const s=ROOT.querySelector("#pf-kost");if(s)s.scrollIntoView({block:"start"})}});return}
     if(DONE&&(d.flow||d.step))DONE=null;
     if(d.flow){S.flow=d.flow;persist();render();ROOT.querySelector("#adMain").scrollTop=0;return}
     if(d.step){S.step=+d.step;if(S.step===3&&!isSeller())S.step=4;S.flow="wizard";persist();render();ROOT.querySelector("#adMain").scrollTop=0;

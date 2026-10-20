@@ -22,7 +22,7 @@ const FEED_FIELDS=["price","bedrooms","bathrooms","build_area","plot_area","ener
 let D=null, P=null, T=null, M=null, TOUCH={}, TTOUCH={}, MEDIA_DIRTY=false, txL="en", ROOT=null, busy=false, MAP=null;
 
 /* ---------- waarden ---------- */
-const isNum=k=>/^(price|price_previous|bedrooms|bathrooms|toilets|ensuites|rooms|kitchens|living_rooms|floors|balconies|terraces|patios|garages|carports|parking_spaces|build_area|plot_area|area_\w+|year_built|distance_\w+|fee_\w+|cost_\w+|lat|lng|sold_price|deed_price|commission_\w+|conveyancing|location_id)$/.test(k)&&k!=="commission_note";
+const isNum=k=>/^(price|price_previous|bedrooms|bathrooms|toilets|ensuites|rooms|kitchens|living_rooms|floors|balconies|terraces|patios|garages|carports|parking_spaces|build_area|plot_area|area_\w+|year_built|distance_\w+|fee_\w+|cost_\w+|lat|lng|sold_price|deed_price|commission_\w+|conveyancing|location_id|purchase_price|purchase_tax|deed_build_area|deed_plot_area)$/.test(k)&&k!=="commission_note";
 function norm(k,v){if(v===""||v===undefined)return null;if(v===null)return null;
   if(isNum(k)){const n=Number(String(v).replace(",","."));return isNaN(n)?null:n}
   if(/_at$|_date$/.test(k)&&typeof v==="string")return v.slice(0,10);
@@ -141,10 +141,17 @@ function secMedia(){
   return sec("media",["Foto's en media","Photos and media"],`<div class="ad-drop" id="peDrop"><input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
       <div><b>${esc(tr(["Sleep foto's hierheen of klik om te uploaden","Drop photos here or click to upload"]))}</b><div class="sm muted">${esc(tr(["JPG/PNG/WebP of PDF, max. 20 MB. Upload gebeurt bij Opslaan. Sleep een foto (of ⠿ op telefoon/tablet) naar een andere plek om de volgorde te wijzigen; de eerste foto is de hoofdfoto.","JPG/PNG/WebP or PDF, max 20 MB. Uploaded on Save. Drag a photo (or ⠿ on phone/tablet) to reorder; the first photo is the main photo."]))}</div></div></div>
     <div class="ad-media" id="peMedia"></div>`,{aside:`<span class="sm muted">${M.filter(m=>!m.del).length}</span>`})}
-function secCosts(){const n=(k,lab)=>inp(k,lab,{type:"number",min:0});
-  /* BESLUIT Rick 18/19-10-2026: geen kosten koper en geen vaste lasten in NEXUS. Niet terugzetten. */
-  return sec("kost",["Eigendomsakte","Title deed"],`<div class="ad-cols3">
-    <div><h5>${esc(tr(["Kadaster","Registry"]))}</h5>${inp("cadastral_ref",["Kadastrale referentie","Cadastral reference"])}${inp("finca_number",["Fincanummer","Finca number"])}${inp("registry_name",["Registro de la Propiedad","Land registry"],{list:"peRegistros",ph:["kies of typ","pick or type"]})}</div></div>`)}
+function secCosts(){
+  /* BESLUIT Rick 18/19-10-2026: geen kosten koper en geen vaste lasten in NEXUS. Niet terugzetten.
+     20-10-2026: aktegegevens (registro, inschrijving, oppervlakte volgens akte, aankoop huidige eigenaar) + knop Akte inlezen. */
+  return sec("kost",["Eigendomsakte","Title deed"],`<div class="dd-bar">${window.NEXUS_DEED?NEXUS_DEED.button(tr):""}<span class="sm muted">${esc(tr(["PDF of foto van de escritura; je ziet eerst wat er gevonden is.","PDF or photo of the escritura; you review what was found first."]))}${P.deed_read_at?" · "+esc(tr(["laatst ingelezen ","last read "]))+new Date(P.deed_read_at).toLocaleDateString("nl-NL"):""}</span></div>
+    <div class="ad-cols3">
+    <div><h5>${esc(tr(["Kadaster en registro","Cadastre and registry"]))}</h5>${inp("cadastral_ref",["Kadastrale referentie","Cadastral reference"])}${inp("finca_number",["Fincanummer","Finca number"])}${inp("registry_name",["Registro de la Propiedad","Land registry"],{list:"peRegistros",ph:["kies of typ","pick or type"]})}${inp("idufir","IDUFIR / CRU")}</div>
+    <div><h5>${esc(tr(["Inschrijving en oppervlakte","Inscription and areas"]))}</h5>${row(inp("registry_tomo","Tomo"),inp("registry_libro","Libro"))}${row(inp("registry_folio","Folio"),inp("registry_inscription",["Inscripción","Inscription"]))}
+      ${inp("deed_build_area",["Bebouwd volgens akte (m²)","Built area per deed (m²)"],{type:"number",min:0})}${inp("deed_plot_area",["Kavel volgens akte (m²)","Plot per deed (m²)"],{type:"number",min:0,hint:["Leeg bij een appartement","Empty for an apartment"]})}</div>
+    <div><h5>${esc(tr(["Aankoop huidige eigenaar","Purchase by current owner"]))}</h5>${inp("purchase_date",["Datum aankoop","Purchase date"],{type:"date"})}${inp("purchase_price",["Aankoopprijs (€)","Purchase price (€)"],{type:"number",min:0,step:"any"})}
+      ${row(inp("purchase_tax",["Overdrachtsbelasting (€)","Transfer tax (€)"],{type:"number",min:0,step:"any"}),sel("purchase_tax_type",["Soort","Type"],[["ITP","ITP"],["IVA","IVA"],["IVA+AJD","IVA + AJD"]]))}
+      ${inp("purchase_notary",["Notaris aankoop","Notary (purchase)"],{list:"peNotaries"})}${inp("purchase_notary_protocol",["Protocolnummer","Protocol number"])}</div></div>`)}
 function secContacts(){const C=D.contacts||{};
   const box=(k,col,lab,role)=>{const c=C[k];const cur=P[col];
     return `<div class="ad-f w2"><span>${esc(tr(lab))}</span>${cur&&c&&c.id===cur?`<div class="ad-picked"><div class="ini" style="background:var(--c-ct)">${esc((c.name||"?")[0].toUpperCase())}</div><div style="min-width:0"><b>${esc(c.name||"—")}</b><div class="sm muted">${esc(c.email||"")}</div></div>
@@ -284,6 +291,8 @@ function bind(){
     if(d.act==="dist"){e.preventDefault();calcDist();return}
     if(d.fxr&&window.NEXUS_FEAT){e.preventDefault();if(NEXUS_FEAT.handle(b,featModel()))render(true);return}
     if(d.act==="gen"){e.preventDefault();genTexts();return}
+    if(d.deed){e.preventDefault();if(window.NEXUS_DEED)NEXUS_DEED.run({sb:X.sb,tr,current:P,onApply:v=>{Object.entries(v).forEach(([k,x])=>set(k,x));render(true);
+      const s=ROOT.querySelector("#pe-kost");if(s)s.scrollIntoView({block:"start"});toast(tr(["Overgenomen; vergeet niet op te slaan","Applied; remember to save"]))}});return}
     if(d.act==="keynext"){e.preventDefault();(async()=>{try{const n=await X.rpc("nexus_key_number_next",{});set("key_number",String(n));render(true)}catch(x){err(x.message||String(x))}})();return}
     if(d.act==="delete"){e.preventDefault();delProp();return}
     if(d.jump){e.preventDefault();const s=ROOT.querySelector("#pe-"+d.jump);if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
