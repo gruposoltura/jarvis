@@ -52,6 +52,7 @@ function rerender(){
   if(curTab==="ac")loadActivity();
   if(window.NEXUS_ADMIN)NEXUS_ADMIN.rerender();
   if(window.NEXUS_FEEDS&&curTab==="xm")NEXUS_FEEDS.rerender();
+  if(window.NEXUS_REPORTS&&curTab==="rp")NEXUS_REPORTS.rerender();
 }
 
 const eur=v=>v==null||v===""?"—":"€ "+Number(v).toLocaleString(LOC(),{maximumFractionDigits:0});
@@ -138,12 +139,13 @@ async function boot(){
   buildRoleChips();buildStatusChips();buildBuildSeg();
   /* Admin (invoerschermen, nog niet gekoppeld): voorlopig alleen voor de rol admin */
   $("#tabAd").classList.toggle("hidden",ME.role!=="admin");
+  $("#tabRp").classList.toggle("hidden",ME.role!=="admin");
   $("#prNew").classList.toggle("hidden",ME.role!=="admin");
   route();
 }
 
 /* ================= TABS / ROUTING ================= */
-const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",xm:"--c-xm",ad:"--c-ad"};
+const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp"};
 let curTab="ov";
 function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t_));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
@@ -155,6 +157,7 @@ function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.da
   if(t_==="ac")loadActivity();
   if(t_==="xm"&&window.NEXUS_FEEDS)NEXUS_FEEDS.open($("#p-xm"),{rpc,t,sb,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="ad"&&window.NEXUS_ADMIN)NEXUS_ADMIN.open($("#p-ad"),{sb,rpc,t,lang:()=>LANG,me:()=>ME,esc});
+  if(t_==="rp"&&window.NEXUS_REPORTS)NEXUS_REPORTS.open($("#p-rp"),{rpc,t,lang:()=>LANG,me:()=>ME,esc});
 }
 $$(".tab").forEach(b=>b.onclick=()=>{location.hash=b.dataset.tab});
 window.addEventListener("hashchange",route);
@@ -165,7 +168,7 @@ function route(){
   if((m=h.match(/^p\/([^/?#]+)/))){setTab("pr");applyPrFocus();openProp(decodeURIComponent(m[1]));return}
   prFocus=false;applyPrFocus();
   if(h==="pr"&&prListY!=null){const y=prListY;requestAnimationFrame(()=>{const r=$("#prRows");if(r)r.scrollTop=y})}
-  if(h==="ad"&&ME.role!=="admin")return setTab("ov");
+  if((h==="ad"||h==="rp")&&ME.role!=="admin")return setTab("ov");
   setTab(TABC[h]?h:"ov");
 }
 const go={c:id=>location.hash="c/"+id,p:id=>location.hash="p/"+encodeURIComponent(id)};
