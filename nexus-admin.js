@@ -262,11 +262,11 @@ function stepContact(){
      +`<small class="muted">${esc(tr(["Voornaam óf bedrijf is genoeg. Eén persoon per contact: een echtpaar leg je vast als contact + partner hieronder.","First name or company is enough. One person per contact: record a couple as contact + partner below."]))}</small><div id="adPtHint">${ptHint()}</div>`)}
   ${sec(["Partner / tweede persoon","Partner / second person"],ptBlock(),{id:"ct-partner"})}
   ${sec(["E-mail en telefoon","E-mail and phone"],`
-    <div class="ad-list">${c.emails.map((e,i)=>`<div class="ad-row">${inp(`c.emails.${i}.email`,i?["Extra e-mail","Extra e-mail"]:"E-mail",{type:"email",w:3,req:i?"":"save",ac:"off"})}${sel(`c.emails.${i}.kind`,["Soort","Kind"],EMAIL_KINDS,{empty:false})}
+    <div class="ad-list">${c.emails.map((e,i)=>`<div class="ad-row">${inp(`c.emails.${i}.email`,i?["Extra e-mail","Extra e-mail"]:"E-mail",{type:"email",w:3,req:i||agentSuspect()?"":"save",ac:"off"})}${sel(`c.emails.${i}.kind`,["Soort","Kind"],EMAIL_KINDS,{empty:false})}
       ${i?`<button class="ad-x" data-rm="emails" data-i="${i}" title="×">×</button>`:""}</div>`).join("")}<button class="btn sm" data-add="emails">+ ${esc(tr(["e-mail","e-mail"]))}</button></div>
     <div class="ad-list">${c.phones.map((p,i)=>`<div class="ad-row">${inp(`c.phones.${i}.phone`,i?["Extra telefoon","Extra phone"]:["Telefoon","Phone"],{type:"tel",w:3,ph:"+34 …",ac:"off"})}${sel(`c.phones.${i}.kind`,["Soort","Kind"],PHONE_KINDS,{empty:false})}
       ${i?`<button class="ad-x" data-rm="phones" data-i="${i}" title="×">×</button>`:""}</div>`).join("")}<button class="btn sm" data-add="phones">+ ${esc(tr(["telefoon","phone"]))}</button></div>
-    <small class="muted">${esc(tr(["Minstens één e-mailadres of telefoonnummer.","At least one e-mail address or phone number."]))}</small>`)}
+    <small class="muted">${esc(tr(agentSuspect()?["Aangebracht door een makelaar: e-mail en telefoon zijn niet verplicht.","Introduced by an agent: e-mail and phone are optional."]:["Minstens één e-mailadres of telefoonnummer.","At least one e-mail address or phone number."]))}</small>`)}
   ${sec(["Adres","Address"],row(inp("c.street",["Straat","Street"],{w:2}),inp("c.street_number",["Nr.","No."]),inp("c.postcode",["Postcode","Postcode"]))
      +row(inp("c.city",["Plaats","City"],{w:2}),inp("c.state",["Provincie / regio","Province / region"]),inp("c.country",["Land","Country"],{list:"adCountries"})))}
   ${c.roles.some(r=>r==="buyer"||r==="suspect")?sec(["Zoekprofiel","Search profile"],row(inp("c.search.budget",["Budget","Budget"],{ph:["bijv. 200-300k","e.g. 200-300k"]}),
@@ -441,6 +441,8 @@ function validateProp(p,media,stepNo,out){
   else if(photos<5)add(["Minder dan 5 foto's","Fewer than 5 photos"],"tip","pf-media");
   if(p.cadastral_ref&&!/^[0-9A-Z]{20}$/i.test(p.cadastral_ref.replace(/\s/g,"")))add(["Kadastrale referentie heeft 20 tekens","Cadastral reference has 20 characters"],"tip","pf-kost");
 }
+/* makelaar brengt een suspect aan → e-mail/telefoon niet verplicht (Rick, 20-10-2026) */
+const agentSuspect=()=>S.agentMode!=="none"&&(S.c.roles||[]).some(r=>r==="suspect"||r==="suspect-seller"||r==="suspect_seller");
 function validate(flow){
   const out=[], add=(msg,level,step,jump)=>out.push({msg:tr(msg),level,step,jump});
   if(flow==="wizard"){
@@ -453,7 +455,7 @@ function validate(flow){
       if(!c.roles.length)add(["Minstens één label","At least one label"],"save",2);
       if(!c.first_name&&!c.company)add(["Voornaam of bedrijf","First name or company"],"save",2);
       const em=c.emails.map(e=>e.email.trim()).filter(Boolean), ph=c.phones.map(p=>p.phone.replace(/\D/g,"")).filter(x=>x.length>=6);
-      if(!em.length&&!ph.length)add(["E-mail of telefoon","E-mail or phone"],"save",2);
+      if(!em.length&&!ph.length&&!agentSuspect())add(["E-mail of telefoon","E-mail or phone"],"save",2);
       em.filter(e=>!emailOk(e)).forEach(e=>add([`Ongeldig e-mailadres: ${e}`,`Invalid e-mail: ${e}`],"save",2));
       if(!c.language)add(["Correspondentietaal","Correspondence language"],"save",2);
       const pt=c.partner||{};if(pt.on){if(!String(pt.first_name||"").trim()&&!String(pt.last_name||"").trim())add(["Naam van de partner (of ‘Geen partner’)","Partner's name (or ‘No partner’)"],"save",2,"ct-partner");
@@ -520,7 +522,14 @@ function payload(flow){
     out["core.contact_emails"]=c.emails.filter(e=>e.email).map((e,i)=>({email:e.email.trim().toLowerCase(),kind:e.kind||null,is_primary:i===0}));
     out["core.contact_phones"]=c.phones.filter(p=>p.phone).map((p,i)=>({phone:p.phone.trim(),kind:p.kind,is_primary:i===0}));
     out["core.contact_roles"]=c.roles.map(r=>({role:r}));}
-  if(S.agentMode!=="none")out["core.contact_relations"]=[{relation:"introduced_by",related_contact:S.agentMode==="existing"?(S.agent?`wp_id ${S.agent.wp_id}`:null):"← nieuwe makelaar"}];
+  const intro=S.agentMode==="existing"?(S.agent?(S.agent.name||`wp_id ${S.agent.wp_id}`):null):"← nieuwe makelaar";
+  if(S.agentMode!=="none")out["core.contact_relations"]=[{relation:"introduced_by",related_contact:intro}];
+  const pt=S.contactMode!=="existing"&&S.c.partner||{};
+  if(pt.on&&(String(pt.first_name||"").trim()||String(pt.last_name||"").trim())){
+    out["core.contacts (partner)"]={title:pt.title||null,first_name:String(pt.first_name||"").trim()||null,last_name:String(pt.last_name||"").trim()||String(c.last_name||"").trim()||null,
+      language:c.language||null,owner_id:teamName(c.owner),roles:"← zelfde labels als hoofdcontact",
+      emails:String(pt.email||"").trim()?[pt.email.trim().toLowerCase()]:[],phones:String(pt.phone||"").replace(/\D/g,"").length>=6?[pt.phone.trim()]:[]};
+    out["core.contact_relations (partner)"]=[{relation:"partner",related_contact:"← hoofdcontact"}].concat(S.agentMode!=="none"?[{relation:"introduced_by",related_contact:intro}]:[]);}
   if(pm()==="now")Object.assign(out,propPayload(S.p,MEDIA,"← dit contact"));
   if(pm()==="link"&&S.linkProp)out["koppeling"]={property:S.linkProp.reference,relation:S.linkRel,
     schrijft:{owner:"core.properties.owner_contact_id",buyer:"core.properties.buyer_contact_id",interest:"core.property_interests",agency:"core.properties.agency_contact_id"}[S.linkRel]};
