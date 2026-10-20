@@ -613,7 +613,7 @@ function propFeatures(p,raw,o,K,XL,m){
       +grp(L2("Oppervlakte volgens akte","Areas per deed"),[[L2("Bebouwd","Built"),m2u(D.deed_build_area)],[L2("Kavel","Plot"),m2u(D.deed_plot_area)]])
       +grp(L2("Aankoop huidige eigenaar","Purchase by current owner"),[[L2("Datum aankoop","Purchase date"),D.purchase_date?fdate(D.purchase_date):null],[L2("Aankoopprijs","Purchase price"),D.purchase_price!=null?eur(D.purchase_price):null],
         [L2("Overdrachtsbelasting","Transfer tax"),D.purchase_tax!=null?eur(D.purchase_tax)+(D.purchase_tax_type?` <span class="muted sm">· ${esc(D.purchase_tax_type)}</span>`:""):null,1],
-        [L2("Notaris","Notary"),[D.purchase_notary,D.purchase_notary_protocol&&("prot. "+D.purchase_notary_protocol)].filter(Boolean).join(" · ")||null]])
+        [L2("Notaris","Notary"),D.purchase_notary],[L2("Protocolnummer","Protocol number"),D.purchase_notary_protocol]])
       +(D.deed_read_at?`<div class="muted sm" style="margin:0 14px 10px">📄 ${L2("Akte ingelezen op ","Deed read on ")}${fdate(D.deed_read_at)}</div>`:""))}
     ${catSummary(K,p)}
     ${propExtData(p)}

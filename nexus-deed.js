@@ -27,8 +27,8 @@ const ROWS=[
   ["registry_inscription",["Inscripción","Inscription"],"registry_inscription",txt],
   ["idufir",["IDUFIR / CRU","IDUFIR / CRU"],"idufir",txt],
   ["cadastral_ref",["Kadastrale referentie","Cadastral reference"],"cadastral_ref",txt],
-  ["deed_build_area",["Bebouwde oppervlakte (akte)","Built area (deed)"],"build_area",m2],
-  ["deed_plot_area",["Oppervlakte kavel (akte)","Plot area (deed)"],"plot_area",m2],
+  ["deed_build_area",["Bebouwde oppervlakte (ook advertentie)","Built area (also listing)"],"build_area",m2],
+  ["deed_plot_area",["Oppervlakte kavel (ook advertentie)","Plot area (also listing)"],"plot_area",m2],
 ];
 const DOC={escritura_compraventa:["Koopakte (escritura de compraventa)","Purchase deed"],escritura_obra_nueva:["Akte nieuwbouw (obra nueva)","New-build deed"],
   escritura_herencia:["Akte erfenis (herencia)","Inheritance deed"],escritura_otra:["Escritura","Deed"],nota_simple:["Nota simple","Nota simple"],otro:["Onbekend document","Unknown document"]};
@@ -61,11 +61,9 @@ function run(o){const tr=o.tr;
 function show(o,r,fname){const tr=o.tr, f=r.fields||{}, cur=o.current||{};
   const found=ROWS.filter(x=>f[x[2]]!=null&&String(f[x[2]]).trim()!=="");
   const missing=ROWS.filter(x=>!found.includes(x)&&!(x[0]==="deed_plot_area"&&f.property_kind==="apartment"));
-  /* advertentie-oppervlakte: alleen meenemen als die nog leeg is (anders bewust aanvinken) */
+  /* Rick 20-10-2026: de oppervlakte uit de akte vervangt altijd ook de geadverteerde oppervlakte (bebouwd en kavel). */
   const extra=[];
-  if(f.build_area!=null)extra.push(["build_area",["Ook als bebouwde oppervlakte van de woning (advertentie)","Also as the listing's built area"],f.build_area,cur.build_area]);
-  if(f.plot_area!=null)extra.push(["plot_area",["Ook als perceeloppervlakte van de woning (advertentie)","Also as the listing's plot area"],f.plot_area,cur.plot_area]);
-  const rowHtml=(x,i)=>{const val=f[x[2]], now=cur[x[0]], diff=now!=null&&now!==""&&!same(now,val), eq=now!=null&&now!==""&&same(now,val);
+  const rowHtml=(x,i)=>{const val=f[x[2]], now=x[0]==="deed_build_area"?(cur.deed_build_area??cur.build_area):x[0]==="deed_plot_area"?(cur.deed_plot_area??cur.plot_area):cur[x[0]], diff=now!=null&&now!==""&&!same(now,val), eq=now!=null&&now!==""&&same(now,val);
     return `<label class="dd-row ${eq?"eq":""}"><input type="checkbox" data-ddi="${i}" ${eq?"":"checked"}>
       <span class="dd-l">${esc(tr(x[1]))}</span><span class="dd-v"><b>${esc(x[3](val))}</b>${diff?`<small class="dd-now">${esc(tr(["nu: ","now: "]))}${esc(x[3](now))}</small>`:eq?`<small class="muted">${esc(tr(["staat er al","already set"]))}</small>`:""}</span></label>`};
   const exHtml=(x,i)=>{const empty=x[3]==null||x[3]==="";const eq=!empty&&same(x[3],x[2]);if(eq)return"";
@@ -82,7 +80,8 @@ function show(o,r,fname){const tr=o.tr, f=r.fields||{}, cur=o.current||{};
   OV.querySelector("[data-dd=close]").onclick=closeOv;
   const ap=OV.querySelector("[data-dd=apply]");
   if(ap)ap.onclick=()=>{const out={};
-    OV.querySelectorAll("[data-ddi]").forEach(c=>{if(c.checked){const x=found[+c.dataset.ddi];out[x[0]]=f[x[2]]}});
+    OV.querySelectorAll("[data-ddi]").forEach(c=>{if(c.checked){const x=found[+c.dataset.ddi];out[x[0]]=f[x[2]];
+      if(x[0]==="deed_build_area")out.build_area=f[x[2]];if(x[0]==="deed_plot_area")out.plot_area=f[x[2]]}});
     OV.querySelectorAll("[data-dde]").forEach(c=>{if(c.checked){const x=extra[+c.dataset.dde];out[x[0]]=x[2]}});
     closeOv();if(Object.keys(out).length){out.deed_read_at=new Date().toISOString();o.onApply(out)}};
   OV.onclick=e=>{if(e.target===OV)closeOv()};
