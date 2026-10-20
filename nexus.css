@@ -882,3 +882,22 @@ html[data-theme="light"] .introbar.ptbar .go{color:#be123c}
 .dd-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px}
 html[data-theme="light"] .dd-now,html[data-theme="light"] .dd-warn{color:#b45309}
 @media (max-width:600px){.dd-row{grid-template-columns:22px 1fr}.dd-v{grid-column:2}}
+
+/* ---------- woningdetail: kolommen gelijk vullen (20-10-2026) ----------
+   pk-flow bevat de sprongbalk, de linkerkolom (foto, prijs, tegels) en alle secties.
+   Smal/middel: pk-flow doet niet mee (contents) en het bestaande grid blijft.
+   Breed: alles loopt als krantenkolommen over 3 kolommen, zodat geen kolom veel langer is dan de andere. */
+.pk-flow{display:contents}
+.pk-flow>.pk-jump{grid-column:1/-1;margin:0}
+@container (min-width:1120px){.pk-flow>.pk-jump{grid-column:1/3}.pk-photos{grid-row:1/span 3}}
+@container (min-width:1240px){
+  .pk{grid-template-columns:minmax(0,1fr) 140px}
+  .pk-flow{display:block;grid-column:1;grid-row:1;column-count:3;column-gap:14px;column-fill:balance}
+  .pk-flow>.pk-jump{column-span:all;margin:0 0 12px}
+  .pk-main,.pk-side,.pk-sa,.pk-sb{display:contents}
+  .pk-flow .pk-main>*,.pk-flow .pk-side>*,.pk-flow .pk-sa>*,.pk-flow .pk-sb>*{break-inside:avoid;margin:0 0 12px}
+  .pk-flow .pk-main>.pk-sub{break-after:avoid;margin-bottom:6px}
+  .pk-photos{grid-column:2;grid-row:1/span 2}
+  .psplit.focus #prBody .hero{height:clamp(220px,30vh,380px)}
+}
+@container (min-width:1560px){.pk{grid-template-columns:minmax(0,1fr) 150px}}

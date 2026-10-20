@@ -539,7 +539,8 @@ function propFeatures(p,raw,o,K,XL,m){
   const lst=D.listed_at||p.list_date;
   const desc=(LANG==="en"?D.desc_en||D.desc_nl:D.desc_nl||D.desc_en)||"";
   const descTxt=desc?(new DOMParser().parseFromString(desc.replace(/<\/(p|li|h\d)>|<br\s*\/?>/gi,"\n"),"text/html").body.textContent||"").replace(/\n{3,}/g,"\n\n").trim():"";
-  return `<div class="pk">
+  return `<div class="pk"><div class="pk-flow">
+    <div class="pk-jump">${PKSEC.map(x=>`<a data-pks="${x[0]}" style="--sc:${x[2]}">${L2(...x[1])}</a>`).join("")}</div>
   <div class="pk-main">
     <div class="hero" style="${raw.image?`background-image:url('${esc(raw.image)}')`:""}"><span class="pr">${eur(price)}</span></div>
     <div class="pricebox">
@@ -555,7 +556,6 @@ function propFeatures(p,raw,o,K,XL,m){
     <div class="facts">${tile("👁",num(raw.hits_total),t("fa.hits"))}${tile("⚡",raw.hits_today??"—",t("fa.today"))}${tile("✉",num(m.sent||0),t("fa.mailed"))}${tile("✓",num(m.converted||0),t("fa.conv"))}</div>
   </div>
   <div class="pk-side">
-    <div class="pk-jump">${PKSEC.map(x=>`<a data-pks="${x[0]}" style="--sc:${x[2]}">${L2(...x[1])}</a>`).join("")}</div>
     <div class="pk-sa">
     ${p.is_external?extBox(p,raw,XL):""}
     ${/* Rick 20-10-2026: eigenaarspaneel weg, de eigenaar staat al in de kop van de woning */""}
@@ -624,7 +624,7 @@ function propFeatures(p,raw,o,K,XL,m){
       [L2("Onder bod sinds","Under offer since"),D.under_offer_at?fdate(D.under_offer_at):null],
       [L2("Ingetrokken op","Withdrawn on"),D.withdrawn_at?fdate(D.withdrawn_at):null],
       [t("p.notary"),S.notary?null:raw.sold_notary]]))}
-  </div></div>
+  </div></div></div>
   <aside class="pk-photos" id="pkPhotos" aria-label="${L2("Foto's","Photos")}"><div class="pk-ph-h">${L2("Foto's","Photos")}</div><div class="pk-ph-list"><div class="loader sm">…</div></div></aside>
   <div class="card pk-wide" id="pkLog"><div class="hd"><h3>${L2("Wijzigingslog","Change log")}</h3></div><div class="pk-log-nx"><div class="loader sm">…</div></div>${raw.changelog?`<div class="sm muted" style="margin-top:10px">${L2("Historie uit CPR (tot 18 okt 2026)","History from CPR (until 18 Oct 2026)")}</div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div>`:""}</div>
   </div>`;
