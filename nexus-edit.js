@@ -93,7 +93,7 @@ function secStatus(){const p=P;
 function secSale(){const p=P;
   return sec("sale",["Verkoop","Sale"],row(inp("sold_price",["Verkoopprijs (€)","Sold price (€)"],{type:"number",min:0,step:1000}),inp("sold_date",["Verkoopdatum","Sale date"],{type:"date"}),
          sel("sold_agent_id",["Verkocht door","Sold by"],D.team.map(t=>[t.id,t.name])),inp("sold_agent_text",["Verkocht door (vrij)","Sold by (free text)"]))
-    +row(inp("notary",["Notaris","Notary"],{w:2,list:"peNotaries",ph:["kies of typ","pick or type"]}),inp("notary_protocol",["Protocolnummer","Protocol number"]),D.is_admin?inp("deed_price",["Aktewaarde (€)","Deed value (€)"],{type:"number",min:0,step:1000}):"")
+    +row(inp("notary",["Notaris","Notary"],{w:2,list:"peNotaries",ph:["kies of typ","pick or type"]}),inp("notary_protocol",["Protocolnummer","Protocol number"]))
     +chk("sold_price_display",["Verkoopprijs tonen op de site","Display sold price"])
     +(D.is_admin?`<h5>${esc(tr(["Commissie","Commission"]))}</h5>`+row(inp("commission_a",["Commissie A (€)","Commission A (€)"],{type:"number",step:"any"}),inp("commission_b",["Commissie B (€)","Commission B (€)"],{type:"number",step:"any"}),
          inp("commission_out",["Commissie uit (€)","Commission out (€)"],{type:"number",step:"any"}),inp("conveyancing",["Conveyancing (€)","Conveyancing (€)"],{type:"number",step:"any"}))

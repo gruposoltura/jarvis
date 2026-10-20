@@ -522,7 +522,7 @@ function propFeatures(p,raw,o,K,XL,m){
   const pool=pP&&pC?L2("Privé én gemeenschappelijk","Private and communal"):pP?L2("Privé zwembad","Private pool"):pC?L2("Gemeenschappelijk zwembad","Communal pool"):L2("Geen zwembad","No pool");
   const offered=p.is_external?(p.external_agency||t("external"))+(raw.external_refnr?" · "+raw.external_refnr:""):t("p.owngs");
   const tile=(ic,val,lbl)=>`<div><span class="fi">${ic}</span><b>${val}</b><span>${lbl}</span></div>`;
-  const D=PR.detail||{}, S=PR.sale||{};
+  const D=PR.detail||{}, S=Object.assign({},PR.sale||{}); delete S.deed_price; /* Rick 20-10-2026: aktewaarde weg uit Status & verkoop, staat al onder eigendomsakte */
   const yn=b=>b?L2("Ja","Yes"):null, m2u=v=>v?num(v)+" m²":null;
   const dist=v=>v==null||v===""?null:(v>=1000?(Math.round(v/100)/10).toLocaleString(LOC())+" km":num(v)+" m");
   const nWith=(a,b,lbl)=>a==null?null:(b?`${a} <span class="muted sm">(${L2("waarvan","of which")} ${b} ${lbl})</span>`:String(a));
@@ -562,7 +562,6 @@ function propFeatures(p,raw,o,K,XL,m){
     ${Object.keys(S).length?pkSec("status",L2("Status & verkoop","Status & sale"),kv([
       [L2("Verkoopprijs","Sale price"),S.sold_price!=null?eur(S.sold_price):null],
       [L2("Verkoopdatum","Sale date"),S.sold_date?fdate(S.sold_date):null],
-      [L2("Waarde in akte","Deed value"),S.deed_price!=null?eur(S.deed_price):null],
       [L2("Notaris","Notary"),[S.notary,S.notary_protocol&&("prot. "+S.notary_protocol)].filter(Boolean).join(" · ")],
       [L2("Verkocht door","Sold by"),S.sold_agent],
       [L2("Commissie A","Commission A"),S.commission_a!=null?eur(S.commission_a):null],
