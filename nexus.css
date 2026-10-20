@@ -216,9 +216,11 @@ pre.code{margin:0;padding:12px 14px;font:calc(12px*var(--fs,1))/1.5 ui-monospace
 .tab .cnt:empty{display:none}
 
 /* contactkop: prominente gegevens, aanbrenger, opt-ins */
-.cstrip{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.cstrip{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin-top:10px}
+.cpill{line-height:1.2}
+.dh h2 .h2co{color:var(--r-agent,#a78bfa)}
 .cpill{display:inline-flex;align-items:center;border:1px solid var(--line2);border-radius:10px;background:var(--bg2);overflow:hidden}
-.cpill a{padding:7px 12px;font-size:calc(15px*var(--fs,1));font-weight:700;color:var(--hi);text-decoration:none;letter-spacing:.01em}
+.cpill a{display:inline-flex;align-items:center;gap:6px;align-self:stretch;padding:7px 12px;font-size:calc(15px*var(--fs,1));line-height:1.2;font-weight:700;color:var(--hi);text-decoration:none;letter-spacing:.01em}
 .cpill a:hover{background:color-mix(in srgb,var(--acc) 20%,transparent)}
 .cpill a.wa{font-size:calc(11px*var(--fs,1));font-weight:800;padding:7px 9px;color:#25d366;border-left:1px solid var(--line2)}
 .introbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;padding:8px 12px;border-radius:10px;font-size:calc(13px*var(--fs,1));cursor:pointer;

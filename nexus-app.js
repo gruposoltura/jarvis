@@ -368,7 +368,7 @@ function renderContact(){
   const cleanTel=v=>String(v).replace(/[^\d+]/g,""), waNum=v=>cleanTel(v).replace(/^\+/,"").replace(/^00/,"");
   const intro=D.introducer;
   d.innerHTML=`<div class="dh"><div class="ini big" style="background:${hue(name)}">${esc(initials(name))}</div>
-    <div style="min-width:0;flex:1"><h2>${esc(name)}</h2>
+    <div style="min-width:0;flex:1"><h2>${esc(name)}${(c.roles||[]).includes("agent")&&D.company?`<span class="h2co"> · ${esc(D.company)}</span>`:""}</h2>
       <div class="roles">${(c.roles||[]).map(roleTag).join("")}<span class="sm muted" style="margin-left:6px">👤 <b style="color:${REPC[c.rep]||"#94a3b8"}">${esc(rep(c.rep))}</b> ${c.wp_id?" · #"+c.wp_id:""}${c.language?" · 🌐 "+esc(c.language):""}</span></div>
       <div class="cstrip">${phones.map(p=>`<span class="cpill"><a href="tel:${esc(cleanTel(p))}">☎ ${esc(p)}</a><a class="wa" href="https://wa.me/${esc(waNum(p))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${!phones.length?`<span class="cpill nophone"><a data-cedit="1" title="${esc(t("addphone"))}">☎ ${t("nophone")} · <b>+ ${t("addphone")}</b></a></span>`:""}${emails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}${!emails.length?`<span class="cpill nophone"><a data-cedit="1">✉ ${t("noemail")} · <b>+ ${t("addemail")}</b></a></span>`:""}</div>
       ${(CT.partners||[]).map(pt=>`<div class="introbar ptbar" data-c="${esc(pt.id)}">💑 ${t("pt.label")} <b>${esc(pt.name||pt.email||"—")}</b>${pt.phone?` · ${esc(pt.phone)}`:""}${pt.email?` · ${esc(pt.email)}`:""}<span class="go">${t("pt.open")}</span></div>`).join("")}
