@@ -146,7 +146,7 @@ function secCosts(){
      20-10-2026: aktegegevens (registro, inschrijving, oppervlakte volgens akte, aankoop huidige eigenaar) + knop Akte inlezen. */
   return sec("kost",["Eigendomsakte","Title deed"],`<div class="dd-bar">${window.NEXUS_DEED?NEXUS_DEED.button(tr):""}<span class="sm muted">${esc(tr(["PDF of foto van de escritura; je ziet eerst wat er gevonden is.","PDF or photo of the escritura; you review what was found first."]))}${P.deed_read_at?" · "+esc(tr(["laatst ingelezen ","last read "]))+new Date(P.deed_read_at).toLocaleDateString("nl-NL"):""}</span></div>
     <div class="ad-cols3">
-    <div><h5>${esc(tr(["Kadaster en registro","Cadastre and registry"]))}</h5>${inp("cadastral_ref",["Kadastrale referentie","Cadastral reference"])}${inp("finca_number",["Fincanummer","Finca number"])}${inp("registry_name",["Registro de la Propiedad","Land registry"],{list:"peRegistros",ph:["kies of typ","pick or type"]})}${inp("idufir","IDUFIR / CRU")}</div>
+    <div><h5>${esc(tr(["Kadaster en registro","Cadastre and registry"]))}</h5>${inp("cadastral_ref",["Kadastrale referentie","Cadastral reference"])}${inp("finca_number",["Fincanummer","Finca number"])}${inp("registry_name",["Registro de la Propiedad","Land registry"],{list:"peRegistros",ph:["kies of typ","pick or type"]})}${inp("idufir","IDUFIR / CRU")}${inp("drive_folder_id",["Klantmap op de Drive","Client folder on Drive"],{ph:["plak de link van de map","paste the folder link"],hint:["Map in ‘1. KLANTEN’; de knop 📁 in de woningkop opent hem","Folder in ‘1. KLANTEN’; the 📁 button in the property header opens it"]})}</div>
     <div><h5>${esc(tr(["Inschrijving en oppervlakte","Inscription and areas"]))}</h5>${row(inp("registry_tomo","Tomo"),inp("registry_libro","Libro"))}${row(inp("registry_folio","Folio"),inp("registry_inscription",["Inscripción","Inscription"]))}
       ${inp("deed_build_area",["Bebouwd volgens akte (m²)","Built area per deed (m²)"],{type:"number",min:0})}${inp("deed_plot_area",["Kavel volgens akte (m²)","Plot per deed (m²)"],{type:"number",min:0,hint:["Leeg bij een appartement","Empty for an apartment"]})}</div>
     <div><h5>${esc(tr(["Aankoop huidige eigenaar","Purchase by current owner"]))}</h5>${inp("purchase_date",["Datum aankoop","Purchase date"],{type:"date"})}${inp("purchase_price",["Aankoopprijs (€)","Purchase price (€)"],{type:"number",min:0,step:"any"})}
@@ -276,6 +276,7 @@ function bind(){
         if(a.length)o[el.dataset.path]=a;else delete o[el.dataset.path];set(k,o)}
       else{let a=[...(P[k]||[])];a=el.checked?[...new Set([...a,v])]:a.filter(x=>x!==v);set(k,a)}return}
     if(el.dataset.bool!=null){set(k,el.checked);return}
+    if(k==="drive_folder_id"){const m=String(el.value).match(/folders\/([\w-]{10,})|[?&]id=([\w-]{10,})/);if(m){el.value=m[1]||m[2]}}
     set(k,el.value)});
   ROOT.addEventListener("change",e=>{const el=e.target;
     if(el.tagName==="SELECT"&&el.dataset.k)set(el.dataset.k,el.value===""?null:el.value);

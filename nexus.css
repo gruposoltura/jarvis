@@ -901,3 +901,6 @@ html[data-theme="light"] .dd-now,html[data-theme="light"] .dd-warn{color:#b45309
   .psplit.focus #prBody .hero{height:clamp(220px,30vh,380px)}
 }
 @container (min-width:1560px){.pk{grid-template-columns:minmax(0,1fr) 150px}}
+/* Drive-knop in de woningkop (20-10-2026) */
+.dh .acts a.act-drive{background:#1a73e8;border-color:#1a73e8;color:#fff;font-weight:700}
+.dh .acts a.act-drive:hover{background:#1557b0}
