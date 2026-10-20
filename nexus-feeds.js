@@ -199,7 +199,7 @@ function editor(){
   const E=EDIT, ttl=E.isNew?(KIND==="export"?tr(["Nieuwe exportfeed","New export feed"]):tr(["Nieuwe importfeed","New import feed"])):(KIND==="export"?E.name:E.code);
   const body=KIND==="export"?`
     <div class="ad-row">${fld("name",["Naam van de feed","Feed name"],{w:2,ph:["bijv. Casagator","e.g. Casagator"],hint:["Leeg = naam van de makelaar","Empty = agent's name"]})}
-      ${selF("variant",["Inhoud","Content"],VARIANTS,{w:2,hint:["Alleen woningen met status In aanbod gaan mee (niet onder bod).","Only listings that are for sale are included (not under offer)."]})}</div>
+      ${selF("variant",["Inhoud","Content"],VARIANTS,{w:2,hint:["Alleen woningen met status In aanbod gaan mee (niet gereserveerd).","Only listings that are for sale are included (not reserved)."]})}</div>
     <div class="ad-row">${agentPicker()}</div>
     ${E.isNew?`<div class="xm-note">${esc(tr(["Na opslaan krijgt de feed een eigen geheime link die je kunt kopiëren en naar de makelaar sturen.","After saving the feed gets its own secret link to copy and send to the agent."]))}</div>`:urlBox(tr(["Link voor de makelaar","Link for the agent"]),cur().url)}`
   :`
