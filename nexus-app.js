@@ -53,6 +53,7 @@ function rerender(){
   if(window.NEXUS_ADMIN)NEXUS_ADMIN.rerender();
   if(window.NEXUS_FEEDS&&curTab==="xm")NEXUS_FEEDS.rerender();
   if(window.NEXUS_REPORTS&&curTab==="rp")NEXUS_REPORTS.rerender();
+  if(window.NEXUS_VIEWINGS&&curTab==="vw")NEXUS_VIEWINGS.rerender();
 }
 
 const eur=v=>v==null||v===""?"—":"€ "+Number(v).toLocaleString(LOC(),{maximumFractionDigits:0});
@@ -146,7 +147,7 @@ async function boot(){
 }
 
 /* ================= TABS / ROUTING ================= */
-const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp"};
+const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp",vw:"--c-vw"};
 let curTab="ov";
 function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t_));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
@@ -158,6 +159,7 @@ function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.da
   if(t_==="ac")loadActivity();
   if(t_==="xm"&&window.NEXUS_FEEDS)NEXUS_FEEDS.open($("#p-xm"),{rpc,t,sb,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="ad"&&window.NEXUS_ADMIN)NEXUS_ADMIN.open($("#p-ad"),{sb,rpc,t,lang:()=>LANG,me:()=>ME,esc});
+  if(t_==="vw"&&window.NEXUS_VIEWINGS)NEXUS_VIEWINGS.open($("#p-vw"),{rpc,t,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="rp"&&window.NEXUS_REPORTS)NEXUS_REPORTS.open($("#p-rp"),{rpc,t,lang:()=>LANG,me:()=>ME,esc});
 }
 $$(".tab").forEach(b=>b.onclick=()=>{location.hash=b.dataset.tab});
