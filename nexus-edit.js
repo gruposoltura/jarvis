@@ -52,9 +52,9 @@ const sec=(id,title,body,o={})=>`<section class="ad-sec" id="pe-${id}" style="--
 const row=(...c)=>`<div class="ad-row">${c.join("")}</div>`;
 
 /* ---------- opbouw ---------- */
-const NAV=[["status",["Status","Status"]],["basis",["Basis","Basics"]],["prijs",["Prijs","Price"]],["loc",["Locatie","Location"]],["ind",["Indeling","Layout"]],
+const NAV=[["status",["Status","Status"]],["basis",["Basis","Basics"]],["pub",["Publicatie","Publishing"]],["prijs",["Prijs","Price"]],["loc",["Locatie","Location"]],["ind",["Indeling","Layout"]],
   ["ken",["Kenmerken","Features"]],["tekst",["Teksten","Texts"]],["media",["Foto's","Photos"]],["kost",["Eigendomsakte","Title deed"]],["con",["Contacten","Contacts"]],
-  ["pub",["Publicatie","Publishing"]],["sale",["Verkoop","Sale"]],["hist",["Historie","History"]]];
+  ["sale",["Verkoop","Sale"]],["hist",["Historie","History"]]];
 function shell(){
   ROOT=document.getElementById("pe");if(!ROOT){ROOT=document.createElement("div");ROOT.id="pe";document.body.appendChild(ROOT);bind()}
   ROOT.className="pe";ROOT.innerHTML=`<div class="pe-box"><div class="pe-load">${esc(tr(["Woning laden…","Loading property…"]))}</div></div>`;
@@ -64,15 +64,14 @@ function render(keepScroll){
   const sc=keepScroll&&ROOT.querySelector("#peMain")?ROOT.querySelector("#peMain").scrollTop:0;
   const p=P, st=statusOf(p.status), title=((T.nl||{}).heading||(T.en||{}).heading||"");
   ROOT.innerHTML=`<div class="pe-box">
-   <header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(p.reference)} <span class="pe-st" style="--sc:${st[2]}">${esc(tr(st[1]))}</span>
+   <header class="pe-hd"><div class="pe-ref"><span class="pe-rf">${esc(p.reference)}</span><span class="pe-tt">${esc(title||"—")}</span><span class="pe-st" style="--sc:${st[2]}">${esc(tr(st[1]))}</span>
        ${p.origin==="partner"?`<span class="tag">${esc(tr(["Partnerwoning","Partner listing"]))}${p.external_ref?" · "+esc(p.external_ref):""}</span>`:""}</div>
-     <div class="pe-tt">${esc(title||"—")}</div></div>
      <button class="pe-x" data-act="close" title="${esc(tr(["Sluiten","Close"]))}">×</button></header>
    <div class="pe-body"><nav class="pe-nav">${NAV.map(n=>`<a data-jump="${n[0]}">${esc(tr(n[1]))}</a>`).join("")}</nav>
      <div class="pe-main" id="peMain">
        ${p.origin==="partner"?`<div class="ad-warnbox"><b>${esc(tr(["Partnerwoning: let op","Partner listing: note"]))}</b><span class="sm">${esc(tr(["Velden met ⟳ (prijs, kamers, oppervlakte, locatie, beschrijving en foto's) worden elke nacht om 01:15 door de partnerfeed overschreven. Status (gereserveerd / verkocht), koppelingen en kop blijven staan.","Fields marked ⟳ (price, rooms, areas, location, description and photos) are overwritten nightly at 01:15 by the partner feed. Status (reserved / sold), links and heading are kept."]))}</span></div>`:""}
        <div id="peErr"></div>
-       ${secStatus()}${secBasis()}${secPrice()}${secLoc()}${secLayout()}${secFeatures()}${secTexts()}${secMedia()}${secCosts()}${secContacts()}${secPub()}${secSale()}${secHist()}
+       ${secStatus()}${secBasis()}${secPub()}${secPrice()}${secLoc()}${secLayout()}${secFeatures()}${secTexts()}${secMedia()}${secCosts()}${secContacts()}${secSale()}${secHist()}
      </div></div>
    <footer class="pe-ft">${D.is_admin&&p.origin!=="partner"?`<button class="btn pe-del" data-act="delete" title="${esc(tr(["Woning definitief verwijderen (alleen beheerder)","Delete property permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span>
      <button class="btn" data-act="close">${esc(tr(["Annuleren","Cancel"]))}</button>
@@ -103,11 +102,11 @@ function secBasis(){const l=LS();
       sel("own_listing_type",["Soort opdracht","Mandate"],[["direct",["Direct","Direct"]],["indirect",["Indirect","Indirect"]]]),sel("listing_agent_id",["Verantwoordelijk","Responsible"],D.team.map(t=>[t.id,t.name])))
     +row(inp("reference",["Referentie","Reference"],{ro:true,hint:["Vast: wordt gebruikt in links en feeds","Fixed: used in links and feeds"]}),inp("year_built",["Bouwjaar","Year built"],{type:"number",min:1800}),inp("object_style",["Stijl","Style"]),
       P.origin==="partner"?inp("external_ref",["Partnerreferentie","Partner reference"],{ro:true}):""))
-    +row(sel("condition",["Staat van de woning","Condition"],[["new",["Nieuw","New"]],["good",["Goed","Good"]],["to_restore",["Op te knappen","To restore"]]],{empty:false}),`<div></div>`,`<div></div>`,`<div></div>`)
-    +("key_number" in P&&P.origin!=="partner"?row(inp("key_number",["Sleutelnummer","Key number"],{hint:["Leeg = geen sleutel in beheer","Empty = no keys held"]}),`<div class="ad-f"><span>&nbsp;</span><button class="btn sm" data-act="keynext" ${P.key_number?"disabled":""}>${esc(tr(["Vrij nummer toekennen","Assign free number"]))}</button></div>`):"")}
+    +row(sel("condition",["Staat van de woning","Condition"],[["new",["Nieuw","New"]],["good",["Goed","Good"]],["to_restore",["Op te knappen","To restore"]]],{empty:false}),
+      ...("key_number" in P&&P.origin!=="partner"?[inp("key_number",["Sleutelnummer","Key number"],{hint:["Leeg = geen sleutel in beheer","Empty = no keys held"]}),`<div class="ad-f"><span>&nbsp;</span><button class="btn sm pe-fbtn" data-act="keynext" ${P.key_number?"disabled":""}>${esc(tr(["Vrij nummer toekennen","Assign free number"]))}</button></div>`,`<div></div>`]:[`<div></div>`,`<div></div>`,`<div></div>`]))}
 function secPrice(){const h=D.price_history||[];
   return sec("prijs",["Prijs","Price"],row(inp("price",["Vraagprijs (€)","Asking price (€)"],{type:"number",min:0,step:1000}),inp("price_previous",["Vorige prijs (€)","Previous price (€)"],{type:"number",min:0,step:1000,hint:["Wordt automatisch gevuld bij een prijswijziging","Filled automatically when the price changes"]}),
-      inp("cost_community",["Gemeenschapskosten per JAAR (€)","Community fees per YEAR (€)"],{type:"number",min:0,step:1,hint:["Altijd het jaarbedrag","Always the yearly amount"]}))
+      inp("cost_community",["Gemeenschapskosten per JAAR (€)","Community fees per YEAR (€)"],{w:2,type:"number",min:0,step:1,hint:["Altijd het jaarbedrag","Always the yearly amount"]}))
     +`<div class="ad-multi c4">${chk("price_hidden",["Prijs verbergen","Hide price"])}${chk("price_fixed",["Vaste prijs","Price FIXED"])}${chk("price_from",["Prijs vanaf","Price FROM"])}${chk("price_on_request",["Prijs op aanvraag","Price ON REQUEST"])}</div>`
     +(h.length?`<div class="pe-hist">${h.map(x=>`<span>${NEXUS_DMY(x.at)} · <b>€ ${Number(x.price).toLocaleString("nl-NL")}</b> <span class="muted">${esc(x.source||"")}</span></span>`).join("")}</div>`:""))}
 function secLoc(){const l=LS(), locs=D.locations||[], cur=locs.find(x=>x.id===Number(P.location_id));
