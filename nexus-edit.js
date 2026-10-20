@@ -73,7 +73,7 @@ function render(keepScroll){
        <div id="peErr"></div>
        ${secStatus()}${secBasis()}${secPub()}${secPrice()}${secLoc()}${secLayout()}${secFeatures()}${secTexts()}${secMedia()}${secCosts()}${secContacts()}${secSale()}${secHist()}
      </div></div>
-   <footer class="pe-ft">${D.is_admin&&p.origin!=="partner"?`<button class="btn pe-del" data-act="delete" title="${esc(tr(["Woning definitief verwijderen (alleen beheerder)","Delete property permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span>
+   <footer class="pe-ft">${D.is_admin?`<button class="btn pe-del" data-act="delete" title="${esc(tr(["Woning definitief verwijderen (alleen beheerder)","Delete property permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span>
      <button class="btn" data-act="close">${esc(tr(["Annuleren","Cancel"]))}</button>
      <button class="btn ad-next" data-act="save" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
   ROOT.querySelector(".pe-box").insertAdjacentHTML("beforeend",`<datalist id="peRegistros">${(LK.registry||[]).map(x=>`<option value="${esc(x)}">`).join("")}</datalist><datalist id="peNotaries">${(LK.notary||[]).map(x=>`<option value="${esc(x)}">`).join("")}</datalist>`);
@@ -344,7 +344,7 @@ let LK={};
 async function loadLK(){if(LK.registry)return;try{LK=await X.rpc("nexus_lookups",{})||{}}catch(_){LK={}}}
 async function delProp(){
   const ref=P.reference;
-  const typed=prompt(tr([`Woning ${ref} definitief verwijderen? Teksten, foto's, prijshistorie, kadaster- en marktdata gaan mee; aanvragen en bezichtigingen blijven als contactmoment bij het contact. Er wordt een volledige kopie in het auditlog bewaard.\n\nTyp ${ref} om te bevestigen:`,
+  const typed=prompt((P.origin==="partner"?tr(["LET OP: dit is een partnerwoning. Staat hij nog in de XML-feed, dan komt hij bij de volgende nachtelijke import terug.\n\n","NOTE: partner property. If it is still in the XML feed, it will come back with the next nightly import.\n\n"]):"")+tr([`Woning ${ref} definitief verwijderen? Teksten, foto's, prijshistorie, kadaster- en marktdata gaan mee; aanvragen en bezichtigingen blijven als contactmoment bij het contact. Er wordt een volledige kopie in het auditlog bewaard.\n\nTyp ${ref} om te bevestigen:`,
     `Permanently delete property ${ref}? Texts, photos, price history, cadastre and market data go with it; requests and viewings stay as contact moments on the contact. A full copy is kept in the audit log.\n\nType ${ref} to confirm:`]));
   if(typed==null)return;if(typed.trim().toUpperCase()!==String(ref).toUpperCase()){alert(tr(["Referentie klopt niet; niets verwijderd.","Reference does not match; nothing deleted."]));return}
   try{await X.rpc("nexus_property_delete",{p_id:P.id});
