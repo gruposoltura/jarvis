@@ -586,7 +586,7 @@ async function openMail(body){
   o.innerHTML=`<div class="mvp-box"><div class="mvp-hd"><div style="min-width:0;flex:1"><div class="mvp-sj">${t("loading")}</div><div class="mvp-meta"></div></div><button class="pe-x" aria-label="${esc(t("mv.close"))}">×</button></div><div class="mvp-ev"></div><div class="mvp-bd"><div class="pe-load">${t("loading")}</div></div></div>`;
   document.body.appendChild(o);document.addEventListener("keydown",mailEsc);
   o.addEventListener("click",e=>{if(e.target===o||e.target.closest(".pe-x"))closeMail()});
-  let r;try{const {data,error}=await sb.functions.invoke("mail-preview",{body});if(error)throw error;r=data}catch(e){r={ok:false,error:e.message||"error"}}
+  let r;try{const {data,error}=await sb.functions.invoke("mail-preview",{body});if(error){let j=null;try{j=await error.context.json()}catch(x){}r=j||{ok:false,error:error.message}}else r=data}catch(e){r={ok:false,error:e.message||"error"}}
   if(!o.isConnected)return;
   if(!r||!r.ok||!r.html){o.querySelector(".mvp-sj").textContent=(r&&r.subject)||t("mv.na");o.querySelector(".mvp-bd").innerHTML=`<div class="empty">${esc(t(r&&r.error==="not_found"?"mv.gone":r&&r.error==="no_key"?"mv.nokey":"mv.na"))}</div>`;return}
   o.querySelector(".mvp-sj").textContent=r.subject||"—";
