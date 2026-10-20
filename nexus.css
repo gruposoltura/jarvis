@@ -832,7 +832,10 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .btn.act-newpr.hidden{display:none}
 .btn.act-newct{background:var(--c-ct);border-color:var(--c-ct);color:#fff;font-weight:700;margin-left:auto;white-space:nowrap}.btn.act-newct:hover{filter:brightness(1.1)}
 .btn.act-newct.hidden{display:none}
-#ctQ{min-width:110px}
+#p-ct:not(.hidden){display:flex;flex-direction:column;gap:12px}
+#p-ct > .split{flex:1;min-height:0}
+.ct-top{flex:none}
+.ct-top .toolbar:last-child{border-bottom:0}
 /* partner / tweede persoon (19-10-2026) */
 .introbar.ptbar{border-color:color-mix(in srgb,#e11d48 50%,transparent);background:color-mix(in srgb,#e11d48 11%,transparent)}
 .introbar.ptbar .go{color:#fda4af}.introbar.ptbar:hover{border-color:#e11d48}
