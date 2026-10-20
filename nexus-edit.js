@@ -139,7 +139,7 @@ function secTexts(){const t=T[txL]||{};
     ${row(f("seo_title",["SEO-titel","SEO title"],{w:2}),f("seo_keyword",["SEO-zoekwoord","SEO keyword"],{w:2}))}${row(f("seo_description",["SEO-omschrijving","SEO description"],{area:true,rows:2}))}`)}
 function secMedia(){
   return sec("media",["Foto's en media","Photos and media"],`<div class="ad-drop" id="peDrop"><input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
-      <div><b>${esc(tr(["Sleep foto's hierheen of klik om te uploaden","Drop photos here or click to upload"]))}</b><div class="sm muted">${esc(tr(["JPG/PNG/WebP of PDF, max. 20 MB. Upload gebeurt bij Opslaan. Sleep om de volgorde te wijzigen; ★ = hoofdfoto.","JPG/PNG/WebP or PDF, max 20 MB. Uploaded on Save. Drag to reorder; ★ = main photo."]))}</div></div></div>
+      <div><b>${esc(tr(["Sleep foto's hierheen of klik om te uploaden","Drop photos here or click to upload"]))}</b><div class="sm muted">${esc(tr(["JPG/PNG/WebP of PDF, max. 20 MB. Upload gebeurt bij Opslaan. Sleep een foto (of ⠿ op telefoon/tablet) naar een andere plek om de volgorde te wijzigen; de eerste foto is de hoofdfoto.","JPG/PNG/WebP or PDF, max 20 MB. Uploaded on Save. Drag a photo (or ⠿ on phone/tablet) to reorder; the first photo is the main photo."]))}</div></div></div>
     <div class="ad-media" id="peMedia"></div>`,{aside:`<span class="sm muted">${M.filter(m=>!m.del).length}</span>`})}
 function secCosts(){const n=(k,lab)=>inp(k,lab,{type:"number",min:0});
   /* BESLUIT Rick 18/19-10-2026: geen kosten koper en geen vaste lasten in NEXUS. Niet terugzetten. */
@@ -177,20 +177,46 @@ function initMap(){const el=ROOT.querySelector("#peMap"), L=window.L;if(!el||!L|
 /* ---------- media ---------- */
 function wireMedia(){const box=ROOT.querySelector("#peMedia"), drop=ROOT.querySelector("#peDrop");if(!box)return;
   const KIND=[["photo",["Foto","Photo"]],["floorplan",["Plattegrond","Floor plan"]],["document","Document"],["energy_certificate",["Energiecertificaat","Energy certificate"]]];
-  box.innerHTML=M.map((m,i)=>`<div class="ad-mi ${m.is_main&&!m.del?"main":""} ${m.del?"del":""}" draggable="true" data-i="${i}">
-    <div class="im" style="${m.url&&!/\.pdf($|\?)/i.test(m.url)?`background-image:url('${esc(m.url)}')`:""}">${m.url&&!/\.pdf($|\?)/i.test(m.url)?"":"PDF"}${m.is_main&&!m.del?`<span>${esc(tr(["Hoofdfoto","Main"]))}</span>`:""}${m.file?`<span class="new">${esc(tr(["nieuw","new"]))}</span>`:""}</div>
+  const isImg=m=>m.url&&!/\.pdf($|\?)/i.test(m.url);let pos=0;
+  box.innerHTML=M.map((m,i)=>{const n=m.del?"":++pos;return `<div class="ad-mi ${m.is_main&&!m.del?"main":""} ${m.del?"del":""}" data-i="${i}">
+    <div class="im" data-mdrag="${i}" title="${esc(tr(["Sleep om te verplaatsen","Drag to move"]))}" style="${isImg(m)?`background-image:url('${esc(m.url)}')`:""}">${isImg(m)?"":"PDF"}${m.is_main&&!m.del?`<span>${esc(tr(["Hoofdfoto","Main"]))}</span>`:""}${m.file?`<span class="new">${esc(tr(["nieuw","new"]))}</span>`:""}<i class="grip">⠿</i>${n?`<b class="pos">${n}</b>`:""}</div>
     <select data-mk="${i}" ${m.del?"disabled":""}>${KIND.map(k=>`<option value="${k[0]}" ${m.kind===k[0]?"selected":""}>${esc(tr(k[1]))}</option>`).join("")}</select>
     <input data-mc="${i}" placeholder="${esc(tr(["Bijschrift","Caption"]))}" value="${esc(m.caption||"")}" ${m.del?"disabled":""}>
-    <div class="ad-mibtn">${!m.is_main&&!m.del&&m.kind==="photo"?`<button data-mmain="${i}" title="${esc(tr(["Maak hoofdfoto","Make main"]))}">★</button>`:""}<button data-mdel="${i}" title="${esc(m.del?tr(["Terugzetten","Restore"]):tr(["Verwijderen","Delete"]))}">${m.del?"↺":"🗑"}</button></div></div>`).join("")
+    <div class="ad-mibtn">${m.del?"":`<button data-mmove="${i}:-1" title="${esc(tr(["Naar voren","Move earlier"]))}" ${i===0?"disabled":""}>◀</button><button data-mmove="${i}:1" title="${esc(tr(["Naar achteren","Move later"]))}" ${i===M.length-1?"disabled":""}>▶</button><span class="sp"></span>`}${!m.is_main&&!m.del&&m.kind==="photo"?`<button data-mmain="${i}" title="${esc(tr(["Maak hoofdfoto (zet hem vooraan)","Make main (moves it first)"]))}">★</button>`:""}<button data-mdel="${i}" title="${esc(m.del?tr(["Terugzetten","Restore"]):tr(["Verwijderen","Delete"]))}">${m.del?"↺":"🗑"}</button></div></div>`}).join("")
     ||`<div class="sm muted">${esc(tr(["Geen foto's.","No photos."]))}</div>`;
-  const ch=()=>{MEDIA_DIRTY=true;upDirty()};
-  box.querySelectorAll("[data-mk]").forEach(s=>s.onchange=()=>{M[+s.dataset.mk].kind=s.value;ch()});
-  box.querySelectorAll("[data-mc]").forEach(s=>s.oninput=()=>{M[+s.dataset.mc].caption=s.value;ch()});
-  box.querySelectorAll("[data-mdel]").forEach(b=>b.onclick=()=>{const m=M[+b.dataset.mdel];if(m.file){M.splice(+b.dataset.mdel,1)}else m.del=!m.del;
-    if(m.del&&m.is_main){m.is_main=false;const nx=M.find(x=>!x.del&&x.kind==="photo");if(nx)nx.is_main=true}ch();wireMedia()});
-  box.querySelectorAll("[data-mmain]").forEach(b=>b.onclick=()=>{M.forEach(x=>x.is_main=false);const m=M.splice(+b.dataset.mmain,1)[0];m.is_main=true;M.unshift(m);ch();wireMedia()});
-  let from=null;box.querySelectorAll(".ad-mi").forEach(el=>{el.ondragstart=()=>{from=+el.dataset.i;el.classList.add("drag")};el.ondragend=()=>el.classList.remove("drag");
-    el.ondragover=e=>e.preventDefault();el.ondrop=e=>{e.preventDefault();const to=+el.dataset.i;if(from==null||from===to)return;const m=M.splice(from,1)[0];M.splice(to,0,m);ch();wireMedia()}});
+  /* Hoofdfoto = eerste niet-verwijderde foto. Website en edit-RPC sorteren op is_main desc, sort; zo blijft wat je ziet gelijk aan wat de site toont. */
+  const syncMain=()=>{const first=M.find(x=>!x.del&&x.kind==="photo");M.forEach(x=>x.is_main=x===first)};
+  const ch=()=>{syncMain();MEDIA_DIRTY=true;upDirty()};
+  const move=(from,to)=>{if(to<0||to>=M.length||from===to)return;const m=M.splice(from,1)[0];M.splice(to,0,m);ch();wireMedia()};
+  box.querySelectorAll("[data-mk]").forEach(s=>s.onchange=()=>{M[+s.dataset.mk].kind=s.value;ch();wireMedia()});
+  box.querySelectorAll("[data-mc]").forEach(s=>s.oninput=()=>{M[+s.dataset.mc].caption=s.value;MEDIA_DIRTY=true;upDirty()});
+  box.querySelectorAll("[data-mdel]").forEach(b=>b.onclick=()=>{const m=M[+b.dataset.mdel];if(m.file){M.splice(+b.dataset.mdel,1)}else m.del=!m.del;ch();wireMedia()});
+  box.querySelectorAll("[data-mmain]").forEach(b=>b.onclick=()=>move(+b.dataset.mmain,0));
+  box.querySelectorAll("[data-mmove]").forEach(b=>b.onclick=()=>{const [i,d]=b.dataset.mmove.split(":").map(Number);move(i,i+d)});
+  /* Slepen met pointer events: werkt met muis, pen en touch. Live plaatsvervanger + auto-scroll. */
+  box.querySelectorAll("[data-mdrag]").forEach(h=>h.onpointerdown=e=>{
+    if(e.button>0||busy)return;const card=h.closest(".ad-mi");const touch=e.pointerType!=="mouse";
+    if(touch&&!e.target.closest(".grip"))return; /* op touch: vegen over de foto = scrollen, slepen via ⠿ */
+    e.preventDefault();const sx=e.clientX,sy=e.clientY;let ghost=null,ox=0,oy=0,px=sx,py=sy,raf=0;
+    const scroller=box.closest(".pe-main")||document.scrollingElement;
+    const start=()=>{const r=card.getBoundingClientRect();ox=sx-r.left;oy=sy-r.top;
+      ghost=card.cloneNode(true);ghost.classList.add("ad-ghost");ghost.style.width=r.width+"px";ghost.style.height=r.height+"px";document.body.appendChild(ghost);
+      card.classList.add("ph");document.body.classList.add("ad-sorting");place();tick()};
+    const place=()=>{ghost.style.transform=`translate(${px-ox}px,${py-oy}px) rotate(1.5deg)`;
+      const over=document.elementFromPoint(px,py),t=over&&over.closest(".ad-mi");
+      if(!t||t===card||t.parentNode!==box)return;const r=t.getBoundingClientRect();
+      const after=(py>r.bottom-r.height*.15)||(py>=r.top&&px>r.left+r.width/2);
+      if(after){if(t.nextSibling!==card)box.insertBefore(card,t.nextSibling)}else if(t.previousSibling!==card)box.insertBefore(card,t)};
+    const tick=()=>{const r=scroller===document.scrollingElement?{top:0,bottom:innerHeight}:scroller.getBoundingClientRect(),Z=70;
+      const v=py<r.top+Z?-Math.ceil((r.top+Z-py)/5):py>r.bottom-Z?Math.ceil((py-(r.bottom-Z))/5):0;
+      if(v){scroller.scrollTop+=v;place()}raf=requestAnimationFrame(tick)};
+    const mv=ev=>{px=ev.clientX;py=ev.clientY;if(!ghost){if(Math.hypot(px-sx,py-sy)<6)return;start()}else place()};
+    const end=ev=>{removeEventListener("pointermove",mv);removeEventListener("pointerup",end);removeEventListener("pointercancel",end);cancelAnimationFrame(raf);
+      if(!ghost)return;ghost.remove();card.classList.remove("ph");document.body.classList.remove("ad-sorting");
+      if(ev.type==="pointercancel"){wireMedia();return}
+      const order=[...box.querySelectorAll(".ad-mi")].map(x=>M[+x.dataset.i]);
+      if(order.some((m,i)=>m!==M[i])){M.length=0;M.push(...order);ch()}wireMedia()};
+    addEventListener("pointermove",mv);addEventListener("pointerup",end);addEventListener("pointercancel",end)});
   if(drop&&!drop.dataset.w){drop.dataset.w=1;const f=drop.querySelector("input");drop.onclick=()=>f.click();
     drop.ondragover=e=>{e.preventDefault();drop.classList.add("over")};drop.ondragleave=()=>drop.classList.remove("over");
     drop.ondrop=e=>{e.preventDefault();drop.classList.remove("over");add(e.dataTransfer.files)};f.onchange=()=>{add(f.files);f.value=""}}
