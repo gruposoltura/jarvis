@@ -1054,10 +1054,11 @@ html[data-theme="light"] .dd-now,html[data-theme="light"] .dd-warn{color:#b45309
 .vw-test{display:flex;gap:6px;align-items:center;color:var(--tx2);font-size:calc(12px*var(--fs,1))}
 .vw-re{padding:7px 12px}
 .vw-lead{margin:0;color:var(--tx3);font-size:calc(12.5px*var(--fs,1));max-width:90ch}
-.vw-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+.vw-scroll{overflow-x:hidden;border:1px solid var(--line);border-radius:14px;background:var(--card)}
 .vw-grid{display:flex;flex-direction:column}
-@media (max-width:1000px){.vw-grid{min-width:960px}}
-.vw-hd,.vw-row{display:grid;grid-template-columns:minmax(150px,1.25fr) repeat(6,minmax(0,1fr)) 104px;align-items:stretch}
+@media (max-width:1000px){.vw-scroll{overflow-x:auto}.vw-grid{min-width:960px}}
+.vw-hd,.vw-row{display:grid;grid-template-columns:minmax(0,1.2fr) repeat(6,minmax(0,1fr)) minmax(0,.9fr);align-items:stretch}
+.vw-hd>*,.vw-row>*{min-width:0}
 .vw-hd span{padding:9px 8px;font-size:calc(11px*var(--fs,1));letter-spacing:.06em;text-transform:uppercase;color:var(--tx3);border-bottom:1px solid var(--line)}
 .vw-row{border-bottom:1px solid var(--line);cursor:pointer;position:relative}
 .vw-row:last-child{border-bottom:0}
@@ -1092,7 +1093,7 @@ html[data-theme="light"] .dd-now,html[data-theme="light"] .dd-warn{color:#b45309
 .vw-st.na i{border-style:dashed}
 .vw-state{padding:10px 8px;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
 .vw-state small{color:var(--tx3);font-size:calc(11px*var(--fs,1))}
-.vw-pill{font-size:calc(11.5px*var(--fs,1));font-weight:700;padding:2px 9px;border-radius:999px;background:var(--card2);color:var(--tx2);white-space:nowrap}
+.vw-pill{font-size:calc(11.5px*var(--fs,1));font-weight:700;padding:2px 9px;border-radius:10px;background:var(--card2);color:var(--tx2);line-height:1.35}
 .vw-pill.done{background:#22c55e22;color:#22c55e}.vw-pill.wait{background:#f59e0b22;color:#f59e0b}.vw-pill.fail{background:#ef444422;color:#ef4444}
 .vw-detwrap{grid-column:1/-1;padding:0 14px 12px 14px;cursor:default}
 .vw-det{display:flex;flex-direction:column;gap:6px;border-top:1px dashed var(--line2);padding-top:10px}
