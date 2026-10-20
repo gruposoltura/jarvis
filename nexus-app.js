@@ -141,6 +141,7 @@ async function boot(){
   $("#tabAd").classList.toggle("hidden",ME.role!=="admin");
   $("#tabRp").classList.toggle("hidden",ME.role!=="admin");
   $("#prNew").classList.toggle("hidden",ME.role!=="admin");
+  $("#ctNew").classList.toggle("hidden",ME.role!=="admin");
   route();
 }
 

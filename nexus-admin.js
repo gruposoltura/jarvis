@@ -844,7 +844,7 @@ let agT;function agentDup(){clearTimeout(agT);agT=setTimeout(async()=>{const box
 
 window.NEXUS_ADMIN={open,rerender:()=>{if(ROOT&&ROOT.dataset.init)render()},
   /* vanuit Contacten: direct de workflow "Nieuw contact" openen (stap 2 = contact als er geen aanbrenger is) */
-  startNewContact:()=>{const f=()=>{S.flow="wizard";S.step=1;S.contactMode="new";persist()};if(ROOT&&ROOT.dataset.init){f();render()}else PENDING=f},
+  startNewContact:()=>{const f=()=>{DONE=null;S.flow="wizard";S.step=1;S.contactMode="new";persist()};if(ROOT&&ROOT.dataset.init){f();render()}else PENDING=f},
   /* vanuit een contact dat Seller wordt: 'Woning toevoegen' met dit contact als eigenaar */
   startNewProperty:owner=>{const f=()=>{DONE=null;S.flow="prop";S.wp=S.wp||{owner:null,p:blankProp()};S.wp.owner=owner||null;persist()};if(ROOT&&ROOT.dataset.init){f();render()}else PENDING=f}};
 })();

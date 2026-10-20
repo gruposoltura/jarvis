@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="/nexus.css?v=20261020rp2">
+<link rel="stylesheet" href="/nexus.css?v=20261020ct1">
 <script>try{var f=parseFloat(localStorage.getItem("nexus-fs"));if(f>0)document.documentElement.style.setProperty("--fs",f);var th=localStorage.getItem("nexus-theme");if(th==="light")document.documentElement.setAttribute("data-theme","light")}catch(e){}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -19,7 +19,7 @@
 <script src="/nexus-dates.js?v=1"></script>
 <script src="/date-picker.js?v=1" defer></script>
 <script src="/nexus-features.js?v=20261019pk1"></script>
-<script src="/nexus-admin.js?v=20261020dd1"></script>
+<script src="/nexus-admin.js?v=20261020ct1"></script>
 <script src="/nexus-deed.js?v=20261020dmy1"></script>
 <script src="/nexus-edit.js?v=20261020lay1"></script>
 <script src="/nexus-feeds.js?v=3"></script>
@@ -104,6 +104,7 @@
           <div class="toolbar">
             <input type="search" id="ctQ" data-i18n-ph="ct.search">
             <div class="seg" id="ctScope"><button data-v="all" class="on" data-i18n="scope.all"></button><button data-v="mine" data-i18n="scope.mine"></button></div>
+            <button class="btn act-newct hidden" type="button" id="ctNew" data-newct="1">+ <span data-i18n="act.newct"></span></button>
           </div>
           <div class="toolbar" id="ctRoles" style="padding-top:8px"></div>
           <div class="rows scroll" id="ctRows"></div>
@@ -139,7 +140,7 @@
   </main>
 </div>
 
-<script src="/nexus-app.js?v=62"></script>
+<script src="/nexus-app.js?v=63"></script>
 <script>
 /* Oogje achter elk wachtwoordveld: tonen/verbergen wat je typt */
 (function(){
