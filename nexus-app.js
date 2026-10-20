@@ -171,7 +171,10 @@ function route(){
   if((h==="ad"||h==="rp")&&ME.role!=="admin")return setTab("ov");
   setTab(TABC[h]?h:"ov");
 }
-const go={c:id=>location.hash="c/"+id,p:id=>location.hash="p/"+encodeURIComponent(id)};
+/* Zelfde hash opnieuw zetten vuurt geen hashchange (bv. lijst staat nog op #p/RH400 en je klikt RH400 weer aan):
+   dan zelf routeren, anders lijkt de kaart niet klikbaar. */
+function goHash(h){if(location.hash.replace(/^#/,"")===h)route();else location.hash=h}
+const go={c:id=>goHash("c/"+id),p:id=>goHash("p/"+encodeURIComponent(id))};
 /* + Nieuw contact (rechtsboven in Contacten): naar Admin, workflow "Nieuw contact" */
 function newContact(){location.hash="ad";setTimeout(()=>{if(window.NEXUS_ADMIN&&NEXUS_ADMIN.startNewContact)NEXUS_ADMIN.startNewContact()},0)}
 document.addEventListener("click",e=>{if(e.target.closest("[data-newct]")){e.preventDefault();e.stopPropagation();newContact()}},true);
@@ -194,7 +197,7 @@ function applyPrFocus(){
 }
 $("#prBack").onclick=()=>{if(prFrom&&prFrom.list){const y=prFrom.scroll||0;prFrom=null;location.hash="pr";requestAnimationFrame(()=>{const r=$("#prRows");if(r)r.scrollTop=y});return}
   if(prFrom&&prFrom.hash)location.hash=prFrom.hash;else if(history.length>1)history.back();else location.hash="pr"};
-$("#prAll").onclick=()=>{prFocus=false;prFrom=null;applyPrFocus();if(!prLoaded)loadProps(true)};
+$("#prAll").onclick=()=>{prFocus=false;prFrom=null;applyPrFocus();if(/^#?p\//.test(location.hash))history.replaceState(null,"","#pr");if(!prLoaded)loadProps(true)};
 /* data-c wint van data-p: zo opent de eigenaar-link op een woningkaart het contact, niet de woning */
 document.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;
   const del=e.target.closest("[data-del-id]");if(del){e.stopPropagation();e.preventDefault();delActivity(del.dataset.delK,del.dataset.delId);return}
@@ -638,9 +641,13 @@ function buildBuildSeg(){const B=[["","pb.all"],["resale","pb.resale"],["new","p
   $("#prBuild").innerHTML=B.map(b=>`<button data-b="${b[0]}" class="${prBuild===b[0]?"on":""}">${t(b[1])}</button>`).join("");
   $$("#prBuild button").forEach(b=>b.onclick=()=>{prBuild=b.dataset.b;buildBuildSeg();loadProps(true)})}
 let pT;$("#prQ").addEventListener("input",()=>{clearTimeout(pT);pT=setTimeout(()=>loadProps(true),280)});
+let prSeq=0;
 async function loadProps(reset){
+  const seq=++prSeq;
   const box=$("#prRows");if(reset){prOff=0;box.innerHTML=`<div class="loader">${t("loading.props")}</div>`}
-  let r;try{r=await rpc("nexus_properties",{p_q:$("#prQ").value,p_status:prStatus+(prBuild?":"+prBuild:""),p_limit:48,p_offset:prOff})}catch(e){box.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
+  let r;try{r=await rpc("nexus_properties",{p_q:$("#prQ").value,p_status:prStatus+(prBuild?":"+prBuild:""),p_limit:48,p_offset:prOff})}catch(e){if(seq===prSeq)box.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
+  /* een latere zoekopdracht/filter is al onderweg: dit antwoord is verouderd */
+  if(seq!==prSeq)return;
   prLoaded=true;
   const html=r.rows.map(p=>`<div class="pc ${prSel===p.reference?"sel":""}" data-p="${esc(p.reference)}"><div class="im" style="${p.image?`background-image:url('${esc(p.image)}')`:""}">
      <span class="badge">${esc(p.reference||"")}</span>${stBadge(p.core_status)}${p.req30>0?`<span class="hot">${p.req30}× 30d</span>`:""}</div>
