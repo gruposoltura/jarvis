@@ -479,7 +479,7 @@ function ctProfile(c,raw){
     const top=ints.slice(0,4);
     const tiles=`<div class="cp-tiles">${cpTile(L2("Aanvragen","Enquiries"),num(reqs.length))}${cpTile(L2("Eerste contact","First contact"),firstTouch?fdate(firstTouch):"—")}${cpTile(L2("Laatst actief","Last active"),lastTouch?ago(lastTouch):"—")}</div>`;
     const list=top.length?`<div class="pk-grp">${L2("Interesse in","Interested in")}</div><div class="cp-chips">${top.map(p=>`<a class="cp-chip" data-p="${esc(p.key||p.reference)}"><b>${esc(p.reference)}</b> ${eur(p.price)} · ${p.n}×</a>`).join("")}</div>`:"";
-    return cpSec("lead",L2("Lead","Lead"),tiles+list)};
+    return cpSec("lead",L2("Lead","Lead"),tiles+list,{wide:1})};
 
   /* volgorde: de actieve rol eerst. Verkoper met woning online gaat voor koper die al gekocht heeft. */
   const blocks=[];
