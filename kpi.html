@@ -1184,22 +1184,31 @@
   };
   var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
-  function propPin(force){
-    var pin = localStorage.getItem('jarvis_prop_pin') || '';
-    if(force || !pin){
-      pin = (window.prompt('JARVIS goedkeurings-PIN:','') || '').trim();
-      if(pin) localStorage.setItem('jarvis_prop_pin', pin);
-      else localStorage.removeItem('jarvis_prop_pin');
-    }
-    return pin;
-  }
-  function propDispatch(kind, id, action){
-    var pin = propPin(false);
-    if(!pin) return;
+  // 21-10-2026: geen PIN meer. De dispatcher controleert de Bridge-login (Supabase-sessie als Bearer)
+  // en geeft de publisher-URL terug; die openen we in het vooraf geopende tabblad (anders blokkeert
+  // de browser het als pop-up). Oude PIN uit de browser wissen.
+  try { localStorage.removeItem('jarvis_prop_pin'); } catch(e){}
+  async function propDispatch(kind, id, action){
     var msg = PROP_CONFIRM[kind + ':' + action];
     if(msg && !window.confirm(msg)) return;
-    window.open(PROP_DISPATCH_URL + '?pin=' + encodeURIComponent(pin) + '&kind=' + encodeURIComponent(kind)
-      + '&id=' + encodeURIComponent(id) + '&action=' + encodeURIComponent(action), '_blank', 'noopener');
+    var w = window.open('', '_blank');
+    if(w){ try { w.opener = null; w.document.title = 'JARVIS'; w.document.body.innerHTML = '<p style="font-family:Arial;padding:24px">Bezig\u2026</p>'; } catch(e){} }
+    try{
+      var sess = await sb.auth.getSession();
+      var tok = sess && sess.data && sess.data.session ? sess.data.session.access_token : '';
+      if(!tok) throw new Error('Niet ingelogd. Log opnieuw in op The Bridge.');
+      var r = await fetch(PROP_DISPATCH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok },
+        body: JSON.stringify({ kind: kind, id: id, action: action })
+      });
+      var j = {}; try { j = await r.json(); } catch(e){}
+      if(!r.ok || !j.ok || !j.redirect_url) throw new Error(j.reason || ('Dispatcher gaf ' + r.status));
+      if(w) w.location.href = j.redirect_url; else window.location.href = j.redirect_url;
+    }catch(e){
+      if(w) try { w.close(); } catch(_){}
+      window.alert('Niet uitgevoerd: ' + (e && e.message ? e.message : e));
+    }
     setTimeout(loadProps, 4000); setTimeout(loadProps, 12000);
   }
   async function loadProps(){
@@ -1228,7 +1237,7 @@
           + '<button class="no" data-kind="' + esc(p.kind) + '" data-id="' + esc(p.id) + '" data-action="skip">\u2715 AFWIJZEN</button>'
           + '</div></div>';
       }).join('')
-      + '<p style="margin:9px 0 0;font-size:11px;color:var(--muted)">social &amp; ads &amp; hot leads tonen eerst een bevestigingspagina &middot; <span class="pinlink" id="prop-pin-reset">PIN wijzigen</span></p>';
+      + '<p style="margin:9px 0 0;font-size:11px;color:var(--muted)">social &amp; ads &amp; hot leads tonen eerst een bevestigingspagina</p>';
     }catch(e){ el.innerHTML = '<p style="color:var(--muted)">Fout bij laden voorstellen.</p>'; }
   }
 
@@ -1739,7 +1748,6 @@
     if(propsEl) propsEl.addEventListener('click', function(ev){
       var btn = ev.target.closest('button[data-kind]');
       if(btn){ propDispatch(btn.dataset.kind, btn.dataset.id, btn.dataset.action); return; }
-      if(ev.target.id === 'prop-pin-reset') propPin(true);
     });
     load();
     setInterval(load, 5 * 60 * 1000);
