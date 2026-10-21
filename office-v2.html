@@ -57,6 +57,10 @@
   *-map.webp (R = schaduw, G = kleding, B = haar) worden per afdelingskleur x haarkleur ingekleurd (tinted()).
   desk-empty-v3.webp = leeg bureau (gepauzeerd / nooit gedraaid / agent is elders).
   Tekstballonnen bij 'working' (begin van last_summary). Lege runs (NOOP_RE) tellen niet als actief.
+  Eilandjes (21-10): binnen een rij (rolcluster) staan de bureaus in eilanden van max 3, met de korte kanten
+  tegen elkaar en een eiland-mat eronder; eilanden in een raster met doorlopende gangpaden (langs x tussen de
+  eilandkolommen, dwarsgangen langs y onder elke eilandrij). Lopers volgen die gangpaden (a._ax / a._ay uit
+  planDept) en lopen dus tussen de eilanden door, langs de bureaus, naar deur of collega.
   Paneel: A- / A+ / breedte / standaard, sleepgreep links; keuze per browser in localStorage 'bridge.office2.panel'.
 -->
 <html lang="nl">
@@ -238,6 +242,7 @@
   .slab:hover .slab-top,.slab:focus-visible .slab-top,.dept.cur .slab-top{stroke:var(--c);stroke-width:1.8}
   .dept.cur .slab-glow{fill:color-mix(in srgb,var(--c) 16%,transparent)}
   .band{fill:#fff;fill-opacity:.028}
+  .isle{fill:color-mix(in srgb,var(--c) 10%,#0d1420);fill-opacity:.85;stroke:color-mix(in srgb,var(--c) 38%,transparent);stroke-width:.8;stroke-opacity:.7}
   .lane{font:700 7.6px var(--mono);letter-spacing:.1em;fill:color-mix(in srgb,var(--c) 55%,#b9cbd8)}
   .plate{font:700 10.5px var(--mono);letter-spacing:.08em;fill:color-mix(in srgb,var(--c) 55%,#fff)}
 
@@ -568,13 +573,19 @@
   var HW = 26, HH = 13;                 /* halve tegel: 1 cel = 52 x 26 px op het scherm */
   var SLAB = 22;                        /* dikte van een afdelingsplatform */
   var EDGE = Math.sqrt(HW * HW + HH * HH);
-  var PAD = 1.0, LANE_GAP = 0.6, MAX_COLS = 6, DEPT_GAP = 1.6;   /* 12-10: eilanden ruim, met looppaden */
+  var PAD = 1.0, LANE_GAP = 0.6, DEPT_GAP = 1.6;   /* 12-10: afdelingen ruim, met looppaden */
   var BRAIN = 4.6;                      /* zijde van het Brain-blok in cellen */
   var CARD_H = 112;                     /* ruimte die een afdelingspaneel boven het platform inneemt */
 
   /* gerenderde sprites (map office-v2-assets/) */
   var ASSETS = "office-v2-assets/";
-  var AGENT_DX = 2.6, AGENT_DY = 2.45;  /* celafstand per agent (12-10: ruimer, bureaus verder uit elkaar) */
+  var AGENT_DX = 2.6, AGENT_DY = 2.45;  /* celmaat van één bureauplek (12-10); 21-10: alleen nog marges, de plaatsing gaat per eiland */
+  var ISL_MAX = 3, ISL_COLS = 3;        /* 21-10 eilandjes: max bureaus per eiland, min. aantal eilandkolommen per rij */
+  var ISL_DY = 1.88;                    /* bureaus in een eiland: korte kanten tegen elkaar (bladlengte ~1,9 cel langs y) */
+  var ISL_DX = 2.85, ISL_ROW_GAP = 0.85;   /* eilandkolommen langs x (bureau+stoel 1,7 + gangpad), dwarsgang tussen eilandrijen */
+  var DESK_X0 = -0.95, DESK_X1 = 0.75, DESK_Y0 = -1.41, DESK_Y1 = 0.59;   /* voetafdruk bureau+stoel t.o.v. het anker */
+  var ISL_AX = DESK_X1 + (ISL_DX - (DESK_X1 - DESK_X0)) / 2;              /* gangpad rechts van de stoel, midden tussen twee eilanden */
+  var AISLE_Y = 0.5;                    /* dwarsgang: zoveel onder het einde van het langste eiland in de rij */
   var DESK_W = 80, DESK_H = DESK_W * 904 / 757;   /* sprite v3 757x904 */
   var DESK_AX = 0.50, DESK_AY = 0.86;             /* ankerpunt in de sprite (aandeel van b x h) */
   var BRAIN_W = 340, BRAIN_H = BRAIN_W * 553 / 768 * 0.87;  /* 0.87 = 30°-iso naar 2:1 persen */
@@ -731,7 +742,7 @@
      erven dan de layout-velden van de vorige (anders crasht patchPipes op d._port en stopt de rest:
      kaartjes, powerballen en sub-afdelingen werden na de eerste minuut niet meer bijgewerkt). */
   function carryLayout(oldById, oldDepts) {
-    S.agents.forEach(function (a) { var o = oldById[a.agent_id]; if (o) { a._lx = o._lx; a._ly = o._ly; a._p = o._p; } });
+    S.agents.forEach(function (a) { var o = oldById[a.agent_id]; if (o) { a._lx = o._lx; a._ly = o._ly; a._ax = o._ax; a._ay = o._ay; a._p = o._p; } });
     var od = {}; oldDepts.forEach(function (d) { od[d.name] = d; });
     S.depts.forEach(function (d) { var o = od[d.name]; if (!o) return; for (var k in o) if (!(k in d)) d[k] = o[k]; });
   }
@@ -816,23 +827,38 @@
       });
     });
     var gutter = maxLabel ? Math.min(3.6, Math.max(1.3, maxLabel * 5.7 / EDGE + 0.55)) : 0;
-    var cols = 0, y = WALL + PADY;
+    /* 21-10: eilandjes. Per rij (lane) worden de bureaus in eilanden van max ISL_MAX gezet die met de
+       korte kant tegen elkaar staan (langs y, ISL_DY). Eilanden staan in een raster: kolommen langs x
+       (ISL_DX, zelfde x-raster voor alle rijen, zodat de gangpaden doorlopen), eilandrijen langs y met
+       een dwarsgang (ISL_ROW_GAP). Per agent: _ax = lokaal x van het gangpad rechts van zijn stoel,
+       _ay = lokaal y van de dwarsgang onder zijn eilandrij (langs de langste eilanden in die rij). */
+    var cols = 0, y = WALL + PADY, x0 = WALL + PADX + gutter;
+    d.islands = [];
     lanes.forEach(function (l, i) {
       if (i) y += LANE_GAP;
-      var n = l.agents.length, rows = Math.ceil(n / MAX_COLS), per = Math.ceil(n / rows);
+      var n = l.agents.length, m = Math.ceil(n / ISL_MAX), sizes = [], k0 = Math.floor(n / m), extra = n % m, j, at = 0;
+      for (j = 0; j < m; j++) sizes.push(k0 + (j < extra ? 1 : 0));
+      var nc = Math.min(m, Math.max(ISL_COLS, Math.ceil(Math.sqrt(m))));
       l.y0 = y;
-      for (var r = 0; r < rows; r++) {
-        l.agents.slice(r * per, (r + 1) * per).forEach(function (a, c) {
-          a._lx = WALL + PADX + gutter + c * AGENT_DX + AGENT_DX / 2; a._ly = y + AGENT_DY / 2;
+      for (var r = 0; r * nc < m; r++) {
+        if (r) y += ISL_ROW_GAP;
+        var row = sizes.slice(r * nc, (r + 1) * nc), kmax = Math.max.apply(null, row);
+        var ay = y + AGENT_DY / 2 + (kmax - 1) * ISL_DY + DESK_Y1 + AISLE_Y;
+        row.forEach(function (k, c) {
+          var lx = x0 + c * ISL_DX + AGENT_DX / 2, grp = l.agents.slice(at, at + k);
+          at += k;
+          grp.forEach(function (a, q) { a._lx = lx; a._ly = y + AGENT_DY / 2 + q * ISL_DY; a._ax = lx + ISL_AX; a._ay = ay; });
+          d.islands.push({ x0: lx + DESK_X0 - 0.22, x1: lx + DESK_X1 + 0.12, y0: y + AGENT_DY / 2 + DESK_Y0 - 0.12, y1: y + AGENT_DY / 2 + (k - 1) * ISL_DY + DESK_Y1 + 0.12 });
           cols = Math.max(cols, c + 1);
         });
-        y += AGENT_DY;
+        y += AGENT_DY + (kmax - 1) * ISL_DY;
       }
       l.y1 = y;
     });
     d.lanes = lanes; d.gutter = gutter;
     d.labelChars = Math.max(3, Math.floor((gutter + PADX - 0.4) * EDGE / 5.7));
-    d.w = Math.max(WALL + PADX + gutter + cols * AGENT_DX + 0.3 + PROP_LANE, 3);
+    /* rechts van de laatste eilandkolom nog een volledig gangpad, dan de propstrook */
+    d.w = Math.max(x0 + (cols - 1) * ISL_DX + AGENT_DX / 2 + ISL_AX + 0.45 + PROP_LANE, 3);
     d.d = y + PAD;
   }
   function overlaps(a, b, gap) {
@@ -1773,6 +1799,10 @@
           h += '<text class="lane" transform="matrix(.894,.447,-.894,.447,' + f1(lp[0]) + "," + f1(lp[1]) + ')">' + esc(nm) + "</text>";
         }
       });
+      /* 21-10: eiland-mat onder elk eilandje, zodat de groepjes bureaus als eiland lezen */
+      (d.islands || []).forEach(function (b) {
+        h += '<polygon class="isle" points="' + pts([iso(x0 + b.x0, y0 + b.y0, SLAB), iso(x0 + b.x1, y0 + b.y0, SLAB), iso(x0 + b.x1, y0 + b.y1, SLAB), iso(x0 + b.x0, y0 + b.y1, SLAB)]) + '"/>';
+      });
       h += dockInner(d);
       var pp = iso(x0 + 0.3, y1, 0);
       h += '<text class="plate" transform="matrix(.894,.447,0,1,' + f1(pp[0]) + "," + f1(pp[1] - 6.5) + ')">' + esc(d.name) + "</text>";
@@ -2175,13 +2205,16 @@
 
   /* ---- routes in en rond een afdeling ---- */
   var OUT = 0.65, RING = BRAIN / 2 + 0.8;
-  var ISLE = (0.75 + AGENT_DX - 0.95) / 2, ROWI = (0.59 + AGENT_DY - 1.41) / 2, ER = PROP_LANE + 0.15;
+  var ER = PROP_LANE + 0.15;
+  /* 21-10: gangpaden komen uit planDept: a._ax (langs de stoelen van zijn eiland) en a._ay (dwarsgang onder zijn eilandrij) */
+  function aisleX(d, a) { return d.x + a._ax; }
+  function aisleY(d, a) { return d.y + Math.min(d.d - 1.0, a._ay); }
   /* van naast de stoel van agent a naar deur 'side' (N/W achterwand, S voordeur, E zijdeur), via de
      gangpaden; eindigt buiten onderaan het opstapje (of op de drempel als toThreshold) */
   function routeOut(d, a, side, from, toThreshold) {
     var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, gx = doorX(d), gy = doorY(d), fx = frontDoorX(d);
     var st = from || [x0 + a._lx + STAND_OFF[0], y0 + a._ly + STAND_OFF[1]];
-    var ax = x0 + a._lx + ISLE, row = y0 + Math.min(d.d - 1.0, a._ly + ROWI);
+    var ax = aisleX(d, a), row = aisleY(d, a);
     var R = [[st, SLAB], [[ax, st[1]], SLAB]];
     function out(p, n) {
       R.push([p, SLAB]);
@@ -2235,8 +2268,10 @@
   function visitRoute(d, a, dt, t, vis) {
     var start = [d.x + a._lx + STAND_OFF[0], d.y + a._ly + STAND_OFF[1]];
     if (d === dt) {
-      var ax = d.x + a._lx + ISLE, row = d.y + Math.min(d.d - 1.0, a._ly + ROWI), axT = d.x + t._lx + ISLE;
-      return cleanRoute([[start, SLAB], [[ax, start[1]], SLAB], [[ax, row], SLAB], [[axT, row], SLAB], [[axT, vis[1]], SLAB], [vis, SLAB]]);
+      var ax = aisleX(d, a), axT = aisleX(d, t), rowT = aisleY(d, t);
+      /* eigen gangpad (de gangpaden lopen recht door alle eilandrijen) -> dwarsgang onder het eiland van de
+         collega -> zijn gangpad -> naast zijn stoel; zo loopt hij altijd tussen de eilanden door, langs de bureaus */
+      return cleanRoute([[start, SLAB], [[ax, start[1]], SLAB], [[ax, rowT], SLAB], [[axT, rowT], SLAB], [[axT, vis[1]], SLAB], [vis, SLAB]]);
     }
     var dkS = dockInfo(d), pm = perim(outRect(d)), Cs = dkS.out, sC = pS(pm, Cs), best = null;
     ["N", "W", "S", "E"].forEach(function (sd) {
