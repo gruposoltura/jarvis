@@ -17,7 +17,8 @@
       v_office_links        leverancier/trigger -> afnemer (agent_dependencies)
       v_office_panels       afdelingskaartje: doing / next / done + 2-3 resultaatregels
       v_office_agent_loops  open issues (jarvis_issues) per run_token (alleen bij een gekozen agent)
-      bridge_agent_runs     laatste 8 runs met samenvatting (alleen bij een gekozen agent; bestaande view)
+      bridge_agent_runs     laatste 8 runs met samenvatting (alleen bij een gekozen agent; bestaande view);
+                            ook alle runs van de laatste 24 u voor de replay
   Status: paused > error > stale(=silent) > running > ok-run < 15 min (=working) > idle > vangnet
   expected_frequency_hours x 1,5 (=silent) > ok; zelfde regels als classify() in bridge-agents.js (BD-004).
   Geen bibliotheken behalve supabase-js: de scene is SVG, de projectie is 2:1 isometrisch (zie iso()).
@@ -68,6 +69,9 @@
   minstens 11 s (langer zolang er een 'working' is, max 4 min) en lopen terug. Zit het paar in een terugkoppellus
   (sterk samenhangende component van >= 3 agents, loopGroups()), dan schuiven tot 2 lus-buren aan (max 4 per
   tafel). Test: office-v2.html?overleg=1 start direct een overleg van de grootste lus.
+  Replay (21-10): knop '24 u' in de kop speelt de runs van de afgelopen 24 uur af (bridge_agent_runs) met een
+  tijdbalk onderaan (histogram per kwartier, sleepbare afspeelkop, duur 1/2/5/15 min); bureaus, ballonnen,
+  powerballen en kantine-overleg volgen het replay-moment. Zie rpStart() / rpStates() / rpEvents().
   Paneel: A- / A+ / breedte / standaard, sleepgreep links; keuze per browser in localStorage 'bridge.office2.panel'.
 -->
 <html lang="nl">
@@ -232,6 +236,37 @@
   .door-glass{fill:color-mix(in srgb,var(--c) 18%,#9fd3f0);fill-opacity:.2;stroke:#c9d3de;stroke-width:.9;stroke-opacity:.8}
   .door-sign{fill:var(--c);opacity:.9}
   .visit-bub{pointer-events:none}
+  /* 21-10 replay 24 u */
+  .motion.rp-btn.on{color:var(--gold);border-color:rgba(255,209,102,.6)}
+  .motion.rp-btn.on i{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+  .replay{position:absolute;left:14px;right:calc(var(--pw,420px) + var(--pm) * 2 + 52px);bottom:12px;z-index:6;display:flex;align-items:center;gap:12px;
+    padding:8px 12px;border-radius:14px;background:rgba(7,11,18,.94);border:1px solid rgba(255,209,102,.45);box-shadow:0 8px 28px -10px #000,0 0 22px -12px var(--gold);backdrop-filter:blur(6px)}
+  .replay[hidden]{display:none}
+  .replay button{appearance:none;cursor:pointer;border:1px solid var(--line);background:#0c121c;color:var(--text);border-radius:8px}
+  .replay button:hover{border-color:var(--gold);color:var(--gold)}
+  .rp-play{width:36px;height:36px;font:700 14px var(--mono);flex:none}
+  .rp-clock{display:flex;flex-direction:column;line-height:1.05;min-width:62px;flex:none}
+  .rp-clock b{font:700 19px var(--mono);color:var(--gold);font-variant-numeric:tabular-nums}
+  .rp-clock span{font:600 9.5px var(--mono);letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+  .rp-track{position:relative;flex:1;min-width:160px;height:40px;cursor:pointer;border-radius:6px;background:#0a1019;outline:none}
+  .rp-track:focus-visible{box-shadow:0 0 0 2px var(--gold)}
+  .rp-hist{position:absolute;left:0;top:3px;width:100%;height:24px}
+  .rp-hist .h-ok{fill:var(--cyan);opacity:.55}
+  .rp-hist .h-err{fill:var(--red);opacity:.9}
+  .rp-done{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,rgba(255,209,102,.05),rgba(255,209,102,.16));border-radius:6px 0 0 6px;pointer-events:none}
+  .rp-head{position:absolute;top:-4px;bottom:-4px;left:0;width:2px;margin-left:-1px;background:var(--gold);box-shadow:0 0 8px var(--gold);pointer-events:none}
+  .rp-head::before{content:"";position:absolute;top:-3px;left:-4px;width:10px;height:10px;border-radius:50%;background:var(--gold)}
+  .rp-ticks{position:absolute;left:0;right:0;bottom:1px;height:11px;pointer-events:none}
+  .rp-ticks span{position:absolute;transform:translateX(-50%);font:600 8.5px var(--mono);color:var(--dim)}
+  .rp-ticks span.d{color:var(--gold)}
+  .rp-speed{display:flex;gap:3px;flex:none}
+  .rp-speed button{height:26px;padding:0 7px;font:700 9.5px var(--mono);letter-spacing:.06em;color:var(--dim)}
+  .rp-speed button.on{color:var(--gold);border-color:rgba(255,209,102,.6)}
+  .rp-count{font:600 10px var(--mono);color:var(--dim);white-space:nowrap;min-width:74px;flex:none}
+  .rp-x{width:28px;height:28px;font:700 12px var(--mono);flex:none}
+  body.replaying .hint{display:none}
+  body.replaying .cam{bottom:72px}
+  @media (max-width:880px){.replay{right:14px;flex-wrap:wrap}.rp-track{flex-basis:100%;order:5}.rp-count{display:none}}
   /* 21-10 kantine + looppad vanaf het brein */
   .canteen{--c:#ffb547;pointer-events:none}
   #floor.intro .canteen{animation:rise .55s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i)*55ms)}
@@ -504,6 +539,7 @@
   <header>
     <div class="brand"><span class="dot" id="live"></span><span class="ttl">BRIDGE</span><span class="sub">Office</span><span class="ver">V2</span></div>
     <div class="spacer"></div>
+ <button type="button" class="motion rp-btn" id="rpBtn" aria-pressed="false" title="Speel de afgelopen 24 uur af"><i></i>24 u</button>
     <button type="button" class="motion" id="motion" aria-pressed="false" title="Automatisch inzoomen op een afdeling zodra daar een agent aan het werk gaat (10 s)"><i></i>Motion</button>
     <div class="pz" id="pz" role="group" aria-label="Paneel leesbaarheid">
       <span class="lb">Paneel</span>
@@ -564,6 +600,20 @@
           <button type="button" data-cam="fit" title="Alles in beeld">⤢</button>
         </div>
         <div class="tourmsg" id="tourmsg" role="status" aria-live="polite"><b></b><span></span><i class="bar"></i></div>
+        <div class="replay" id="replay" role="group" aria-label="Replay afgelopen 24 uur" hidden>
+          <button type="button" class="rp-play" id="rpPlay" aria-label="Afspelen / pauze">▶</button>
+          <div class="rp-clock"><b id="rpTime">--:--</b><span id="rpDay"></span></div>
+          <div class="rp-track" id="rpTrack" tabindex="0" role="slider" aria-label="Tijdstip" aria-valuemin="0" aria-valuemax="1440">
+            <svg class="rp-hist" id="rpHist" preserveAspectRatio="none"></svg>
+            <div class="rp-done" id="rpDone"></div><div class="rp-head" id="rpHead"></div>
+            <div class="rp-ticks" id="rpTicks"></div>
+          </div>
+          <div class="rp-speed" id="rpSpeed" role="group" aria-label="Duur van de replay">
+            <button type="button" data-sp="60">1 min</button><button type="button" data-sp="120" class="on">2 min</button><button type="button" data-sp="300">5 min</button><button type="button" data-sp="900">15 min</button>
+          </div>
+          <span class="rp-count" id="rpCount"></span>
+          <button type="button" class="rp-x" id="rpClose" aria-label="Replay sluiten (terug naar live)" title="Terug naar live">✕</button>
+        </div>
         <div class="hint" id="hint">scroll = zoom · sleep = verschuif · klik = details</div>
       </div>
       <svg id="wires" aria-hidden="true"></svg>
@@ -682,6 +732,8 @@
   var S = { depts: [], agents: [], tools: [], links: [], panels: {}, byId: {}, byWf: {}, toolsByWf: {}, sig: "",
             focus: null, hoverTool: null, runs: {}, loops: {}, loadedAt: null, first: true, cam: null, fitBox: null };
 
+  /* 21-10 replay: state = status per agent op het replay-moment, sum = samenvatting van de run daar */
+  var RP = { on: false, state: {}, sum: {}, runs: [], per: {}, t: 0, t0: 0, t1: 0, playing: false, dur: 120, raf: 0, last: 0, sig: "" };
   var $ = function (id) { return document.getElementById(id); };
   var elFloor = $("floor"), elWorld = $("world"), elStage = $("stage"), elScene = $("scene"), elTools = $("tools"),
       elWires = $("wires"), elTip = $("tip"), elMsg = $("msg"), elPanel = $("panel"), elHint = $("hint");
@@ -697,6 +749,7 @@
   var NOOP_RE = /\bidle\b|\(stil\)|geen bijvulling|niets te (doen|publiceren)|worklist leeg|^0 nieuwe[^,]*\+ 0 |^geen\b|^0 emails\b/i;   /* Soltura: "Geen ...", GmailTriage "0 emails" */
   function isNoop(a) { return NOOP_RE.test(String(a.last_summary || "")); }
   function st(a) {
+    if (RP.on && RP.state[a.agent_id]) return RP.state[a.agent_id];   /* 21-10: 24-uursreplay */
     var s = STATES[a.state] ? a.state : "ok";
     return s === "working" && isNoop(a) ? "ok" : s;
   }
@@ -807,9 +860,7 @@
     if (sig !== S.sig) { S.sig = sig; layout(); renderFloor(); if (TOUR.cur) tourMark(TOUR.cur); } else { carryLayout(oldById, oldDepts); patchAgents(); patchPipes(); patchCards(); }
 
     S.loadedAt = new Date();
-    queueBalls(prevRun);
-    queueSubs(prevRun);
-    queueTour(prevRun);
+    if (!RP.on) { queueBalls(prevRun); queueSubs(prevRun); queueTour(prevRun); }   /* replay speelt zijn eigen verleden af */
     renderBubbles();
     renderHeader(); renderTools(); renderPanel(); applyFocus();
     if (S.focus && S.focus.type === "agent") loadRuns(S.byId[S.focus.id]);
@@ -2219,7 +2270,7 @@
   /* ------------------------------------------------------- tekstballonnen */
   var BUB_MAX = 8;
   function bubbleText(a) {
-    var t = String(a.last_summary || "").split(/[·\n]/)[0].replace(/\s+/g, " ").trim();
+    var t = String((RP.on ? RP.sum[a.agent_id] : a.last_summary) || "").split(/[·\n]/)[0].replace(/\s+/g, " ").trim();
     if (!t || t.length < 4) t = a.agent_name + " aan het werk";
     return t.length > 34 ? t.slice(0, 33) + "…" : t;
   }
@@ -3113,7 +3164,7 @@
     S.agents.forEach(function (a) { runs += Number(a.runs_24h) || 0; });
     function m(cls, val, lbl) { return '<div class="metric ' + cls + (val ? "" : " zero") + '"><b>' + val + "</b><span>" + lbl + "</span></div>"; }
     $("metrics").innerHTML = m("", S.agents.length, "agents") + m("m-working", c.working, "bezig") + m("m-error", c.error, "fout") + m("m-silent", c.silent, "stil") + m("", runs, "runs 24 u");
-    $("upd").textContent = "bijgewerkt " + fmtClock.format(S.loadedAt);
+    $("upd").textContent = RP.on ? "replay " + fmtRp.format(RP.t) : "bijgewerkt " + fmtClock.format(S.loadedAt);
   }
 
   /* ----------------------------------------------------------------- tools */
@@ -3524,6 +3575,188 @@
       applyFocus();
     }, 220);
   });
+
+  /* ======================================================================= replay 24 u (21-10)
+     Knop '24 u' in de kop: haalt alle runs van de afgelopen 24 uur op (bridge_agent_runs, workflow = run_token)
+     en speelt ze af. Onderaan een tijdbalk met histogram (runs per kwartier, fouten rood), afspeelknop, klok,
+     snelheid (hele dag in 1 / 2 / 5 / 15 min) en sleepbare afspeelkop. Tijdens de replay bepaalt de replay de
+     status van elk bureau (st()): 'working' kort rond elke run (minstens 3,5 s echte tijd), 'error' na een
+     mislukte run tot de volgende goede; werk-ballon = samenvatting van die run. Bij afspelen (niet bij slepen)
+     vuurt elke run zijn powerbal naar het brein, en een overleg (afnemer draait binnen 20 min na zijn leverancier)
+     stuurt de agents naar de kantine. Live-verversing loopt door, maar zonder live-animaties. ✕ = terug naar live. */
+  var elRp = $("replay"), elRpBtn = $("rpBtn"), elRpPlay = $("rpPlay"), elRpTrack = $("rpTrack");
+  var RP_MIN_REAL = 3500;
+  function rpFetch() {
+    var from = new Date(Date.now() - 24 * 3600000).toISOString(), all = [];
+    function page(off) {
+      return rest("bridge_agent_runs?select=workflow,run_at,status,duration_ms,summary&run_at=gte." + encodeURIComponent(from)
+        + "&order=run_at.asc&limit=1000&offset=" + off).then(function (rows) {
+        all = all.concat(rows || []);
+        return rows && rows.length === 1000 && off < 20000 ? page(off + 1000) : all;
+      });
+    }
+    return page(0);
+  }
+  function rpIngest(rows) {
+    RP.t1 = Date.now(); RP.t0 = RP.t1 - 24 * 3600000; RP.per = {};
+    RP.runs = rows.map(function (r) {
+      var a = S.byWf[r.workflow];
+      return { t: ms(r.run_at), wf: r.workflow, id: a ? a.agent_id : null, st: String(r.status || "ok").toLowerCase(),
+               dur: Number(r.duration_ms) || 0, sum: r.summary || "", noop: NOOP_RE.test(String(r.summary || "")) };
+    }).filter(function (r) { return r.id && r.t >= RP.t0; }).sort(function (a, b) { return a.t - b.t; });
+    RP.runs.forEach(function (r) { (RP.per[r.id] = RP.per[r.id] || []).push(r); });
+    rpHist();
+  }
+  /* laatste run van een agent op of vóór t (binair zoeken) */
+  function rpLast(id, t) {
+    var L = RP.per[id]; if (!L || !L.length || L[0].t > t) return null;
+    var lo = 0, hi = L.length - 1;
+    while (lo < hi) { var m = (lo + hi + 1) >> 1; if (L[m].t <= t) lo = m; else hi = m - 1; }
+    return L[lo];
+  }
+  function rpStates() {
+    var win = Math.max(60000, RP_MIN_REAL * 86400000 / (RP.dur * 1000)), sig = [];
+    RP.state = {}; RP.sum = {};
+    S.agents.forEach(function (a) {
+      var r = rpLast(a.agent_id, RP.t), s;
+      var live = STATES[a.state] ? a.state : "ok";
+      if (!r) s = live === "paused" || live === "idle" ? live : "ok";
+      else {
+        var err = r.st === "error" || r.st === "failed";
+        if (RP.t - r.t <= Math.max(win, r.dur)) s = err ? "error" : r.noop ? "ok" : "working";
+        else s = err ? "error" : (live === "paused" ? "paused" : "ok");
+        RP.sum[a.agent_id] = r.sum;
+      }
+      RP.state[a.agent_id] = s; sig.push(s);
+    });
+    sig = sig.join("");
+    if (sig !== RP.sig) {
+      RP.sig = sig; patchAgents(); renderBubbles(); renderHeader();
+      var now = Date.now(); if (now - (RP.panelAt || 0) > 1000) { RP.panelAt = now; renderPanel(); }   /* paneel max 1x per s */
+    }
+  }
+  /* gebeurtenissen tussen t0 (excl.) en t1 (incl.) tijdens het afspelen: powerballen + kantine-overleg */
+  function rpEvents(a0, a1) {
+    var n = 0;
+    for (var i = 0; i < RP.runs.length; i++) {
+      var r = RP.runs[i]; if (r.t <= a0) continue; if (r.t > a1) break;
+      if (r.noop || ++n > 12) continue;
+      var a = S.byId[r.id];
+      if (a && usesBrain(a)) fireBall(a.agent_id);
+      if (!S.canteen || freeTable() < 0) continue;
+      S.links.forEach(function (l) {
+        if (l.to_agent !== r.id) return;
+        var fr = S.byId[l.from_agent], to = S.byId[l.to_agent], lr = rpLast(l.from_agent, r.t);
+        if (!lr || r.t - lr.t > SUB_WINDOW || !canDesk(fr) || !canDesk(to) || freeTable() < 0) return;
+        if (busyAgent(fr.agent_id) || busyAgent(to.agent_id) || S.pose[fr.agent_id] || S.pose[to.agent_id]) return;
+        runMeet(meetGroup(fr, to), false, 3);
+      });
+    }
+  }
+  var fmtRp = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" });
+  var fmtRpDay = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Madrid", weekday: "short", day: "numeric" });
+  function rpFrac(t) { return Math.max(0, Math.min(1, (t - RP.t0) / (RP.t1 - RP.t0))); }
+  function rpPaint() {
+    var f = rpFrac(RP.t), pc = (f * 100).toFixed(3) + "%";
+    $("rpHead").style.left = pc; $("rpDone").style.width = pc;
+    $("rpTime").textContent = fmtRp.format(RP.t);
+    var ago = Math.round((RP.t1 - RP.t) / 3600000);
+    $("rpDay").textContent = fmtRpDay.format(RP.t) + (ago ? " · −" + ago + " u" : " · nu");
+    var n = 0; for (var i = 0; i < RP.runs.length && RP.runs[i].t <= RP.t; i++) n++;
+    $("rpCount").textContent = n + " / " + RP.runs.length + " runs";
+    elRpTrack.setAttribute("aria-valuenow", String(Math.round(f * 1440)));
+    elRpTrack.setAttribute("aria-valuetext", fmtRp.format(RP.t));
+    elRpPlay.textContent = RP.playing ? "❚❚" : "▶";
+    $("upd").textContent = "replay " + fmtRp.format(RP.t);
+  }
+  function rpHist() {
+    var B = 96, ok = [], er = [], mx = 1, i;
+    for (i = 0; i < B; i++) { ok.push(0); er.push(0); }
+    RP.runs.forEach(function (r) { var b = Math.min(B - 1, Math.floor(rpFrac(r.t) * B)); if (r.st === "error" || r.st === "failed") er[b]++; else ok[b]++; });
+    for (i = 0; i < B; i++) mx = Math.max(mx, ok[i] + er[i]);
+    var h = "";
+    for (i = 0; i < B; i++) {
+      var ho = ok[i] / mx * 24, he = er[i] / mx * 24;
+      if (ho) h += '<rect class="h-ok" x="' + (i + 0.12).toFixed(2) + '" y="' + (24 - ho - he).toFixed(2) + '" width=".76" height="' + ho.toFixed(2) + '"/>';
+      if (he) h += '<rect class="h-err" x="' + (i + 0.12).toFixed(2) + '" y="' + (24 - he).toFixed(2) + '" width=".76" height="' + Math.max(1.2, he).toFixed(2) + '"/>';
+    }
+    var hist = $("rpHist"); hist.setAttribute("viewBox", "0 0 " + B + " 24"); hist.innerHTML = h;
+    /* tijdmarkeringen op hele 3 uur (Madrid), middernacht als datum */
+    var t = "", step = 3 * 3600000, first = Math.ceil(RP.t0 / 3600000) * 3600000;
+    for (var x = first; x < RP.t1; x += 3600000) {
+      var hh = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false }).format(x)) % 24;
+      if (hh % 3) continue;
+      t += '<span' + (hh === 0 ? ' class="d"' : "") + ' style="left:' + (rpFrac(x) * 100).toFixed(2) + '%">' + (hh === 0 ? fmtRpDay.format(x) : String(hh).padStart(2, "0") + ":00") + "</span>";
+    }
+    $("rpTicks").innerHTML = t;
+  }
+  function rpFrame(now) {
+    RP.raf = 0;
+    if (!RP.on || !RP.playing) return;
+    var dt = Math.min(250, now - (RP.last || now)); RP.last = now;
+    var prev = RP.t;
+    RP.t = Math.min(RP.t1, RP.t + dt * 86400000 / (RP.dur * 1000));
+    if (!document.hidden) rpEvents(prev, RP.t);
+    rpStates(); rpPaint();
+    if (RP.t >= RP.t1) { RP.playing = false; rpPaint(); return; }
+    RP.raf = requestAnimationFrame(rpFrame);
+  }
+  function rpPlay(on) {
+    if (on && RP.t >= RP.t1 - 1000) RP.t = RP.t0;   /* aan het eind: opnieuw van voren */
+    RP.playing = on; RP.last = 0;
+    if (RP.raf) { cancelAnimationFrame(RP.raf); RP.raf = 0; }
+    if (on) RP.raf = requestAnimationFrame(rpFrame);
+    rpPaint();
+  }
+  function rpSeek(t) { RP.t = Math.max(RP.t0, Math.min(RP.t1, t)); rpStates(); rpPaint(); }
+  function rpStart() {
+    if (RP.on) return;
+    elRpBtn.classList.add("on"); elRpBtn.setAttribute("aria-pressed", "true"); elRpBtn.disabled = true;
+    rpFetch().then(function (rows) {
+      elRpBtn.disabled = false;
+      tourStop(true);
+      RP.on = true; RP.sig = ""; rpIngest(rows);
+      document.body.classList.add("replaying"); elRp.hidden = false;
+      RP.t = RP.t0; rpStates(); rpPlay(true);
+    }, function (e) {
+      elRpBtn.disabled = false; elRpBtn.classList.remove("on"); elRpBtn.setAttribute("aria-pressed", "false");
+      showMsg("De runs van de afgelopen 24 uur konden niet geladen worden (" + (e.message || e) + ").");
+    });
+  }
+  function rpStop() {
+    if (!RP.on) return;
+    rpPlay(false);
+    RP.on = false; RP.state = {}; RP.sum = {}; RP.sig = "";
+    elRp.hidden = true; document.body.classList.remove("replaying");
+    elRpBtn.classList.remove("on"); elRpBtn.setAttribute("aria-pressed", "false");
+    patchAgents(); renderBubbles(); renderHeader(); renderPanel();
+  }
+  elRpBtn.addEventListener("click", function () { if (RP.on) rpStop(); else rpStart(); });
+  $("rpClose").addEventListener("click", rpStop);
+  elRpPlay.addEventListener("click", function () { rpPlay(!RP.playing); });
+  $("rpSpeed").addEventListener("click", function (e) {
+    var b = closest(e.target, "button[data-sp]"); if (!b) return;
+    RP.dur = Number(b.getAttribute("data-sp")) || 120;
+    Array.prototype.forEach.call(this.querySelectorAll("button"), function (x) { x.classList.toggle("on", x === b); });
+    RP.sig = ""; rpStates();
+  });
+  /* slepen / klikken op de tijdbalk = verspringen (geen powerballen of overleg voor de overgeslagen tijd) */
+  var rpDrag = null;
+  function rpAt(e) { var r = elRpTrack.getBoundingClientRect(); return RP.t0 + Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (RP.t1 - RP.t0); }
+  elRpTrack.addEventListener("pointerdown", function (e) {
+    rpDrag = { was: RP.playing }; rpPlay(false); elRpTrack.setPointerCapture(e.pointerId); rpSeek(rpAt(e)); e.stopPropagation();
+  });
+  elRpTrack.addEventListener("pointermove", function (e) { if (rpDrag) rpSeek(rpAt(e)); });
+  elRpTrack.addEventListener("pointerup", function () { if (rpDrag && rpDrag.was) rpPlay(true); rpDrag = null; });
+  elRpTrack.addEventListener("keydown", function (e) {
+    var k = e.key, step = e.shiftKey ? 3600000 : 900000;
+    if (k === "ArrowRight") rpSeek(RP.t + step); else if (k === "ArrowLeft") rpSeek(RP.t - step);
+    else if (k === "Home") rpSeek(RP.t0); else if (k === "End") rpSeek(RP.t1);
+    else if (k === " " || k === "Enter") rpPlay(!RP.playing); else return;
+    e.preventDefault();
+  });
+  elRp.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+  elRp.addEventListener("wheel", function (e) { e.stopPropagation(); }, { passive: true });
 
   /* ----------------------------------------------------------------- start */
   if (!sb) { $("loading").style.display = "none"; showMsg("bridge-config.js of supabase-js is niet geladen: geen Supabase-verbinding."); return; }
