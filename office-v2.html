@@ -1985,6 +1985,21 @@
     if (!S.cam || !elScene || !elScene.clientWidth) return 1;
     return Math.max(0.5, Math.min(4, viewScale() * BUB_PX));
   }
+  /* Ballon passend om de tekst: meet de echte tekstbreedte (lokale eenheden, los van scale/camera)
+     en zet rechthoek, puntjes en tekst daarop. De schatting in bubbleSvg is alleen de startwaarde. */
+  function fitBubbles(root) {
+    if (!root) return;
+    root.querySelectorAll(".bub").forEach(function (b) {
+      var t = b.querySelector("text"), r = b.querySelector("rect"); if (!t || !r) return;
+      var len = 0; try { len = t.getComputedTextLength(); } catch (e) { len = 0; }
+      if (!len) return; /* nog niet gerenderd: schatting laten staan */
+      var w = Math.max(40, len + 32), L = -w / 2;
+      r.setAttribute("x", f1(L)); r.setAttribute("width", f1(w));
+      t.setAttribute("x", f1(L + 23));
+      var c = b.querySelectorAll(".dots circle");
+      for (var i = 0; i < c.length; i++) c[i].setAttribute("cx", f1(L + 9 + i * 4.5));
+    });
+  }
   function rescaleBubbles() {
     var t = "scale(" + bubScale().toFixed(3) + ")";
     elFloor.querySelectorAll(".bub > .b-sc").forEach(function (n) { n.setAttribute("transform", t); });
@@ -1998,6 +2013,7 @@
       h += bubbleSvg(a._p[0] + DESK_W * 0.1, a._p[1] + DY0 + 6, bubbleText(a), d ? d.color : "#00d4ff");
     });
     g.innerHTML = h;
+    fitBubbles(g);
   }
 
   /* ------------------------------------------------- tijdelijke sub-afdelingen */
@@ -2309,7 +2325,7 @@
       if (nm.length > 26) nm = nm.slice(0, 25) + "…";
       bub = document.createElementNS(NS, "g"); bub.setAttribute("class", "visit-bub");
       bub.innerHTML = bubbleSvg(p[0] + 4, p[1] - WALK_H * 0.98, "overleg met " + nm, d.color);
-      elWorld.appendChild(bub);
+      elWorld.appendChild(bub); fitBubbles(bub);
       var until = performance.now() + 9000, cap = performance.now() + 4 * 60000;
       return (function wait() {
         return sleep(1000).then(function () {
@@ -2466,7 +2482,7 @@
         subPose("seat"); g.classList.add("busy");
         var bw = document.createElementNS(NS, "g");
         bw.innerHTML = bubbleSvg(dp[0] + DESK_W * 0.1, dp[1] + DY0 + 6, "→ " + (to.agent_name.length > 28 ? to.agent_name.slice(0, 27) + "…" : to.agent_name), d.color);
-        g.appendChild(bw);
+        g.appendChild(bw); fitBubbles(bw);
         var until = performance.now() + 9000, cap = performance.now() + 5 * 60000;
         return (function wait() {
           return sleep(1000).then(function () {
