@@ -657,10 +657,10 @@ function ctRelations(c){
     <div class="hd" style="padding:16px 0 8px"><h3>${t("h.connected",{n:r.length})}</h3></div>
     ${r.length?`<div class="grid2">${r.map(x=>rel({...x,why:why(x.why)})).join("")}</div>`:`<div class="empty sm">${t("noconnected")}</div>`}
     ${im.length?`<div class="hd" style="padding:16px 0 8px"><h3>${t("h.intmine",{n:im.length})}</h3></div><div class="grid2">${im.map(x=>rel({...x,why:x.ref+" · "+t("x.requests",{n:x.n})})).join("")}</div>`:""}`}
-function enrichList(list,kind){
+function enrichList(list,kind,bare){
   if(!list||!list.length)return `<div class="empty">${t("noenrich",{k:t("kind."+kind)})}<br><span class="sm">${t("noenrich.s")}</span></div>`;
   const by={};list.forEach(e=>{(by[e.field]=by[e.field]||[]).push(e)});
-  return `<div class="card">${Object.entries(by).map(([f,arr])=>`<dl class="kv" style="border-bottom:1px solid var(--line)"><dt>${esc(f)}</dt><dd>${arr.map((e,i)=>`<div style="${i?"opacity:.55;font-size:calc(12px*var(--fs,1))":""}">${esc(typeof e.value==="object"?JSON.stringify(e.value):e.value)}<span class="src">${esc(e.label||e.source)}</span>${e.url?` <a href="${esc(e.url)}" target="_blank" rel="noopener" class="sm muted">↗</a>`:""} <span class="sm muted">${ago(e.at)}</span></div>`).join("")}</dd></dl>`).join("")}</div>`}
+  return `<div class="${bare?"pk-enr":"card"}">${Object.entries(by).map(([f,arr])=>`<dl class="kv" style="border-bottom:1px solid var(--line)"><dt>${esc(f)}</dt><dd>${arr.map((e,i)=>`<div style="${i?"opacity:.55;font-size:calc(12px*var(--fs,1))":""}">${esc(typeof e.value==="object"?JSON.stringify(e.value):e.value)}<span class="src">${esc(e.label||e.source)}</span>${e.url?` <a href="${esc(e.url)}" target="_blank" rel="noopener" class="sm muted">↗</a>`:""} <span class="sm muted">${ago(e.at)}</span></div>`).join("")}</dd></dl>`).join("")}</div>`}
 
 /* ================= WONINGEN ================= */
 let prLoaded=false, prStatus="current", prBuild="", prOff=0, prSel=null, PR=null, prSub="kenmerken";
@@ -723,9 +723,11 @@ const days=ts=>ts?Math.max(0,Math.round((Date.now()-new Date(ts))/864e5)):null;
 function since(ts){const d=days(ts);if(d==null)return "";if(d<60)return L2(d+" dagen",d+" days");const mo=Math.round(d/30.4);return mo<24?L2(mo+" maanden",mo+" months"):L2((d/365).toFixed(1).replace(".",",")+" jaar",(d/365).toFixed(1)+" years")}
 /* panelen in dezelfde volgorde en kleuren als het invoerscherm (Admin → Woning toevoegen); ✎ opent Bewerken op die sectie */
 const PKSEC=[["basis",["Basis","Basics"],"#3b82f6"],["prijs",["Prijs","Price"],"#22c55e"],["loc",["Locatie","Location"],"#06b6d4"],["ind",["Indeling","Layout"],"#f59e0b"],
-  ["ken",["Kenmerken","Features"],"#a855f7"],["tekst",["Teksten","Texts"],"#ec4899"],["media",["Foto's","Photos"],"#f97316"],["kost",["Eigendomsakte","Title deed"],"#64748b"],["pub",["Publicatie","Publishing"],"#eab308"]];
+  ["ken",["Kenmerken","Features"],"#a855f7"],["tekst",["Teksten","Texts"],"#ec4899"],["media",["Foto's","Photos"],"#f97316"],
+  /* vaste band onder de kolommen (Rick 21-10-2026): elk paneel een eigen, duidelijk verschillende kleur */
+  ["kost",["Eigendomsakte","Title deed"],"#6366f1"],["kad",["Kadaster","Cadastre"],"#14b8a6"],["idl",["Idealista","Idealista"],"#84cc16"],["pub",["Publicatie","Publishing"],"#eab308"]];
 function pkSec(id,title,body,o){o=o||{};const c=(PKSEC.find(x=>x[0]===id)||[0,0,"#ef4444"])[2];
-  return `<div class="card pk-card pk-sec" id="pks-${id}" style="--sc:${c}"><div class="hd"><h3>${title}</h3><span class="pk-sec-r">${o.tag?`<span class="tag">${esc(o.tag)}</span>`:""}${o.aside||""}<a class="pk-sec-ed" data-pjump="${id}" title="${L2("Bewerken","Edit")}">✎</a></span></div>${body}</div>`}
+  return `<div class="card pk-card pk-sec" id="pks-${id}" style="--sc:${c}"><div class="hd"><h3>${title}</h3><span class="pk-sec-r">${o.tag?`<span class="tag">${esc(o.tag)}</span>`:""}${o.aside||""}${o.noEdit?"":`<a class="pk-sec-ed" data-pjump="${o.edit||id}" title="${L2("Bewerken","Edit")}">✎</a>`}</span></div>${body}</div>`}
 function grp(title,pairs){const f=pairs.filter(x=>x[1]!=null&&x[1]!=="");return f.length?`<div class="pk-grp">${title}</div>${kv(f)}`:""}
 function propFeatures(p,raw,o,K,XL,m){
   const price=p.price, prev=p.previous_price&&p.previous_price!=p.price?Number(p.previous_price):null;
@@ -755,6 +757,7 @@ function propFeatures(p,raw,o,K,XL,m){
   const lst=D.listed_at||p.list_date;
   const desc=(LANG==="en"?D.desc_en||D.desc_nl:D.desc_nl||D.desc_en)||"";
   const descTxt=desc?(new DOMParser().parseFromString(desc.replace(/<\/(p|li|h\d)>|<br\s*\/?>/gi,"\n"),"text/html").body.textContent||"").replace(/\n{3,}/g,"\n\n").trim():"";
+  const enrichOf=re=>{const l=(PR.enrichment||[]).filter(e=>re.test(String(e.source||"")+" "+String(e.label||"")));return l.length?enrichList(l,"property",1):""};
   return `<div class="pk"><div class="pk-flow">
     <div class="pk-jump">${PKSEC.map(x=>`<a data-pks="${x[0]}" style="--sc:${x[2]}">${L2(...x[1])}</a>`).join("")}</div>
   <div class="pk-main">
@@ -823,6 +826,8 @@ function propFeatures(p,raw,o,K,XL,m){
     ${pkSec("tekst",L2("Teksten","Texts"),(descTxt?`<div class="pk-desc">${esc(descTxt)}</div>`:`<div class="empty sm">${L2("Nog geen omschrijving","No description yet")}</div>`)
       +((D.internal_notes||raw.internal_notes)?`<div class="pk-grp">${L2("Interne notities","Internal notes")}</div><div class="pk-notes" style="margin:0 14px 12px">${esc(D.internal_notes||raw.internal_notes)}</div>`:""),{tag:D.desc_nl&&D.desc_en?(LANG==="en"?"EN":"NL"):""})}
     ${/* BESLUIT Rick 18-10-2026 (herbevestigd 19-10): GEEN kosten koper en geen vaste lasten in het woningdetail. Niet terugzetten. */""}
+  </div></div></div>
+  <div class="pk-band">
     ${pkSec("kost",L2("Eigendomsakte","Title deed"),
       grp(L2("Kadaster en registro","Cadastre and registry"),[["Registro",D.registry_name],[L2("Fincanummer","Finca number"),D.finca_number],[L2("Kadastrale referentie","Cadastral ref."),D.cadastral_ref],["IDUFIR / CRU",D.idufir],
         [L2("Inschrijving","Inscription"),[D.registry_tomo&&"Tomo "+D.registry_tomo,D.registry_libro&&"Libro "+D.registry_libro,D.registry_folio&&"Folio "+D.registry_folio,D.registry_inscription&&L2("Inscr. ","Inscr. ")+D.registry_inscription].filter(Boolean).join(" · ")||null]])
@@ -830,17 +835,18 @@ function propFeatures(p,raw,o,K,XL,m){
       +grp(L2("Aankoop huidige eigenaar","Purchase by current owner"),[[L2("Datum aankoop","Purchase date"),D.purchase_date?fdate(D.purchase_date):null],[L2("Aankoopprijs","Purchase price"),D.purchase_price!=null?eur(D.purchase_price):null],
         [L2("Overdrachtsbelasting","Transfer tax"),D.purchase_tax!=null?eur(D.purchase_tax)+(D.purchase_tax_type?` <span class="muted sm">· ${esc(D.purchase_tax_type)}</span>`:""):null,1],
         [L2("Notaris","Notary"),D.purchase_notary],[L2("Protocolnummer","Protocol number"),D.purchase_notary_protocol]])
-      +(D.deed_read_at?`<div class="muted sm" style="margin:0 14px 10px">📄 ${L2("Akte ingelezen op ","Deed read on ")}${fdate(D.deed_read_at)}</div>`:""))}
-    ${catSummary(K,p)}
-    ${propExtData(p)}
-    ${pkSec("pub",L2("Publicatie","Publishing"),kv([
+      +(D.deed_read_at?`<div class="muted sm" style="margin:0 14px 10px">📄 ${L2("Akte ingelezen op ","Deed read on ")}${fdate(D.deed_read_at)}</div>`:"")
+      ||`<div class="empty sm" style="padding:14px">${L2("Nog geen aktegegevens. Lees de akte in via Bewerken.","No deed data yet. Read the deed via Edit.")}</div>`)}
+    ${kadPanel(K,p)}
+    ${pkSec("idl","Idealista",`<div class="pk-mk"><div class="loader sm">…</div></div>`+enrichOf(/idealista/i),{noEdit:1,tag:L2("markt","market")})}
+    ${pkSec("pub",L2("Publicatie","Publishing"),`<div class="pk-pubkv">`+kv([
       [L2("Op de website","On the website"),p.is_own||D.published!=null?(D.published?`<span style="color:#22c55e">● ${L2("Online","Online")}</span>${D.published_at?` <span class="muted sm">· ${L2("sinds","since")} ${fdate(D.published_at)}</span>`:""}`:`<span class="muted">○ ${L2("Offline","Offline")}</span>`)+` <span class="muted sm">(${L2("volgt status","follows status")})</span>`:null,1],
       [L2("Labels","Labels"),(D.labels||[]).length?D.labels.map(x=>LBL[x]?L2(...LBL[x]):String(x).toUpperCase()).join(" · "):null],
       [L2("Feeds","Feeds"),feeds],
       [L2("Gereserveerd sinds","Reserved since"),D.under_offer_at?fdate(D.under_offer_at):null],
       [L2("Ingetrokken op","Withdrawn on"),D.withdrawn_at?fdate(D.withdrawn_at):null],
-      [t("p.notary"),S.notary?null:raw.sold_notary]]))}
-  </div></div></div>
+      [t("p.notary"),S.notary?null:raw.sold_notary]])+`</div>`)}
+  </div>
   <aside class="pk-photos" id="pkPhotos" aria-label="${L2("Foto's","Photos")}"><div class="pk-ph-h">${L2("Foto's","Photos")}</div><div class="pk-ph-list"><div class="loader sm">…</div></div></aside>
   <div class="card pk-wide" id="pkLog"><div class="hd"><h3>${L2("Wijzigingslog","Change log")}</h3></div><div class="pk-log-nx"><div class="loader sm">…</div></div>${raw.changelog?`<div class="sm muted" style="margin-top:10px">${L2("Historie uit het oude WordPress (tot 18 okt 2026)","History from the old WordPress (until 18 Oct 2026)")}</div><div class="note">${esc(raw.changelog.replace(/<br\s*\/?>/gi,"\n"))}</div>`:""}</div>
   </div>`;
@@ -955,24 +961,41 @@ function wirePropEdit(d,p){
       await openProp(p.reference);loadProps(true);ovLoaded=false;mpData=null;
     }catch(err){b.disabled=false;alert(err.code==="40001"?t("qs.conflict"):(err.message||String(err)));if(err.code==="40001")openProp(p.reference)}});
 }
-/* kadaster- en marktgegevens: staan bij de kenmerken (besluit Rick 18-10), niet op foto's of in een aparte tab */
-function propExtData(p){const k=PR.catastro;
-    const kc=k&&k.cadastral_ref?`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${L2("Kadastergegevens","Cadastral details")}</h3><span class="tag">Catastro · ${ago(k.checked_at)}</span></div>${kv([[t("k.cadref"),`<a class="mono" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener">${esc(k.cadastral_ref)} ↗</a>`,1],[t("k.parcel"),k.parcel_ref],[t("k.unit"),[k.cat_block&&"bl. "+k.cat_block,k.cat_stair&&"esc. "+k.cat_stair,k.cat_floor&&"pl. "+k.cat_floor,k.cat_door&&"pta. "+k.cat_door].filter(Boolean).join(" · ")],[t("k.landclass"),k.land_class],[t("k.share"),k.participation_pct!=null?k.participation_pct+" %":null],[t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.year"),k.year_built],[t("k.built"),k.build_area_m2!=null?num(k.build_area_m2)+" m²"+(p.build_area?` <span class="sm muted">(${L2("advertentie","listing")}: ${num(p.build_area)} m²)</span>`:""):null,1],[t("k.living"),[k.living_area_m2&&num(k.living_area_m2)+" m² "+t("k.living.w"),k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],[t("k.plot"),k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":null],[t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]))}</div>`
-      :"";
-    const pc=`<div class="card" id="pkMarket" style="margin-bottom:12px"><div class="hd"><h3>${L2("Markt","Market")}</h3></div><div class="pk-mk"><div class="loader sm">…</div></div></div>`;
-    return kc+catElements(k)+pc+((PR.enrichment||[]).length?enrichList(PR.enrichment,"property"):"");}
+/* Kadaster: Catastro-samenvatting, kadastergegevens en bouwdelen in één paneel (Rick 21-10-2026) */
+function kadPanel(k,p){
+  const other=(PR.enrichment||[]).filter(e=>!/idealista/i.test(String(e.source||"")+" "+String(e.label||"")));
+  const extra=other.length?`<div class="pk-grp">${L2("Overige bronnen","Other sources")}</div>`+enrichList(other,"property",1):"";
+  if(!k||!k.cadastral_ref){
+    const msg=!k?L2("Nog niet opgehaald bij Catastro.","Not fetched from Catastro yet."):`${esc(k.status==="not_found"?t("k.notfound"):k.status||"")}${k.error?" · "+esc(k.error):""}${k.checked_at?" · "+ago(k.checked_at):""}`;
+    return pkSec("kad",L2("Kadaster","Cadastre"),`<div class="empty sm" style="padding:14px">${msg}</div>`+extra,{edit:"kost",tag:"Catastro"})}
+  const F=areaFlag(p,k);
+  const tiles=`<div class="facts pk-kadf">
+      <div><b>${k.build_area_m2!=null?num(k.build_area_m2)+" m²":"—"}</b><span>${t("k.built")}${F?` · <span class="af-inl af-${F.lvl}" title="${esc(areaFlagTip(F))}">${areaFlagIcon(F,13)} ${L2("geadv.","adv.")} ${F.pct>0?"+":""}${F.pct}%</span>`:""}</span></div>
+      <div><b>${k.living_area_m2!=null?num(k.living_area_m2)+" m²":"—"}</b><span>${t("k.living.w")}</span></div>
+      <div><b>${k.parcel_area_m2!=null?num(k.parcel_area_m2)+" m²":"—"}</b><span>${t("k.plot")}</span></div>
+      <div><b>${k.year_built||"—"}</b><span>${t("k.year")}</span></div></div>`;
+  const det=kv([[t("k.cadref"),`<a class="mono" href="${esc(catUrl(k.cadastral_ref))}" target="_blank" rel="noopener">${esc(k.cadastral_ref)} ↗</a>`,1],[t("k.parcel"),k.parcel_ref],
+    [t("k.unit"),[k.cat_block&&"bl. "+k.cat_block,k.cat_stair&&"esc. "+k.cat_stair,k.cat_floor&&"pl. "+k.cat_floor,k.cat_door&&"pta. "+k.cat_door].filter(Boolean).join(" · ")],
+    [t("k.cataddr"),[k.cat_address,k.cat_postal_code,k.cat_municipality].filter(Boolean).join(", ")],[t("k.use"),k.use_class],[t("k.landclass"),k.land_class],
+    [t("k.share"),k.participation_pct!=null?k.participation_pct+" %":null],
+    [L2("Terras / zwembad","Terrace / pool"),[k.terrace_area_m2&&num(k.terrace_area_m2)+" m² "+t("k.living.t"),k.pool_area_m2&&num(k.pool_area_m2)+" m² "+t("k.living.p")].filter(Boolean).join(" · ")],
+    [t("k.building"),k.building_dwellings?t("k.dwellings",{a:k.building_dwellings,b:k.building_floors_above||"?"}):null]].map(x=>x[2]?x:[x[0],x[1]]));
+  const el=Array.isArray(k.elements)?k.elements:[];
+  const parts=el.length?`<div class="pk-grp">${L2("Bouwdelen","Building parts")}</div><div class="pk-kadel"><table class="mtable"><thead><tr><th>${t("k.use")}</th><th>${t("k.eltype")}</th><th>${t("k.floor")}</th><th style="text-align:right">m²</th></tr></thead><tbody>${el.map(e=>`<tr><td>${esc(e.use||"")}</td><td class="muted">${esc(e.type||"")}</td><td>${esc(e.pt??"")}</td><td style="text-align:right">${num(e.m2)}</td></tr>`).join("")}</tbody></table></div>`:"";
+  return pkSec("kad",L2("Kadaster","Cadastre"),tiles+`<div class="pk-grp">${L2("Kadastergegevens","Cadastral details")}</div>`+det+parts+extra,
+    {edit:"kost",tag:"Catastro · "+ago(k.checked_at),aside:`<a class="tag" href="${esc(catMap(k.cadastral_ref))}" target="_blank" rel="noopener">${t("k.map")} ↗</a>`})}
 /* ---------- woning: blok Markt (alleen NEXUS, nooit op de publieke site) ----------
    Bron: rpc nexus_property_market. Rij 1 prijspositie t.o.v. Idealista-vraagprijzen in de plaats,
    rij 2 officiële verkopen in de gemeente (MIVAU) met sparkline, rij 3 taxatiewaarde (alleen gemeenten >25.000 inw.).
    Ontbreekt een onderdeel, dan wordt die rij weggelaten. */
 const MK_CACHE={};
-async function loadPropMarket(p){const box=document.querySelector("#pkMarket .pk-mk");if(!box||!p.id)return;
+async function loadPropMarket(p){const box=document.querySelector("#pks-idl .pk-mk");if(!box||!p.id)return;
   let m=MK_CACHE[p.id];
   if(m===undefined){try{m=await rpc("nexus_property_market",{p_id:p.id})}catch(e){m=null}MK_CACHE[p.id]=m}
-  const cur=document.querySelector("#pkMarket .pk-mk");if(!cur||!PR||PR.property.id!==p.id)return;
+  const cur=document.querySelector("#pks-idl .pk-mk");if(!cur||!PR||PR.property.id!==p.id)return;
   const html=m?marketHtml(m):"";
-  if(!html){document.getElementById("pkMarket").remove();return}
-  cur.innerHTML=html}
+  /* paneel blijft altijd staan (vaste band), ook zonder marktgegevens */
+  cur.innerHTML=html||`<div class="empty sm">${L2("Nog geen vergelijkbare Idealista- of marktgegevens voor deze plaats.","No comparable Idealista or market data for this town yet.")}</div>`}
 function marketHtml(m){
   const I=m.idealista, O=m.official, S=m.series||[], rows=[];
   const pct=v=>v==null?"":(v>0?"+":v<0?"−":"±")+Math.abs(Number(v)).toLocaleString(LOC(),{maximumFractionDigits:1})+"%";
