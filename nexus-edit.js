@@ -19,6 +19,7 @@ const LANGS_OF=()=>TXL.concat(["es","de","fr"].filter(l=>T&&T[l]&&Object.values(
 const ADMIN_ONLY=["sold_price","sold_price_display","sold_date","deed_price","sold_agent_id","sold_agent_text","sold_agency_id","sold_agency_agent_id","notary","notary_protocol","commission_a","commission_b","commission_out","conveyancing","commission_note"];
 const FEED_FIELDS=["price","bedrooms","bathrooms","build_area","plot_area","energy_label","city","location_area","location_id","lat","lng","feature_options","build_type","category","province","country"];
 
+let PERS=[];   /* 21-10-2026: persoonsgegevens uit de akte, gaan bij Opslaan naar het contact */
 let D=null, P=null, T=null, M=null, TOUCH={}, TTOUCH={}, MEDIA_DIRTY=false, txL="en", ROOT=null, busy=false, MAP=null;
 
 /* ---------- waarden ---------- */
@@ -30,7 +31,7 @@ function norm(k,v){if(v===""||v===undefined)return null;if(v===null)return null;
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 function patch(){const o={};for(const k in TOUCH){const a=norm(k,P[k]),b=norm(k,D.property[k]);if(!same(a,b))o[k]=a}return o}
 function tpatch(){const o={};for(const key in TTOUCH){const [l,f]=key.split(".");const a=(T[l]||{})[f]??"", b=((D.texts||{})[l]||{})[f]??"";if(a!==b){(o[l]=o[l]||{})[f]=a===""?null:a}}return o}
-const dirtyCount=()=>Object.keys(patch()).length+Object.values(tpatch()).reduce((n,x)=>n+Object.keys(x).length,0)+(MEDIA_DIRTY?1:0);
+const dirtyCount=()=>Object.keys(patch()).length+Object.values(tpatch()).reduce((n,x)=>n+Object.keys(x).length,0)+(MEDIA_DIRTY?1:0)+PERS.length;
 
 /* ---------- veldhelpers ---------- */
 const ro=k=>(!D.is_admin&&ADMIN_ONLY.includes(k));
@@ -170,6 +171,7 @@ function secCosts(){
      Uitzondering 20-10-2026 (Rick): gemeenschapskosten PER JAAR (cost_community) staan bij Prijs, voor de Idealista-feed.
      20-10-2026: aktegegevens (registro, inschrijving, oppervlakte volgens akte, aankoop huidige eigenaar) + knop Akte inlezen. */
   return sec("kost",["Eigendomsakte","Title deed"],`<div class="dd-bar">${window.NEXUS_DEED?NEXUS_DEED.button(tr):""}<span class="sm muted">${esc(tr(["PDF of foto van de escritura; je ziet eerst wat er gevonden is.","PDF or photo of the escritura; you review what was found first."]))}${P.deed_read_at?" · "+esc(tr(["laatst ingelezen ","last read "]))+NEXUS_DMY(P.deed_read_at):""}</span></div>
+    ${PERS.length?`<div class="dd-pend">👤 ${esc(tr(["Bij Opslaan bijgewerkt: ","Updated on Save: "]))}${PERS.map(x=>`<b>${esc(x.label||"—")}</b>${x.contact_id?"":esc(tr([" (nieuw contact)"," (new contact)"]))} <span class="muted">(${esc(Object.keys(x.patch).filter(k=>!["street_number","postcode","city","state","country"].includes(k)).map(k=>({nie:"NIE",passport:tr(["paspoort","passport"]),marital:tr(["burgerlijke staat","marital status"]),street:tr(["adres","address"])})[k]||k).join(", ")||"—")})</span>`).join(" · ")} <button type="button" class="btn sm" data-act="perscancel">${esc(tr(["Niet doen","Discard"]))}</button></div>`:""}
     <div class="ad-cols3">
     <div><h5>${esc(tr(["Kadaster en registro","Cadastre and registry"]))}</h5>${inp("cadastral_ref",["Kadastrale referentie","Cadastral reference"])}${inp("finca_number",["Fincanummer","Finca number"])}${inp("registry_name",["Registro de la Propiedad","Land registry"],{list:"peRegistros",ph:["kies of typ","pick or type"]})}${inp("idufir","IDUFIR / CRU")}${inp("drive_folder_id",["Klantmap op de Drive","Client folder on Drive"],{ph:["plak de link van de map","paste the folder link"],hint:["Map in ‘1. KLANTEN’; de knop 📁 in de woningkop opent hem","Folder in ‘1. KLANTEN’; the 📁 button in the property header opens it"]})}</div>
     <div><h5>${esc(tr(["Inschrijving en oppervlakte","Inscription and areas"]))}</h5>${row(inp("registry_tomo","Tomo"),inp("registry_libro","Libro"))}${row(inp("registry_folio","Folio"),inp("registry_inscription",["Inscripción","Inscription"]))}
@@ -332,8 +334,12 @@ function bind(){
     if(d.act==="dist"){e.preventDefault();calcDist();return}
     if(d.fxr&&window.NEXUS_FEAT){e.preventDefault();if(NEXUS_FEAT.handle(b,featModel()))render(true);return}
     if(d.act==="gen"){e.preventDefault();genTexts();return}
-    if(d.deed){e.preventDefault();if(window.NEXUS_DEED)NEXUS_DEED.run({sb:X.sb,tr,current:P,onApply:v=>{Object.entries(v).forEach(([k,x])=>set(k,x));render(true);
+    if(d.deed){e.preventDefault();if(window.NEXUS_DEED)NEXUS_DEED.run({sb:X.sb,rpc:X.rpc,tr,current:P,ownerId:P.owner_contact_id||null,
+      onPersons:list=>{PERS=list;upDirty();render(true);const s=ROOT.querySelector("#pe-kost");if(s)s.scrollIntoView({block:"start"});
+        toast(tr(["Eigenaarsgegevens klaargezet; ze gaan mee met Opslaan","Owner data staged; it is saved with Save"]))},
+      onApply:v=>{Object.entries(v).forEach(([k,x])=>set(k,x));render(true);
       const s=ROOT.querySelector("#pe-kost");if(s)s.scrollIntoView({block:"start"});toast(tr(["Overgenomen; vergeet niet op te slaan","Applied; remember to save"]))}});return}
+    if(d.act==="perscancel"){e.preventDefault();PERS=[];upDirty();render(true);return}
     if(d.act==="keynext"){e.preventDefault();(async()=>{try{const n=await X.rpc("nexus_key_number_next",{});set("key_number",String(n));render(true)}catch(x){err(x.message||String(x))}})();return}
     if(d.act==="delete"){e.preventDefault();delProp();return}
     if(d.act==="agintro"&&D.buyer_intro){e.preventDefault();const bi=D.buyer_intro;set("sold_agency_id",bi.agency_id||null);set("sold_agency_agent_id",bi.agent_id||null);
@@ -357,7 +363,7 @@ let pT;function pickSearch(el){clearTimeout(pT);pT=setTimeout(async()=>{const co
 
 /* ---------- laden / opslaan ---------- */
 async function load(ref){
-  shell();TOUCH={};TTOUCH={};MEDIA_DIRTY=false;PICKED={};
+  shell();TOUCH={};TTOUCH={};MEDIA_DIRTY=false;PICKED={};PERS=[];
   await loadLK();
   if(window.NEXUS_AGENCIES){try{await NEXUS_AGENCIES.list(X.rpc,true)}catch(_){}}
   try{D=await X.rpc("nexus_property_edit",{p_ref:ref})}catch(e){ROOT.querySelector(".pe-box").innerHTML=`<div class="pe-load">${esc(e.message)} <button class="btn" data-act="close">×</button></div>`;return}
@@ -402,6 +408,16 @@ async function save(){
       }
       const items=M.map((m,i)=>m.del?{id:m.id,delete:true}:{id:m.id,sort:i,is_main:!!m.is_main,caption:m.caption||"",kind:m.kind});
       fresh=await X.rpc("nexus_property_media_save",{p_property_id:P.id,p_items:items});
+    }
+    /* persoonsgegevens uit de akte → contact(en) van de eigenaar (audit via nexus_contact_save) */
+    if(PERS.length){const owner=P.owner_contact_id;
+      /* één voor één; wat gelukt is gaat uit de lijst, zodat een tweede poging geen dubbel partnercontact maakt */
+      while(PERS.length){const x=PERS[0];
+        if(x.contact_id){if(Object.keys(x.patch).length)await X.rpc("nexus_contact_save",{p_id:x.contact_id,p_patch:x.patch})}
+        else{const main=x.new_partner_of||owner;if(!main)throw new Error(tr(["Geen eigenaar gekoppeld voor het nieuwe partnercontact","No owner linked for the new partner contact"]));
+          await X.rpc("nexus_partner_create",{p_main:main,p_fields:Object.assign({},x.fields,x.patch,{source:"nexus:deed"}),p_emails:[],p_phones:[]})}
+        PERS.shift();
+      }
     }
     if(fresh){D=fresh}
     TOUCH={};TTOUCH={};MEDIA_DIRTY=false;PICKED={};
