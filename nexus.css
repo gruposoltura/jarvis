@@ -668,7 +668,7 @@ html[data-theme="light"] .pe-del{color:#b91c1c}
 .ov-web .seg{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:2px}
 .ov-web .seg button{background:none;border:0;color:var(--tx2);padding:3px 9px;border-radius:6px;cursor:pointer;font:inherit}
 .ov-web .seg button.on{background:var(--c-ov,#3b82f6);color:#fff}
-.wb-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;padding:0 12px}
+.wb-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0 12px}
 .wb-t{position:relative;padding:10px 12px 8px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);min-width:0}
 .wb-t[data-go]{cursor:pointer}.wb-t[data-go]:hover{border-color:var(--bc)}
 .wb-t::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--bc)}
