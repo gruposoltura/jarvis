@@ -1167,3 +1167,18 @@ html[data-theme="light"] .ag-box{box-shadow:0 30px 80px rgba(15,23,42,.25)}
 .pk-enr .kv{border-bottom:1px solid var(--line)}
 .pk-enr .kv:last-child{border-bottom:0}
 @container (min-width:820px) and (max-width:1119px){.pk-band>#pks-idl{grid-column:1/-1}}
+
+/* ---------- woningkop: actieknoppen even groot, elk een eigen kleur (21-10-2026) ---------- */
+.dh .acts{align-items:center}
+.dh .acts a,.dh .acts a.act-del{display:inline-flex;align-items:center;justify-content:center;gap:6px;box-sizing:border-box;
+  height:34px;min-width:138px;padding:0 14px;border-radius:8px;border:1px solid transparent;
+  font-size:calc(13px*var(--fs,1));font-weight:700;line-height:1;white-space:nowrap;text-decoration:none;cursor:pointer;opacity:1;color:#fff;transition:filter .15s}
+.dh .acts a:hover{filter:brightness(1.12);color:#fff}
+.dh .acts a.act-edit{background:#f59e0b;border-color:#f59e0b;color:#111}
+.dh .acts a.act-edit:hover{color:#111}
+.dh .acts a.act-del{background:#dc2626;border-color:#dc2626;color:#fff}
+.dh .acts a.act-del:hover{background:#dc2626;color:#fff;border-color:#dc2626}
+.dh .acts a.act-drive{background:#1a73e8;border-color:#1a73e8}
+.dh .acts a.act-web{background:#0d9488;border-color:#0d9488}
+.dh .acts a.act-ext{background:#7c3aed;border-color:#7c3aed;color:#fff}
+@media (max-width:700px){.dh .acts a,.dh .acts a.act-del{min-width:0;flex:1 1 calc(50% - 6px)}}
