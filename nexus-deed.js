@@ -71,12 +71,14 @@ const hasAddr=c=>!!(c&&(c.street||c.postcode||c.city));
 /* akten schrijven namen vaak in hoofdletters: voor een nieuw contact "PETER JONES" → "Peter Jones" */
 const tcAll=v=>v==null?null:String(v).toLowerCase().replace(/(^|[\s\-'’])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase());
 const tc=v=>v!=null&&/\p{L}/u.test(v)&&v===String(v).toUpperCase()?tcAll(v):v;
+/* "Van Sommeren (nacida van Rossem)": de meisjesnaam-toevoeging hoort niet in het achternaamveld */
+const lnm=v=>v==null?null:String(v).replace(/\s*\((nacid[ao]|n[ée]e|geb(oren)?\.?|born)\b[^)]*\)/i,"").trim()||null;
 const pname=p=>[p.first_name,p.last_name].filter(Boolean).join(" ");
 /* [sleutel, label, waarde uit akte, waarde in contact, standaard aanvinken als het verschilt] */
 function pRows(p,c,tr){const rows=[];
   /* Rick 21-10-2026: namen uit de akte (vaak met doopnamen) mogen de namen in het contact overschrijven; bij een verschil zelf aanvinken */
   if(p.first_name)rows.push(["first_name",["Voornaam / voornamen","First name(s)"],tc(p.first_name),c&&c.first_name,false]);
-  if(p.last_name)rows.push(["last_name",["Achternaam","Last name"],tc(p.last_name),c&&c.last_name,false]);
+  if(p.last_name)rows.push(["last_name",["Achternaam","Last name"],tc(lnm(p.last_name)),c&&c.last_name,false]);
   if(p.nie)rows.push(["nie",["NIE / DNI","NIE / DNI"],p.nie,c&&c.nie,true]);
   if(p.passport)rows.push(["passport",[p.id_document_kind==="national_id"?"ID-kaart":"Paspoort",p.id_document_kind==="national_id"?"ID card":"Passport"],p.passport,c&&c.passport,false]);
   if(p.marital)rows.push(["marital",["Burgerlijke staat","Marital status"],p.marital,c&&c.marital,false]);
@@ -153,11 +155,11 @@ function show(o,r,fname,owners){const tr=o.tr, f=r.fields||{}, cur=o.current||{}
     const plist=[];
     persons.forEach((p,i)=>{const t=M[i].target;if(!t||!owners.length)return;const patch={};
       OV.querySelectorAll(`[data-ddp="${i}"]`).forEach(c=>{if(!c.checked)return;const k=c.dataset.pk;
-        if(k==="address"){["street","street_number","postcode","city","state","country"].forEach(a=>patch[a]=p[a]||null)}else patch[k]=(k==="first_name"||k==="last_name")?tc(p[k]):p[k]});
+        if(k==="address"){["street","street_number","postcode","city","state","country"].forEach(a=>patch[a]=p[a]||null)}else patch[k]=k==="first_name"?tc(p[k]):k==="last_name"?tc(lnm(p[k])):p[k]});
       if(!Object.keys(patch).length&&t!=="new")return;
       const c=owners.find(x=>x.id===t);
       plist.push({contact_id:t==="new"?null:t,new_partner_of:t==="new"?(owner&&owner.id):null,label:t==="new"?pname(p):(c&&c.name)||pname(p),patch,
-        fields:{first_name:tc(p.first_name),last_name:tc(p.last_name)}})});
+        fields:{first_name:tc(p.first_name),last_name:tc(lnm(p.last_name))}})});
     closeOv();
     if(Object.keys(out).length){out.deed_read_at=new Date().toISOString();o.onApply(out)}
     if(plist.length&&o.onPersons)o.onPersons(plist)};
