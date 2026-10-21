@@ -453,6 +453,10 @@ const CMAILS=[["weekly_news",["Wekelijks nieuws (vrijdag)","Weekly news (Friday)
   ["monthly_matches",["Maandelijkse woningmatches","Monthly property matches"]],["new_listing",["Nieuwe woning","New listing"]],
   ["market_report",["Marktbericht (alleen met expliciete opt-in)","Market report (explicit opt-in only)"]]];
 const CMAIL_DEF=["weekly_news","price_reduced","monthly_matches","new_listing"];
+/* Wekelijkse verkopersupdate (Rick 21-10-2026): servicemail over de eigen woning, geen nieuwsbrief.
+   Staat los van de nieuwsbrief-toestemming en staat standaard AAN (mailing_types.default_opt_in=true);
+   alleen seller_update.on=false stopt hem (JARVIS-Mktg-SellerWeeklyUpdate-v2). */
+const CSELLER=["seller_update",["Wekelijkse verkopersupdate (vrijdag, alleen verkopers)","Seller weekly update (Friday, sellers only)"]];
 /* Aanhef per persoon; "Mr & Mrs" bestaat niet meer — een echtpaar is twee contacten (partner) */
 const TITLES=[["",""],["Mr","Mr"],["Mrs","Mrs"],["Ms","Ms"],["Dhr.","Dhr."],["Mevr.","Mevr."],["Sr.","Sr."],["Sra.","Sra."],["Herr","Herr"],["Frau","Frau"],["Dr.","Dr."]];
 const SP_BUDGET=[["",""],["100k","€ 100k"],["150k","€ 150k"],["250k","€ 250k"],["more",["Meer","More"]]];
@@ -468,13 +472,16 @@ async function openContact(key,ctx){X=ctx;
   const spChanged=()=>JSON.stringify(Object.entries(spClean(SP)).sort())!==JSON.stringify(Object.entries(SP0).sort());
   const mp0=C.mailing_prefs||{}, MS0={};
   CMAILS.forEach(([sl])=>{const x=mp0[sl];MS0[sl]=x&&x.on!=null?!!x.on:(!!o.mailing_optin&&CMAIL_DEF.includes(sl))});
+  {const x=mp0[CSELLER[0]];MS0[CSELLER[0]]=x&&x.on!=null?!!x.on:true}
   const MS=Object.assign({},MS0);
-  const msChanged=()=>CMAILS.some(([sl])=>MS[sl]!==MS0[sl]);
+  const msChanged=()=>CMAILS.concat([CSELLER]).some(([sl])=>MS[sl]!==MS0[sl]);
   const optSel=(attr,k,opts,cur)=>{const has=opts.some(x=>x[0]===String(cur??""));return `<select ${attr}="${k}">${has?"":`<option value="${esc(cur)}" selected>${esc(cur)}</option>`}${opts.map(x=>`<option value="${esc(x[0])}" ${String(cur??"")===x[0]?"selected":""}>${esc(tr(x[1]))}</option>`).join("")}</select>`};
   const cats=()=>[["",""]].concat((LS().CATS||[["apartment",["Appartement","Apartment"]],["villa","Villa"],["other",["Overig","Other"]]]));
   const mailRows=()=>`<label class="ad-c"><input type="checkbox" data-cf="mailing_optin" ${v.mailing_optin?"checked":""}><span><b>${esc(tr(["Toestemming voor mailings (opt-in)","Consent to mailings (opt-in)"]))}</b></span></label>
        <div class="ad-row" style="margin-top:8px">${CMAILS.map(([sl,lab])=>`<label class="ad-c ${sl==="market_report"?"w2":""}"><input type="checkbox" data-ms="${sl}" ${MS[sl]?"checked":""} ${v.mailing_optin?"":"disabled"}><span>${esc(tr(lab))}</span></label>`).join("")}</div>
-       <small class="muted">${esc(tr(["Zonder toestemming gaat er geen enkele nieuwsbrief uit. Transactionele mails (review, welkom verkoper, opvolging) vallen hier niet onder.","Without consent no newsletter is sent. Transactional mails (review, seller welcome, follow-up) are not covered here."]))}</small>`;
+       <small class="muted">${esc(tr(["Zonder toestemming gaat er geen enkele nieuwsbrief uit. Transactionele mails (review, welkom verkoper, opvolging) vallen hier niet onder.","Without consent no newsletter is sent. Transactional mails (review, seller welcome, follow-up) are not covered here."]))}</small>
+       <div class="ad-row" style="margin-top:10px"><label class="ad-c w2"><input type="checkbox" data-ms="${CSELLER[0]}" ${MS[CSELLER[0]]?"checked":""}><span>${esc(tr(CSELLER[1]))}</span></label></div>
+       <small class="muted">${esc(tr(["Servicemail over de eigen woning; staat los van de nieuwsbrief-toestemming en staat standaard aan.","Service mail about the own property; independent of newsletter consent and on by default."]))}</small>`;
   /* Bedrijf (Rick 20-10-2026): keuzelijst uit core.agencies; een nieuwe naam bij een Agent wordt bij Opslaan een nieuw kantoor */
   if(window.NEXUS_AGENCIES){try{await NEXUS_AGENCIES.list(X.rpc,true)}catch(_){}}
   const agHint=()=>{const n=String(v.company||"").trim(), A=window.NEXUS_AGENCIES;if(!n||!A)return "";
