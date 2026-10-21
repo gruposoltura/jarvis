@@ -61,6 +61,13 @@
   tegen elkaar en een eiland-mat eronder; eilanden in een raster met doorlopende gangpaden (langs x tussen de
   eilandkolommen, dwarsgangen langs y onder elke eilandrij). Lopers volgen die gangpaden (a._ax / a._ay uit
   planDept) en lopen dus tussen de eilanden door, langs de bureaus, naar deur of collega.
+  Kantine (21-10): eigen platform op de dichtstbijzijnde vrije plek (placeCanteen, liefst aan de voorkant), met
+  een looppad vanaf de ring om het brein. Dichte achterwanden: lange counter met koffiezetapparaten en kopjes,
+  koelkast, lange wandkast, twee ramen, klok, lichtreclame, plant in de achterhoek, vier statafels. Overleg (boog
+  in v_office_links, afnemer draait kort na leverancier) = BEIDE agents lopen naar een vrije statafel, staan daar
+  minstens 11 s (langer zolang er een 'working' is, max 4 min) en lopen terug. Zit het paar in een terugkoppellus
+  (sterk samenhangende component van >= 3 agents, loopGroups()), dan schuiven tot 2 lus-buren aan (max 4 per
+  tafel). Test: office-v2.html?overleg=1 start direct een overleg van de grootste lus.
   Paneel: A- / A+ / breedte / standaard, sleepgreep links; keuze per browser in localStorage 'bridge.office2.panel'.
 -->
 <html lang="nl">
@@ -225,6 +232,17 @@
   .door-glass{fill:color-mix(in srgb,var(--c) 18%,#9fd3f0);fill-opacity:.2;stroke:#c9d3de;stroke-width:.9;stroke-opacity:.8}
   .door-sign{fill:var(--c);opacity:.9}
   .visit-bub{pointer-events:none}
+  /* 21-10 kantine + looppad vanaf het brein */
+  .canteen{--c:#ffb547;pointer-events:none}
+  #floor.intro .canteen{animation:rise .55s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i)*55ms)}
+  .canteen .slab-top{fill:#1c1a16;stroke:color-mix(in srgb,var(--c) 55%,transparent);stroke-width:1.1;stroke-linejoin:round}
+  .canteen .ct-tile{stroke:#2c2820;stroke-width:.8}
+  .canteen .ct-neon{font:800 10px var(--mono);letter-spacing:.32em;fill:#fff1d6}
+  .canteen .ct-neon-g{font:800 10px var(--mono);letter-spacing:.32em;fill:var(--c);filter:url(#fSoft);opacity:.95}
+  .cpath{pointer-events:none}
+  .cpath .cp-base{fill:none;stroke:#0d1522;stroke-width:15;stroke-linecap:round}
+  .cpath .cp-edge{fill:none;stroke:color-mix(in srgb,var(--c) 16%,#121a27);stroke-width:12;stroke-linecap:round}
+  .cpath .cp-line{fill:none;stroke:var(--c);stroke-opacity:.5;stroke-width:1.6;stroke-dasharray:2 9;stroke-linecap:round}
   .dock{pointer-events:none}
   .dock .d-plate{stroke:color-mix(in srgb,var(--c) 60%,transparent);stroke-width:1}
   .dock .d-ring{fill:none;stroke:var(--c);stroke-width:1.6;stroke-opacity:.85}
@@ -799,6 +817,7 @@
       S.first = false;
       var q = new URLSearchParams(location.search).get("agent");
       if (q && S.byId[q]) { setFocus({ type: "agent", id: q }); zoomToAgent(S.byId[q], true); }
+      if (new URLSearchParams(location.search).get("overleg") != null) setTimeout(demoMeet, 1500);
     }
   }
 
@@ -968,6 +987,7 @@
       /* aanhechtpunt van de pijp: de hoek het dichtst bij het brein (dock) */
       d._port = dockPoint(d); d._pipe = dockInfo(d).pipe;
     });
+    placeCanteen(brain, bsb, aspect);   /* 21-10: kantine na de afdelingen, op een vrije plek */
     /* tekenvolgorde van achter naar voor (op x+y van het middelpunt) */
     S.paint = S.depts.slice().sort(function (p, q) { return (p.x + p.w / 2 + p.y + p.d / 2) - (q.x + q.w / 2 + q.y + q.d / 2); });
     S.sceneSize = [cw, ch];
@@ -1509,6 +1529,7 @@
   function doorX(d) { return d.x + d.w / 2; }   /* deur in de achterwand y = y0 */
   function doorY(d) { return d.y + d.d / 2; }   /* deur in de achterwand x = x0 en de zijdeur in x = x1 */
   function frontDoorX(d) {                     /* voordeur in de voorwand y = y1: midden van de bureaustrook */
+    if (d.fdx != null) return d.fdx;          /* kantine: vaste plek op het middelste looppad */
     var a = d.x + WALL + PADX + (d.gutter || 0), b = d.x + d.w - PROP_LANE;
     return Math.max(d.x + 1.7, Math.min(d.x + d.w - PROP_LANE - 0.6, (a + b) / 2));
   }
@@ -1620,6 +1641,14 @@
     var plan = wallPlan(d), s = "", col = mixHex(d.color || "#8aa0b5", "#2a3546", 0.14);
     [["x", d.x, d.x + d.w, doorX(d)], ["y", d.y, d.y + d.d, doorY(d)]].forEach(function (W) {
       var ax = W[0], A = W[1], B = W[2], g = W[3], ga = g - DOOR / 2, gb = g + DOOR / 2;
+      /* 21-10: d.solid (kantine) = dichte achterwanden zonder deur */
+      if (d.solid) {
+        s += wquad(d, ax, A, B, 0, WALL_H, "wall wall-" + ax) + wquad(d, ax, A, B, 0, 4, "wall-base", 0.01);
+        s += '<polygon class="wall-top" points="' + pts([wpt(d, ax, A, WALL_H), wpt(d, ax, B, WALL_H), wpt(d, ax, B, WALL_H, -WALL_T), wpt(d, ax, A, WALL_H, -WALL_T)]) + '"/>';
+        s += wline(d, ax, A, WALL_H, B, WALL_H, "wall-cap");
+        plan[ax].forEach(function (it) { s += it.t === "win" ? windowSvg(d, ax, it) : hangSvg(d, ax, it); });
+        return;
+      }
       /* opstapje achter de deur (naar buiten, achter de wand) */
       s += ax === "x" ? stepsSvg([g, d.y], [0, -1], [1, 0], col) : stepsSvg([d.x, g], [-1, 0], [0, 1], col);
       [[A, ga], [gb, B]].forEach(function (seg) {
@@ -1751,9 +1780,192 @@
     return S.agents.length + " agents · " + runs + " runs 24u" + (w ? " · " + w + " bezig" : "");
   }
 
+  /* ======================================================================= kantine (21-10)
+     Eigen platform buiten de afdelingen, met een looppad vanaf de ring om het brein (zoals een datapijp,
+     maar als vloerloper). Achterwanden dicht (geen deuren): langs de x-wand een lange counter met
+     koffiezetapparaten en kopjes plus een koelkast, langs de y-wand een lange wandkast; een paar ramen,
+     een grote plant in de achterhoek, statafels in het midden. Indeling in lokale cellen t.o.v. (x, y). */
+  var CANTEEN_C = "#ffb547", CW = 11, CD = 8.6;
+  var CT_Z = 46, CT_R = 0.36, CT_SPOT = 0.64;                 /* statafel: bladhoogte (px), straal (cel), staplek t.o.v. het midden */
+  var CT_TABLES = [[3.7, 3.1], [7.1, 3.1], [3.7, 5.75], [7.1, 5.75]];
+  var CT_LANES = [1.95, 5.4, 8.9], CT_DOOR = 5.4;            /* looppaden langs y tussen de tafels; voordeur op het middelste */
+  function canteenSb(c) {
+    var F = footprint(c, 0), xs = F.map(function (p) { return p[0]; }), ys = F.map(function (p) { return p[1]; });
+    return [Math.min.apply(null, xs) - 6, Math.min.apply(null, ys) - 6, Math.max.apply(null, xs) + 6, Math.max.apply(null, ys) + 8];
+  }
+  /* geen overlap met afdelingen, kaartjes, brein; geen datapijp onder of achter de kantine, en het looppad
+     niet onder of achter een afdeling */
+  function canteenFits(c, brain, bsb) {
+    if (overlaps(c, brain, DEPT_GAP + 0.6)) return false;
+    var sb = canteenSb(c), i, k, P;
+    if (sOverlap(sb, bsb, 8)) return false;
+    for (i = 0; i < S.depts.length; i++) if (overlaps(c, S.depts[i], DEPT_GAP) || sOverlap(sb, S.depts[i]._sb, 10)) return false;
+    for (i = 0; i < S.depts.length; i++) {
+      P = S.depts[i]._pipe || [];
+      for (k = 1; k < P.length; k++) if (segHitsRect(P[k - 1], P[k], c, PIPE_GAP)) return false;
+      if (P.length && coveredLen(P, c, 0.25) > 0) return false;
+    }
+    P = dockInfo(c).pipe;
+    for (i = 0; i < S.depts.length; i++) {
+      for (k = 1; k < P.length; k++) if (segHitsRect(P[k - 1], P[k], S.depts[i], PIPE_GAP)) return false;
+      if (coveredLen(P, S.depts[i], 0.25) > 0) return false;
+    }
+    return true;
+  }
+  /* radiaal zoeken (zelfde schermellips als de afdelingen) naar de dichtstbijzijnde vrije plek; liefst aan de
+     voorkant (onder op het scherm), zodat de lopers erheen zichtbaar blijven */
+  function placeCanteen(brain, bsb, aspect) {
+    var c = { name: "Kantine", color: CANTEEN_C, canteen: true, solid: true, w: CW, d: CD, agents: [], gutter: 0 }, best = null, N = 36;
+    for (var i = 0; i < N; i++) {
+      var phi = i / N * Math.PI * 2, pen = Math.sin(phi) > 0.15 ? 1 : 1.3;
+      for (var R = 80; R < 2600; R += 12) {
+        if (best && R * pen >= best.sc) break;
+        var w = unIso(R * aspect * Math.cos(phi), R * 0.95 * Math.sin(phi));
+        c.x = w[0] - c.w / 2; c.y = w[1] - c.d / 2; c.fdx = c.x + CT_DOOR;
+        if (canteenFits(c, brain, bsb)) { best = { sc: R * pen, x: c.x, y: c.y }; break; }
+      }
+    }
+    if (!best) { S.canteen = null; return; }
+    c.x = best.x; c.y = best.y; c.fdx = c.x + CT_DOOR;
+    var dk = dockInfo(c); c._pipe = dk.pipe; c._port = dk.p; c._sb = canteenSb(c);
+    c.tables = CT_TABLES.map(function (t) {   /* staplekken: voor (S), rechts (E), links (W), achter (N) */
+      return { c: t, spots: [[t[0], t[1] + CT_SPOT], [t[0] + CT_SPOT, t[1]], [t[0] - CT_SPOT, t[1]], [t[0], t[1] - CT_SPOT]] };
+    });
+    S.canteen = c;
+  }
+  /* looppad: van de ring om het brein langs de pijp-lijn naar het buitenpunt van de kantine, 0,3 cel ernaast
+     (daar lopen de lopers, zie alongPipe in visitRoute) */
+  function canteenPathInner(c) {
+    var dk = dockInfo(c), first = (dk.via && dk.via[0]) || dk.out, m = RING / Math.max(Math.abs(first[0]), Math.abs(first[1]), 1e-6);
+    var L = Math.hypot(first[0], first[1]) || 1, n = [-first[1] / L, first[0] / L];
+    if (n[0] + n[1] < 0) n = [-n[0], -n[1]];
+    var P = [[first[0] * m, first[1] * m]].concat(dk.via || []).concat([dk.out]).map(function (p) { return iso(p[0] + n[0] * 0.3, p[1] + n[1] * 0.3, 0); });
+    var ln = 'points="' + pts(P) + '" stroke-linejoin="round"';
+    return '<polyline class="cp-base" ' + ln + '/><polyline class="cp-edge" ' + ln + '/><polyline class="cp-line" ' + ln + "/>";
+  }
+  function ctCup(p, col) {
+    return '<rect x="' + f1(p[0] - 2.3) + '" y="' + f1(p[1] - 4.6) + '" width="4.6" height="4.6" rx="1.1" fill="' + (col || "#f4f1ea") + '"/>'
+      + '<ellipse cx="' + f1(p[0]) + '" cy="' + f1(p[1] - 4.6) + '" rx="2.3" ry="1" fill="#6b4a33"/>';
+  }
+  /* bovenop de counter, per segment iets anders: espressomachines, rijen kopjes, filterkoffie, spoelbak */
+  function counterTop(i, F, z, r) {
+    var s = "", u, v;
+    function cupAt(u, v, zz, col) { return ctCup(fpt(F, u, v, zz), col); }
+    if (i === 0 || i === 2) {   /* espressomachine: 0 = rvs, 2 = zwart */
+      var body = i ? "#22272e" : "#b4bec9", panel = i ? "#0f1216" : "#2a3038";
+      s += sub(F, 0.08, 0.92, 0.12, 0.74, z, 21, body) + sub(F, 0.12, 0.88, 0.16, 0.7, z + 21, 1.8, shade(body, 0.8));
+      s += face(F, 0.14, 0.86, z + 12, z + 18.5, panel, 0.744);
+      s += face(F, 0.18, 0.23, z + 15, z + 16.6, "#3ee08f", 0.746) + face(F, 0.77, 0.82, z + 15, z + 16.6, "#ff5d5d", 0.746);
+      [0.3, 0.7].forEach(function (g) { s += sub(F, g - 0.06, g + 0.06, 0.74, 0.86, z + 8, 3, "#1b1f27"); });
+      s += sub(F, 0.1, 0.9, 0.74, 0.98, z, 1.5, "#7f8a96");                       /* lekbak */
+      s += cupAt(0.3, 0.86, z + 1.5) + cupAt(0.7, 0.86, z + 1.5);
+      [0.28, 0.5, 0.72].forEach(function (q) { s += cupAt(q, 0.45, z + 22.8); });   /* kopjes warm houden bovenop */
+      return s;
+    }
+    if (i === 1 || i === 3) {   /* rijen kopjes + een suikerpot / melkkannetje */
+      var cols = ["#f4f1ea", "#f4f1ea", "#e8231a", "#2f6fa8", "#f4f1ea", "#d9a441"];
+      for (v = 0.3; v < 0.95; v += 0.27) for (u = 0.16; u < 0.9; u += 0.19) s += cupAt(u, v, z, cols[Math.floor(r() * cols.length)]);
+      s += cupAt(0.25, 0.3, z + 4.6) + cupAt(0.44, 0.3, z + 4.6);               /* gestapeld */
+      var jp = fpt(F, i === 1 ? 0.84 : 0.12, 0.5, z);
+      s += '<rect x="' + f1(jp[0] - 3.5) + '" y="' + f1(jp[1] - 9) + '" width="7" height="9" rx="2" fill="' + (i === 1 ? "#dfe4ea" : "#c9b79a") + '"/>'
+        + '<ellipse cx="' + f1(jp[0]) + '" cy="' + f1(jp[1] - 9) + '" rx="3.5" ry="1.4" fill="' + (i === 1 ? "#9aa5b1" : "#8a6a4a") + '"/>';
+      return s;
+    }
+    if (i === 4) {   /* filterkoffie met glazen kan + waterkoker */
+      s += sub(F, 0.12, 0.56, 0.14, 0.42, z, 27, "#22272e") + sub(F, 0.12, 0.56, 0.14, 0.78, z + 21, 6, "#22272e");
+      s += face(F, 0.18, 0.5, z + 1, z + 12, "#6b4a33", 0.704, ' fill-opacity=".85"') + face(F, 0.18, 0.5, z + 9, z + 13, "#c9e6f5", 0.705, ' fill-opacity=".35"');
+      s += face(F, 0.46, 0.5, z + 23, z + 25, "#ff5d5d", 0.784);
+      s += sub(F, 0.68, 0.88, 0.3, 0.7, z, 14, "#dfe4ea") + sub(F, 0.7, 0.86, 0.34, 0.66, z + 14, 2, "#2b3442");
+      return s;
+    }
+    /* spoelbak met kraan en een droogrek */
+    var a = fpt(F, 0.12, 0.25, z + 0.3), b = fpt(F, 0.62, 0.25, z + 0.3), c2 = fpt(F, 0.62, 0.85, z + 0.3), d2 = fpt(F, 0.12, 0.85, z + 0.3);
+    s += poly([a, b, c2, d2], "#8f9aa6") + poly([fpt(F, 0.16, 0.32, z + 0.4), fpt(F, 0.58, 0.32, z + 0.4), fpt(F, 0.58, 0.78, z + 0.4), fpt(F, 0.16, 0.78, z + 0.4)], "#5d6874");
+    var k0 = fpt(F, 0.37, 0.14, z), k1 = fpt(F, 0.37, 0.14, z + 15), k2 = fpt(F, 0.37, 0.4, z + 15);
+    s += '<path d="M' + f1(k0[0]) + "," + f1(k0[1]) + " L" + f1(k1[0]) + "," + f1(k1[1]) + " L" + f1(k2[0]) + "," + f1(k2[1]) + '" stroke="#c9d3df" stroke-width="2" fill="none" stroke-linecap="round"/>';
+    s += sub(F, 0.7, 0.94, 0.25, 0.85, z, 2, "#9aa5b1") + cupAt(0.76, 0.45, z + 2, "#f4f1ea") + cupAt(0.88, 0.62, z + 2, "#2f6fa8");
+    return s;
+  }
+  function highTable(cx, cy, r) {
+    var b = iso(cx, cy, SLAB), t = iso(cx, cy, SLAB + CT_Z), rx = Math.SQRT2 * CT_R * HW, ry = Math.SQRT2 * CT_R * HH;
+    var s = '<ellipse cx="' + f1(b[0]) + '" cy="' + f1(b[1]) + '" rx="' + f1(rx * 0.62) + '" ry="' + f1(ry * 0.62) + '" fill="#000" fill-opacity=".35"/>'
+      + '<ellipse cx="' + f1(b[0]) + '" cy="' + f1(b[1] - 1) + '" rx="' + f1(rx * 0.42) + '" ry="' + f1(ry * 0.42) + '" fill="#39414d"/>'
+      + '<rect x="' + f1(b[0] - 1.8) + '" y="' + f1(t[1]) + '" width="3.6" height="' + f1(b[1] - t[1] - 1) + '" fill="#5c6572"/>'
+      + '<ellipse cx="' + f1(t[0]) + '" cy="' + f1(t[1] + 2.6) + '" rx="' + f1(rx) + '" ry="' + f1(ry) + '" fill="#4a3324"/>'
+      + '<ellipse cx="' + f1(t[0]) + '" cy="' + f1(t[1]) + '" rx="' + f1(rx) + '" ry="' + f1(ry) + '" fill="#8a6240"/>'
+      + '<ellipse cx="' + f1(t[0] - rx * 0.22) + '" cy="' + f1(t[1] - ry * 0.25) + '" rx="' + f1(rx * 0.45) + '" ry="' + f1(ry * 0.35) + '" fill="#a47a52" fill-opacity=".55"/>';
+    s += ctCup(iso(cx - 0.12, cy + 0.06, SLAB + CT_Z)) + (r() < 0.6 ? ctCup(iso(cx + 0.1, cy - 0.1, SLAB + CT_Z), "#2f6fa8") : "");
+    return s;
+  }
+  function canteenProps(c) {
+    var out = [], r = rngOf(hash("kantine") ^ 0xc0ffee), x0 = c.x, y0 = c.y, x1 = c.x + c.w, y1 = c.y + c.d, i;
+    function push(cx, cy, svg) { var k = (cx - x0) + (cy - y0); out.push({ k: k, h: '<g class="prop" data-k="' + k.toFixed(3) + '">' + svg + "</g>" }); }
+    /* grote plant in de achterhoek */
+    push(x0 + 0.5, y0 + 0.5, spriteAt("plant", 361, x0 + 0.5, y0 + 0.5, 46));
+    /* lange counter langs de x-wand, in segmenten van ~1 cel (diepte-volgorde t.o.v. de lopers) */
+    var cu0 = x0 + 1.05, cu1 = x0 + 6.9, n = 6, sl = (cu1 - cu0) / n, CH = 34, body = "#3d4757";
+    for (i = 0; i < n; i++) {
+      var u = cu0 + i * sl, F = { ax: "x", x: u, y: y0 + 0.08, L: sl, D: 0.66 };
+      var s = sub(F, 0, 1, 0, 1, 0, CH, body);
+      s += face(F, 0.05, 0.48, 3, CH - 7, shade(body, 1.12)) + face(F, 0.52, 0.95, 3, CH - 7, shade(body, 1.12));
+      s += face(F, 0.4, 0.44, CH - 15, CH - 10, "#c9d3df") + face(F, 0.56, 0.6, CH - 15, CH - 10, "#c9d3df");
+      s += sub(F, i ? 0 : -0.04, i < n - 1 ? 1 : 1.04, -0.02, 1.07, CH, 2.4, "#e6e1d7");   /* werkblad */
+      s += counterTop(i, F, CH + 2.4, r);
+      push(u + sl / 2, y0 + 0.42, s);
+    }
+    /* koelkast aan het eind van de counter */
+    var FK = { ax: "x", x: x0 + 6.98, y: y0 + 0.08, L: 0.72, D: 0.64 }, fk = sub(FK, 0, 1, 0, 1, 0, 76, "#d9dde3");
+    fk += face(FK, 0.04, 0.96, 50, 74, "#e6e9ed") + face(FK, 0.04, 0.96, 3, 48, "#e6e9ed") + face(FK, 0.08, 0.12, 30, 44, "#9aa5b1") + face(FK, 0.08, 0.12, 54, 66, "#9aa5b1");
+    fk += face(FK, 0.3, 0.7, 58, 70, "#fff27a") + face(FK, 0.55, 0.78, 36, 44, "#9fe6ff");   /* memo's op de deur */
+    push(x0 + 7.34, y0 + 0.4, fk);
+    /* waterkoeler rechts van het raam */
+    push(x0 + 9.96, y0 + 0.31, FURN.cooler.f({ ax: "x", x: x0 + 9.75, y: y0 + 0.1, L: 0.42, D: 0.42 }));
+    /* lange wandkast langs de y-wand */
+    var ku0 = y0 + 1.0, ku1 = y0 + 5.4, kn = 5, kl = (ku1 - ku0) / kn, kc = "#e3e6ea";
+    for (i = 0; i < kn; i++) {
+      var ky = ku0 + i * kl, FC = { ax: "y", x: x0 + 0.08, y: ky, L: kl, D: 0.5 };
+      var ks = sub(FC, 0, 1, 0, 1, 0, 80, kc);
+      ks += face(FC, 0.04, 0.49, 3, 77, "#eef0f3") + face(FC, 0.51, 0.96, 3, 77, "#eef0f3");
+      ks += face(FC, 0.44, 0.47, 34, 46, "#8a96a3") + face(FC, 0.53, 0.56, 34, 46, "#8a96a3");
+      ks += face(FC, 0.04, 0.96, 40, 41.2, "#cfd4da");
+      push(x0 + 0.33, ky + kl / 2, ks);
+    }
+    /* statafels */
+    CT_TABLES.forEach(function (t) { push(x0 + t[0], y0 + t[1], highTable(x0 + t[0], y0 + t[1], r)); });
+    /* planten voor in de hoeken */
+    push(x0 + 0.5, y1 - 0.5, PLANTS.bush(x0 + 0.5, y1 - 0.5, r));
+    push(x1 - 0.5, y1 - 0.55, PLANTS.palm(x1 - 0.5, y1 - 0.55, r));
+    frontParts(c, push);
+    return out;
+  }
+  function canteenInner(c) {
+    var x0 = c.x, y0 = c.y, x1 = c.x + c.w, y1 = c.y + c.d, h = "", i;
+    /* ramen en wanddecoratie: vast plan (wallPlan cachet op dezelfde sleutel) */
+    c._wpk = [c.x, c.y, c.w, c.d].map(function (v) { return v.toFixed(2); }).join(",");
+    c._wp = { x: [{ t: "win", a: x0 + 7.95, b: x0 + 9.5, panes: 2, tall: false }, { t: "clock", a: x0 + 5.55, b: x0 + 5.89, z: 76 }],
+              y: [{ t: "win", a: y0 + 5.8, b: y0 + 7.75, panes: 2, tall: false }] };
+    var cc = iso((x0 + x1) / 2, (y0 + y1) / 2, 0);
+    h += '<ellipse class="shadow" cx="' + f1(cc[0]) + '" cy="' + f1(cc[1] + 6) + '" rx="' + f1((c.w + c.d) * HW * 0.55) + '" ry="' + f1((c.w + c.d) * HH * 0.55) + '"/>';
+    h += '<polygon class="slab-l" points="' + pts([iso(x0, y1, SLAB), iso(x1, y1, SLAB), iso(x1, y1), iso(x0, y1)]) + '"/>';
+    h += '<polygon class="slab-r" points="' + pts([iso(x1, y1, SLAB), iso(x1, y0, SLAB), iso(x1, y0), iso(x1, y1)]) + '"/>';
+    h += '<polygon class="slab-top" points="' + pts([iso(x0, y0, SLAB), iso(x1, y0, SLAB), iso(x1, y1, SLAB), iso(x0, y1, SLAB)]) + '"/>';
+    for (i = 1; i < c.w; i++) h += '<line class="ct-tile" x1="' + f1(iso(x0 + i, y0, SLAB)[0]) + '" y1="' + f1(iso(x0 + i, y0, SLAB)[1]) + '" x2="' + f1(iso(x0 + i, y1, SLAB)[0]) + '" y2="' + f1(iso(x0 + i, y1, SLAB)[1]) + '"/>';
+    for (i = 1; i < c.d; i++) h += '<line class="ct-tile" x1="' + f1(iso(x0, y0 + i, SLAB)[0]) + '" y1="' + f1(iso(x0, y0 + i, SLAB)[1]) + '" x2="' + f1(iso(x1, y0 + i, SLAB)[0]) + '" y2="' + f1(iso(x1, y0 + i, SLAB)[1]) + '"/>';
+    h += '<polyline class="slab-lip" points="' + pts([iso(x0, y1, SLAB), iso(x1, y1, SLAB), iso(x1, y0, SLAB)]) + '"/>';
+    h += wallsInner(c);
+    /* lichtreclame boven de counter */
+    var np = wpt(c, "x", x0 + 1.55, 72, 0.02), tf = 'transform="matrix(.894,.447,0,1,' + f1(np[0]) + "," + f1(np[1]) + ')"';
+    h += '<text class="ct-neon-g" ' + tf + '>KANTINE</text><text class="ct-neon" ' + tf + ">KANTINE</text>";
+    canteenProps(c).sort(function (p, q) { return p.k - q.k; }).forEach(function (o) { h += o.h; });
+    var pp = iso(x0 + 0.3, y1, 0);
+    h += '<text class="plate" transform="matrix(.894,.447,0,1,' + f1(pp[0]) + "," + f1(pp[1] - 6.5) + ')">Kantine · overleg</text>';
+    return h;
+  }
+
   function renderFloor() {
     var h = "", far = 60, allx = [], ally = [];
     S.depts.forEach(function (d) { allx.push(d.x, d.x + d.w); ally.push(d.y, d.y + d.d); });
+    if (S.canteen) { allx.push(S.canteen.x, S.canteen.x + S.canteen.w); ally.push(S.canteen.y, S.canteen.y + S.canteen.d); }
     var gx0 = Math.floor(Math.min.apply(null, allx)) - far, gx1 = Math.ceil(Math.max.apply(null, allx)) + far,
         gy0 = Math.floor(Math.min.apply(null, ally)) - far, gy1 = Math.ceil(Math.max.apply(null, ally)) + far, i, a, b;
     var gpoly = pts([iso(gx0, gy0), iso(gx1, gy0), iso(gx1, gy1), iso(gx0, gy1)]);
@@ -1768,13 +1980,20 @@
     S.depts.forEach(function (d) {
       h += '<g class="pipe" data-pipe="' + esc(d.name) + '" style="--c:' + esc(d.color) + '">' + pipeInner(d) + "</g>";
     });
+    if (S.canteen) h += '<g class="cpath" style="--c:' + CANTEEN_C + '">' + canteenPathInner(S.canteen) + "</g>";
 
     /* laag 2: platforms + bureaus + Brain, van achter naar voor */
     var items = S.paint.map(function (d) { return { k: d.x + d.w / 2 + d.y + d.d / 2, d: d }; });
     items.push({ k: 0, brain: true });
+    if (S.canteen) items.push({ k: S.canteen.x + S.canteen.w / 2 + S.canteen.y + S.canteen.d / 2, canteen: S.canteen });
     items.sort(function (p, q) { return p.k - q.k; });
     var di = 0;
     items.forEach(function (it) {
+      if (it.canteen) {
+        var c = it.canteen;
+        h += '<g class="canteen" data-r="' + [c.x, c.y, c.x + c.w, c.y + c.d].map(function (v) { return v.toFixed(3); }).join(",") + '" style="--c:' + CANTEEN_C + ";--i:" + (di++) + '">' + canteenInner(c) + "</g>";
+        return;
+      }
       if (it.brain) { h += '<g class="brain" data-r="' + [-BRAIN / 2, -BRAIN / 2, BRAIN / 2, BRAIN / 2].join(",") + '" style="--i:' + (di++) + '">' + brainInner() + "</g>"; return; }
       var d = it.d, x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d;
       h += '<g class="dept" data-dept="' + esc(d.name) + '" data-r="' + [x0, y0, x1, y1].map(function (v) { return v.toFixed(3); }).join(",") + '" style="--c:' + esc(d.color) + ";--i:" + (di++) + '">';
@@ -1896,6 +2115,9 @@
       var tp = iso(d.x, d.y, SLAB), cw = cardWidth(d) / 2 + 6;
       xs.push(tp[0] - cw, tp[0] + cw); ys.push(tp[1] - CARD_LIFT - cardHeight(d) - 8);
     });
+    var C = S.canteen;
+    if (C) [iso(C.x, C.y, SLAB + WALL_H), iso(C.x + C.w, C.y, SLAB + WALL_H), iso(C.x + C.w, C.y + C.d, 0), iso(C.x, C.y + C.d, 0), iso(C.x, C.y + C.d, SLAB + WALL_H)]
+      .forEach(function (p) { xs.push(p[0]); ys.push(p[1]); });
     ys.push(iso(0, 0, 0)[1] - LIVE_LIFT - LIVE_H - 10);   /* bovenkant van het zwevende brein */
     var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
     S.fitBox = boxFor([[x0 - 24, y0 - 20], [x1 + 24, y1 + 24]], 0);
@@ -2102,12 +2324,56 @@
       var fr = callerOf(to); if (!fr || !deptOf(fr)) return;
       best[to.agent_id + "@" + fr.agent_id] = { fr: fr, to: to, gap: 0, working: working };
     });
+    var claimed = {};
     Object.keys(best).forEach(function (k) {
-      var b = best[k];
+      var b = best[k], delay = b.working ? 400 : Math.random() * (REFRESH_MS - 25000);
       if (S.subs.some(function (s) { return s.to === b.to.agent_id && s.from === b.fr.agent_id && s.live; })) return;   /* draait al */
-      /* overleg (boog tussen twee agents met een bureau): aanroeper loopt naar de collega; subworkflow: extra werkplek */
-      setTimeout(function () { (b.visit ? runVisit : runSub)(b.fr.agent_id, b.to.agent_id, b.working); }, b.working ? 400 : Math.random() * (REFRESH_MS - 25000));
+      /* 21-10 overleg (boog tussen twee agents met een bureau): beide lopen naar een statafel in de kantine;
+         zitten ze in een terugkoppellus (>= 3 agents), dan schuiven tot 2 lus-buren aan. Zonder kantine: de
+         aanroeper loopt naar de collega. Subworkflow: extra werkplek. */
+      if (b.visit && S.canteen) {
+        if (claimed[b.fr.agent_id] || claimed[b.to.agent_id]) return;
+        var ids = meetGroup(b.fr, b.to).filter(function (id, i) { return i < 2 || !claimed[id]; });
+        ids.forEach(function (id) { claimed[id] = 1; });
+        setTimeout(function () { runMeet(ids, b.working); }, delay);
+        return;
+      }
+      setTimeout(function () { (b.visit ? runVisit : runSub)(b.fr.agent_id, b.to.agent_id, b.working); }, delay);
     });
+  }
+  /* ---- 21-10 overleggroepen: lussen in v_office_links (sterk samenhangende componenten van >= 3 agents) ---- */
+  function loopGroups() {
+    if (S._lg && S._lgSig === S.sig) return S._lg;
+    var adj = {}, radj = {}, idx = 0, stack = [], on = {}, ix = {}, low = {}, comp = {};
+    S.links.forEach(function (l) {
+      (adj[l.from_agent] = adj[l.from_agent] || []).push(l.to_agent);
+      (radj[l.to_agent] = radj[l.to_agent] || []).push(l.from_agent);
+    });
+    function scc(v) {
+      ix[v] = low[v] = idx++; stack.push(v); on[v] = 1;
+      (adj[v] || []).forEach(function (w) {
+        if (ix[w] == null) { scc(w); low[v] = Math.min(low[v], low[w]); } else if (on[w]) low[v] = Math.min(low[v], ix[w]);
+      });
+      if (low[v] === ix[v]) {
+        var c = [], w;
+        do { w = stack.pop(); on[w] = 0; c.push(w); } while (w !== v);
+        if (c.length >= 3) c.forEach(function (x) { comp[x] = c; });
+      }
+    }
+    Object.keys(adj).forEach(function (v) { if (ix[v] == null) scc(v); });
+    S._lg = { comp: comp, adj: adj, radj: radj }; S._lgSig = S.sig;
+    return S._lg;
+  }
+  function canDesk(a) { return !!(a && !a._sub && a._lx != null && deptOf(a)); }
+  /* het paar zelf, plus (bij een lus) de directe lus-buren van het paar, max 4 aan één tafel */
+  function meetGroup(fr, to) {
+    var g = [fr.agent_id, to.agent_id], L = loopGroups(), c = L.comp[to.agent_id] || L.comp[fr.agent_id];
+    if (c) [to.agent_id, fr.agent_id].forEach(function (id) {
+      (L.adj[id] || []).concat(L.radj[id] || []).forEach(function (n) {
+        if (g.length < 4 && c.indexOf(n) >= 0 && g.indexOf(n) < 0 && canDesk(S.byId[n])) g.push(n);
+      });
+    });
+    return g;
   }
   /* ======================================================================= lopen (17-10)
      Dieptevolgorde: binnen een afdeling staat de loper tussen bureaus en inrichting (data-k = x + y
@@ -2131,11 +2397,13 @@
       var d = S.depts[i];
       if (wx > d.x + 0.01 && wx < d.x + d.w - 0.01 && wy > d.y + 0.01 && wy < d.y + d.d - 0.01) return d;
     }
+    var c = S.canteen;
+    if (c && wx > c.x + 0.01 && wx < c.x + c.w - 0.01 && wy > c.y + 0.01 && wy < c.y + c.d - 0.01) return c;
     return null;
   }
   /* sub = { b, g, desk, sdDesk } van een extra werkplek (alleen bij runSub) */
   function placeIn(w, wx, wy, sub) {
-    var d = deptAt(wx, wy), de = d && elWorld.querySelector('.dept[data-dept="' + CSS.escape(d.name) + '"]');
+    var d = deptAt(wx, wy), de = d && (d.canteen ? elWorld.querySelector(".canteen") : elWorld.querySelector('.dept[data-dept="' + CSS.escape(d.name) + '"]'));
     if (de) {
       var k = (wx - d.x) + (wy - d.y), before = null, kids = de.children;
       for (var i = 0; i < kids.length; i++) {
@@ -2265,7 +2533,7 @@
      de pijp, langs de pijp naar het brein, om het brein heen (bij voorkeur langs de voorkant), langs de
      pijp van de andere afdeling, om die afdeling heen (bij voorkeur langs de voorkant) naar de voordeur,
      naar binnen en via de gangpaden naar het bureau van de collega */
-  function visitRoute(d, a, dt, t, vis) {
+  function visitRoute(d, a, dt, t, vis, inOverride) {
     var start = [d.x + a._lx + STAND_OFF[0], d.y + a._ly + STAND_OFF[1]];
     if (d === dt) {
       var ax = aisleX(d, a), axT = aisleX(d, t), rowT = aisleY(d, t);
@@ -2300,7 +2568,7 @@
     function front(p) { return p.corners.indexOf(2) >= 0; }
     var rp = front(r1) && !front(r2) && r1.len <= r2.len * 1.7 ? r1 : front(r2) && !front(r1) && r2.len <= r1.len * 1.7 ? r2 : (r1.len <= r2.len ? r1 : r2);
     rp.pts.forEach(function (p) { R.push([p, 0]); });
-    var inR = routeOut(dt, t, "S", vis).reverse();
+    var inR = inOverride || routeOut(dt, t, "S", vis).reverse();   /* kantine: eigen route van de voordeur naar de statafel */
     var sF = pS(pmT, inR[0][0]), q1 = pPath(pmT, sCt, sF, 1), q2 = pPath(pmT, sCt, sF, -1);
     function back(p) { return p.corners.indexOf(0) >= 0; }
     var qp = back(q1) && !back(q2) ? q2 : back(q2) && !back(q1) ? q1 : (q1.len <= q2.len ? q1 : q2);
@@ -2330,8 +2598,8 @@
     tail.forEach(function (p) { R.push([p, 0]); });
     return cleanRoute(R.concat(inR));
   }
-  function segHitsDept(p, q) { return S.depts.some(function (d) { return segHitsRect(p, q, d, 0.3); }); }
-  function busyAgent(id) { return S.subs.some(function (s) { return s.live && (s.from === id || (s.visit && s.to === id)); }); }
+  function segHitsDept(p, q) { return S.depts.some(function (d) { return segHitsRect(p, q, d, 0.3); }) || !!(S.canteen && segHitsRect(p, q, S.canteen, 0.3)); }
+  function busyAgent(id) { return S.subs.some(function (s) { return s.live && (s.from === id || (s.visit && s.to === id) || (s.ids && s.ids.indexOf(id) >= 0)); }); }
 
   /* ---- overleg tussen agents (sub-workflow-boog): de aanroeper loopt naar het bureau van de ander ---- */
   function runVisit(fromId, toId, working, tries) {
@@ -2378,6 +2646,99 @@
     }).then(function () { home(); renderBubbles(); done(); }, function () { home(); done(); });
   }
 
+  /* ---- 21-10 kantine: overleg aan een statafel ---- */
+  /* route binnen de kantine: voordeur -> gang voor de tafels -> dichtstbijzijnde looppad -> staplek (lokaal sp) */
+  function canteenIn(sp) {
+    var c = S.canteen, fx = c.fdx, y1 = c.y + c.d, row = y1 - 1.0, lane = CT_LANES[0];
+    CT_LANES.forEach(function (l) { if (Math.abs(l - sp[0]) < Math.abs(lane - sp[0])) lane = l; });
+    var lx = c.x + lane, sx = c.x + sp[0], sy = c.y + sp[1];
+    return cleanRoute([[[fx, y1 + OUT], 0], [[fx, y1 + 0.37], SLAB / 3], [[fx, y1 + 0.12], SLAB * 2 / 3], [[fx, y1], SLAB],
+      [[fx, row], SLAB], [[lx, row], SLAB], [[lx, sy], SLAB], [[sx, sy], SLAB]]);
+  }
+  function freeTable() {
+    var used = S.subs.filter(function (s) { return s.live && s.meet; }).map(function (s) { return s.table; }), order = [2, 3, 0, 1];   /* voorste tafels eerst */
+    for (var i = 0; i < order.length; i++) if (used.indexOf(order[i]) < 0) return order[i];
+    return -1;
+  }
+  /* stilstaan met het gezicht naar een wereldpunt */
+  function faceTo(W, from, to) {
+    var dx = to[0] - from[0], dy = to[1] - from[1];
+    W.face(dx + dy < 0 ? 1 : 0, dx - dy < 0 ? -1 : 1);
+  }
+  function runMeet(ids, working, tries) {
+    if (document.hidden || REDUCED || !S.canteen) return;
+    var C = S.canteen; tries = tries || 0;
+    function again() { if (tries < 3) setTimeout(function () { runMeet(ids, working, tries + 1); }, 15000); }
+    var core = ids.slice(0, 2).map(function (id) { return S.byId[id]; });
+    if (core.length < 2 || !core.every(canDesk)) return;
+    if (core.some(function (a) { return S.pose[a.agent_id] || busyAgent(a.agent_id); })) return again();
+    var mem = core.concat(ids.slice(2).map(function (id) { return S.byId[id]; })
+      .filter(function (a) { return canDesk(a) && !S.pose[a.agent_id] && !busyAgent(a.agent_id); })).slice(0, 4);
+    var tb = freeTable(); if (tb < 0) return again();
+    var T = C.tables[tb], tc = [C.x + T.c[0], C.y + T.c[1]];
+    var ses = { meet: true, ids: mem.map(function (a) { return a.agent_id; }), table: tb, live: true }; S.subs.push(ses);
+    var ep = S.epoch; function alive() { return S.epoch === ep && ses.live; }
+    var bub = null;
+    var legs = mem.map(function (a, i) {
+      var d = deptOf(a), sp = T.spots[i], spW = [C.x + sp[0], C.y + sp[1]];
+      return { a: a, spW: spW, route: visitRoute(d, a, C, null, spW, canteenIn(sp)), W: makeWalker(d.color, colorOf(a), hairOf(a), alive, null) };
+    });
+    function home(L) { if (S.pose[L.a.agent_id]) setOwnPose(L.a, null); }
+    function done() {
+      legs.forEach(function (L) { L.W.el.remove(); home(L); });
+      if (bub) bub.remove();
+      ses.live = false; S.subs = S.subs.filter(function (s) { return s.live; });
+      renderBubbles();
+    }
+    /* heen: opstaan, naar de kantine lopen, aan de statafel gaan staan (iets na elkaar) */
+    Promise.all(legs.map(function (L, i) {
+      return sleep(i * 900 + Math.random() * 600).then(function () {
+        if (alive()) return playStand(function (f) { setOwnPose(L.a, "stand", f); }, false);
+      }).then(function () {
+        if (!alive()) return;
+        setOwnPose(L.a, "empty"); renderBubbles();
+        return L.W.walk(L.route, true);
+      }).then(function () { if (alive()) faceTo(L.W, L.spW, tc); });
+    })).then(function () {
+      if (!alive()) return;
+      /* kort houden (zoals de werk-ballonnen): eerste twee namen, de rest als +n */
+      var nm = legs.map(function (L) { var n = String(L.a.agent_name || L.a.agent_id); return n.length > 14 ? n.slice(0, 13) + "…" : n; });
+      var p = iso(tc[0], tc[1], SLAB), txt = "overleg " + nm.slice(0, 2).join(" + ") + (nm.length > 2 ? " +" + (nm.length - 2) : "");
+      bub = document.createElementNS(NS, "g"); bub.setAttribute("class", "visit-bub");
+      bub.innerHTML = bubbleSvg(p[0], p[1] - WALK_H - 4, txt, colorOf(legs[0].a));
+      elWorld.appendChild(bub); fitBubbles(bub);
+      /* minstens 11 s; zolang een van hen nog 'working' is langer (max 4 min) */
+      var until = performance.now() + 11000, cap = performance.now() + 4 * 60000;
+      return (function wait() {
+        return sleep(1000).then(function () {
+          var still = working && legs.some(function (L) { var x = S.byId[L.a.agent_id]; return x && st(x) === "working"; });
+          if (alive() && (performance.now() < until || (still && performance.now() < cap))) return wait();
+        });
+      })();
+    }).then(function () {
+      if (!alive()) return;
+      if (bub) { bub.remove(); bub = null; }
+      /* terug: ieder naar zijn eigen bureau en weer gaan zitten */
+      return Promise.all(legs.map(function (L, i) {
+        return sleep(i * 500 + Math.random() * 500).then(function () {
+          if (alive()) return L.W.walk(L.route.slice().reverse());
+        }).then(function () {
+          if (alive()) return playStand(function (f) { setOwnPose(L.a, "stand", f); }, true);
+        }).then(function () { home(L); renderBubbles(); });
+      }));
+    }).then(done, done);
+  }
+  /* office-v2.html?overleg=1: direct een overleg in de kantine (grootste lus, anders de eerste koppeling) */
+  function demoMeet() {
+    if (!S.canteen) return;
+    var L = loopGroups(), pick = null;
+    Object.keys(L.comp).forEach(function (id) { var c = L.comp[id]; if (canDesk(S.byId[id]) && (!pick || c.length > L.comp[pick].length)) pick = id; });
+    var pair = null;
+    if (pick) (L.adj[pick] || []).forEach(function (n) { if (!pair && L.comp[pick].indexOf(n) >= 0 && canDesk(S.byId[n])) pair = [pick, n]; });
+    if (!pair) S.links.forEach(function (l) { if (!pair && canDesk(S.byId[l.from_agent]) && canDesk(S.byId[l.to_agent])) pair = [l.from_agent, l.to_agent]; });
+    if (pair) runMeet(meetGroup(S.byId[pair[0]], S.byId[pair[1]]), false);
+  }
+
   /* ---- subworkflow: extra werkplek volledig buiten de afdeling, via een deur en een loopbrug ---- */
   function pipeHits(b) {
     return S.depts.some(function (q) {
@@ -2409,7 +2770,7 @@
         var o = offs[k], c = [D.p[0] + D.n[0] * (SGAP + depth / 2) + D.t[0] * o, D.p[1] + D.n[1] * (SGAP + depth / 2) + D.t[1] * o];
         var b = { x: c[0] - SW / 2, y: c[1] - SD / 2, w: SW, d: SD };
         var clash = S.depts.some(function (q) { return overlaps(b, q, q === d ? 0.9 : 1.1); }) || overlaps(b, ring, 0.4)
-          || taken.some(function (t) { return overlaps(b, t, 0.7); }) || pipeHits(b);
+          || taken.some(function (t) { return overlaps(b, t, 0.7); }) || pipeHits(b) || !!(S.canteen && overlaps(b, S.canteen, 1.1));
         if (!clash) { b.side = order[i]; return { b: b, D: D, o: o }; }
       }
     }
