@@ -539,9 +539,8 @@ function ctProfile(c,raw){
   /* Persoonsgegevens: alleen wat de kop niet al toont */
   const addr=[D.street,[D.postcode,D.city].filter(Boolean).join(" "),D.suburb,D.state,D.country].filter(Boolean).map(esc).join("<br>");
   const link=(u,l)=>u?`<a href="${esc(/^https?:/.test(u)?u:"https://"+u)}" target="_blank" rel="noopener">${esc(l||u)}</a>`:null;
-  const socials=[D.facebook&&link(D.facebook,"Facebook"),D.instagram&&link(D.instagram,"Instagram"),D.linkedin&&link(D.linkedin,"LinkedIn"),D.twitter&&link(D.twitter,"X/Twitter")].filter(Boolean).join(" · ");
   const pers=[[t("f.homeaddr"),addr||null,1],[t("f.born"),D.birthday],[t("f.marital"),D.marital],[t("f.nie"),D.nie?`<b class="mono">${esc(D.nie)}</b>`:null,1],[t("f.passport"),D.passport?`<b class="mono">${esc(D.passport)}</b>`:null,1],
-    [t("f.company"),D.company],[t("f.jobtitle"),D.jobtitle],[t("f.website"),link(D.website),1],[t("f.socials"),socials||null,1],[t("f.custom")+" 1",D.custom_1],[t("f.custom")+" 2",D.custom_2]].filter(p=>p[1]!=null&&p[1]!=="");
+    [t("f.company"),D.company],[t("f.jobtitle"),D.jobtitle],[t("f.website"),link(D.website),1]].filter(p=>p[1]!=null&&p[1]!=="");
   const missing=[!addr&&t("f.homeaddr"),!D.nie&&"NIE",!D.passport&&t("f.passport")].filter(Boolean);
   const persBody=(pers.length?kv(pers):"")+(missing.length&&(isSeller||bought.length)?`<div class="cp-miss">${L2("Ontbreekt voor de notaris","Missing for the notary")}: <b>${missing.map(esc).join(", ")}</b> <a class="cp-add" data-cedit="1">+ ${L2("Aanvullen","Complete")}</a></div>`:!pers.length?`<div class="cp-empty">${L2("Geen aanvullende gegevens.","No further details.")} <a class="cp-add" data-cedit="1">+ ${L2("Aanvullen","Complete")}</a></div>`:"");
 
@@ -550,8 +549,7 @@ function ctProfile(c,raw){
   const file=[[L2("Laatste contactmoment","Last contact"),lastTouch?`${fdate(lastTouch)} <span class="muted sm">· ${ago(lastTouch)}</span>`:null,1],
     [L2("Contactmomenten","Contact moments"),tl.length?num(tl.length):null],
     [L2("Mailings","Mailings"),`<span class="mpill ${mailOn?"in":"out"}">${mailOn?L2("Ingeschreven","Subscribed"):L2("Niet ingeschreven","Not subscribed")}</span>${(M.events||{}).last_delivered?` <span class="muted sm">· ${L2("laatste","last")} ${fdate(M.events.last_delivered)}</span>`:""}`,1],
-    [t("f.referred"),D.referred_by],[t("f.keyholder"),D.keyholder?L2("Ja — sleutel bij ons","Yes — we hold a key"):null],[t("f.value"),D.sales_value?eur(D.sales_value):null],
-    [L2("In systeem sinds","In system since"),raw.created_wp?fdate(raw.created_wp):null],[t("f.modified"),c.wp_modified?fdate(c.wp_modified):null]];
+    [t("f.referred"),D.referred_by],[L2("In systeem sinds","In system since"),raw.created_wp?fdate(raw.created_wp):null],[t("f.modified"),c.wp_modified?fdate(c.wp_modified):null]];
   /* Laat een halve rolkaart (bv. Makelaar) een gat rechts, dan schuift Dossier daarin en krijgt Persoonsgegevens de volle breedte */
   if(halves%2)out.push(cpSec("file",L2("Dossier","File"),kv(file)),cpSec("person",L2("Persoonsgegevens","Personal details"),persBody,{edit:1,wide:1}));
   else out.push(`<div class="cp-pair">${cpSec("person",L2("Persoonsgegevens","Personal details"),persBody,{edit:1})}${cpSec("file",L2("Dossier","File"),kv(file))}</div>`);

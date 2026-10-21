@@ -499,6 +499,9 @@ html[data-theme="light"] .tab i{box-shadow:none}
 
 .pe-box.pe-small{width:min(860px,100%);height:auto;max-height:100%}
 .pe-small .pe-main{overflow:auto}
+.pe-box.pe-cnav{width:min(1040px,100%);height:100%}
+.pe-cnav .pe-body{grid-template-columns:180px 1fr}
+@media (max-width:900px){.pe-cnav .pe-body{grid-template-columns:1fr}}
 html[data-theme="light"] .pc .im .badge{color:#fff}
 html[data-theme="light"] .hero .pr{color:#fff}
 .cpill.nophone{border-style:dashed;background:transparent}.cpill.nophone a{color:var(--tx3);font-weight:600;cursor:pointer}.cpill.nophone a b{color:var(--acc)}

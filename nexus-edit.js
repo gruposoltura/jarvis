@@ -425,9 +425,8 @@ const CPERSON=[["title",["Aanhef","Title"]],["first_name",["Voornaam","First nam
   ["marital",["Burgerlijke staat","Marital status"]],["jobtitle",["Functie","Job title"]]];
 const CADDR=[["street",["Straat","Street"]],["street_number",["Nr.","No."]],["postcode",["Postcode","Postcode"]],["city",["Plaats","City"]],["suburb",["Wijk","Area"]],["state",["Provincie","Province"]],
   ["country",["Land","Country"]],["website","Website"],["referred_by",["Verwezen door","Referred by"]]];
-const CEXTRA=[["facebook","Facebook"],["instagram","Instagram"],["linkedin","LinkedIn"],["twitter","X / Twitter"],["custom_1",["Vrij veld 1","Custom field 1"]],["custom_2",["Vrij veld 2","Custom field 2"]]];
-const CFIELDS=[...CPERSON,...CADDR,...CEXTRA];
-const CEDIT=["keyholder","internal_comments","owner_id","source","sales_value","mailing_optin"].concat(CFIELDS.map(f=>f[0]));
+const CFIELDS=[...CPERSON,...CADDR];
+const CEDIT=["internal_comments","owner_id","mailing_optin"].concat(CFIELDS.map(f=>f[0]));
 /* Nieuwsbrieven = slugs uit mailing_types (gelijk aan nexus-admin.js). market_report alleen bij expliciete opt-in. */
 const CMAILS=[["weekly_news",["Wekelijks nieuws (vrijdag)","Weekly news (Friday)"]],["price_reduced",["Prijsverlagingen (woensdag)","Price reductions (Wednesday)"]],
   ["monthly_matches",["Maandelijkse woningmatches","Monthly property matches"]],["new_listing",["Nieuwe woning","New listing"]],
@@ -521,19 +520,28 @@ async function openContact(key,ctx){X=ctx;
     return cards+(live?`<small class="muted">${esc(tr(["Beide contacten zijn los te vinden, met eigen e-mail en telefoon. De woningen van de één staan bij de ander als mede-eigendom.","Both contacts can be found separately, each with own e-mail and phone. Each partner's properties show on the other as co-owned."]))}</small>`
       :hint+seg+(PT.mode==="new"?fNew:PT.mode==="link"?fLink:`<small class="muted">${esc(tr(["Heeft dit contact een partner die mede-eigenaar of mede-koper is? Leg die vast als eigen contact, niet als tweede naam in dit record.","Does this contact have a partner who co-owns or co-buys? Record them as a contact of their own, not as a second name in this record."]))}</small>`));
   };
-  const draw=()=>{const sc=ROOT.querySelector(".pe-main");const top=sc?sc.scrollTop:0;ROOT.innerHTML=`<div class="pe-box pe-small"><header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(C.contact.full_name||"—")}</div><div class="pe-tt">${esc(tr(["Contactgegevens bewerken","Edit contact details"]))}</div></div>
+  /* linkerkolom met paneelnamen, net als bij Woning bewerken (Rick 21-10-2026) */
+  const CNAV=()=>[["c-labels",["Labels","Labels"]],["c-person",["Persoon en identiteit","Person and identity"]],["c-partner",["Partner gegevens","Partner details"]],
+    ["c-contact",["Contactgegevens","Contact details"]],["c-addr",["Adres en overig","Address and other"]],["c-search",["Zoekprofiel","Search profile"]],["c-mail",["Mailings","Mailings"]]]
+    .concat((C.team||[]).length?[["c-owner",["Verantwoordelijk","Responsible"]]]:[]);
+  const draw=()=>{const sc=ROOT.querySelector(".pe-main");const top=sc?sc.scrollTop:0;ROOT.innerHTML=`<div class="pe-box pe-small pe-cnav"><header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(C.contact.full_name||"—")}</div><div class="pe-tt">${esc(tr(["Contactgegevens bewerken","Edit contact details"]))}</div></div>
      <button class="pe-x" data-act="cclose">×</button></header>
+     <div class="pe-body"><nav class="pe-nav">${CNAV().map(n=>`<a data-cjump="${n[0]}">${esc(tr(n[1]))}</a>`).join("")}</nav>
      <div class="pe-main"><div id="peErr"></div>${window.NEXUS_AGENCIES?NEXUS_AGENCIES.datalist("peAgList"):""}
-     <section class="ad-sec" style="--sc:#ec4899"><h4>${esc(tr(["Labels","Labels"]))}</h4><div class="pe-roles">${RL.map(r=>`<button type="button" class="pe-role ${rs.has(r[0])?"on":""}" data-role="${r[0]}" style="--rc:var(--r-${r[0].replace("_","-")})">${r[1]}</button>`).join("")}</div>
+     <section class="ad-sec" id="pe-c-labels" style="--sc:#ec4899"><h4>${esc(tr(["Labels","Labels"]))}</h4><div class="pe-roles">${RL.map(r=>`<button type="button" class="pe-role ${rs.has(r[0])?"on":""}" data-role="${r[0]}" style="--rc:var(--r-${r[0].replace("_","-")})">${r[1]}</button>`).join("")}</div>
        <small class="muted">${esc(tr(["Een contact kan op elk moment een ander label krijgen. Minstens één label.","A contact can get another label at any time. At least one label."]))}</small><div id="peProp">${propOpt()}</div></section>
-     <section class="ad-sec" style="--sc:#3b82f6"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
+     <section class="ad-sec" id="pe-c-person" style="--sc:#3b82f6"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
        <div class="ad-row">${CPERSON.map(cfIn).join("")}</div>
 </section>
-     <section class="ad-sec" style="--sc:#e11d48"><h4>💑 ${esc(tr(["Partner / tweede persoon","Partner / second person"]))}</h4><div id="pePt">${ptSec()}</div></section>
-     <section class="ad-sec" style="--sc:#06b6d4"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
+     <section class="ad-sec" id="pe-c-partner" style="--sc:#e11d48"><h4>💑 ${esc(tr(["Partner gegevens","Partner details"]))}</h4><div id="pePt">${ptSec()}</div></section>
+     <section class="ad-sec" id="pe-c-contact" style="--sc:#22c55e"><h4>${esc(tr(["Contactgegevens","Contact details"]))}</h4>
+       <div class="pe-chs" id="peEm">${chRows(EM,"em",EK,"naam@voorbeeld.com")}</div>
+       <div class="pe-chs" id="pePh" style="margin-top:10px">${chRows(PH,"ph",PK,"+34 …")}</div>
+       <small class="muted">${esc(tr(["★ = hoofdadres (gebruikt voor mailings en WhatsApp). Telefoon met landcode, bijv. +34 of +31.","★ = primary (used for mailings and WhatsApp). Phone with country code, e.g. +34 or +31."]))}</small></section>
+     <section class="ad-sec" id="pe-c-addr" style="--sc:#06b6d4"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
        <div class="ad-row">${CADDR.map(cfIn).join("")}</div>
        <label class="ad-f w4"><span>${esc(tr(["Interne opmerking","Internal note"]))}</span><textarea data-cf="internal_comments" rows="4">${esc(v.internal_comments||"")}</textarea></label></section>
-     <section class="ad-sec" style="--sc:#f59e0b"><h4>${esc(tr(["Zoekprofiel","Search profile"]))}</h4>
+     <section class="ad-sec" id="pe-c-search" style="--sc:#f59e0b"><h4>${esc(tr(["Zoekprofiel","Search profile"]))}</h4>
        <div class="ad-row">
          <label class="ad-f"><span>${esc(tr(["Budget","Budget"]))}</span>${optSel("data-sp","budget",SP_BUDGET,SP.budget)}</label>
          <label class="ad-f"><span>${esc(tr(["Woningtype","Property type"]))}</span>${optSel("data-sp","property_type",cats(),SP.property_type)}</label>
@@ -542,20 +550,9 @@ async function openContact(key,ctx){X=ctx;
          <label class="ad-f w2"><span>${esc(tr(["Gewenste gebieden","Preferred areas"]))}</span><input data-sp="areas" value="${esc(SP.areas??"")}" placeholder="${esc(tr(["bijv. Rojales, Ciudad Quesada","e.g. Rojales, Ciudad Quesada"]))}"></label>
          <label class="ad-f w2"><span>${esc(tr(["Must-haves","Must-haves"]))}</span><input data-sp="must_haves" value="${esc(SP.must_haves??"")}" placeholder="${esc(tr(["bijv. zwembad, zeezicht","e.g. pool, sea view"]))}"></label></div>
        <div class="ad-row">${[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]].map(b=>`<label class="ad-c"><input type="checkbox" data-spb="${b[0]}" ${(SP.build||[]).includes(b[0])?"checked":""}><span>${esc(tr(b[1]))}</span></label>`).join("")}</div></section>
-     <section class="ad-sec" style="--sc:#a855f7"><h4>${esc(tr(["Mailings","Mailings"]))}</h4><div id="peMail">${mailRows()}</div></section>
-     <section class="ad-sec" style="--sc:#64748b"><h4>${esc(tr(["Herkomst en verkoop","Origin and sales"]))}</h4>
-       <div class="ad-row">
-         <label class="ad-f"><span>${esc(tr(["Bron","Source"]))}</span><input data-cf="source" value="${esc(v.source??"")}"></label>
-         <label class="ad-f"><span>${esc(tr(["Verkoopwaarde (€)","Sales value (€)"]))}</span><input data-cf="sales_value" type="number" min="0" step="1000" value="${esc(v.sales_value??"")}"></label>
-         <label class="ad-c" style="align-self:center"><input type="checkbox" data-cf="keyholder" ${v.keyholder?"checked":""}><span>${esc(tr(["Sleutelhouder","Keyholder"]))}</span></label></div></section>
-     <section class="ad-sec" style="--sc:#14b8a6"><h4>${esc(tr(["Online en vrije velden","Online and custom fields"]))}</h4>
-       <div class="ad-row">${CEXTRA.map(cfIn).join("")}</div></section>
-     <section class="ad-sec" style="--sc:#22c55e"><h4>${esc(tr(["E-mail en telefoon","E-mail and phone"]))}</h4>
-       <div class="pe-chs" id="peEm">${chRows(EM,"em",EK,"naam@voorbeeld.com")}</div>
-       <div class="pe-chs" id="pePh" style="margin-top:10px">${chRows(PH,"ph",PK,"+34 …")}</div>
-       <small class="muted">${esc(tr(["★ = hoofdadres (gebruikt voor mailings en WhatsApp). Telefoon met landcode, bijv. +34 of +31.","★ = primary (used for mailings and WhatsApp). Phone with country code, e.g. +34 or +31."]))}</small></section>
-     ${(C.team||[]).length?`<section class="ad-sec" style="--sc:#f97316"><h4>${esc(tr(["Verantwoordelijk","Responsible"]))}</h4><label class="ad-f" style="max-width:320px"><span>${esc(tr(["Teamlid","Team member"]))}</span><select data-cf="owner_id"><option value="">—</option>${C.team.map(t=>`<option value="${t.id}" ${o.owner_id===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label></section>`:""}
-     </div>
+     <section class="ad-sec" id="pe-c-mail" style="--sc:#a855f7"><h4>${esc(tr(["Mailings","Mailings"]))}</h4><div id="peMail">${mailRows()}</div></section>
+     ${(C.team||[]).length?`<section class="ad-sec" id="pe-c-owner" style="--sc:#f97316"><h4>${esc(tr(["Verantwoordelijk","Responsible"]))}</h4><label class="ad-f" style="max-width:320px"><span>${esc(tr(["Teamlid","Team member"]))}</span><select data-cf="owner_id"><option value="">—</option>${C.team.map(t=>`<option value="${t.id}" ${o.owner_id===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label></section>`:""}
+     </div></div>
      <footer class="pe-ft">${X.me&&X.me()&&X.me().role==="admin"?`<button class="btn pe-del" data-act="cdelete" title="${esc(tr(["Contact definitief verwijderen (alleen beheerder)","Delete contact permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
     const diff=()=>{const d={};for(const k of CEDIT){if(!(k in v))continue;const a=v[k]===""?null:v[k],b=o[k]===""?null:o[k];if(String(a??"")!==String(b??""))d[k]=a}return d};
@@ -565,6 +562,7 @@ async function openContact(key,ctx){X=ctx;
         if(el.dataset.cf==="mailing_optin"){if(!el.checked)CMAILS.forEach(([sl])=>MS[sl]=false);else if(!CMAILS.some(([sl])=>MS[sl]))CMAIL_DEF.forEach(sl=>MS[sl]=true);
           ROOT.querySelector("#peMail").innerHTML=mailRows();wireMail()}up()});
       ROOT.querySelectorAll("[data-ms]").forEach(el=>el.onchange=()=>{MS[el.dataset.ms]=el.checked;up()})};
+    ROOT.querySelectorAll("[data-cjump]").forEach(n=>n.onclick=e=>{e.preventDefault();e.stopPropagation();const t=ROOT.querySelector("#pe-"+n.dataset.cjump);if(t)t.scrollIntoView({behavior:"smooth",block:"start"})});
     wireMail();
     const agm=ROOT.querySelector('[data-agm="c"]');
     if(agm)agm.onclick=e=>{e.preventDefault();e.stopPropagation();NEXUS_AGENCIES.manage({rpc:X.rpc,tr,isAdmin:()=>!!(X.me&&X.me()&&X.me().role==="admin")},{q:String(v.company||""),
