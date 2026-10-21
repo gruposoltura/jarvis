@@ -394,8 +394,8 @@ async function save(){
   if(P.status==="sold"&&!P.sold_date){err(tr(["Status Verkocht vraagt om een verkoopdatum. Vul de verkoopdatum in bij Verkoop.","Status Sold needs a sale date. Fill in the sale date under Sale."]));const s=ROOT.querySelector("#pe-sale");if(s)s.scrollIntoView({behavior:"smooth",block:"start"});return}
   if(P.status!=="sold"&&P.sold_date){err(tr(["Een verkoopdatum mag alleen bij status Verkocht. Zet de status op Verkocht of maak de verkoopdatum leeg.","A sale date is only allowed with status Sold. Set the status to Sold or clear the sale date."]));return}
   busy=true;upDirty();const btn=ROOT.querySelector("#peSave");btn.textContent=tr(["Opslaan…","Saving…"]);err("");
+  let fresh=null;
   try{
-    let fresh=null;
     if(Object.keys(pt).length||Object.keys(tt).length)fresh=await X.rpc("nexus_property_save",{p_id:P.id,p_patch:pt,p_texts:tt,p_base:D.property.updated_at});
     if(MEDIA_DIRTY){
       for(const m of M.filter(x=>x.file)){
@@ -424,7 +424,12 @@ async function save(){
     P=JSON.parse(JSON.stringify(D.property));if(!P.sold_date&&P.sold_at)P.sold_date=String(P.sold_at).slice(0,10);T=JSON.parse(JSON.stringify(D.texts||{}));M=JSON.parse(JSON.stringify(D.media||[]));
     busy=false;render(true);toast(tr(["Opgeslagen","Saved"]));
     X.onSaved&&X.onSaved(P.reference);
-  }catch(e){busy=false;btn.textContent=tr(["Opslaan","Save"]);upDirty();
+  }catch(e){busy=false;btn.textContent=tr(["Opslaan","Save"]);
+    /* woning wél opgeslagen, contact(en) niet: woning als opgeslagen markeren, alleen de eigenaarsgegevens blijven klaarstaan */
+    if(fresh){D=fresh;TOUCH={};TTOUCH={};MEDIA_DIRTY=false;P=JSON.parse(JSON.stringify(D.property));if(!P.sold_date&&P.sold_at)P.sold_date=String(P.sold_at).slice(0,10);
+      T=JSON.parse(JSON.stringify(D.texts||{}));M=JSON.parse(JSON.stringify(D.media||[]));render(true);X.onSaved&&X.onSaved(P.reference);
+      e=new Error(tr(["Woning opgeslagen, maar de eigenaarsgegevens niet: ","Property saved, but the owner data was not: "])+(e.message||String(e)))}
+    upDirty();
     if(e.code==="40001")ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(e.message)} <button class="btn sm" data-act="reload">${esc(tr(["Herladen","Reload"]))}</button></div>`;
     else err(e.message||String(e))}
 }
