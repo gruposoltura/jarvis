@@ -69,10 +69,14 @@ const addr=c=>{if(!c)return"";const l1=[c.street,c.street_number].filter(Boolean
   return [l1,l2,c.state,c.country].filter(Boolean).join(", ")};
 const hasAddr=c=>!!(c&&(c.street||c.postcode||c.city));
 /* akten schrijven namen vaak in hoofdletters: voor een nieuw contact "PETER JONES" → "Peter Jones" */
-const tc=v=>v==null?null:String(v).toLowerCase().replace(/(^|[\s\-'’])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase());
+const tcAll=v=>v==null?null:String(v).toLowerCase().replace(/(^|[\s\-'’])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase());
+const tc=v=>v!=null&&/\p{L}/u.test(v)&&v===String(v).toUpperCase()?tcAll(v):v;
 const pname=p=>[p.first_name,p.last_name].filter(Boolean).join(" ");
 /* [sleutel, label, waarde uit akte, waarde in contact, standaard aanvinken als het verschilt] */
 function pRows(p,c,tr){const rows=[];
+  /* Rick 21-10-2026: namen uit de akte (vaak met doopnamen) mogen de namen in het contact overschrijven; bij een verschil zelf aanvinken */
+  if(p.first_name)rows.push(["first_name",["Voornaam / voornamen","First name(s)"],tc(p.first_name),c&&c.first_name,false]);
+  if(p.last_name)rows.push(["last_name",["Achternaam","Last name"],tc(p.last_name),c&&c.last_name,false]);
   if(p.nie)rows.push(["nie",["NIE / DNI","NIE / DNI"],p.nie,c&&c.nie,true]);
   if(p.passport)rows.push(["passport",[p.id_document_kind==="national_id"?"ID-kaart":"Paspoort",p.id_document_kind==="national_id"?"ID card":"Passport"],p.passport,c&&c.passport,false]);
   if(p.marital)rows.push(["marital",["Burgerlijke staat","Marital status"],p.marital,c&&c.marital,false]);
@@ -83,7 +87,8 @@ const showV=(k,v,tr)=>k==="marital"?tr(MAR[v]||[v,v]):v;
 /* koppel personen uit de akte aan eigenaar/partners: eerst op NIE, dan op naam; nooit twee keer hetzelfde contact */
 function match(persons,owners){const used=new Set(), out=persons.map(()=>({target:"",weak:false}));
   persons.forEach((p,i)=>{const c=owners.find(c=>!used.has(c.id)&&p.nie&&c.nie&&same(p.nie,c.nie));if(c){out[i].target=c.id;used.add(c.id)}});
-  const score=(p,c)=>{const a=toks(pname(p)), b=new Set(toks([c.first_name,c.last_name,c.name].join(" ")));return a.filter(t=>b.has(t)).length};
+  const score=(p,c)=>{const cf=new Set(toks(c.first_name||String(c.name||"").split(/\s+/)[0])), cl=new Set(toks([c.last_name,c.name].join(" ")));
+    return toks(p.first_name).filter(t=>cf.has(t)).length*2+toks(p.last_name).filter(t=>cl.has(t)).length};
   for(;;){let best=null;persons.forEach((p,i)=>{if(out[i].target)return;owners.forEach(c=>{if(used.has(c.id))return;const s=score(p,c);if(s>0&&(!best||s>best.s))best={i,c,s}})});
     if(!best)break;out[best.i].target=best.c.id;used.add(best.c.id)}
   /* één persoon over en één contact over: voorstellen, maar als "naam wijkt af" markeren */
@@ -148,7 +153,7 @@ function show(o,r,fname,owners){const tr=o.tr, f=r.fields||{}, cur=o.current||{}
     const plist=[];
     persons.forEach((p,i)=>{const t=M[i].target;if(!t||!owners.length)return;const patch={};
       OV.querySelectorAll(`[data-ddp="${i}"]`).forEach(c=>{if(!c.checked)return;const k=c.dataset.pk;
-        if(k==="address"){["street","street_number","postcode","city","state","country"].forEach(a=>patch[a]=p[a]||null)}else patch[k]=p[k]});
+        if(k==="address"){["street","street_number","postcode","city","state","country"].forEach(a=>patch[a]=p[a]||null)}else patch[k]=(k==="first_name"||k==="last_name")?tc(p[k]):p[k]});
       if(!Object.keys(patch).length&&t!=="new")return;
       const c=owners.find(x=>x.id===t);
       plist.push({contact_id:t==="new"?null:t,new_partner_of:t==="new"?(owner&&owner.id):null,label:t==="new"?pname(p):(c&&c.name)||pname(p),patch,
