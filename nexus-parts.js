@@ -76,13 +76,27 @@
       '<p class="mfa-lead">' + lead + "</p>" +
       '<form class="mfa-f"><input class="mfa-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" aria-label="' + L("Code van 6 cijfers", "6-digit code") + '" required>' +
       '<button class="btn pri" type="submit">' + L("Bevestigen", "Confirm") + '</button></form><div class="msg" aria-live="polite"></div>');
-    var f = o.querySelector("form"), m = o.querySelector(".msg"), b = o.querySelector("button[type=submit]");
+    var f = o.querySelector("form"), m = o.querySelector(".msg"), b = o.querySelector("button[type=submit]"), inp = o.querySelector(".mfa-code"), busy = false;
     f.onsubmit = async function (e) {
-      e.preventDefault(); m.className = "msg"; m.textContent = ""; b.disabled = true;
-      var code = o.querySelector(".mfa-code").value.replace(/\D/g, "");
+      e.preventDefault();
+      if (busy) return;
+      var code = inp.value.replace(/\D/g, "");
+      if (code.length !== 6) return;
+      busy = true; m.className = "msg"; m.textContent = ""; b.disabled = true;
       try { await onCode(code); }
-      catch (err) { m.className = "msg err"; m.textContent = /invalid|expired|incorrect/i.test(String(err && err.message)) ? L("Code klopt niet of is verlopen. Probeer de volgende code.", "Code is wrong or expired. Try the next one.") : String((err && err.message) || err); b.disabled = false; }
+      catch (err) {
+        m.className = "msg err"; m.textContent = /invalid|expired|incorrect/i.test(String(err && err.message)) ? L("Code klopt niet of is verlopen. Probeer de volgende code.", "Code is wrong or expired. Try the next one.") : String((err && err.message) || err);
+        b.disabled = false; inp.value = ""; inp.focus();
+      }
+      busy = false;
     };
+    /* automatisch bevestigen zodra het 6e cijfer is ingevoerd (ook bij plakken of autofill) */
+    inp.addEventListener("input", function () {
+      var v = inp.value.replace(/\D/g, "").slice(0, 6);
+      if (v !== inp.value) inp.value = v;
+      if (v.length === 6 && !busy) { if (f.requestSubmit) f.requestSubmit(); else f.onsubmit(new Event("submit")); }
+    });
+    setTimeout(function () { inp.focus(); }, 0);
     return o;
   }
   function enter() { closeOv(); location.href = "/kpi.html"; }
