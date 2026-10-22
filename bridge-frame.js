@@ -147,3 +147,36 @@
 
 /* Favicon: rode Bridge-tegel in het browsertabblad (favicon.svg). Idempotent. */
 (function(){try{var d=document;if(d.querySelector('link[rel~="icon"]'))return;var l=d.createElement("link");l.rel="icon";l.type="image/svg+xml";l.href="/favicon.svg?v=1";(d.head||d.documentElement).appendChild(l);}catch(e){}})();
+
+/* =====================================================================
+   Eigenaar-poort (migratie 055, 22-10-2026)
+   The Bridge-vensters zijn alleen voor de eigenaar (nexus_team.bridge_owner).
+   Een teamlid dat zo'n pagina rechtstreeks opent, gaat terug naar de cockpit,
+   die in team-modus alleen de team-onderdelen toont (Facturatie, Contracten).
+   De data zelf is in de database afgeschermd; dit is alleen de nette omleiding.
+   ===================================================================== */
+(function (global) {
+  "use strict";
+  try {
+    var CFG = global.BRIDGE_CONFIG || {};
+    var COCKPIT = CFG.COCKPIT_URL || "kpi.html";
+    var page = String(location.pathname).split("/").pop().toLowerCase();
+    if (!page || page === COCKPIT.toLowerCase()) return;
+    if (!global.supabase || !CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) return;
+    var sb = global.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+    function check() {
+      sb.auth.getSession().then(function (s) {
+        if (!s || !s.data || !s.data.session) return;   // pagina toont zelf de login
+        return sb.rpc("nexus_me").then(function (r) {
+          var owner = r && r.data && !r.error && r.data.bridge_owner === true;
+          if (!owner) {
+            try { global.top.location.replace("/" + COCKPIT); }
+            catch (e) { location.replace("/" + COCKPIT); }
+          }
+        });
+      }).catch(function () {});
+    }
+    check();
+    sb.auth.onAuthStateChange(function (ev) { if (ev === "SIGNED_IN") check(); });
+  } catch (e) { /* nooit een pagina laten breken op de poort */ }
+})(typeof window !== "undefined" ? window : this);

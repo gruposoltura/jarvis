@@ -1530,6 +1530,8 @@ const authGate=$("authGate"), authForm=$("authForm"), authErr=$("authErr"), auth
 let appBooted=false;
 function bootApp(){
   if(appBooted)return; appBooted=true;
+  // eigenaar-poort (migratie 055): teamleden naar de cockpit in team-modus
+  SB.rpc("nexus_me").then(r=>{ if(!(r&&r.data&&!r.error&&r.data.bridge_owner===true)){ try{top.location.replace("/kpi.html")}catch(e){location.replace("/kpi.html")} } }).catch(()=>{});
   authGate.classList.add("hidden");
   setView("org");
   start();
