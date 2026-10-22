@@ -692,7 +692,7 @@ function enrichList(list,kind,bare){
   return `<div class="${bare?"pk-enr":"card"}">${Object.entries(by).map(([f,arr])=>`<dl class="kv" style="border-bottom:1px solid var(--line)"><dt>${esc(f)}</dt><dd>${arr.map((e,i)=>`<div style="${i?"opacity:.55;font-size:calc(12px*var(--fs,1))":""}">${esc(typeof e.value==="object"?JSON.stringify(e.value):e.value)}<span class="src">${esc(e.label||e.source)}</span>${e.url?` <a href="${esc(e.url)}" target="_blank" rel="noopener" class="sm muted">↗</a>`:""} <span class="sm muted">${ago(e.at)}</span></div>`).join("")}</dd></dl>`).join("")}</div>`}
 
 /* ================= WONINGEN ================= */
-let prLoaded=false, prStatus="current", prBuild="", prOff=0, prSel=null, PR=null, prSub="kenmerken";
+let prLoaded=false, prStatus="all", prBuild="", prOff=0, prSel=null, PR=null, prSub="kenmerken";
 function buildStatusChips(){const S=["current","under_offer","own","draft","withdrawn","sold","all"];
   $("#prStatus").innerHTML=S.map(s=>`<span class="chip ${prStatus===s?"on":""}" data-s="${s}" style="--cc:var(--c-pr)">${t("ps."+s)}</span>`).join("");
   $$("#prStatus .chip").forEach(c=>c.onclick=()=>{prStatus=c.dataset.s;buildStatusChips();loadProps(true)})}
