@@ -67,7 +67,7 @@ function ago(ts){if(!ts)return"";const d=(Date.now()-new Date(ts))/1000;if(d<0){
   if(d<3600)return Math.max(1,Math.round(d/60))+" min";if(d<86400)return Math.round(d/3600)+(en?" h":" u");if(d<86400*30)return Math.round(d/86400)+" d";
   return NEXUS_DMY(ts)}
 function fdate(ts){return ts?NEXUS_DMY(ts):"—"}   /* overal DD/MM/YYYY (Rick 20-10) */
-function initials(n){n=(n||"?").trim();const p=n.split(/\s+/);return ((p[0]||"")[0]||"?").toUpperCase()+((p.length>1?p[p.length-1][0]:"")||"").toUpperCase()}
+function initials(n){n=(n||"?").trim();const k=n.indexOf(", ");if(k>0)n=n.slice(k+2)+" "+n.slice(0,k);const p=n.split(/\s+/);return ((p[0]||"")[0]||"?").toUpperCase()+((p.length>1?p[p.length-1][0]:"")||"").toUpperCase()}
 function hue(s){let h=0;for(const c of String(s||""))h=(h*31+c.charCodeAt(0))%360;return `hsl(${h} 55% 42%)`}
 /* serverteksten (NL) vertalen */
 function why(s){if(!s)return"";let m;
@@ -385,7 +385,7 @@ async function openContact(id,opt){
 }
 function renderContact(){
   const c=CT.contact, raw=CT.raw||{}, d=$("#ctDetail");
-  const name=c.full_name||[raw.first_name,raw.last_name].filter(Boolean).join(" ")||c.email;
+  const name=c.full_name||[raw.last_name,raw.first_name].filter(Boolean).join(", ")||c.email;
   const tabs=[["profiel",t("st.profile")],["woningen",t("st.props"),(CT.properties||[]).length+(CT.interests||[]).length+(CT.interested_in_mine||[]).length],["tijdlijn",t("st.timeline"),(CT.timeline||[]).filter(e=>e.kind==="request").length],["relaties",t("st.relations"),(CT.relations||[]).length+(CT.interested_in_mine||[]).length],["mailings",t("st.mailings")]];
   if(!tabs.some(x=>x[0]===ctSub))ctSub="profiel";
   const D=CT.details||{};
