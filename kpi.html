@@ -38,8 +38,13 @@
   /* ---- werkvlak: KPI links (vast), panelen rechts ---- */
   #work{flex:1;display:flex;min-height:0}
   #kpiScroll{flex:1 1 0;min-width:380px;overflow-y:auto;padding:16px 16px 70px}
-  .sidepane{position:relative;min-width:280px;display:flex}
-  .sidepane iframe{flex:1;width:100%;border:none;background:var(--bg)}
+  .sidepane{position:relative;min-width:280px;display:flex;flex-direction:column}
+  .sidepane iframe{flex:1;width:100%;min-height:0;border:none;background:var(--bg)}
+  .pane-bar{flex:none;display:flex;align-items:center;height:30px;padding:0 0 0 12px;background:#0b111a;border-bottom:1px solid var(--line)}
+  .pane-bar .pt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 10px/1 'Segoe UI',system-ui,sans-serif;letter-spacing:.16em;color:#00d4ff}
+  .pane-x{flex:none;width:44px;height:30px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:#c9d4e0;font-size:18px;line-height:1;cursor:pointer;transition:background .12s,color .12s}
+  .pane-x:hover{background:#e8231a;color:#fff}
+  .pane-x:focus-visible{outline:2px solid #00d4ff;outline-offset:-2px}
   .divider{width:6px;cursor:col-resize;background:var(--line);flex:none;transition:background .15s}
   .divider:hover,.divider.drag{background:var(--cyan)}
 
@@ -661,6 +666,17 @@
       pane.className = 'sidepane';
       pane.dataset.pid = p.id;
       pane.style.flex = '0 0 ' + (state.widths[p.id] || 30) + '%';
+      var bar = document.createElement('div');
+      bar.className = 'pane-bar';
+      var pt = document.createElement('span');
+      pt.className = 'pt'; pt.textContent = p.title || p.label;
+      var x = document.createElement('button');
+      x.type = 'button'; x.className = 'pane-x';
+      x.innerHTML = '\u2715';
+      x.title = 'Venster sluiten'; x.setAttribute('aria-label', 'Venster ' + (p.title || p.label) + ' sluiten');
+      x.addEventListener('click', function(){ togglePanel(p.id); });
+      bar.appendChild(pt); bar.appendChild(x);
+      pane.appendChild(bar);
       var f = document.createElement('iframe');
       f.src = p.url; f.title = p.label;
       f.addEventListener('load', function(){ dressPanel(f, p); });
