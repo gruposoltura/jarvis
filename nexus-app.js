@@ -139,7 +139,6 @@ async function boot(){
   $("#meName").textContent=ME.display_name;const av=$("#meAv");av.textContent=initials(ME.display_name);av.style.background=ME.color||"#14b8a6";
   buildRoleChips();buildStatusChips();buildBuildSeg();
   /* Admin (invoerschermen, nog niet gekoppeld): voorlopig alleen voor de rol admin */
-  $("#tabAd").classList.toggle("hidden",ME.role!=="admin");
   $("#tabRp").classList.toggle("hidden",ME.role!=="admin");
   $("#prNew").classList.toggle("hidden",ME.role!=="admin");
   $("#ctNew").classList.toggle("hidden",ME.role!=="admin");
@@ -167,7 +166,10 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden&&booted)lo
 /* ================= TABS / ROUTING ================= */
 const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp",vw:"--c-vw",fa:"--c-fa",cn:"--c-cn"};
 let curTab="ov";
-function setTab(t_,ref){curTab=t_;if(t_!=="ac")ctDetailHome();$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t_));
+/* Geen Admin-tab meer in het menu: de invoerpagina (#ad) opent alleen via "+ Nieuw contact" / "+ Nieuwe woning";
+   zolang die open staat licht de tab op waar je vandaan kwam (Contacten of Woningen). */
+let adFrom="ct";
+function setTab(t_,ref){curTab=t_;if(t_!=="ac")ctDetailHome();const onT=t_==="ad"?adFrom:t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===onT));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
   document.documentElement.style.setProperty("--acc",`var(${TABC[t_]})`);
   if(t_==="ov"&&!ovLoaded)loadOverview();
@@ -202,12 +204,12 @@ function route(){
    dan zelf routeren, anders lijkt de kaart niet klikbaar. */
 function goHash(h){if(location.hash.replace(/^#/,"")===h)route();else location.hash=h}
 const go={c:id=>goHash("c/"+id),p:id=>goHash("p/"+encodeURIComponent(id))};
-/* + Nieuw contact (rechtsboven in Contacten): naar Admin, workflow "Nieuw contact" */
-function newContact(){location.hash="ad";setTimeout(()=>{if(window.NEXUS_ADMIN&&NEXUS_ADMIN.startNewContact)NEXUS_ADMIN.startNewContact()},0)}
+/* + Nieuw contact (rechtsboven in Contacten): naar de invoerpagina, workflow "Nieuw contact" */
+function newContact(){adFrom="ct";location.hash="ad";setTimeout(()=>{if(window.NEXUS_ADMIN&&NEXUS_ADMIN.startNewContact)NEXUS_ADMIN.startNewContact()},0)}
 document.addEventListener("click",e=>{if(e.target.closest("[data-newct]")){e.preventDefault();e.stopPropagation();newContact()}},true);
 /* + Nieuwe woning (Woningen-tab) en + Woning toevoegen (contact → Woningen): naar Admin, flow "Woning toevoegen".
    Vanuit een contact staat dat contact meteen als eigenaar ingevuld; nexus_admin_submit koppelt het als 'owner'. */
-function newProp(owner){location.hash="ad";setTimeout(()=>{if(window.NEXUS_ADMIN&&NEXUS_ADMIN.startNewProperty)NEXUS_ADMIN.startNewProperty(owner||null)},0)}
+function newProp(owner){adFrom=curTab==="ct"?"ct":"pr";location.hash="ad";setTimeout(()=>{if(window.NEXUS_ADMIN&&NEXUS_ADMIN.startNewProperty)NEXUS_ADMIN.startNewProperty(owner||null)},0)}
 function ctOwner(){if(!CT)return null;const c=CT.contact||{},o=CT.core||{};if(!o.id)return null;
   return {id:o.id,wp_id:c.wp_id||"",name:c.full_name||o.full_name||c.email,email:c.email||o.email,city:o.city||"",roles:(c.roles||[]).map(x=>String(x).replace("_","-"))}}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-newpr]");if(!b)return;e.preventDefault();e.stopPropagation();
