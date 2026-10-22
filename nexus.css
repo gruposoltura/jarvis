@@ -85,6 +85,8 @@ main{height:calc(100vh - var(--hdr) - var(--tabs));padding:14px 18px;overflow:hi
 .kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
 .kpi{padding:14px 16px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s}
 .kpi:hover{transform:translateY(-2px);border-color:var(--kc)}
+.kpi.static{cursor:default}
+.kpi.static:hover{transform:none;border-color:var(--line)}
 .kpi::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--kc)}
 .kpi .v{font:700 calc(28px*var(--fs,1))/1.1 'Space Grotesk';margin-top:6px}
 .kpi .l{font-size:calc(12px*var(--fs,1));color:var(--tx2)}

@@ -261,7 +261,7 @@ async function loadOverview(){
 function renderOverview(){
   const p=$("#p-ov"), o=OV, pr=o.props||{}, roles=o.roles||{};
   $("#cntCt").textContent=num(o.contacts_total);$("#cntPr").textContent=num(pr.current);
-  const kp=(v,l,s,c,act)=>`<div class="card kpi" style="--kc:var(${c})" data-go="${act}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  const kp=(v,l,s,c,act)=>`<div class="card kpi${act?"":" static"}" style="--kc:var(${c})"${act?` data-go="${act}"`:""}><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
   const maxR=Math.max(1,...Object.values(roles));
   const order=["suspect","seller","buyer","suspect-seller","agent"];
   const d=o.req_daily_30d||[], mx=Math.max(1,...d.map(x=>x.n));
@@ -270,10 +270,10 @@ function renderOverview(){
    <div class="kpis">
     ${kp(num(o.contacts_total),t("kpi.contacts"),t("kpi.contacts.s",{n:num(o.contacts_new_30d)}),"--c-ct","ct")}
     ${kp(num(o.contacts_mine),t("kpi.mine"),t("kpi.mine.s",{n:esc(ME.display_name)}),"--c-ov","ct:mine")}
-    ${kp(num(pr.current),t("kpi.props"),t("kpi.props.s",{a:num(pr.own),b:num(pr.external)}),"--c-pr","pr")}
+    ${kp(num(pr.current),t("kpi.props"),t("kpi.props.s",{a:num(pr.own),b:num(pr.external)}),"--c-pr","pr:current")}
     ${kp(num(pr.under_offer),t("kpi.offer"),t("kpi.offer.s",{n:num(pr.sold)}),"--c-pr","pr:under_offer")}
     ${kp(num(o.requests_7d),t("kpi.req"),t("kpi.req.s",{a:num(o.requests_30d),b:num(o.leads_7d)}),"--c-ac","ac")}
-    ${kp(num(o.viewings_upcoming),t("kpi.view"),t("kpi.view.s",{n:num(o.hot_pending)}),"--c-ac","ac")}
+    ${kp(num(o.viewings_upcoming),t("kpi.view"),t("kpi.view.s",{n:num(o.hot_pending)}),"--c-ac",null)}
    </div>
    <div class="card ov-web" id="ovWeb"><div class="loader sm">${L2("Websitecijfers laden…","Loading website figures…")}</div></div>
    <div class="card ov-roles"><div class="hd"><h3>${t("ov.roles")}</h3><span class="sm muted">${t("ov.clickfilter")}</span></div>
@@ -294,7 +294,7 @@ function renderOverview(){
    </div></div>`;
   p.querySelectorAll("[data-go]").forEach(k=>k.onclick=()=>{const [tb,a]=k.dataset.go.split(":");
     if(tb==="ct"){ctScope=a==="mine"?"mine":"all";$$("#ctScope button").forEach(b=>b.classList.toggle("on",b.dataset.v===ctScope));ctLoaded=false}
-    if(tb==="pr"&&a){prStatus=a;buildStatusChips();prLoaded=false}
+    if(tb==="pr"&&a){prStatus=a;prBuild="";buildStatusChips();buildBuildSeg();prLoaded=false}
     location.hash=tb;});
   p.querySelectorAll("[data-role]").forEach(r=>r.onclick=()=>{ctRole=r.dataset.role;buildRoleChips();ctLoaded=false;location.hash="ct"});
   loadSiteStrip();
@@ -696,7 +696,7 @@ function enrichList(list,kind,bare){
   return `<div class="${bare?"pk-enr":"card"}">${Object.entries(by).map(([f,arr])=>`<dl class="kv" style="border-bottom:1px solid var(--line)"><dt>${esc(f)}</dt><dd>${arr.map((e,i)=>`<div style="${i?"opacity:.55;font-size:calc(12px*var(--fs,1))":""}">${esc(typeof e.value==="object"?JSON.stringify(e.value):e.value)}<span class="src">${esc(e.label||e.source)}</span>${e.url?` <a href="${esc(e.url)}" target="_blank" rel="noopener" class="sm muted">↗</a>`:""} <span class="sm muted">${ago(e.at)}</span></div>`).join("")}</dd></dl>`).join("")}</div>`}
 
 /* ================= WONINGEN ================= */
-let prLoaded=false, prStatus="all", prBuild="", prOff=0, prSel=null, PR=null, prSub="kenmerken";
+let prLoaded=false, prStatus="current", prBuild="", prOff=0, prSel=null, PR=null, prSub="kenmerken";
 function buildStatusChips(){const S=["current","under_offer","own","draft","withdrawn","sold","all"];
   $("#prStatus").innerHTML=S.map(s=>`<span class="chip ${prStatus===s?"on":""}" data-s="${s}" style="--cc:var(--c-pr)">${t("ps."+s)}</span>`).join("");
   $$("#prStatus .chip").forEach(c=>c.onclick=()=>{prStatus=c.dataset.s;buildStatusChips();loadProps(true)})}
