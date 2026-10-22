@@ -1236,15 +1236,13 @@ function acPick(row){if(!row)return;
   st.sel=acSel=row.dataset.fr||row.dataset.c;ctSub="tijdlijn";FLREQ=row.dataset.fr||null;
   const slot=pane.querySelector(".ac-slot"),d=$("#ctDetail");if(slot&&d&&d.parentNode!==slot){if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};slot.appendChild(d)}
   if(ctSel===String(row.dataset.c)&&CT)renderContact();else openContact(row.dataset.c,{noScroll:true})}
-const AC_GRP={web:["Website","Website"],portal:["Portalen","Portals"],old:["",""]};
 function acChips(st){
   const D=st.data;if(!D||!D.filters)return"";
   const all=D.filters.reduce((a,f)=>a+Number(f.n||0),0);
   const chip=(k,lbl,n,c,dim)=>`<span class="chip ${st.filter===k?"on":""}${dim?" dim":""}" data-acf="${esc(k)}" style="--cc:${c}">${esc(lbl)}${n!=null?` <b>${num(n)}</b>`:""}</span>`;
-  let h=chip("all",L2("Alle","All"),all,"var(--acc)"), grp="";
-  const one=new Set(D.filters.map(f=>f.grp)).size<2;
+  /* geen groepskoppen meer: alle chips lopen door naast elkaar en vullen de rijen (Rick, 22-10-2026) */
+  let h=chip("all",L2("Alle","All"),all,"var(--acc)");
   D.filters.forEach(f=>{
-    if(f.grp!==grp){grp=f.grp;const g=AC_GRP[grp]||["",""];h+=(g[0]&&!one)?`<span class="ac-fg">${esc(L2(g[0],g[1]))}</span>`:`<span class="ac-fg"></span>`}
     const c=f.grp==="portal"?"var(--c-po)":f.grp==="old"?"#64748b":"var(--c-ac)";
     h+=chip(f.key,LANG==="en"?f.en:f.nl,f.n,c,!Number(f.n));
   });

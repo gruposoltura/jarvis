@@ -1322,7 +1322,7 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .fl-sd{color:var(--tx3);font-variant-numeric:tabular-nums;white-space:nowrap}.fl-ss{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fl-sm{color:var(--tx3);white-space:nowrap}
 
 /* ---------- Aanvragen-filter: soort websiteformulier · portaal · oude site (Rick, 22-10-2026) ---------- */
-.ac-filter{gap:6px;padding:8px 12px;max-height:132px;overflow:auto;scrollbar-width:thin}
+.ac-filter{display:flex;flex-wrap:wrap;align-content:flex-start;gap:5px;padding:8px 12px;max-height:170px;overflow:auto;scrollbar-width:thin}
 .ac-filter .chip{padding:3px 9px;font-size:calc(11.5px*var(--fs,1))}
 .ac-filter .chip.dim{opacity:.45}
 .ac-filter .chip.dim.on{opacity:1}
