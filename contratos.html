@@ -16,7 +16,7 @@
   Praat met n8n-webhook /contracts (JARVIS-Sales-ContractGenerator, osZuBQ8fA3Cc9EIT) met de NEXUS-sessie
   als Bearer; de webhook laat alleen actieve teamleden (core.team_members) door.
   Acties: search (eigen panden), load (contract_data: pand, verkoper/koper 1+2, makelaar), history (contract_log),
-  generate (reserveringscontract ES + optionele vertaling; Drive, optioneel Brevo-mail naar jezelf, DOCX terug).
+  generate (reserveringscontract ES + optionele vertaling; opslag in NEXUS (bucket contracts), optioneel Brevo-mail naar jezelf, DOCX terug).
   Deeplink: /nexus.html#cn/LM620.
 -->
 <style>
@@ -287,6 +287,13 @@ function split(){
 }
 ["price","arras"].forEach(i=>$(i).addEventListener("input",split));
 
+/* ---------- archief (privé Storage-bucket contracts, getekende link van 10 minuten) ---------- */
+async function openDoc(path){
+  try{const {data,error}=await SB.storage.from("contracts").createSignedUrl(path,600,{download:path.split("/").pop()});if(error)throw error;location.href=data.signedUrl}
+  catch(e){msg("Openen mislukt: "+e.message,"err")}
+}
+document.addEventListener("click",e=>{const a=e.target.closest("[data-doc]");if(!a)return;e.preventDefault();openDoc(a.dataset.doc)});
+
 /* ---------- maken ---------- */
 function dl(name,b64){const a=document.createElement("a");a.href="data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,"+b64;a.download=name;document.body.appendChild(a);a.click();a.remove()}
 $("genBtn").onclick=async()=>{
@@ -302,7 +309,7 @@ $("genBtn").onclick=async()=>{
     const files=j.files||[];
     $("result").hidden=false;
     $("result").innerHTML=`<div class="done"><div><b>Contract klaar</b> voor ${esc(j.reference)}${j.mailed_to?" · gemaild naar "+esc(j.mailed_to):""}</div>
-      <div class="files">${files.map((f,i)=>`<div class="file"><span>${esc(f.name)}</span><span class="acts"><button type="button" class="btn small prim" data-dl="${i}">Downloaden</button>${f.drive_url?`<a class="btn small" href="${esc(f.drive_url)}" target="_blank" rel="noopener">Drive</a>`:""}</span></div>`).join("")}</div></div>`;
+      <div class="files">${files.map((f,i)=>`<div class="file"><span>${esc(f.name)}</span><span class="acts"><button type="button" class="btn small prim" data-dl="${i}">Downloaden</button>${f.storage_path?`<a class="btn small" href="#" data-doc="${esc(f.storage_path)}">Archief</a>`:f.drive_url?`<a class="btn small" href="${esc(f.drive_url)}" target="_blank" rel="noopener">Drive</a>`:""}</span></div>`).join("")}</div></div>`;
     $("result").querySelectorAll("[data-dl]").forEach(b=>b.onclick=()=>{const f=files[+b.dataset.dl];dl(f.name,f.base64)});
     msg("");$("result").scrollIntoView({behavior:"smooth",block:"nearest"});
     loadHistory();
@@ -314,8 +321,8 @@ $("genBtn").onclick=async()=>{
 const fmtD=new Intl.DateTimeFormat("nl-NL",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
 async function loadHistory(){
   try{const j=await call("history");const h=j.history||[];
-    $("hist").innerHTML=h.length?h.map(x=>{const files=(x.files||[]).filter(f=>f.drive_url);
-      return `<div class="hrow"><span class="d">${esc(fmtD.format(new Date(x.created_at)))}</span><span class="r">${esc(x.reference)}</span><span class="w">${esc((x.created_by||"").split("@")[0])} · ${(x.languages||[]).map(l=>LANG[l]||l).join(" + ")}${x.price?" · "+eur(x.price):""}</span><span>${files.map(f=>`<a href="${esc(f.drive_url)}" target="_blank" rel="noopener">${esc((f.name.match(/_([A-Z]{2})\.docx$/)||[,"docx"])[1])}</a>`).join(" ")}</span></div>`}).join("")
+    $("hist").innerHTML=h.length?h.map(x=>{const files=(x.files||[]).filter(f=>f.storage_path||f.drive_url);
+      return `<div class="hrow"><span class="d">${esc(fmtD.format(new Date(x.created_at)))}</span><span class="r">${esc(x.reference)}</span><span class="w">${esc((x.created_by||"").split("@")[0])} · ${(x.languages||[]).map(l=>LANG[l]||l).join(" + ")}${x.price?" · "+eur(x.price):""}</span><span>${files.map(f=>`<a ${f.storage_path?`href="#" data-doc="${esc(f.storage_path)}"`:`href="${esc(f.drive_url)}" target="_blank" rel="noopener"`}>${esc((f.name.match(/_([A-Z]{2})\.docx$/)||[,"docx"])[1])}</a>`).join(" ")}</span></div>`}).join("")
       :'<div class="hint">Nog geen contracten via deze pagina.</div>';
   }catch(e){$("hist").innerHTML='<div class="hint">'+esc(e.message)+"</div>"}
 }

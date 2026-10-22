@@ -231,7 +231,7 @@ html .lines>.line{counter-increment:regel;position:relative;background:var(--pan
         <div class="sendrow"><input id="sendTo" type="email" aria-label="E-mailadres ontvanger"><button type="button" class="btn prim" id="sendBtn">Mail naar klant</button></div>
         <p class="hint">Proefmodus: versturen kan alleen naar een @gruposoltura.com-adres.</p>
       </div>
-      <p class="hint">Volgend proefnummer <span class="mono" id="nextNo">…</span>. De PDF komt in Drive-map Facturas PRUEBA. Er gaat niets naar het btw-rapport.</p>
+      <p class="hint">Volgend proefnummer <span class="mono" id="nextNo">…</span>. De PDF komt in de NEXUS-opslag (map prueba). Er gaat niets naar het btw-rapport.</p>
     </section>
 
     <section class="sec" data-c="log">
@@ -300,17 +300,26 @@ function banner(t){$("banner").hidden=!t;$("banner").textContent=t||""}
 const svc=c=>CFG.services.find(s=>s.code===c);
 
 async function shrink(src,h){
-  return new Promise(res=>{if(!src)return res("");const im=new Image();im.onload=()=>{const s=Math.min(1,h/im.height),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.9))};im.onerror=()=>res("");im.src=src});
+  return new Promise(res=>{if(!src)return res("");const im=new Image();im.crossOrigin="anonymous";im.onload=()=>{const s=Math.min(1,h/im.height),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.9))};im.onerror=()=>res("");im.src=src});
 }
+const LOGO_URL="https://res.cloudinary.com/dxmx3a2ea/image/upload/v1792681223/Soltura-logo-01_qiidx6.jpg";
+// PDF's staan in de privé Storage-bucket invoices; openen via een getekende link van 10 minuten.
+async function openPdf(path){
+  const w=window.open("about:blank","_blank");
+  try{const {data,error}=await SB.storage.from("invoices").createSignedUrl(path,600);if(error)throw error;if(w)w.location=data.signedUrl;else location.href=data.signedUrl}
+  catch(e){if(w)w.close();msg("PDF openen mislukt: "+e.message,"err")}
+}
+document.addEventListener("click",e=>{const a=e.target.closest("[data-pdf]");if(!a)return;e.preventDefault();openPdf(a.dataset.pdf)});
 async function loadAssets(){
-  try{const c=JSON.parse(localStorage.getItem("soltura-inv-assets-v1")||"null");if(c&&c.logo){IMG=c;return}}catch(e){}
-  const j=await call("assets");const by=n=>(j.images.find(i=>i.name===n)||{}).data||"";
-  IMG={logo:await shrink(by("image1.jpg"),300),api:await shrink(by("image2.png"),120),gipe:await shrink(by("image3.png"),130),cei:await shrink(by("image4.png"),120),aipp:await shrink(by("image5.png"),120)};
-  try{localStorage.setItem("soltura-inv-assets-v1",JSON.stringify(IMG))}catch(e){}
+  try{const c=JSON.parse(localStorage.getItem("soltura-inv-assets-v2")||"null");if(c&&c.logo){IMG=c;return}}catch(e){}
+  // Logo uit Cloudinary (map logos), keurmerken als vaste bestanden in deze repo. Geen Drive meer.
+  const H="assets/huisstijl/";
+  IMG={logo:await shrink(LOGO_URL,300),api:await shrink(H+"api.png",120),gipe:await shrink(H+"gipe.png",130),cei:await shrink(H+"cei.png",120),aipp:await shrink(H+"aipp.png",120)};
+  if(IMG.logo)try{localStorage.setItem("soltura-inv-assets-v2",JSON.stringify(IMG))}catch(e){}
 }
 async function loadConfig(){
   CFG=await call("config");
-  $("log").innerHTML=CFG.invoices.length?CFG.invoices.map(x=>`<div class="log-item"><span>${x.pdf_url?`<a href="${esc(x.pdf_url)}" target="_blank" rel="noopener">${esc(x.invoice_no)}</a>`:esc(x.invoice_no)} · ${esc(x.client)}${x.sent_at?` · verstuurd naar ${esc(x.sent_to)}`:""}</span><span>${eur(Number(x.total))}</span></div>`).join(""):'<p class="hint">Nog geen proeffacturen.</p>';
+  $("log").innerHTML=CFG.invoices.length?CFG.invoices.map(x=>`<div class="log-item"><span>${x.pdf_path?`<a href="#" data-pdf="${esc(x.pdf_path)}">${esc(x.invoice_no)}</a>`:x.pdf_url?`<a href="${esc(x.pdf_url)}" target="_blank" rel="noopener">${esc(x.invoice_no)}</a>`:esc(x.invoice_no)} · ${esc(x.client)}${x.sent_at?` · verstuurd naar ${esc(x.sent_to)}`:""}</span><span>${eur(Number(x.total))}</span></div>`).join(""):'<p class="hint">Nog geen proeffacturen.</p>';
   const L=CFG.last;$("lastHint").hidden=!L;
   if(L)$("lastHint").textContent=`Vorige factuur ${L.invoice_no} is van ${fecha(L.issue_date)}. Een eerdere datum kan niet.`;
   $("date").min=L?L.issue_date:"";
@@ -529,9 +538,9 @@ $("frm").addEventListener("submit",async e=>{
     const b64=await makePdf(pdfO);
     const surname=String(c.full_name).trim().split(/\s+/).pop();
     const s=await call("store_pdf",{invoice_id:inv.id,invoice_no:inv.invoice_no,client_name:c.full_name,file_title:(svc(o.lines[0].code).desc_es.replace(/\s*\(.*\)/,"")+" "+surname),pdf_base64:b64});
-    msg(`Factuur ${inv.invoice_no} staat klaar in Drive: ${s.name}`,"ok");
-    lastIssued={id:inv.id,no:inv.invoice_no,url:s.url,o:pdfO};
-    $("sendTxt").innerHTML=`Factuur <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(inv.invoice_no)}</a> mailen naar de klant?`;
+    msg(`Factuur ${inv.invoice_no} is opgeslagen: ${s.name}`,"ok");
+    lastIssued={id:inv.id,no:inv.invoice_no,path:s.path,o:pdfO};
+    $("sendTxt").innerHTML=`Factuur <a href="#" data-pdf="${esc(s.path)}">${esc(inv.invoice_no)}</a> mailen naar de klant?`;
     $("sendTo").value=c.email||"";$("sendbox").hidden=false;
     await loadConfig();
     busy=false;resetForm(true);
