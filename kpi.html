@@ -493,7 +493,9 @@
     { id:'office',        label:'OFFICE',        url:'/office-v2.html',     title:'OFFICE' },
     { id:'usage',         label:'USAGE',         url:'/usage.html',         title:'VERBRUIK TOOLS' },
     // facturatie (alleen nexus_team): eigen app, niet aankleden (raw)
-    { id:'factura',       label:'FACTURATIE',    url:'/facturacion.html',   raw:true }
+    { id:'factura',       label:'FACTURATIE',    url:'/facturacion.html',   raw:true },
+    // contracten (alleen nexus_team): eigen app, vervangt het Google Form (22-10-2026)
+    { id:'contratos',     label:'CONTRACTEN',    url:'/contratos.html',     raw:true }
   ];
   var PANEL_BY_ID = {};
   PANELS.forEach(function(p){ PANEL_BY_ID[p.id] = p; });
@@ -518,7 +520,8 @@
       { label:'Paneel - Meta',                icon:'M', color:'#ff3f9a', zone:'z-ads' },
       { label:'Paneel - Jarvis',              icon:'J', color:'#a37bff', zone:'z-jarvis' },
       // alleen zichtbaar voor een account in nexus_team (NEXUS-wachtwoord)
-      { label:'Facturatie',                   icon:'\u20AC', color:'#e8231a', panel:'factura', team:true } ]},
+      { label:'Facturatie',                   icon:'\u20AC', color:'#e8231a', panel:'factura', team:true },
+      { label:'Contracten',                   icon:'\u00A7', color:'#c69500', panel:'contratos', team:true } ]},
     { sec:'VIEWS', items:[
       { label:'Office V2',                    icon:'O', color:'#00d4ff', panel:'office' },
       { label:'Social Studio',                icon:'S', color:'#e8231a', panel:'studio' },
