@@ -127,6 +127,24 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .sendrow{display:flex;gap:8px;flex-wrap:wrap}.sendrow input{flex:1 1 200px}
 </style>
 <link rel="stylesheet" href="/nexus-embed.css?v=1">
+<style>
+/* 22-10-2026: secties als gekleurde paneeltjes (zoals NEXUS) en genummerde factuurregels */
+.panel{gap:12px}
+html .panel>.sec[data-c]{--sc:#64748b;border:1px solid color-mix(in srgb,var(--sc) 35%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--sc) 6%,var(--panel));padding:0 12px 12px;gap:10px;overflow:visible}
+html .panel>.sec[data-c]>h2{display:flex;align-items:center;gap:8px;margin:0 -12px;padding:8px 12px;border-radius:11px 11px 0 0;background:color-mix(in srgb,var(--sc) 15%,transparent);border-bottom:1px solid color-mix(in srgb,var(--sc) 25%,var(--line));color:color-mix(in srgb,var(--sc) 70%,var(--fg));font:700 12px/1.2 var(--f-ui);letter-spacing:.08em;text-transform:uppercase}
+.sec h2 .sn{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--sc);color:#fff;font-size:11px;letter-spacing:0}
+.sec h2 .cnt{margin-left:auto;font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--muted)}
+html .panel>.sec[data-c="klant"]{--sc:#3b82f6}html .panel>.sec[data-c="woning"]{--sc:#14b8a6}html .panel>.sec[data-c="diensten"]{--sc:#8b5cf6}html .panel>.sec[data-c="controle"]{--sc:#f59e0b}html .panel>.sec[data-c="log"]{--sc:#10b981}html .panel>.sec[data-c="print"]{--sc:#64748b}
+.lines{counter-reset:regel}
+html .lines>.line{counter-increment:regel;position:relative;background:var(--panel);border:1px solid color-mix(in srgb,var(--sc) 30%,var(--line));border-left:4px solid var(--sc);border-radius:10px;padding:0 10px 10px;gap:8px}
+.lines>.line:nth-child(even){background:color-mix(in srgb,var(--sc) 4%,var(--panel))}
+.lines .line-head{flex-wrap:wrap;row-gap:8px;margin:0 -10px;padding:8px 10px;border-bottom:1px dashed color-mix(in srgb,var(--sc) 30%,var(--line));background:color-mix(in srgb,var(--sc) 9%,transparent);border-radius:0 9px 0 0}
+.lines .line-head select{order:9;flex:1 1 100%}
+.line-head::before{content:"Regel " counter(regel);flex:0 0 auto;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:var(--sc);color:#fff}
+.line-head .lt{flex:1 1 auto;font-family:var(--f-num);font-size:13px;font-weight:600;color:var(--fg);min-width:78px;text-align:right}
+.lines:empty::after{content:"Nog geen regels. Voeg een dienst toe.";display:block;font-size:13px;color:var(--muted);padding:6px 2px}
+#addLine{border-style:dashed;border-color:color-mix(in srgb,var(--sc) 55%,var(--line));color:color-mix(in srgb,var(--sc) 70%,var(--fg))}
+</style>
 </head>
 <body>
 <header class="top">
@@ -137,8 +155,8 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 
 <main class="wrap">
   <form class="panel" id="frm" novalidate autocomplete="off">
-    <section class="sec">
-      <h2>1 · Klant</h2>
+    <section class="sec" data-c="klant">
+      <h2><span class="sn">1</span>Klant</h2>
       <div class="combo">
         <label for="q">Zoek in het CRM (naam, e-mail of referentie)<input id="q" type="search" placeholder="Bijv. Lambert of RH400" aria-autocomplete="list" aria-controls="results"></label>
         <div class="results" id="results" role="listbox" hidden></div>
@@ -178,8 +196,8 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       </div>
     </section>
 
-    <section class="sec">
-      <h2>2 · Woning</h2>
+    <section class="sec" data-c="woning">
+      <h2><span class="sn">2</span>Woning</h2>
       <label for="prop" id="propLbl" hidden>Woning van deze klant<select id="prop"></select></label>
       <div class="row">
         <label for="finca">Fincanummer<input id="finca"></label>
@@ -188,14 +206,14 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       <p class="hint">Komt onder elke dienst die bij de woning hoort.</p>
     </section>
 
-    <section class="sec">
-      <h2>3 · Diensten</h2>
+    <section class="sec" data-c="diensten">
+      <h2><span class="sn">3</span>Factuurregels<span class="cnt" id="nLines"></span></h2>
       <div class="lines" id="lines"></div>
       <button type="button" class="btn ghost small" id="addLine">+ Dienst toevoegen</button>
     </section>
 
-    <section class="sec">
-      <h2>4 · Controle</h2>
+    <section class="sec" data-c="controle">
+      <h2><span class="sn">4</span>Controle</h2>
       <label for="date">Factuurdatum<input id="date" type="date"></label>
       <p class="hint" id="lastHint" hidden></p>
       <div class="sums" aria-live="polite">
@@ -216,7 +234,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       <p class="hint">Volgend proefnummer <span class="mono" id="nextNo">…</span>. De PDF komt in Drive-map Facturas PRUEBA. Er gaat niets naar het btw-rapport.</p>
     </section>
 
-    <section class="sec">
+    <section class="sec" data-c="log">
       <h2>Uitgegeven in deze proef</h2>
       <div class="log" id="log"><p class="hint">Laden…</p></div>
       <button type="button" class="btn ghost small" id="resetBtn">Alles wissen en terug naar nul</button>
@@ -226,7 +244,8 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
       </div>
     </section>
 
-    <section class="sec">
+    <section class="sec" data-c="print">
+      <h2>Afdrukken</h2>
       <button type="button" class="btn" id="printBtn">Print factuur</button>
       <p class="hint" id="printHint">Print de laatst opgeslagen factuur, of het voorbeeld als je nog bezig bent.</p>
     </section>
@@ -393,7 +412,7 @@ function language(){
 }
 function addLine(code){
   const id=++seq,el=document.createElement("div");el.className="line";el.dataset.id=id;
-  el.innerHTML=`<div class="line-head"><select id="ls-${id}" aria-label="Dienst">${CFG.services.map(x=>`<option value="${x.code}" ${x.code===code?"selected":""}>${esc(x.desc_es)}</option>`).join("")}</select><button type="button" class="x" aria-label="Regel verwijderen">×</button></div>
+  el.innerHTML=`<div class="line-head"><select id="ls-${id}" aria-label="Dienst">${CFG.services.map(x=>`<option value="${x.code}" ${x.code===code?"selected":""}>${esc(x.desc_es)}</option>`).join("")}</select><span class="lt" id="lt-${id}">—</span><button type="button" class="x" aria-label="Regel verwijderen" title="Regel verwijderen">×</button></div>
   <div id="lp-${id}"></div>
   <label for="ld-${id}">Aanvulling op de omschrijving (optioneel)<input id="ld-${id}" placeholder="Bijv. Piscina, Ampliación"></label>
   <div class="calc"><span id="lc-${id}"></span><span class="ov" id="lo-${id}" hidden>Aangepast</span></div>`;
@@ -415,7 +434,8 @@ function pricing(id){
   $("lp-"+id).querySelectorAll("input").forEach(i=>i.addEventListener("input",()=>{if(i.id.startsWith("la-"))i.dataset.touched="1";else if(!i.id.startsWith("lg-")&&!i.id.startsWith("lq-"))$("la-"+id).dataset.touched="";render()}));
 }
 function lines(lang){
-  return [...$("lines").children].map(el=>{
+  const all=[...$("lines").children],nl=$("nLines");if(nl)nl.textContent=all.length?all.length+(all.length===1?" regel":" regels"):"";
+  return all.map(el=>{
     const id=el.dataset.id,s=svc($("ls-"+id).value),a=$("la-"+id);
     let amt=parseNum(a.value),ov=false,note="",input={};
     if(s.pricing_mode==="percent_of_price"){
@@ -431,6 +451,7 @@ function lines(lang){
     const qe=$("lq-"+id),qty=qe?Math.max(1,Math.round(parseNum(qe.value)||1)):1,total=isNaN(unit)?NaN:r2(unit*qty);
     if(qty>1&&!isNaN(unit))note+=` · ${qty} × ${eur(unit)} = ${eur(total)}`;
     $("lc-"+id).textContent=note;$("lo-"+id).hidden=!ov;
+    const lt=$("lt-"+id);if(lt)lt.textContent=isNaN(total)?"—":eur(total);
     const extra=$("ld-"+id).value.trim(),dl=s["desc_"+lang]||s.desc_es;
     let desc=lang==="es"?s.desc_es:`${dl} / ${s.desc_es}`;
     if(qty>1)desc=`${qty} × ${desc}`;
