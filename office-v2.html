@@ -69,6 +69,8 @@
   minstens 11 s (langer zolang er een 'working' is, max 4 min) en lopen terug. Zit het paar in een terugkoppellus
   (sterk samenhangende component van >= 3 agents, loopGroups()), dan schuiven tot 2 lus-buren aan (max 4 per
   tafel). Test: office-v2.html?overleg=1 start direct een overleg van de grootste lus.
+  22-10: alle run-tellingen ('runs 24 u', pijpsnelheid, replay) tellen alleen runs MET WERK (jarvis_run_has_work;
+  lege polls zoals 'vertaald 0' of 'Geen nieuwe ...' tellen niet mee; patronen in jarvis_run_idle_patterns).
   Replay (21-10): knop '24 u' in de kop speelt de runs van de afgelopen 24 uur af (bridge_agent_runs) met een
   tijdbalk onderaan (histogram per kwartier, sleepbare afspeelkop, duur 1/2/5/15 min); bureaus, ballonnen,
   powerballen en kantine-overleg volgen het replay-moment. Zie rpStart() / rpStates() / rpEvents().
@@ -3589,7 +3591,7 @@
   function rpFetch() {
     var from = new Date(Date.now() - 24 * 3600000).toISOString(), all = [];
     function page(off) {
-      return rest("bridge_agent_runs?select=workflow,run_at,status,duration_ms,summary&run_at=gte." + encodeURIComponent(from)
+      return rest("bridge_agent_runs?select=workflow,run_at,status,duration_ms,summary&has_work=is.true&run_at=gte." + encodeURIComponent(from)
         + "&order=run_at.asc&limit=1000&offset=" + off).then(function (rows) {
         all = all.concat(rows || []);
         return rows && rows.length === 1000 && off < 20000 ? page(off + 1000) : all;
