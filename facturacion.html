@@ -135,6 +135,15 @@ html .panel>.sec[data-c]>h2{display:flex;align-items:center;gap:8px;margin:0 -12
 .sec h2 .sn{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--sc);color:#fff;font-size:11px;letter-spacing:0}
 .sec h2 .cnt{margin-left:auto;font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--muted)}
 html .panel>.sec[data-c="klant"]{--sc:#3b82f6}html .panel>.sec[data-c="woning"]{--sc:#14b8a6}html .panel>.sec[data-c="diensten"]{--sc:#8b5cf6}html .panel>.sec[data-c="controle"]{--sc:#f59e0b}html .panel>.sec[data-c="log"]{--sc:#10b981}html .panel>.sec[data-c="print"]{--sc:#64748b}
+/* Brede schermen (22-10-2026): formulier in twee kolommen (Klant+Woning | Regels, Controle, Log, Print)
+   en het voorbeeld schaalt mee met de rest van de breedte, zodat er rechts geen lege ruimte overblijft. */
+body{container-type:inline-size;container-name:fa}
+@container fa (min-width:1150px){
+  .wrap{grid-template-columns:minmax(0,1fr) minmax(0,min(794px,46%))}
+  .wrap>.panel{display:block;column-count:2;column-gap:18px}
+  .wrap>.panel>.sec{break-inside:avoid;margin-bottom:18px}
+  .wrap>.panel>.sec[data-c="diensten"]{break-before:column}
+}
 .lines{counter-reset:regel}
 html .lines>.line{counter-increment:regel;position:relative;background:var(--panel);border:1px solid color-mix(in srgb,var(--sc) 30%,var(--line));border-left:4px solid var(--sc);border-radius:10px;padding:0 10px 10px;gap:8px}
 .lines>.line:nth-child(even){background:color-mix(in srgb,var(--sc) 4%,var(--panel))}
@@ -504,7 +513,7 @@ function render(){
   $("sheet").innerHTML=sheetHtml(o);fit();
 }
 function fit(){const w=$("sheetWrap").clientWidth,s=Math.min(1,w/794);$("sheet").style.transform=`scale(${s})`;$("sheetWrap").style.height=(1123*s)+"px"}
-addEventListener("resize",fit);
+addEventListener("resize",fit);try{new ResizeObserver(fit).observe($("sheetWrap"))}catch(e){}
 
 async function makePdf(o){
   const cap=$("capture");cap.innerHTML=sheetHtml(o);
