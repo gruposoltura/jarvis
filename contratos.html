@@ -96,6 +96,27 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 [hidden]{display:none!important}
 </style>
 <link rel="stylesheet" href="/nexus-embed.css?v=1">
+<style>
+/* 22-10-2026: secties als gekleurde paneeltjes (zoals NEXUS en Facturen) */
+.panel{gap:12px}
+.secs{display:flex;flex-direction:column;gap:12px}
+html .panel .sec[data-c]{--sc:#64748b;border:1px solid color-mix(in srgb,var(--sc) 35%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--sc) 6%,var(--panel));padding:0 12px 12px;gap:10px}
+html .panel .sec[data-c]>h2{display:flex;align-items:center;gap:8px;margin:0 -12px;padding:8px 12px;border-radius:11px 11px 0 0;background:color-mix(in srgb,var(--sc) 15%,transparent);border-bottom:1px solid color-mix(in srgb,var(--sc) 25%,var(--line));color:color-mix(in srgb,var(--sc) 70%,var(--fg));font:700 12px/1.2 var(--f-ui);letter-spacing:.08em;text-transform:uppercase}
+.sec h2 .sn{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--sc);color:#fff;font-size:11px;letter-spacing:0}
+html .panel .sec[data-c="woning"]{--sc:#3b82f6}html .panel .sec[data-c="contract"]{--sc:#8b5cf6}html .panel .sec[data-c="bedragen"]{--sc:#f59e0b}html .panel .sec[data-c="maken"]{--sc:#10b981}html .panel .sec[data-c="hist"]{--sc:#64748b}
+/* rechts: gegevensblokken met gekleurde kop */
+html .boxes>.box{--sc:#64748b;border:1px solid color-mix(in srgb,var(--sc) 35%,var(--line));border-left:4px solid var(--sc);border-radius:12px;background:color-mix(in srgb,var(--sc) 6%,var(--panel));padding:0 12px 12px;gap:8px}
+html .boxes>.box.p{--sc:#3b82f6}html .boxes>.box.b{--sc:#10b981}html .boxes>.box.s{--sc:#f59e0b}html .boxes>.box.a{--sc:#8b5cf6}
+html .boxes>.box>h3{margin:0 -12px;padding:8px 12px;border-radius:0 11px 0 0;background:color-mix(in srgb,var(--sc) 15%,transparent);border-bottom:1px solid color-mix(in srgb,var(--sc) 25%,var(--line));color:color-mix(in srgb,var(--sc) 70%,var(--fg));font:700 12px/1.2 var(--f-ui);letter-spacing:.08em;text-transform:uppercase}
+.box h3 span{font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--muted)}
+.person .nm{display:flex;align-items:center;gap:8px}
+.pn{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--sc);color:#fff}
+.person+.person{border-top:1px dashed color-mix(in srgb,var(--sc) 40%,var(--line))}
+html .panel .sec[data-c] .split{border-top-color:color-mix(in srgb,var(--sc) 30%,var(--line))}
+#genBtn{width:100%}
+.box .kv{margin:0}
+.sec[data-c] .msg:empty{display:none}
+</style>
 </head>
 <body>
 <header class="top">
@@ -106,8 +127,8 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 
 <main class="wrap">
   <section class="panel" aria-label="Contract maken">
-    <div class="sec">
-      <h2>Woning</h2>
+    <div class="sec" data-c="woning">
+      <h2><span class="sn">1</span>Woning</h2>
       <div class="combo">
         <label for="q">Zoek op referentie, straat, plaats, verkoper of koper
           <input id="q" type="search" autocomplete="off" placeholder="bv. LM620 of Riding" role="combobox" aria-expanded="false" aria-controls="results">
@@ -117,8 +138,9 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
       <div class="card" id="picked" hidden></div>
     </div>
 
-    <div class="sec" id="formSec" hidden>
-      <h2>Contract</h2>
+    <div class="secs" id="formSec" hidden>
+    <div class="sec" data-c="contract">
+      <h2><span class="sn">2</span>Contract</h2>
       <label>Soort contract
         <select id="ctype"><option value="reservation">Reserveringscontract (contrato de reserva)</option></select>
       </label>
@@ -132,21 +154,28 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
           <option value="fr">Frans</option>
         </select>
       </label>
+    </div>
+    <div class="sec" data-c="bedragen">
+      <h2><span class="sn">3</span>Bedragen</h2>
       <div class="row">
         <label>Koopprijs (€)<input id="price" class="num" inputmode="numeric"></label>
         <label>Aanbetaling (€)<input id="arras" class="num" inputmode="numeric" value="3000"></label>
       </div>
       <div class="split" id="split" aria-live="polite"></div>
+    </div>
+    <div class="sec" data-c="maken">
+      <h2><span class="sn">4</span>Maken</h2>
       <label class="chk"><input type="checkbox" id="mail" checked> <span>Mail het contract ook naar <b id="meMail">mij</b></span></label>
       <button type="button" class="btn prim" id="genBtn">Contract maken</button>
       <div class="msg" id="msg" role="status"></div>
+    </div>
     </div>
   </section>
 
   <section class="panel" aria-label="Gegevens en resultaat">
     <div id="detail"><div class="empty">Kies links een woning. Hier zie je dan precies welke gegevens uit NEXUS in het contract komen.</div></div>
     <div id="result" hidden></div>
-    <div class="sec">
+    <div class="sec" data-c="hist">
       <h2>Laatst gemaakt</h2>
       <div class="hist" id="hist"><div class="hint">Laden…</div></div>
     </div>
@@ -213,10 +242,10 @@ async function load(ref){
 }
 function val(v){return v!=null&&String(v).trim()!==""}
 function kv(rows){return '<dl class="kv">'+rows.map(([k,v,need])=>`<dt>${esc(k)}</dt>${val(v)?`<dd>${esc(v)}</dd>`:`<dd class="${need?"miss":""}">${need?"ontbreekt":"–"}</dd>`}`).join("")+"</dl>"}
-function person(c,need){
+function person(c,need,lbl){
   if(!c)return "";
   const addr=[[c.street,c.street_number].filter(Boolean).join(" "),[c.postcode,c.city].filter(Boolean).join(" "),c.country].filter(Boolean).join(", ");
-  return `<div class="person"><div class="nm">${esc(c.full_name||"(zonder naam)")}</div>${kv([["Paspoort",c.passport,need&&!val(c.nie)],["NIE",c.nie,false],["Adres",addr,need],["Telefoon",c.phone,false],["E-mail",c.email,false],["Burgerlijke staat",c.marital,false]])}</div>`;
+  return `<div class="person"><div class="nm">${lbl?`<span class="pn">${esc(lbl)}</span>`:""}<span>${esc(c.full_name||"(zonder naam)")}</span></div>${kv([["Paspoort",c.passport,need&&!val(c.nie)],["NIE",c.nie,false],["Adres",addr,need],["Telefoon",c.phone,false],["E-mail",c.email,false],["Burgerlijke staat",c.marital,false]])}</div>`;
 }
 function missing(){
   const p=D.property,b=D.buyer,out=[];
@@ -241,8 +270,8 @@ function render(){
   $("detail").innerHTML=(miss.length?`<div class="warnlist"><b>Vul eerst aan in NEXUS</b> (anders blijft het leeg in het contract):<ul>${miss.map(m=>"<li>"+esc(m)+"</li>").join("")}</ul></div>`:"")
    +`<div class="boxes" style="margin-top:${miss.length?12:0}px">
      <div class="box p"><h3>Woning <span>${esc(p.category_label||"")}</span></h3>${kv([["Adres",addr,true],["Fincanummer",p.finca_number,true],["Kadaster",p.cadastral_ref,true],["Register",reg,false],["IDUFIR",p.idufir,false]])}</div>
-     <div class="box b"><h3>Koper${D.buyer2?"s":""}</h3>${D.buyer?person(D.buyer,true)+person(D.buyer2,true):'<div class="kv"><dd class="miss">Geen koper gekoppeld</dd></div>'}</div>
-     <div class="box s"><h3>Verkoper${D.seller2?"s":""}</h3>${D.seller?person(D.seller,false)+person(D.seller2,false):'<div class="hint">Geen verkoper gekoppeld</div>'}</div>
+     <div class="box b"><h3>Koper${D.buyer2?"s":""}</h3>${D.buyer?person(D.buyer,true,D.buyer2?"Koper 1":"")+person(D.buyer2,true,"Koper 2"):'<div class="kv"><dd class="miss">Geen koper gekoppeld</dd></div>'}</div>
+     <div class="box s"><h3>Verkoper${D.seller2?"s":""}</h3>${D.seller?person(D.seller,false,D.seller2?"Verkoper 1":"")+person(D.seller2,false,"Verkoper 2"):'<div class="hint">Geen verkoper gekoppeld</div>'}</div>
      <div class="box a"><h3>Makelaar</h3>${D.agent?kv([["Naam",D.agent.name,false],["E-mail",D.agent.email,false]]):'<div class="hint">Geen makelaar op de woning; het contract gaat op naam van kantoor.</div>'}</div>
    </div>`;
 }
