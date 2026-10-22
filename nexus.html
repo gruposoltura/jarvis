@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="/nexus.css?v=20261022parts1">
+<link rel="stylesheet" href="/nexus.css?v=20261022badge1">
 <script>try{var f=parseFloat(localStorage.getItem("nexus-fs"));if(f>0)document.documentElement.style.setProperty("--fs",f);var th=localStorage.getItem("nexus-theme");if(th==="light")document.documentElement.setAttribute("data-theme","light")}catch(e){}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -94,8 +94,8 @@
     <button class="tab" data-tab="ct" style="--c:var(--c-ct)"><i></i><span data-i18n="tab.ct"></span> <span class="cnt" id="cntCt"></span></button>
     <button class="tab" data-tab="pr" style="--c:var(--c-pr)"><i></i><span data-i18n="tab.pr"></span> <span class="cnt" id="cntPr"></span></button>
     <button class="tab" data-tab="mp" style="--c:var(--c-mp)"><i></i><span data-i18n="tab.mp"></span> <span class="cnt" id="cntMp"></span></button>
-    <button class="tab" data-tab="ac" style="--c:var(--c-ac)"><i></i><span data-i18n="tab.ac"></span></button>
-    <button class="tab" data-tab="vw" style="--c:var(--c-vw)"><i></i><span data-i18n="tab.vw"></span></button>
+    <button class="tab" data-tab="ac" style="--c:var(--c-ac)"><i></i><span data-i18n="tab.ac"></span><b class="nb" id="nbAc"></b></button>
+    <button class="tab" data-tab="vw" style="--c:var(--c-vw)"><i></i><span data-i18n="tab.vw"></span><b class="nb" id="nbVw"></b></button>
     <button class="tab" data-tab="xm" style="--c:var(--c-xm)"><i></i><span data-i18n="tab.xm"></span></button>
     <button class="tab" data-tab="fa" style="--c:var(--c-fa)"><i></i><span data-i18n="tab.fa"></span></button>
     <button class="tab" data-tab="cn" style="--c:var(--c-cn)"><i></i><span data-i18n="tab.cn"></span></button>
@@ -152,7 +152,7 @@
   </main>
 </div>
 
-<script src="/nexus-app.js?v=70"></script>
+<script src="/nexus-app.js?v=71"></script>
 <script>
 /* Oogje achter elk wachtwoordveld: tonen/verbergen wat je typt */
 (function(){

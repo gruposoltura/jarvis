@@ -146,7 +146,23 @@ async function boot(){
   /* The Bridge-knop (rechts) alleen voor de eigenaar; Facturen en Contracten voor het hele team */
   if(window.NEXUS_PARTS)NEXUS_PARTS.init({sb,me:()=>ME,lang:()=>LANG,esc,t});
   route();
+  loadTabBadges();
 }
+
+/* Rode teller op Bezichtiging en Binnenkomend: aantal binnengekomen in de laatste 12 uur (Rick, 22-10-2026).
+   Bron: RPC nexus_tab_badges (migratie 058) — viewing@-aanvragen (chains, geen testrijen) en aanvragen in core.requests. */
+let badgeTimer=null;
+async function loadTabBadges(){
+  clearTimeout(badgeTimer);
+  try{const b=await rpc("nexus_tab_badges",{p_hours:12})||{};
+    const set=(id,n,nl,en)=>{const el=$(id);if(!el)return;n=Number(n||0);el.textContent=n>0?(n>99?"99+":String(n)):"";
+      el.title=n>0?(LANG==="en"?`${n} ${en} in the last 12 hours`:`${n} ${nl} in de afgelopen 12 uur`):""};
+    set("#nbVw",b.viewings,"nieuwe bezichtigingsaanvragen","new viewing requests");
+    set("#nbAc",b.incoming,"nieuwe aanvragen","new requests");
+  }catch(e){}
+  badgeTimer=setTimeout(loadTabBadges,120000);
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&booted)loadTabBadges()});
 
 /* ================= TABS / ROUTING ================= */
 const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp",vw:"--c-vw",fa:"--c-fa",cn:"--c-cn"};
@@ -158,6 +174,7 @@ function setTab(t_,ref){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",
   if(t_==="ct"&&!ctLoaded)loadContacts(true);
   if(t_==="pr"&&!prLoaded)loadProps(true);
   if(t_==="mp")loadMap();
+  if((t_==="ac"||t_==="vw")&&booted)loadTabBadges();
   if(t_==="ac")loadActivity();
   if(t_==="xm"&&window.NEXUS_FEEDS)NEXUS_FEEDS.open($("#p-xm"),{rpc,t,sb,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="ad"&&window.NEXUS_ADMIN)NEXUS_ADMIN.open($("#p-ad"),{sb,rpc,t,lang:()=>LANG,me:()=>ME,esc});
