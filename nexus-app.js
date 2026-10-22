@@ -49,7 +49,7 @@ function rerender(){
   if(CT&&$("#ctBody"))renderContact();
   if(PR&&$("#prBody"))renderProp();
   if(mpData)renderMap();
-  if(curTab==="ac")loadActivity();
+  if(isAcTab(curTab))loadActivity(curTab);
   if(window.NEXUS_ADMIN)NEXUS_ADMIN.rerender();
   if(window.NEXUS_FEEDS&&curTab==="xm")NEXUS_FEEDS.rerender();
   if(window.NEXUS_REPORTS&&curTab==="rp")NEXUS_REPORTS.rerender();
@@ -158,26 +158,27 @@ async function loadTabBadges(){
       el.title=n>0?(LANG==="en"?`${n} ${en} in the last 12 hours`:`${n} ${nl} in de afgelopen 12 uur`):""};
     set("#nbVw",b.viewings,"nieuwe bezichtigingsaanvragen","new viewing requests");
     set("#nbAc",b.incoming,"nieuwe aanvragen","new requests");
+    set("#nbPo",b.portals,"nieuwe portaalaanvragen","new portal requests");
   }catch(e){}
   badgeTimer=setTimeout(loadTabBadges,120000);
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&booted)loadTabBadges()});
 
 /* ================= TABS / ROUTING ================= */
-const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp",vw:"--c-vw",fa:"--c-fa",cn:"--c-cn"};
+const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",po:"--c-po",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp",vw:"--c-vw",fa:"--c-fa",cn:"--c-cn"};
 let curTab="ov";
 /* Geen Admin-tab meer in het menu: de invoerpagina (#ad) opent alleen via "+ Nieuw contact" / "+ Nieuwe woning";
    zolang die open staat licht de tab op waar je vandaan kwam (Contacten of Woningen). */
 let adFrom="ct";
-function setTab(t_,ref){curTab=t_;if(t_!=="ac")ctDetailHome();const onT=t_==="ad"?adFrom:t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===onT));
+function setTab(t_,ref){curTab=t_;if(!isAcTab(t_))ctDetailHome();const onT=t_==="ad"?adFrom:t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===onT));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
   document.documentElement.style.setProperty("--acc",`var(${TABC[t_]})`);
   if(t_==="ov"&&!ovLoaded)loadOverview();
   if(t_==="ct"&&!ctLoaded)loadContacts(true);
   if(t_==="pr"&&!prLoaded)loadProps(true);
   if(t_==="mp")loadMap();
-  if((t_==="ac"||t_==="vw")&&booted)loadTabBadges();
-  if(t_==="ac")loadActivity();
+  if((isAcTab(t_)||t_==="vw")&&booted)loadTabBadges();
+  if(isAcTab(t_))loadActivity(t_);
   if(t_==="xm"&&window.NEXUS_FEEDS)NEXUS_FEEDS.open($("#p-xm"),{rpc,t,sb,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="ad"&&window.NEXUS_ADMIN)NEXUS_ADMIN.open($("#p-ad"),{sb,rpc,t,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="vw"&&window.NEXUS_VIEWINGS)NEXUS_VIEWINGS.open($("#p-vw"),{rpc,t,lang:()=>LANG,me:()=>ME,esc});
@@ -234,9 +235,9 @@ document.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;
   /* vanuit Binnenkomend opent het contact altijd op Contactmomenten, met de aangeklikte aanvraag gemarkeerd in de formulierflows (Rick, 22-10-2026) */
   if(c&&(!p||p.contains(c))){e.stopPropagation();
     /* in Binnenkomend opent een aanvraag het contact rechts in hetzelfde venster, op Contactmomenten (Rick, 22-10-2026) */
-    if(c.closest("#p-ac .feed")){acPick(c);return}
+    if(c.closest("#p-ac .feed, #p-po .feed")){acPick(c);return}
     /* een aanvraag op Overzicht opent die aanvraag in de tab Aanvragen, niet het losse contact (Rick, 22-10-2026) */
-    if(c.closest(".ov-act .feed")){acSel=c.dataset.fr||c.dataset.c;goHash("ac");return}
+    if(c.closest(".ov-act .feed")){acSel=c.dataset.fr||c.dataset.c;const tb=c.dataset.grp&&String(c.dataset.grp).startsWith("p:")?"po":"ac";acS[tb].sel=acSel;goHash(tb);return}
     FLREQ=null;go.c(c.dataset.c);return}
   if(p){
     /* een woning opent altijd volledig scherm; vanuit de lijst onthouden we de scrollpositie voor 'Terug' */
@@ -340,15 +341,15 @@ const delBtn=(k,id)=>isAdmin()&&id!=null?`<button class="act-del" data-del-k="${
 async function delActivity(k,id){
   if(!confirm(t("act.del.confirm")))return;
   try{await rpc("nexus_activity_delete",{p_kind:k,p_id:String(id)})}catch(e){alert(e.message);return}
-  OV=null;ovLoaded=false;AC=null;
+  OV=null;ovLoaded=false;Object.values(acS).forEach(x=>x.data=null);
   if(curTab==="ov")loadOverview();
-  if(curTab==="ac")loadActivity();
+  if(isAcTab(curTab))loadActivity(curTab);
   if(curTab==="ct"&&ctSel)openContact(ctSel);
 }
 function feedHtml(list){
   const IC={request:["#ec4899","✉"],lead:["#f59e0b","★"],viewing:["#22c55e","◉"]};
   if(!list||!list.length)return`<div class="empty">${t("noactivity")}</div>`;
-  return list.map(a=>{const ic=IC[a.kind]||IC.request;return `<div class="it" ${a.contact_wp_id?`data-c="${a.contact_wp_id}"`:""}${a.kind==="request"&&a.id?` data-fr="${esc(a.id)}"`:""}>
+  return list.map(a=>{const ic=IC[a.kind]||IC.request;return `<div class="it" ${a.contact_wp_id?`data-c="${a.contact_wp_id}"`:""}${a.kind==="request"&&a.id?` data-fr="${esc(a.id)}"`:""}${a.grp?` data-grp="${esc(a.grp)}"`:""}>
     <div class="ic" style="--ic:${ic[0]}">${ic[1]}</div>
     <div style="min-width:0"><div class="t">${esc(a.name||t("unknown"))}</div><div class="d">${esc(a.kind==="request"?rq(a.type):a.type)}${a.ref?" · "+esc(a.ref):""} · <span style="color:${REPC[a.rep]||"#64748b"}">${esc(rep(a.rep||""))}</span></div></div>
     <span class="sm muted" style="display:flex;align-items:center;gap:6px">${ago(a.ts)}${a.kind==="request"?delBtn("request",a.id):""}</span></div>`}).join("")}
@@ -1222,61 +1223,68 @@ function renderMap(fit){
    Contacten en Binnenkomend verhuist, zodat bewerken, verwijderen, mailpreview en formulierflows overal hetzelfde werken. */
 function ctDetailHome(){const d=$("#ctDetail");if(!d)return;if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};
   if(d.parentNode!==CTHOME.parent)CTHOME.parent.insertBefore(d,CTHOME.next&&CTHOME.next.parentNode===CTHOME.parent?CTHOME.next:null)}
+/* Aanvragen (#p-ac) en Portalen (#p-po) zijn dezelfde pagina met een eigen scope (Rick, 22-10-2026):
+   Aanvragen = websiteformulieren + oude site, Portalen = Idealista, Thinkspain en volgende portalen (core.request_portals).
+   Bron: RPC nexus_requests_feed(p_scope) (migratie 069). Filter en selectie blijven per pagina onthouden. */
+const AC_TABS={ac:{scope:"web",key:"nexus-ac-filter"},po:{scope:"portal",key:"nexus-po-filter"}};
+const isAcTab=t_=>!!AC_TABS[t_];
+const acS={};Object.keys(AC_TABS).forEach(k=>{let f="all";try{f=localStorage.getItem(AC_TABS[k].key)||"all"}catch(e){}acS[k]={filter:f,data:null,off:0,seq:0,sel:null}});
+const acPane=tb=>$("#p-"+tb);
 function acPick(row){if(!row)return;
-  $$("#p-ac .feed .it").forEach(r=>r.classList.toggle("sel",r===row));
-  acSel=row.dataset.fr||row.dataset.c;ctSub="tijdlijn";FLREQ=row.dataset.fr||null;
-  const slot=$("#acSlot"),d=$("#ctDetail");if(slot&&d&&d.parentNode!==slot){if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};slot.appendChild(d)}
+  const pane=row.closest(".pane"),tb=pane?pane.id.slice(2):curTab,st=acS[tb];if(!st)return;
+  $$(`#p-${tb} .feed .it`).forEach(r=>r.classList.toggle("sel",r===row));
+  st.sel=acSel=row.dataset.fr||row.dataset.c;ctSub="tijdlijn";FLREQ=row.dataset.fr||null;
+  const slot=pane.querySelector(".ac-slot"),d=$("#ctDetail");if(slot&&d&&d.parentNode!==slot){if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};slot.appendChild(d)}
   if(ctSel===String(row.dataset.c)&&CT)renderContact();else openContact(row.dataset.c,{noScroll:true})}
-/* Filter op Aanvragen (Rick, 22-10-2026): per soort websiteformulier, per portaal (Idealista; nieuwe portalen komen
-   vanzelf mee via core.request_portals) en de oude site. Bron: RPC nexus_requests_feed (migratie 068). Keuze blijft onthouden. */
-let acFilter=(()=>{try{return localStorage.getItem("nexus-ac-filter")||"all"}catch(e){return"all"}})(), AC=null, acOff=0, acSeq=0;
 const AC_GRP={web:["Website","Website"],portal:["Portalen","Portals"],old:["",""]};
-function acChips(){
-  if(!AC||!AC.filters)return"";
-  const all=AC.filters.reduce((a,f)=>a+Number(f.n||0),0);
-  const chip=(k,lbl,n,c,dim)=>`<span class="chip ${acFilter===k?"on":""}${dim?" dim":""}" data-acf="${esc(k)}" style="--cc:${c}">${esc(lbl)}${n!=null?` <b>${num(n)}</b>`:""}</span>`;
-  let h=chip("all",L2("Alle","All"),all,"var(--c-ac)"), grp="";
-  AC.filters.forEach(f=>{
-    if(f.grp!==grp){grp=f.grp;const g=AC_GRP[grp]||["",""];h+=g[0]?`<span class="ac-fg">${esc(L2(g[0],g[1]))}</span>`:`<span class="ac-fg"></span>`}
-    const c=f.grp==="portal"?"#84cc16":f.grp==="old"?"#64748b":"var(--c-ac)";
+function acChips(st){
+  const D=st.data;if(!D||!D.filters)return"";
+  const all=D.filters.reduce((a,f)=>a+Number(f.n||0),0);
+  const chip=(k,lbl,n,c,dim)=>`<span class="chip ${st.filter===k?"on":""}${dim?" dim":""}" data-acf="${esc(k)}" style="--cc:${c}">${esc(lbl)}${n!=null?` <b>${num(n)}</b>`:""}</span>`;
+  let h=chip("all",L2("Alle","All"),all,"var(--acc)"), grp="";
+  const one=new Set(D.filters.map(f=>f.grp)).size<2;
+  D.filters.forEach(f=>{
+    if(f.grp!==grp){grp=f.grp;const g=AC_GRP[grp]||["",""];h+=(g[0]&&!one)?`<span class="ac-fg">${esc(L2(g[0],g[1]))}</span>`:`<span class="ac-fg"></span>`}
+    const c=f.grp==="portal"?"var(--c-po)":f.grp==="old"?"#64748b":"var(--c-ac)";
     h+=chip(f.key,LANG==="en"?f.en:f.nl,f.n,c,!Number(f.n));
   });
   return h;
 }
-function acListHtml(){
-  if(!AC)return`<div class="loader">${t("loading")}</div>`;
-  const more=AC.total>acOff?`<div class="more ac-more"><button class="btn" data-acmore="1">${esc(L2(`Meer laden (${num(AC.total-acOff)} over)`,`Load more (${num(AC.total-acOff)} left)`))}</button></div>`:"";
-  return feedHtml(AC.rows)+more;
+function acListHtml(st){const D=st.data;
+  if(!D)return`<div class="loader">${t("loading")}</div>`;
+  const more=D.total>st.off?`<div class="more ac-more"><button class="btn" data-acmore="1">${esc(L2(`Meer laden (${num(D.total-st.off)} over)`,`Load more (${num(D.total-st.off)} left)`))}</button></div>`:"";
+  return feedHtml(D.rows)+more;
 }
-function acBind(){
-  $$("#p-ac [data-acf]").forEach(c=>c.onclick=()=>{if(acFilter===c.dataset.acf)return;acFilter=c.dataset.acf;
-    try{localStorage.setItem("nexus-ac-filter",acFilter)}catch(e){}acSel=null;loadActivity()});
-  const m=$("#p-ac [data-acmore]");if(m)m.onclick=async()=>{m.disabled=true;const my=acSeq;
-    let r;try{r=await rpc("nexus_requests_feed",{p_filter:acFilter,p_limit:50,p_offset:acOff})}catch(e){m.disabled=false;alert(e.message);return}
-    if(my!==acSeq)return;AC.rows=AC.rows.concat(r.rows||[]);acOff+=(r.rows||[]).length;
-    const box=$("#p-ac .feed"),sel=acSel;box.innerHTML=acListHtml();acBind();
-    $$("#p-ac .feed .it").forEach(x=>x.classList.toggle("sel",(x.dataset.fr||x.dataset.c)===sel))};
+function acBind(tb){const st=acS[tb],P=acPane(tb);
+  P.querySelectorAll("[data-acf]").forEach(c=>c.onclick=()=>{if(st.filter===c.dataset.acf)return;st.filter=c.dataset.acf;
+    try{localStorage.setItem(AC_TABS[tb].key,st.filter)}catch(e){}st.sel=null;loadActivity(tb)});
+  const m=P.querySelector("[data-acmore]");if(m)m.onclick=async()=>{m.disabled=true;const my=st.seq;
+    let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:50,p_offset:st.off,p_scope:AC_TABS[tb].scope})}catch(e){m.disabled=false;alert(e.message);return}
+    if(my!==st.seq)return;st.data.rows=st.data.rows.concat(r.rows||[]);st.off+=(r.rows||[]).length;
+    const box=P.querySelector(".feed"),sel=st.sel;box.innerHTML=acListHtml(st);acBind(tb);
+    P.querySelectorAll(".feed .it").forEach(x=>x.classList.toggle("sel",(x.dataset.fr||x.dataset.c)===sel))};
 }
-async function loadActivity(){
+async function loadActivity(tb){
+  tb=isAcTab(tb)?tb:(isAcTab(curTab)?curTab:"ac");
   ctDetailHome();
-  const p=$("#p-ac"), my=++acSeq;
-  if(!AC||AC.filter!==acFilter)AC=null;
-  if(!p.querySelector(".ac-split"))p.innerHTML=`<div class="split ac-split">
-    <div class="card list"><div class="hd"><h3>${t("ac.req")}</h3><span class="sm muted" id="acCnt"></span></div>
-      <div class="toolbar ac-filter" id="acFilter"></div><div class="rows scroll feed"></div></div>
-    <div class="ac-slot" id="acSlot"></div></div>`;
-  $("#p-ac .feed").innerHTML=acListHtml();
-  let r;try{r=await rpc("nexus_requests_feed",{p_filter:acFilter,p_limit:50,p_offset:0})}
-  catch(e){if(my===acSeq)$("#p-ac .feed").innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
-  if(my!==acSeq||curTab!=="ac")return;
-  if(r.filter!==acFilter&&acFilter!=="all"&&!(r.filters||[]).some(f=>f.key===acFilter)){acFilter="all"}
-  AC=r;acOff=(r.rows||[]).length;
-  $("#acFilter").innerHTML=acChips();
-  $("#acCnt").textContent=t("ac.7d",{n:num(r.total_7d||0)});
-  $("#p-ac .feed").innerHTML=(r.rows||[]).length?acListHtml():`<div class="empty">${esc(L2("Geen aanvragen voor dit filter","No requests for this filter"))}</div>`;
-  acBind();
-  const rows=$$("#p-ac .feed .it[data-c]");
-  acPick(rows.find(x=>(x.dataset.fr||x.dataset.c)===acSel)||rows[0]);
+  const st=acS[tb],P=acPane(tb),my=++st.seq;if(!P)return;
+  if(st.data&&st.data.filter!==st.filter)st.data=null;
+  if(!P.querySelector(".ac-split"))P.innerHTML=`<div class="split ac-split">
+    <div class="card list"><div class="hd"><h3>${t(tb==="po"?"po.req":"ac.req")}</h3><span class="sm muted ac-cnt"></span></div>
+      <div class="toolbar ac-filter"></div><div class="rows scroll feed"></div></div>
+    <div class="ac-slot"></div></div>`;
+  P.querySelector(".feed").innerHTML=acListHtml(st);
+  let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:50,p_offset:0,p_scope:AC_TABS[tb].scope})}
+  catch(e){if(my===st.seq)P.querySelector(".feed").innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
+  if(my!==st.seq||curTab!==tb)return;
+  if(st.filter!=="all"&&!(r.filters||[]).some(f=>f.key===st.filter)){st.filter="all";try{localStorage.setItem(AC_TABS[tb].key,"all")}catch(e){}return loadActivity(tb)}
+  st.data=r;st.off=(r.rows||[]).length;
+  P.querySelector(".ac-filter").innerHTML=acChips(st);
+  P.querySelector(".ac-cnt").textContent=t("ac.7d",{n:num(r.total_7d||0)});
+  P.querySelector(".feed").innerHTML=(r.rows||[]).length?acListHtml(st):`<div class="empty">${esc(L2(tb==="po"?"Geen portaalaanvragen voor dit filter":"Geen aanvragen voor dit filter",tb==="po"?"No portal requests for this filter":"No requests for this filter"))}</div>`;
+  acBind(tb);
+  const rows=[...P.querySelectorAll(".feed .it[data-c]")];
+  acPick(rows.find(x=>(x.dataset.fr||x.dataset.c)===st.sel)||rows[0]);
 }
 
 })();

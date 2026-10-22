@@ -1303,10 +1303,12 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .fl-x:hover{color:var(--hi)}.fl-x:focus-visible{outline:2px solid var(--qc)}
 
 /* ---------- Binnenkomend: aanvragen links, contactscherm rechts op Contactmomenten (Rick, 22-10-2026) ---------- */
-#p-ac > .ac-split{height:100%;min-height:0}
+/* Portalen (#p-po): zelfde pagina als Aanvragen, alleen portaalaanvragen (Rick, 22-10-2026) */
+:root{--c-po:#8b5cf6}
+#p-ac > .ac-split,#p-po > .ac-split{height:100%;min-height:0}
 .ac-slot{display:flex;min-height:0;min-width:0}
 .ac-slot > .detail{flex:1;min-width:0}
-.feed .it.sel{background:var(--card2);box-shadow:inset 3px 0 0 var(--c-ac)}
+.feed .it.sel{background:var(--card2);box-shadow:inset 3px 0 0 var(--acc,var(--c-ac))}
 @media (max-width:1100px){.ac-slot{min-height:70vh}}
 .fl-rest{padding:4px 14px 2px;font-size:calc(11px*var(--fs,1));letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);font-weight:600}
 .fl-acts{display:flex;flex-wrap:wrap;gap:6px}.fl-acts .btn{padding:6px 11px;font-size:calc(12.5px*var(--fs,1))}
