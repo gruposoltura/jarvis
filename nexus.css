@@ -1303,3 +1303,11 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 @media (max-width:1100px){.ac-slot{min-height:70vh}}
 .fl-rest{padding:4px 14px 2px;font-size:calc(11px*var(--fs,1));letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);font-weight:600}
 .fl-acts{display:flex;flex-wrap:wrap;gap:6px}.fl-acts .btn{padding:6px 11px;font-size:calc(12.5px*var(--fs,1))}
+/* verzendingen (mailings) als vervolg van de aanvraag waar ze uit voortkomen */
+.fl-n.send{border-style:solid;background:color-mix(in srgb,var(--qc) 6%,var(--card2))}
+.fl-n.send i{background:var(--card);border-color:var(--qc);color:var(--qc);font-size:9px}
+.fl-sl{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.fl-si{all:unset;box-sizing:border-box;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:baseline;padding:7px 10px;border-bottom:1px solid var(--line);cursor:pointer;font-size:calc(12.5px*var(--fs,1))}
+.fl-si:last-child{border-bottom:0}.fl-si:hover{background:var(--card2)}.fl-si:focus-visible{outline:2px solid var(--qc);outline-offset:-2px}
+.fl-si[disabled]{cursor:default}.fl-si[disabled]:hover{background:none}
+.fl-sd{color:var(--tx3);font-variant-numeric:tabular-nums;white-space:nowrap}.fl-ss{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fl-sm{color:var(--tx3);white-space:nowrap}

@@ -24,7 +24,7 @@ const QT={
   warm:["costs","move","contact","contact-form","general-homepage","general_enquiry","purchaseinfo","guide","property-details","agent","info","mortgage","setprice","listings","listingshelp",
         "3rdkyero","3rdthinkspain","3rdmovechannel","3rdpropaway","3rdpropshowrms","3rdeudomi","huizeninspanje","ferienbolig","solturadirect","apprequest","order","idealista"],
   cold:["favorite","favorites","favourite","notify","notify-back","pdfbrochure","pdf-brochure","searchdetails","search-details","emailalert","bargain","secretdeals","dashboard"],
-  none:["newsletter"]};
+  none:["newsletter","optin"]};
 function qual(f){
   const s=String(f.lp&&f.lp.score||"").toLowerCase();if(QL[s])return s;
   for(const k of [f.kind,f.type,f.key]){const v=String(k||"").toLowerCase().replace(/^request-/,"");for(const q in QT)if(QT[q].includes(v))return q}
@@ -44,7 +44,12 @@ const origin=f=>f.source==="cpr_import"?"old":(f.web||f.source==="website"||f.so
 function steps(f){
   const o=origin(f), q=qual(f), age=(Date.now()-new Date(f.ts))/60000, S=[];
   const late=age>30;
-  S.push({id:"form",st:"done",t:X.rq(f.key)||f.key,s:o==="old"?tr(["oude site","old site"]):o==="web"?tr(["website","website"]):(f.source||"")});
+  if(f._synthetic){}else S.push({id:"form",st:"done",t:X.rq(f.key)||f.key,s:o==="old"?tr(["oude site","old site"]):o==="web"?tr(["website","website"]):(f.source||"")});
+  if(f._synthetic){
+    S.push({id:"optin",st:"done",t:tr(["Opt-in","Opt-in"]),s:tr(["bij import","at import"])});
+    S.push({id:"nexus",st:"done",t:"NEXUS",s:tr(["mailingvoorkeuren","mailing preferences"])});
+    return S;
+  }
   if(o==="old"){
     S.push({id:"import",st:"done",t:tr(["In NEXUS","In NEXUS"]),s:tr(["geïmporteerd","imported"])});
     S.push({id:"oldflow",st:f.status==="closed"?"done":"skip",t:tr(["Oude opvolging","Old follow-up"]),s:f.status==="closed"?tr(["afgesloten","closed"]):tr(["via WordPress","via WordPress"])});
@@ -135,14 +140,20 @@ const INFO={
 
 /* ---------- render ---------- */
 const ICON={done:"✓",wait:"…",fail:"!",skip:"–"};
+/* verzendingen per soort mailing (Nieuwsbrief, Prijsverlaging, Woningmatches ...), nieuwste soort eerst */
+function sendGroups(f){const G={};(f._sends||[]).forEach(m=>{const k=m.title||"mailing";(G[k]=G[k]||{t:k,items:[],o:0,c:0,last:null}).items.push(m);
+    G[k].o+=Number(m.opens||0)>0?1:0;G[k].c+=Number(m.clicks||0)>0?1:0;if(!G[k].last||new Date(m.ts)>new Date(G[k].last))G[k].last=m.ts});
+  return Object.values(G).sort((a,b)=>new Date(b.last)-new Date(a.last))}
+const dm=ts=>{if(!ts)return"";const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")};
 function flowHtml(f,i){
-  const q=qual(f), S=steps(f), o=origin(f);
-  const ORIG={old:["Oude site","Old site"],web:["Website","Website"],other:[f.source||"Overig",f.source||"Other"]};
+  const q=qual(f), S=steps(f), o=f._synthetic?"optin":origin(f), G=sendGroups(f);
+  const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],other:[f.source||"Overig",f.source||"Other"]};
+  const title=f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):(X.rq(f.key)||f.key);
   return `<div class="fl-card q-${q}${f.id===RID?" on":""}" data-fi="${i}">
-    <div class="fl-hd"><span class="fl-q">${esc(tr(QL[q]))}</span><b class="fl-t">${esc(X.rq(f.key)||f.key)}</b>${f.ref?`<span class="fl-ref" data-p="${esc(f.ref)}">${esc(f.ref)}</span>`:""}
+    <div class="fl-hd"><span class="fl-q">${esc(tr(QL[q]))}</span><b class="fl-t">${esc(title)}</b>${f.ref?`<span class="fl-ref" data-p="${esc(f.ref)}">${esc(f.ref)}</span>`:""}
       <span class="fl-o">${esc(tr(ORIG[o]))}</span><span class="fl-ts" title="${esc(dmyt(f.ts))}">${esc(dmyt(f.ts))}</span></div>
     ${f.message?`<div class="fl-msg" title="${esc(f.message)}">${esc(f.message)}</div>`:""}
-    <div class="fl-track">${S.map((s,j)=>`<button type="button" class="fl-n ${s.st}" data-s="${j}" data-id="${s.id}"><i aria-hidden="true">${ICON[s.st]}</i><b>${esc(s.t)}</b><small>${esc(s.s||"")}</small></button>`).join("")}</div></div>`;
+    <div class="fl-track">${S.map((s,j)=>`<button type="button" class="fl-n ${s.st}" data-s="${j}" data-id="${s.id}"><i aria-hidden="true">${ICON[s.st]}</i><b>${esc(s.t)}</b><small>${esc(s.s||"")}</small></button>`).join("")}${G.map((g,gi)=>`<button type="button" class="fl-n done send" data-g="${gi}"><i aria-hidden="true">✉</i><b>${esc(g.t)} ${g.items.length}×</b><small>${esc(tr([`${g.o} geopend · ${g.c} geklikt · ${dm(g.last)}`,`${g.o} opened · ${g.c} clicked · ${dm(g.last)}`]))}</small></button>`).join("")}</div></div>`;
 }
 function render(){
   if(!ROOT)return;
@@ -154,7 +165,8 @@ function render(){
       <div class="fl-leg">${["hot","warm","cold","none"].map(q=>`<span class="fl-lg q-${q}">${esc(tr(QL[q]))}</span>`).join("")}</div></div>
     <div class="fl-list">${fl.map(flowHtml).join("")}
       ${D.total>fl.length?`<div class="sm muted" style="padding:2px 4px">${esc(tr([`en ${D.total-fl.length} oudere aanvragen, zie de tijdlijn hieronder`,`and ${D.total-fl.length} older requests, see the timeline below`]))}</div>`:""}</div></div>`;
-  ROOT.querySelectorAll(".fl-n").forEach(b=>b.onclick=e=>{e.stopPropagation();const card=b.closest(".fl-card");popup(fl[+card.dataset.fi],b.dataset.id,b.className.split(" ")[1])});
+  ROOT.querySelectorAll(".fl-n").forEach(b=>b.onclick=e=>{e.stopPropagation();const card=b.closest(".fl-card"),f=fl[+card.dataset.fi];
+    if(b.dataset.g!=null)popSends(f,sendGroups(f)[+b.dataset.g]);else popup(f,b.dataset.id,b.className.split(" ")[1])});
   const on=ROOT.querySelector(".fl-card.on");if(on&&on.scrollIntoView)try{on.scrollIntoView({block:"nearest"})}catch(e){}
 }
 function popup(f,id,st){
@@ -175,22 +187,56 @@ function popup(f,id,st){
   ov.onclick=e=>{const mv=e.target.closest(".fl-mv");if(mv){shut();X.openMail({uuid:mv.dataset.u});return}if(e.target===ov||e.target.closest(".fl-x"))shut()};
   document.addEventListener("keydown",key);ov.querySelector(".fl-x").focus();
 }
+/* popup met alle verzendingen van één soort, elk te openen in de mailpreview */
+function popSends(f,g){if(!g)return;
+  let ov=document.getElementById("flPop");if(ov)ov.remove();
+  ov=document.createElement("div");ov.id="flPop";ov.className="fl-pop";
+  const its=g.items.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  ov.innerHTML=`<div class="fl-box q-${qual(f)}" role="dialog" aria-modal="true" aria-labelledby="flPopH">
+    <div class="fl-bh"><div><small>${esc(tr(["Verzending uit","Sent because of"]))} ${esc(f._synthetic?tr(["opt-in bij import","opt-in at import"]):(X.rq(f.key)||f.key))} · ${esc(dmyt(f.ts))}</small><h3 id="flPopH">${esc(g.t)} · ${its.length}×</h3></div><button type="button" class="fl-x" aria-label="${esc(tr(["Sluiten","Close"]))}">×</button></div>
+    <div class="fl-bb"><p>${esc(tr(["Deze mailings gingen naar het contact omdat het zich via deze aanvraag aanmeldde voor dit soort berichten. Klik op een mailing om hem te bekijken.",
+      "These mailings went to the contact because it signed up for this kind of message through this request. Click a mailing to view it."]))}</p>
+      <div class="fl-sl">${its.map(m=>`<button type="button" class="fl-si"${m.campaign_id?` data-camp="${esc(m.campaign_id)}" data-email="${esc(m.email||"")}"`:" disabled"}>
+        <span class="fl-sd">${esc(dmyt(m.ts))}</span><span class="fl-ss">${esc(m.subject||String(m.text||"").split(" · ")[0])}</span>
+        <span class="fl-sm">${Number(m.opens||0)?esc(tr(["geopend","opened"])):""}${Number(m.clicks||0)?" · "+esc(tr(["geklikt","clicked"])):""}</span></button>`).join("")}</div></div></div>`;
+  document.body.appendChild(ov);
+  const shut=()=>{ov.remove();document.removeEventListener("keydown",key)};const key=e=>{if(e.key==="Escape")shut()};
+  ov.onclick=e=>{const it=e.target.closest(".fl-si[data-camp]");if(it&&X.openMail){shut();X.openMail({campaign_id:Number(it.dataset.camp),email:it.dataset.email||undefined});return}
+    if(e.target===ov||e.target.closest(".fl-x"))shut()};
+  document.addEventListener("keydown",key);ov.querySelector(".fl-x").focus();
+}
 function close(){CID=null;RID=null;D=null;const p=document.getElementById("flPop");if(p)p.remove()}
 async function open(root,contactId,requestId,ctx){
   X=ctx;ROOT=root;
   if(CID!==contactId){CID=contactId;D=null}
-  RID=requestId||null;render();
+  RID=requestId||null;if(D&&X.onData)X.onData(D);render();
   const my=++SEQ;
-  if(D&&X.onData)X.onData(D);
   try{const d=await X.rpc("nexus_contact_flows",{p_contact:contactId,p_limit:50});if(my!==SEQ)return;D=d||{flows:[]};if(X.onData)X.onData(D);render()}
   catch(e){if(my!==SEQ)return;ROOT.innerHTML=`<div class="fl-wrap"><div class="empty">${esc(e.message||e)}</div></div>`;if(X.onError)X.onError(e)}
 }
 /* Tijdlijnregels die bij een formulierflow horen (de aanvraag, de lead en de mails aan de klant) gaan op in die flow;
    de rest (mailings, notities, bezichtigingen) blijft als gewone contactmomenten staan. Mail-uuid's gaan mee naar de flow (Mail bekijken). */
+/* Verzendingen (Rick, 22-10-2026): elke mailing komt voort uit een aanvraag. Een mailing hoort bij de laatste opt-in-aanvraag
+   (nieuwsbrief, zoekprofiel, e-mailalert) van vóór de verzending, anders bij de laatste aanvraag ervoor, anders bij de oudste.
+   Zonder enige aanvraag ontstaat één flow "Opt-in bij import" (contacten met standaard-opt-in uit de oude CPR). */
+const OPTIN=/^(newsletter|searchdetails|search-details|emailalert|bargain|secretdeals|web-newsletter.*)$/;
+const isOptin=f=>[f.kind,f.type,f.key].some(k=>OPTIN.test(String(k||"").toLowerCase()));
 function fold(list,data){
+  if(data&&data.flows)data.flows=data.flows.filter(f=>!f._synthetic);
   const fl=(data&&data.flows)||[], ids=new Set(fl.map(f=>String(f.id))), T=x=>new Date(x).getTime();
-  fl.forEach(f=>{f._mailUuids=[]});
+  fl.forEach(f=>{f._mailUuids=[];f._sends=[]});
+  const byTs=fl.slice().sort((a,b)=>T(a.ts)-T(b.ts));
+  const origin=m=>{const t=T(m.ts),before=byTs.filter(f=>T(f.ts)<=t);
+    return before.filter(isOptin).pop()||before.pop()||byTs[0]||null};
+  let synth=null;
+  (list||[]).forEach(e=>{if(e.kind!=="mailing")return;let f=origin(e);
+    if(!f){if(!synth){synth={id:"_optin",_synthetic:true,ts:e.ts,key:"optin",source:"optin",mails:[],_mailUuids:[],_sends:[]};fl.push(synth)}
+      if(T(e.ts)<T(synth.ts))synth.ts=e.ts;f=synth}
+    f._sends.push(e)});
   return (list||[]).filter(e=>{
+    if(e.kind==="mailing")return false;
+    /* opens en clicks op een mailing (Brevo-event met het mailingtype als tekst) tellen al mee in die mailing */
+    if(e.kind==="mail"&&/^[a-z_]+$/.test(String(e.text||"")))return false;
     if(e.kind==="request")return !ids.has(String(e.id));
     if(e.kind==="lead")return !fl.some(f=>f.source!=="cpr_import"&&Math.abs(T(e.ts)-T(f.ts))<=10*60000);
     if(e.kind==="mail"){const f=fl.find(f=>{const d=T(e.ts)-T(f.ts);return d>=-60000&&d<=3*3600000&&(f.mails||[]).some(m=>m.subject===e.text)});

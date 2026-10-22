@@ -386,7 +386,7 @@ async function openContact(id,opt){
 function renderContact(){
   const c=CT.contact, raw=CT.raw||{}, d=$("#ctDetail");
   const name=c.full_name||[raw.first_name,raw.last_name].filter(Boolean).join(" ")||c.email;
-  const tabs=[["profiel",t("st.profile")],["woningen",t("st.props"),(CT.properties||[]).length+(CT.interests||[]).length+(CT.interested_in_mine||[]).length],["tijdlijn",t("st.timeline"),(CT.timeline||[]).length],["relaties",t("st.relations"),(CT.relations||[]).length+(CT.interested_in_mine||[]).length],["mailings",t("st.mailings")]];
+  const tabs=[["profiel",t("st.profile")],["woningen",t("st.props"),(CT.properties||[]).length+(CT.interests||[]).length+(CT.interested_in_mine||[]).length],["tijdlijn",t("st.timeline"),(CT.timeline||[]).filter(e=>e.kind==="request").length],["relaties",t("st.relations"),(CT.relations||[]).length+(CT.interested_in_mine||[]).length],["mailings",t("st.mailings")]];
   if(!tabs.some(x=>x[0]===ctSub))ctSub="profiel";
   const D=CT.details||{};
   const phones=(D.phones&&D.phones.length?D.phones.map(x=>x.value):[c.phone]).filter(Boolean);
@@ -642,12 +642,12 @@ async function loadCampaigns(id){
   let r;try{const {data,error}=await sb.functions.invoke("mail-preview",{body:{action:"campaigns",email:em}});if(error||!data||!data.ok)return;r=data}catch(e){return}
   if(ctSel!==id||!CT)return;
   const lb=s=>MT_LABEL[s]?MT_LABEL[s][LANG==="nl"?0:1]:(s||"mailing").replace(/_/g," ");
-  const items=(r.rows||[]).filter(x=>x.sent_at).map(x=>({kind:"mailing",ts:x.sent_at,title:lb(x.mailing_type),campaign_id:x.campaign_id,email:em,
+  const items=(r.rows||[]).filter(x=>x.sent_at).map(x=>({kind:"mailing",ts:x.sent_at,title:lb(x.mailing_type),campaign_id:x.campaign_id,email:em,mt:x.mailing_type,subject:x.subject,opens:x.opens||0,clicks:x.clicks||0,
     text:[x.subject||"#"+x.campaign_id,x.opens?t("mv.opens",{n:x.opens}):"",x.clicks?t("mv.clicks",{n:x.clicks}):"",x.unsubscribed?t("mv.unsub"):""].filter(Boolean).join(" · ")}));
   if(!items.length)return;
   CT.timeline=(CT.timeline||[]).filter(e=>e.kind!=="mailing").concat(items).sort((a,b)=>tsN(b.ts)-tsN(a.ts));
   if(ctSub==="tijdlijn")renderContact();
-  else{const c=document.querySelector('#ctDetail .st[data-s="tijdlijn"] .cnt');if(c)c.textContent=CT.timeline.length}
+  /* telt aanvragen, niet alle contactmomenten: mailings zijn verzendingen binnen een aanvraag */
 }
 function closeMail(){document.querySelector(".mvp")?.remove();document.body.classList.remove("pe-open");document.removeEventListener("keydown",mailEsc)}
 function mailEsc(e){if(e.key==="Escape")closeMail()}
