@@ -31,10 +31,16 @@ function qual(f){
   return "warm";
 }
 /* route zoals WebFormIntake-v2 hem kiest */
+/* Alleen WebFormIntake-v2 logt een echte route. WpLeadBridge-v2 (Idealista) logt in stats.kind de formuliersoort,
+   geen route: die werd hier ten onrechte als route gelezen, waardoor elke onbekende soort als BackOnMarket getekend werd (fix 22-10-2026). */
+const ROUTES=["leadprocessor","newsletter","favorites","none"];
 function route(f){
-  if(f.intake&&f.intake.route)return f.intake.route==="guide"?"leadprocessor":f.intake.route;
   const k=String(f.kind||f.type||"").toLowerCase();
-  if(k==="newsletter")return"newsletter";if(k==="favorites"||k==="favorite")return"favorites";if(k==="notify"||k==="notify-back")return"none";
+  const isNotify=k==="notify"||k==="notify-back";
+  const ir=f.intake&&f.intake.wf==="WebFormIntakeV2"?String(f.intake.route||""):"";
+  if(ir==="guide")return"leadprocessor";
+  if(ROUTES.includes(ir))return ir==="none"&&!isNotify?"leadprocessor":ir;
+  if(k==="newsletter")return"newsletter";if(k==="favorites"||k==="favorite")return"favorites";if(isNotify)return"none";
   return"leadprocessor";
 }
 const origin=f=>f.source==="cpr_import"?"old":(f.web||f.source==="website"||f.source==="website-new")?"web":"other";
