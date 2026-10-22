@@ -135,7 +135,7 @@
 /* --- Health-pill (Systems Roll Call) --------------------------------
    Zelfstandig blok, los van BRIDGE_AGENTS hierboven. Injecteert
    rechtsboven in de cockpit-balk (#top, naast #stamp) een status-pill
-   die public.bridge_health leest (anon SELECT toegestaan, geen auth
+   die public.bridge_health leest (sinds 056 alleen eigenaar, met sessietoken
    nodig). Doet niets op pagina's zonder de cockpit-balk en kan de
    cockpit nooit blokkeren (alles in try/catch/stil). Bron van de
    data: workflow JARVIS-Infra-HealthCheck (dagelijks 07:35). */
@@ -203,10 +203,23 @@
   }
   window.addEventListener("bridge:actions", function(){ render(); });
 
+  // bridge_health is sinds migratie 056 alleen leesbaar voor de eigenaar:
+  // lees met het sessietoken van de ingelogde gebruiker, niet met de publieke sleutel.
+  function userToken(){
+    try{
+      var ref = SB_URL.split("//")[1].split(".")[0];
+      var raw = localStorage.getItem("sb-" + ref + "-auth-token");
+      var s = raw ? JSON.parse(raw) : null;
+      if(s && s.currentSession) s = s.currentSession;
+      return (s && s.access_token) || null;
+    }catch(e){ return null; }
+  }
   function refresh(){
     try{
+      var tok = userToken();
+      if(!tok) return;
       fetch(SB_URL + "/rest/v1/bridge_health?id=eq.1&select=*",
-        { headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY } })
+        { headers: { apikey: SB_KEY, Authorization: "Bearer " + tok } })
         .then(function(r){ return r.ok ? r.json() : []; })
         .then(function(rows){ if(rows && rows[0]) render(rows[0]); })
         .catch(function(){});
