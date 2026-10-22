@@ -462,7 +462,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /* === CONFIG ============================================================ */
 const SUPABASE_URL  = "https://wuvpbwowdycsdlrqkaoq.supabase.co";
 const SUPABASE_ANON = "sb_publishable_4FzuR1v2uE0VAAH75XgHIQ_o2qEH6n3";
-const SB = createClient(SUPABASE_URL, SUPABASE_ANON);
+const SB = createClient(SUPABASE_URL, SUPABASE_ANON, {auth:{persistSession:true, storageKey:"nexus-auth"}});
 /* ======================================================================= */
 const C = { cyan:"#00d4ff", green:"#3ee08f", amber:"#ffb547", violet:"#b58cff", red:"#E31E24", advert:"#ff5fa2", grey:"#8aa0b5", gold:"#ffd166", dim:"#5e7c8e", text:"#cfe2ec" };
 const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idle:{c:C.dim,l:"Idle"}, error:{c:C.red,l:"Error"}, paused:{c:"#ffb547",l:"Paused"} };
@@ -1496,13 +1496,25 @@ const authGate=$("authGate"), authForm=$("authForm"), authErr=$("authErr"), auth
 let appBooted=false;
 function bootApp(){
   if(appBooted)return; appBooted=true;
+  ownerGate();
   authGate.classList.add("hidden");
   setView("radial");
   start();
 }
+/* Eén login (22-10-2026): sessie van NEXUS; alleen eigenaar met tweestapsverificatie (aal2). */
+function toNexus(h){try{top.location.replace("/nexus.html"+(h||""))}catch(e){location.replace("/nexus.html"+(h||""))}}
+async function ownerGate(){
+  try{
+    const r=await SB.rpc("nexus_me");
+    if(!(r&&r.data&&!r.error&&r.data.bridge_owner===true))return toNexus(""),false;
+    const a=await SB.auth.mfa.getAuthenticatorAssuranceLevel();
+    if(!a||!a.data||a.data.currentLevel!=="aal2")return toNexus("#bridge"),false;
+    return true;
+  }catch(e){toNexus("#bridge");return false}
+}
 function showGate(){
-  authGate.classList.remove("hidden");
-  setTimeout(()=>{ const e=$("authEmail"); if(e)e.focus(); },60);
+  /* geen eigen login meer: inloggen gaat via NEXUS */
+  toNexus("#bridge");
 }
 authForm.addEventListener("submit", async ev=>{
   ev.preventDefault(); authErr.textContent="";

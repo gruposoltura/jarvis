@@ -1202,3 +1202,34 @@ html[data-theme="light"] .ag-box{box-shadow:0 30px 80px rgba(15,23,42,.25)}
 .dd-to select option{background:var(--card);color:var(--tx)}
 .dd-to select:focus{outline:2px solid color-mix(in srgb,#14b8a6 60%,transparent);outline-offset:1px}
 html[data-theme="light"] .dd-to select{color-scheme:light}
+
+/* ---------- Facturen, Contracten en The Bridge (22-10-2026, nexus-parts.js) ---------- */
+:root{--c-fa:#f43f5e;--c-cn:#eab308;--c-br:#00d4ff}
+.part-wrap{height:100%;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--bg)}
+.part-frame{display:block;width:100%;height:100%;border:0;background:var(--bg)}
+/* The Bridge: opvallend, helemaal rechts in de menubalk, alleen voor de eigenaar */
+.tab.tab-bridge{margin-left:auto;align-self:center;position:sticky;right:0;z-index:2;flex:none;height:calc(var(--tabs) - 14px);border-radius:999px;border:1px solid color-mix(in srgb,var(--c-br) 60%,transparent);
+  color:#04141a;background:linear-gradient(135deg,#00d4ff,#3b82f6 55%,#a855f7);font-weight:700;letter-spacing:.04em;text-decoration:none;
+  box-shadow:0 0 0 1px rgba(0,212,255,.25),0 0 18px rgba(0,212,255,.35);padding:0 14px 0 12px;gap:7px}
+.tab.tab-bridge:hover{color:#04141a;box-shadow:0 0 0 1px rgba(0,212,255,.45),0 0 26px rgba(0,212,255,.55);filter:brightness(1.08)}
+.tab.tab-bridge::after{display:none}
+.tab.tab-bridge:focus-visible{outline:2px solid var(--c-br);outline-offset:2px}
+/* tweestapsverificatie voor The Bridge */
+.mfa-ov{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:rgba(5,8,18,.72);backdrop-filter:blur(6px);padding:16px}
+.mfa-box{position:relative;width:min(400px,94vw);padding:24px 24px 20px;border-color:color-mix(in srgb,var(--c-br) 45%,var(--line2));box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 3px 0 -1px var(--c-br)}
+.mfa-hd{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.mfa-hd h3{margin:0;font:700 calc(16px*var(--fs,1))/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--hi)}
+.mfa-ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#04141a;background:linear-gradient(135deg,#00d4ff,#a855f7)}
+.mfa-lead{color:var(--tx2);margin:10px 0 14px}
+.mfa-qr{display:grid;place-items:center;margin:12px 0 8px}
+.mfa-qr img{width:190px;height:190px;background:#fff;border-radius:12px;padding:8px}
+.mfa-sec{text-align:center;word-break:break-all;margin-bottom:6px}.mfa-sec code{font-size:calc(12px*var(--fs,1));color:var(--tx)}
+.mfa-f{display:flex;gap:8px}
+.mfa-code{flex:1;min-width:0;padding:11px 13px;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;outline:none;font:600 calc(18px*var(--fs,1))/1 ui-monospace,Consolas,monospace;letter-spacing:.3em;text-align:center}
+.mfa-code:focus{border-color:var(--c-br);box-shadow:0 0 0 3px rgba(0,212,255,.2)}
+.mfa-f .btn.pri{width:auto;background:linear-gradient(135deg,#00d4ff,#3b82f6)}
+.mfa-x{position:absolute;top:10px;right:12px;background:none;border:0;color:var(--tx3);font-size:22px;cursor:pointer;line-height:1}
+.mfa-x:hover{color:var(--hi)}
+html[data-theme="light"] .mfa-ov{background:rgba(15,23,42,.35)}
+@media (max-width:1600px){nav.tabs .tab{padding:0 12px}}
+@media (max-width:720px){.tab.tab-bridge span{display:none}.tab.tab-bridge{padding:0 10px}}

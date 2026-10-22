@@ -149,11 +149,11 @@
 (function(){try{var d=document;if(d.querySelector('link[rel~="icon"]'))return;var l=d.createElement("link");l.rel="icon";l.type="image/svg+xml";l.href="/favicon.svg?v=1";(d.head||d.documentElement).appendChild(l);}catch(e){}})();
 
 /* =====================================================================
-   Eigenaar-poort (migratie 055, 22-10-2026)
-   The Bridge-vensters zijn alleen voor de eigenaar (nexus_team.bridge_owner).
-   Een teamlid dat zo'n pagina rechtstreeks opent, gaat terug naar de cockpit,
-   die in team-modus alleen de team-onderdelen toont (Facturatie, Contracten).
-   De data zelf is in de database afgeschermd; dit is alleen de nette omleiding.
+   Eigenaar-poort (migratie 055/057, 22-10-2026)
+   The Bridge-vensters zijn alleen voor de eigenaar (nexus_team.bridge_owner) mét
+   tweestapsverificatie (sessie op aal2). Inloggen gebeurt alleen op NEXUS; zonder
+   geldige sessie, als teamlid of zonder tweede stap gaat het venster naar NEXUS.
+   De data zelf is in de database afgeschermd; dit is de nette omleiding.
    ===================================================================== */
 (function (global) {
   "use strict";
@@ -163,20 +163,24 @@
     var page = String(location.pathname).split("/").pop().toLowerCase();
     if (!page || page === COCKPIT.toLowerCase()) return;
     if (!global.supabase || !CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) return;
-    var sb = global.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+    var sb = global.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY,
+      { auth: { storageKey: CFG.STORAGE_KEY || "nexus-auth", autoRefreshToken: false, detectSessionInUrl: false } });
+    function away(hash) {
+      var dest = "/nexus.html" + (hash || "");
+      try { global.top.location.replace(dest); } catch (e) { location.replace(dest); }
+    }
     function check() {
       sb.auth.getSession().then(function (s) {
-        if (!s || !s.data || !s.data.session) return;   // pagina toont zelf de login
+        if (!s || !s.data || !s.data.session) return away("#bridge");
         return sb.rpc("nexus_me").then(function (r) {
           var owner = r && r.data && !r.error && r.data.bridge_owner === true;
-          if (!owner) {
-            try { global.top.location.replace("/" + COCKPIT); }
-            catch (e) { location.replace("/" + COCKPIT); }
-          }
+          if (!owner) return away("");
+          return sb.auth.mfa.getAuthenticatorAssuranceLevel().then(function (a) {
+            if (!a || !a.data || a.data.currentLevel !== "aal2") away("#bridge");
+          });
         });
       }).catch(function () {});
     }
     check();
-    sb.auth.onAuthStateChange(function (ev) { if (ev === "SIGNED_IN") check(); });
   } catch (e) { /* nooit een pagina laten breken op de poort */ }
 })(typeof window !== "undefined" ? window : this);

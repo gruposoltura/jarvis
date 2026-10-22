@@ -143,13 +143,15 @@ async function boot(){
   $("#tabRp").classList.toggle("hidden",ME.role!=="admin");
   $("#prNew").classList.toggle("hidden",ME.role!=="admin");
   $("#ctNew").classList.toggle("hidden",ME.role!=="admin");
+  /* The Bridge-knop (rechts) alleen voor de eigenaar; Facturen en Contracten voor het hele team */
+  if(window.NEXUS_PARTS)NEXUS_PARTS.init({sb,me:()=>ME,lang:()=>LANG,esc,t});
   route();
 }
 
 /* ================= TABS / ROUTING ================= */
-const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp",vw:"--c-vw"};
+const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp",vw:"--c-vw",fa:"--c-fa",cn:"--c-cn"};
 let curTab="ov";
-function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t_));
+function setTab(t_,ref){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t_));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
   document.documentElement.style.setProperty("--acc",`var(${TABC[t_]})`);
   if(t_==="ov"&&!ovLoaded)loadOverview();
@@ -161,6 +163,8 @@ function setTab(t_){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.da
   if(t_==="ad"&&window.NEXUS_ADMIN)NEXUS_ADMIN.open($("#p-ad"),{sb,rpc,t,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="vw"&&window.NEXUS_VIEWINGS)NEXUS_VIEWINGS.open($("#p-vw"),{rpc,t,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="rp"&&window.NEXUS_REPORTS)NEXUS_REPORTS.open($("#p-rp"),{rpc,t,lang:()=>LANG,me:()=>ME,esc});
+  /* Facturen en Contracten: eigen onderdelen in NEXUS (nexus-parts.js), zelfde login en stijl */
+  if((t_==="fa"||t_==="cn")&&window.NEXUS_PARTS)NEXUS_PARTS.open(t_,$("#p-"+t_),ref);
 }
 $$(".tab").forEach(b=>b.onclick=()=>{location.hash=b.dataset.tab});
 window.addEventListener("hashchange",route);
@@ -169,6 +173,9 @@ function route(){
   let m;
   if((m=h.match(/^c\/([^/?#]+)/))){setTab("ct");openContact(decodeURIComponent(m[1]));return}
   if((m=h.match(/^p\/([^/?#]+)/))){setTab("pr");applyPrFocus();openProp(decodeURIComponent(m[1]));return}
+  if((m=h.match(/^cn\/([^/?#]+)/))){setTab("cn",decodeURIComponent(m[1]));return}
+  /* The Bridge: alleen eigenaar, met tweestapsverificatie (nexus-parts.js); daarna door naar /kpi.html */
+  if(h==="bridge"){if(window.NEXUS_PARTS)NEXUS_PARTS.bridge();setTab(curTab||"ov");return}
   prFocus=false;applyPrFocus();
   if(h==="pr"&&prListY!=null){const y=prListY;requestAnimationFrame(()=>{const r=$("#prRows");if(r)r.scrollTop=y})}
   if((h==="ad"||h==="rp")&&ME.role!=="admin")return setTab("ov");

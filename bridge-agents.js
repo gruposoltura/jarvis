@@ -207,8 +207,8 @@
   // lees met het sessietoken van de ingelogde gebruiker, niet met de publieke sleutel.
   function userToken(){
     try{
-      var ref = SB_URL.split("//")[1].split(".")[0];
-      var raw = localStorage.getItem("sb-" + ref + "-auth-token");
+      // zelfde sessie als NEXUS (één login, 22-10-2026)
+      var raw = localStorage.getItem(CFG.STORAGE_KEY || "nexus-auth");
       var s = raw ? JSON.parse(raw) : null;
       if(s && s.currentSession) s = s.currentSession;
       return (s && s.access_token) || null;

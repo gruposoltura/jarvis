@@ -3,19 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contracten · The Bridge</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=1">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<title>Contracten · NEXUS</title>
+<link rel="icon" type="image/svg+xml" href="/nexus-favicon.svg?v=1">
+<script src="/nexus-embed-child.js?v=1" data-target="cn"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="bridge-config.js"></script>
-<script>try{var t=localStorage.getItem("fact-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <!--
   CONTRACTEN - contratos.html (22-10-2026). Vervangt het Google Form "Contract Requests".
-  Praat met n8n-webhook /contracts (JARVIS-Sales-ContractGenerator, osZuBQ8fA3Cc9EIT) met de Supabase-sessie
-  van The Bridge als Bearer; de webhook laat alleen actieve teamleden (core.team_members) door.
+  Draait als tabblad Contracten IN NEXUS (nexus-embed-child.js): zelfde login (sessie "nexus-auth"),
+  thema en lettergrootte; los geopend gaat hij door naar /nexus.html#cn.
+  Praat met n8n-webhook /contracts (JARVIS-Sales-ContractGenerator, osZuBQ8fA3Cc9EIT) met de NEXUS-sessie
+  als Bearer; de webhook laat alleen actieve teamleden (core.team_members) door.
   Acties: search (eigen panden), load (contract_data: pand, verkoper/koper 1+2, makelaar), history (contract_log),
   generate (reserveringscontract ES + optionele vertaling; Drive, optioneel Brevo-mail naar jezelf, DOCX terug).
-  Deeplink: contratos.html?ref=LM620. Thema deelt 'fact-theme' met Facturatie.
+  Deeplink: /nexus.html#cn/LM620.
 -->
 <style>
 :root{--bg:#eef1f3;--panel:#fff;--fg:#1b2731;--muted:#5d6b76;--line:#d6dde2;--accent:#c0392b;--accent-ink:#fff;--accent-soft:#fae8e6;
@@ -93,22 +95,13 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 @media (prefers-reduced-motion:reduce){.spin{animation:none}}
 [hidden]{display:none!important}
 </style>
+<link rel="stylesheet" href="/nexus-embed.css?v=1">
 </head>
 <body>
 <header class="top">
   <div class="brand"><b>Contracten</b><span>Grupo Soltura · reserveringscontract uit NEXUS</span></div>
   <span><button type="button" class="themebtn" id="themeBtn" aria-label="Wissel tussen dag en nacht"></button> <button type="button" class="logout" id="logoutBtn" hidden>Uitloggen</button></span>
 </header>
-<div class="login" id="login" hidden>
-  <form id="loginForm" autocomplete="on">
-    <h2>Contracten</h2>
-    <p>Log in met je account van The Bridge.</p>
-    <input type="email" id="lEmail" placeholder="E-mailadres" autocomplete="username" required>
-    <input type="password" id="lPass" placeholder="Wachtwoord" autocomplete="current-password" required>
-    <button type="submit" id="lBtn">Inloggen</button>
-    <div class="lerr" id="lErr" role="alert"></div>
-  </form>
-</div>
 <div class="banner" id="banner" hidden></div>
 
 <main class="wrap">
@@ -163,7 +156,7 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 <script>
 "use strict";
 const HOOK="https://gruposoltura.app.n8n.cloud/webhook/contracts";
-const NEXUS="https://nexus.gruposoltura.com/#p/";
+const NEXUS="/nexus.html#p/";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const eur=n=>(Number(n)||0).toLocaleString("nl-NL",{maximumFractionDigits:0})+" €";
@@ -171,11 +164,11 @@ const STATUS={available:["Beschikbaar","av"],under_offer:["Gereserveerd","uo"],s
 const LANG={es:"ES",en:"EN",nl:"NL",de:"DE",sv:"SV",fr:"FR"};
 let D=null,results=[],act=-1,searchT=null,busy=false,me="";
 
-const SB=(window.supabase&&window.BRIDGE_CONFIG)?window.supabase.createClient(BRIDGE_CONFIG.SUPABASE_URL,BRIDGE_CONFIG.SUPABASE_ANON_KEY):null;
+const SB=(window.supabase&&window.BRIDGE_CONFIG&&!window.NEXUS_EMBED_BLOCKED)?window.supabase.createClient(BRIDGE_CONFIG.SUPABASE_URL,BRIDGE_CONFIG.SUPABASE_ANON_KEY,{auth:{persistSession:true,storageKey:"nexus-auth"}}):null;
 async function authToken(){if(!SB)return null;try{const {data:{session}}=await SB.auth.getSession();return session?session.access_token:null}catch(e){return null}}
 async function call(action,extra){
   const tok=await authToken();
-  if(!tok){$("login").hidden=false;throw new Error("Niet ingelogd")}
+  if(!tok){banner("Je sessie is verlopen. Log opnieuw in op NEXUS.");if(window.NEXUS_RELOGIN)NEXUS_RELOGIN();throw new Error("Niet ingelogd")}
   const r=await fetch(HOOK,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+tok},body:JSON.stringify(Object.assign({action},extra||{}))});
   let j=null;try{j=await r.json()}catch(e){}
   if(!r.ok||!j||j.ok===false)throw new Error((j&&(j.error||j.message))||("Server gaf status "+r.status));
@@ -238,7 +231,7 @@ function missing(){
 function render(){
   const p=D.property,st=STATUS[p.status]||[p.status||"",""];
   $("picked").hidden=false;
-  $("picked").innerHTML=`<div><b>${esc(p.reference)}</b><span class="chip ${st[1]}">${esc(st[0])}</span><small>${esc([[p.street,p.street_number].filter(Boolean).join(" "),p.city].filter(Boolean).join(", "))}</small></div><a class="btn small" href="${NEXUS+encodeURIComponent(p.reference)}" target="_blank" rel="noopener">Open in NEXUS</a>`;
+  $("picked").innerHTML=`<div><b>${esc(p.reference)}</b><span class="chip ${st[1]}">${esc(st[0])}</span><small>${esc([[p.street,p.street_number].filter(Boolean).join(" "),p.city].filter(Boolean).join(", "))}</small></div><a class="btn small" href="${NEXUS+encodeURIComponent(p.reference)}" target="_top">Open woning</a>`;
   $("formSec").hidden=false;
   $("price").value=Math.round(Number(p.sold_price||p.price)||0)||"";
   split();
@@ -302,13 +295,9 @@ async function loadHistory(){
 async function requireLogin(){
   if(!SB){banner("Supabase kon niet geladen worden.");return false}
   if(await authToken())return true;
-  $("login").hidden=false;
-  await new Promise(done=>{$("loginForm").onsubmit=async e=>{
-    e.preventDefault();$("lErr").textContent="";$("lBtn").disabled=true;
-    try{const {error}=await SB.auth.signInWithPassword({email:$("lEmail").value.trim(),password:$("lPass").value});if(error)throw error;$("login").hidden=true;done()}
-    catch(err){$("lErr").textContent=/invalid/i.test(err.message||"")?"E-mailadres of wachtwoord klopt niet.":(err.message||"Inloggen mislukt.")}
-    finally{$("lBtn").disabled=false}}});
-  return true;
+  banner("Je bent niet ingelogd. Log in op NEXUS.");
+  if(window.NEXUS_RELOGIN)NEXUS_RELOGIN();
+  return false;
 }
 /* ---------- dag / nacht ---------- */
 function curTheme(){const t=document.documentElement.getAttribute("data-theme");if(t)return t;return matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}
@@ -317,7 +306,10 @@ $("themeBtn").onclick=()=>{const n=curTheme()==="dark"?"light":"dark";document.d
 try{matchMedia("(prefers-color-scheme: dark)").addEventListener("change",paintThemeBtn)}catch(e){}
 paintThemeBtn();
 $("logoutBtn").onclick=async()=>{try{await SB.auth.signOut()}catch(e){}location.reload()};
+/* deeplink vanuit NEXUS (#cn/REF) zonder herladen */
+window.addEventListener("message",e=>{if(e.origin===location.origin&&e.data&&e.data.type==="nexus-open-ref"&&e.data.ref)load(String(e.data.ref))});
 (async()=>{
+  if(window.NEXUS_EMBED_BLOCKED)return;
   if(!await requireLogin())return;
   $("logoutBtn").hidden=false;
   try{const {data}=await SB.auth.getUser();me=(data&&data.user&&data.user.email)||"";if(me)$("meMail").textContent=me}catch(e){}
