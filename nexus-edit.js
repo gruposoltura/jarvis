@@ -424,6 +424,8 @@ async function save(){
     P=JSON.parse(JSON.stringify(D.property));if(!P.sold_date&&P.sold_at)P.sold_date=String(P.sold_at).slice(0,10);T=JSON.parse(JSON.stringify(D.texts||{}));M=JSON.parse(JSON.stringify(D.media||[]));
     busy=false;render(true);toast(tr(["Opgeslagen","Saved"]));
     X.onSaved&&X.onSaved(P.reference);
+    /* 22-10-2026 (Rick): kadastrale referentie gewijzigd -> Catastro direct opnieuw ophalen (alleen kadaster, teksten blijven staan) */
+    if("cadastral_ref" in pt&&pt.cadastral_ref&&P.origin!=="partner")recatastro(P.id,P.reference);
   }catch(e){busy=false;btn.textContent=tr(["Opslaan","Save"]);
     /* woning wél opgeslagen, contact(en) niet: woning als opgeslagen markeren, alleen de eigenaarsgegevens blijven klaarstaan */
     if(fresh){D=fresh;TOUCH={};TTOUCH={};MEDIA_DIRTY=false;P=JSON.parse(JSON.stringify(D.property));if(!P.sold_date&&P.sold_at)P.sold_date=String(P.sold_at).slice(0,10);
@@ -433,7 +435,12 @@ async function save(){
     if(e.code==="40001")ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(e.message)} <button class="btn sm" data-act="reload">${esc(tr(["Herladen","Reload"]))}</button></div>`;
     else err(e.message||String(e))}
 }
-function toast(msg){const t=document.createElement("div");t.className="pe-toast";t.textContent="✓ "+msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
+async function recatastro(id,ref){toast(tr(["Kadaster wordt opnieuw opgehaald…","Fetching cadastre again…"]));
+  let r;try{r=await fnCall("property-enrich-now",{property_id:id,seo:false})}catch(x){r={ok:false,error:x.message||String(x)}}
+  const c=r&&r.catastro;
+  toast(c&&c.status==="ok"?tr(["Kadaster bijgewerkt: ","Cadastre updated: "])+(c.cadastral_ref||""):(r&&r.pending?tr(["Kadaster loopt nog op de achtergrond","Cadastre still running in the background"]):"⚠ "+tr(["Kadaster niet bijgewerkt","Cadastre not updated"])));
+  X.onSaved&&X.onSaved(ref)}
+function toast(msg){const t=document.createElement("div");t.className="pe-toast";t.textContent=(/^⚠|…$/.test(msg)?"":"✓ ")+msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 
 /* ---------- snelle statuswissel vanuit het detailscherm ---------- */
 async function quickStatus(ctx,id,ref,status,base){X=ctx;
