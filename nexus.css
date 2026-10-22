@@ -1207,6 +1207,11 @@ html[data-theme="light"] .dd-to select{color-scheme:light}
 :root{--c-fa:#f43f5e;--c-cn:#eab308;--c-br:#00d4ff}
 .part-wrap{height:100%;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--bg)}
 .part-frame{display:block;width:100%;height:100%;border:0;background:var(--bg)}
+/* 22-10: op mobiel/tablet heeft main geen vaste hoogte (height:auto), waardoor 100% wegviel en het frame
+   op de standaard 150px bleef staan. Daar krijgt het frame de volle schermhoogte onder header en tabs. */
+@media (max-width:1100px){
+  .part-wrap{height:calc(100vh - var(--hdr) - var(--tabs) - 28px);height:calc(100dvh - var(--hdr) - var(--tabs) - 28px);min-height:420px}
+}
 /* The Bridge: opvallend, helemaal rechts in de menubalk, alleen voor de eigenaar */
 .tab.tab-bridge{margin-left:auto;align-self:center;position:sticky;right:0;z-index:2;flex:none;height:calc(var(--tabs) - 14px);border-radius:999px;border:1px solid color-mix(in srgb,var(--c-br) 60%,transparent);
   color:#04141a;background:linear-gradient(135deg,#00d4ff,#3b82f6 55%,#a855f7);font-weight:700;letter-spacing:.04em;text-decoration:none;
