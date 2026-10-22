@@ -1516,11 +1516,12 @@
   var WALL_FURN = ["shelf", "tallshelf", "locker", "filing", "credenza", "printer", "coffee", "cooler", "s:cabinet", "s:rack", "s:board"];
   function itemLen(id) { return id.indexOf("s:") === 0 ? SPRITES[id.slice(2)][1] : FURN[id].L; }
 
-  /* 17-10: aansluitpunt van de datapijp. Lopers volgen de pijp en gaan via de voordeur naar binnen, dus de
-     pijp sluit bij voorkeur aan aan de zichtbare kant: naast de voordeur (y1) of de zijdeur (x1), anders een
-     zijhoek; de achterhoek alleen als niets anders kan. Kandidaat telt alleen als de pijp (brein -> buitenpunt)
-     niet door de eigen afdeling loopt. Score = pijplengte + looppad langs de omtrek naar de voordeur,
-     met een grote straf voor een pad achter de hoge achtermuren langs. */
+  /* 22-10: de datapijp eindigt altijd bij een deur. Kandidaten zijn de wanden die naar het brein kijken
+     (het brein ligt aan de buitenkant van die wand). De deur schuift langs die wand naar het punt recht
+     tegenover het brein (weg van de hoeken); de pijp loopt brein -> knik recht voor de deur -> deur.
+     Die deur vervangt de standaarddeur van die wand (doorAt), dus ramen, wandmeubels en looproutes gaan er
+     vanzelf omheen; bij de kantine (dichte achterwanden) komt er zo een deur bij. Lopers komen via die deur
+     binnen en lopen niet meer om de afdeling heen. Voorkeur bij gelijke lengte: de zichtbare voorkant. */
   /* lengte (cellen) van een looppad dat achter de hoge achterwanden van afdeling d verdwijnt */
   function hiddenLen(d, P) {
     var H = SLAB + WALL_H, W1 = [iso(d.x, d.y, 0), iso(d.x + d.w, d.y, 0), iso(d.x + d.w, d.y, H), iso(d.x, d.y, H)],
@@ -1538,41 +1539,39 @@
     return hid;
   }
   function plen(P) { var L = 0; for (var i = 1; i < P.length; i++) L += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]); return L; }
+  var PIPE_STUB = 1.2;
   function dockInfo(d) {
     var key = [d.x, d.y, d.w, d.d].map(function (v) { return v.toFixed(3); }).join(",");
     if (d._dk && d._dkk === key) return d._dk;
-    var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, I = 0.55, O = OUT || 0.65;
-    var fx = frontDoorX(d), gy = doorY(d), sh = DOOR / 2 + 0.7, c = [];
-    [fx + sh, fx - sh].forEach(function (sx) { if (sx > x0 + 0.8 && sx < x1 - 0.8) c.push({ p: [sx, y1 - I], out: [sx, y1 + O], k: "S" }); });
-    [gy + sh, gy - sh].forEach(function (sy) { if (sy > y0 + 0.8 && sy < y1 - 0.8) c.push({ p: [x1 - I, sy], out: [x1 + O, sy], k: "E" }); });
-    c.push({ p: [x1 - I, y1 - I], out: [x1 + O, y1 + O], k: "C2" }, { p: [x0 + I, y1 - I], out: [x0 - O, y1 + O], k: "C3" },
-           { p: [x1 - I, y0 + I], out: [x1 + O, y0 - O], k: "C1" }, { p: [x0 + I, y0 + I], out: [x0 - O, y0 - O], k: "C0" });
-    /* zijhoek via een knik: eerst (boven de achtermuur langs) tot naast de zijwand, dan recht naar de hoek */
-    var aim = x0 + y0 - (SLAB + WALL_H + 14) / HH;
-    [["C3", (x0 - O) - (y1 + O) - 0.3], ["C1", (x1 + O) - (y0 - O) + 0.3]].forEach(function (v) {
-      var base = c.filter(function (q) { return q.k === v[0]; })[0], Q = [(aim + v[1]) / 2, (aim - v[1]) / 2];
-      c.push({ p: base.p, out: base.out, k: v[0] + "v", via: [Q] });
+    var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, O = OUT || 0.65, I = 0.5, best = null;
+    var walls = [
+      { k: "N", n: [0, -1], ax: 0, at: y0, lo: x0 + 1.3, hi: x1 - 1.3, dist: y0 },
+      { k: "W", n: [-1, 0], ax: 1, at: x0, lo: y0 + 1.3, hi: y1 - 1.3, dist: x0 },
+      { k: "S", n: [0, 1], ax: 0, at: y1, lo: x0 + 1.3, hi: x1 - 1.0, dist: -y1 },
+      { k: "E", n: [1, 0], ax: 1, at: x1, lo: y0 + 1.3, hi: y1 - 1.0, dist: -x1 }
+    ];
+    function make(w) {
+      var u = w.hi < w.lo ? (w.lo + w.hi) / 2 : Math.max(w.lo, Math.min(w.hi, 0));
+      var door = w.ax ? [w.at, u] : [u, w.at], n = w.n;
+      var E = [door[0] + n[0] * PIPE_STUB, door[1] + n[1] * PIPE_STUB];
+      return { k: w.k, u: u, n: n, door: door, via: [E],
+               out: [door[0] + n[0] * O, door[1] + n[1] * O], p: [door[0] - n[0] * I, door[1] - n[1] * I],
+               pipe: [[0, 0], E, door, [door[0] - n[0] * I, door[1] - n[1] * I]] };
+    }
+    walls.forEach(function (w) {
+      if (w.dist < 0.6) return;                                   /* brein niet aan de buitenkant van deze wand */
+      var q = make(w);
+      if (segHitsRect([0, 0], q.via[0], d, 0.3)) return;          /* pijp zou langs of door de eigen afdeling gaan */
+      q.score = plen([[0, 0], q.via[0], q.door]) + (w.k === "N" || w.k === "W" ? 1.5 : 0);
+      if (!best || q.score < best.score) best = q;
     });
-    var pm = perim(outRect(d)), sF = pS(pm, [fx, y1 + O]), best = null;
-    c.forEach(function (q) {
-      var P = [[0, 0]].concat(q.via || []).concat([q.out]);
-      for (var i = 1; i < P.length; i++) if (segHitsRect(P[i - 1], P[i], d, -0.05)) return;   /* pijp zou door de eigen afdeling lopen */
-      var sA = pS(pm, q.out), p1 = pPath(pm, sA, sF, 1), p2 = pPath(pm, sA, sF, -1);
-      var pen = function (p) { return p.corners.indexOf(0) >= 0 ? 60 : 0; };
-      var walk = Math.min(p1.len + pen(p1), p2.len + pen(p2)) + (q.k === "C0" ? 60 : 0);
-      var score = plen(P) + walk;
-      if (best && score >= best.score) return;
-      score += 4 * hiddenLen(d, P) + 40 * coveredLen(P.slice(0, -1).concat([P[P.length - 1]]), d, -0.1);
-      if (!best || score < best.score) { best = q; q.score = score; }
-    });
-    if (!best) best = c.filter(function (q) { return q.k === "C0"; })[0];
-    best.pipe = [[0, 0]].concat(best.via || []).concat([best.p]);
+    if (!best) best = make(walls.slice().sort(function (a, b) { return b.dist - a.dist; })[0]);
     d._dk = best; d._dkk = key;
     return best;
   }
   function dockPoint(d) { return dockInfo(d).p; }
   function dockInner(d) {
-    var p = d._port, c = iso(p[0], p[1], SLAB), R = 0.42;
+    var p = d._port, c = iso(p[0], p[1], SLAB), R = 0.34;
     return '<g class="dock"><title>Aansluiting datapijp naar het JARVIS-brein</title>'
       + poly([iso(p[0] - R, p[1] - R, SLAB), iso(p[0] + R, p[1] - R, SLAB), iso(p[0] + R, p[1] + R, SLAB), iso(p[0] - R, p[1] + R, SLAB)], "#0c1320", ' class="d-plate"')
       + '<ellipse class="d-ring" cx="' + f1(c[0]) + '" cy="' + f1(c[1]) + '" rx="' + f1(R * HW * 1.25) + '" ry="' + f1(R * HH * 1.25) + '"/>'
@@ -1583,13 +1582,23 @@
      brede en smalle ramen en hier en daar iets aan de muur op ooghoogte. De voorkant (y = y1 en x = x1)
      heeft een lage borstwering zodat de bureaus zichtbaar blijven, met de voordeur (y1) en een zijdeur
      (x1), elk met een opstapje naar de vloer. Alles met een vaste seed op de afdelingsnaam. */
-  function doorX(d) { return d.x + d.w / 2; }   /* deur in de achterwand y = y0 */
-  function doorY(d) { return d.y + d.d / 2; }   /* deur in de achterwand x = x0 en de zijdeur in x = x1 */
-  function frontDoorX(d) {                     /* voordeur in de voorwand y = y1: midden van de bureaustrook */
-    if (d.fdx != null) return d.fdx;          /* kantine: vaste plek op het middelste looppad */
-    var a = d.x + WALL + PADX + (d.gutter || 0), b = d.x + d.w - PROP_LANE;
-    return Math.max(d.x + 1.7, Math.min(d.x + d.w - PROP_LANE - 0.6, (a + b) / 2));
+  /* standaarddeur per wand; de wand met de pijp krijgt de pijpdeur (22-10) */
+  function defDoor(d, k) {
+    if (k === "N") return d.x + d.w / 2;
+    if (k === "S") {                         /* voordeur: midden van de bureaustrook; kantine: vaste plek */
+      if (d.fdx != null) return d.fdx;
+      var a = d.x + WALL + PADX + (d.gutter || 0), b = d.x + d.w - PROP_LANE;
+      return Math.max(d.x + 1.7, Math.min(d.x + d.w - PROP_LANE - 0.6, (a + b) / 2));
+    }
+    return d.y + d.d / 2;
   }
+  function doorAt(d, k) { var dk = d.x == null ? null : dockInfo(d); return dk && dk.k === k ? dk.u : defDoor(d, k); }
+  function doorX(d) { return doorAt(d, "N"); }        /* deur in de achterwand y = y0 */
+  function doorYW(d) { return doorAt(d, "W"); }       /* deur in de achterwand x = x0 */
+  function doorYE(d) { return doorAt(d, "E"); }       /* zijdeur in x = x1 */
+  function frontDoorX(d) { return doorAt(d, "S"); }   /* voordeur in y = y1 */
+  /* kantine: dichte achterwanden, behalve waar de pijp binnenkomt */
+  function hasDoor(d, k) { return !d.solid || k === "S" || k === "E" || dockInfo(d).k === k; }
   var WALL_H = 100, DOOR = 0.95, DOOR_H = 86, FRONT_H = 15, WALL_T = 0.14;
   /* punt op de binnenkant van een achterwand: ax 'x' = wand y = y0 (u = x), ax 'y' = wand x = x0 (u = y) */
   function wpt(d, ax, u, z, off) { return ax === "x" ? iso(u, d.y + (off || 0), SLAB + z) : iso(d.x + (off || 0), u, SLAB + z); }
@@ -1606,7 +1615,7 @@
     var key = [d.x, d.y, d.w, d.d].map(function (v) { return v.toFixed(2); }).join(",");
     if (d._wp && d._wpk === key) return d._wp;
     var r = rngOf(hash(d.name) ^ 0xa11ce), plan = { x: [], y: [] }, budget = Math.floor(r() * 3);   /* 17-10: hooguit 2 dingen aan de muur per afdeling */
-    [["x", d.x, d.x + d.w, doorX(d)], ["y", d.y, d.y + d.d, doorY(d)]].forEach(function (W) {
+    [["x", d.x, d.x + d.w, doorX(d)], ["y", d.y, d.y + d.d, doorYW(d)]].forEach(function (W) {
       var A = W[1], B = W[2], g = W[3];
       var busy = [[A - 1, A + 0.4], [g - DOOR / 2 - 0.25, g + DOOR / 2 + 0.25], [B - 0.2, B + 1]];
       function free(a, b) { return a >= A + 0.35 && b <= B - 0.2 && !busy.some(function (q) { return a < q[1] && q[0] < b; }); }
@@ -1696,10 +1705,10 @@
   }
   function wallsInner(d) {
     var plan = wallPlan(d), s = "", col = mixHex(d.color || "#8aa0b5", "#2a3546", 0.14);
-    [["x", d.x, d.x + d.w, doorX(d)], ["y", d.y, d.y + d.d, doorY(d)]].forEach(function (W) {
+    [["x", d.x, d.x + d.w, doorX(d), "N"], ["y", d.y, d.y + d.d, doorYW(d), "W"]].forEach(function (W) {
       var ax = W[0], A = W[1], B = W[2], g = W[3], ga = g - DOOR / 2, gb = g + DOOR / 2;
-      /* 21-10: d.solid (kantine) = dichte achterwanden zonder deur */
-      if (d.solid) {
+      /* 21-10: d.solid (kantine) = dichte achterwanden; 22-10: wel een deur waar de pijp binnenkomt */
+      if (!hasDoor(d, W[4])) {
         s += wquad(d, ax, A, B, 0, WALL_H, "wall wall-" + ax) + wquad(d, ax, A, B, 0, 4, "wall-base", 0.01);
         s += '<polygon class="wall-top" points="' + pts([wpt(d, ax, A, WALL_H), wpt(d, ax, B, WALL_H), wpt(d, ax, B, WALL_H, -WALL_T), wpt(d, ax, A, WALL_H, -WALL_T)]) + '"/>';
         s += wline(d, ax, A, WALL_H, B, WALL_H, "wall-cap");
@@ -1732,7 +1741,7 @@
   /* voorwanden: lage borstwering in stukken (diepte per stuk), met voordeur en zijdeur */
   function frontParts(d, push) {
     var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, col = mixHex(d.color || "#8aa0b5", "#243042", 0.2);
-    var fx = frontDoorX(d), gy = doorY(d), T = 0.1;
+    var fx = frontDoorX(d), gy = doorYE(d), T = 0.1;
     function capLine(a, b) { return '<line class="wall-cap" x1="' + f1(a[0]) + '" y1="' + f1(a[1]) + '" x2="' + f1(b[0]) + '" y2="' + f1(b[1]) + '"/>'; }
     function run(A, B, gap, edge) {
       var segs = [[A, gap - DOOR / 2 - 0.08], [gap + DOOR / 2 + 0.08, B]];
@@ -1807,7 +1816,7 @@
     /* achterhoek: grote plant (tenzij daar het dock zit) */
     if (!nearDock(x0 + 0.45, y0 + 0.45, 0.9)) push(x0 + 0.45, y0 + 0.45, PLANTS.leafy(x0 + 0.45, y0 + 0.45));
     placeWall("x", x0 + WALL + 0.02, x1 - 0.1, doorX(d));
-    placeWall("y", y0 + WALL + 0.02, y1 - 0.15, doorY(d));
+    placeWall("y", y0 + WALL + 0.02, y1 - 0.15, doorYW(d));
     frontParts(d, push);
 
     /* voorzijde: planten en lampen in de hoeken en in de vrije strook rechts; alleen waar ze geen bureau raken */
@@ -1820,7 +1829,7 @@
     }
     var cand = [[x0 + 0.45, y1 - 0.4], [x1 - PROP_LANE / 2, y1 - 0.4]];
     for (var t = y0 + WALL + 0.5; t < y1 - 1.2; t += 1.7 + r() * 0.6) {
-      if (Math.abs(t - doorY(d)) < 0.8) continue;   /* loopstrook naar de oostelijke loopbrug */
+      if (Math.abs(t - doorYE(d)) < 0.8) continue;   /* loopstrook naar de oostelijke loopbrug */
       cand.push([x1 - PROP_LANE / 2, t]);
     }
     cand.forEach(function (c, i) {
@@ -1839,7 +1848,7 @@
 
   /* ======================================================================= kantine (21-10)
      Eigen platform buiten de afdelingen, met een looppad vanaf de ring om het brein (zoals een datapijp,
-     maar als vloerloper). Achterwanden dicht (geen deuren): langs de x-wand een lange counter met
+     maar als vloerloper). Achterwanden dicht, behalve een deur waar de loper binnenkomt (22-10): langs de x-wand een lange counter met
      koffiezetapparaten en kopjes plus een koelkast, langs de y-wand een lange wandkast; een paar ramen,
      een grote plant in de achterhoek, statafels in het midden. Indeling in lokale cellen t.o.v. (x, y). */
   var CANTEEN_C = "#ffb547", CW = 11, CD = 8.6;
@@ -1890,19 +1899,15 @@
     });
     S.canteen = c;
   }
-  /* looppad: van de ring om het brein langs de pijp-lijn naar het buitenpunt van de kantine, 0,3 cel ernaast
-     (daar lopen de lopers, zie alongPipe in visitRoute) */
+  /* looppad: van de ring om het brein langs de pijp-lijn naar de kantinedeur, 0,3 cel ernaast
+     (daar lopen de lopers, zie alongPipe in visitRoute); 22-10: recht tot in de deur */
   function canteenPathInner(c) {
-    var dk = dockInfo(c), first = (dk.via && dk.via[0]) || dk.out, m = RING / Math.max(Math.abs(first[0]), Math.abs(first[1]), 1e-6);
+    var dk = dockInfo(c), first = dk.via[0], m = RING / Math.max(Math.abs(first[0]), Math.abs(first[1]), 1e-6);
     var L = Math.hypot(first[0], first[1]) || 1, n = [-first[1] / L, first[0] / L];
     if (n[0] + n[1] < 0) n = [-n[0], -n[1]];
-    var W = [[first[0] * m, first[1] * m]].concat(dk.via || []).concat([dk.out]).map(function (p) { return [p[0] + n[0] * 0.3, p[1] + n[1] * 0.3]; });
-    /* 22-10: doorlopen tot de voordeur, langs de omtrek zoals de lopers (niet langs de achterhoek) */
-    var pm = perim(outRect(c)), sA = pS(pm, dk.out), sF = pS(pm, [c.fdx, c.y + c.d + OUT]);
-    var q1 = pPath(pm, sA, sF, 1), q2 = pPath(pm, sA, sF, -1);
-    function back(q) { return q.corners.indexOf(0) >= 0; }
-    var qp = back(q1) && !back(q2) ? q2 : back(q2) && !back(q1) ? q1 : (q1.len <= q2.len ? q1 : q2);
-    W = W.concat([dk.out]).concat(qp.pts).concat([[c.fdx, c.y + c.d + 0.05]]);
+    var W = [[first[0] * m, first[1] * m]].concat(dk.via).concat([dk.out]).map(function (p) { return [p[0] + n[0] * 0.3, p[1] + n[1] * 0.3]; });
+    /* laatste stuk loodrecht de deur in: in het midden van de deuropening */
+    W.push([dk.out[0], dk.out[1]], [dk.door[0], dk.door[1]]);
     var P = W.map(function (p) { return iso(p[0], p[1], 0); });
     var ln = 'points="' + pts(P) + '" stroke-linejoin="round"';
     return '<polyline class="cp-base" ' + ln + '/><polyline class="cp-edge" ' + ln + '/><polyline class="cp-line" ' + ln + "/>";
@@ -1964,6 +1969,10 @@
   function canteenProps(c) {
     var out = [], r = rngOf(hash("kantine") ^ 0xc0ffee), x0 = c.x, y0 = c.y, x1 = c.x + c.w, y1 = c.y + c.d, i;
     function push(cx, cy, svg) { var k = (cx - x0) + (cy - y0); out.push({ k: k, h: '<g class="prop" data-k="' + k.toFixed(3) + '">' + svg + "</g>" }); }
+    /* 22-10: wat in de deuropening van de pijp zou staan, gaat weg */
+    var dk = dockInfo(c), dg = DOOR / 2 + 0.3;
+    function blocked(k, a, b) { return dk.k === k && a < dk.u + dg && dk.u - dg < b; }
+    function nearDoor(cx, cy) { return Math.hypot(cx - dk.p[0], cy - dk.p[1]) < 1.0; }
     /* grote plant in de achterhoek */
     push(x0 + 0.5, y0 + 0.5, spriteAt("plant", 361, x0 + 0.5, y0 + 0.5, 46));
     /* lange counter langs de x-wand, in segmenten van ~1 cel (diepte-volgorde t.o.v. de lopers) */
@@ -1975,15 +1984,15 @@
       s += face(F, 0.4, 0.44, CH - 15, CH - 10, "#c9d3df") + face(F, 0.56, 0.6, CH - 15, CH - 10, "#c9d3df");
       s += sub(F, i ? 0 : -0.04, i < n - 1 ? 1 : 1.04, -0.02, 1.07, CH, 2.4, "#e6e1d7");   /* werkblad */
       s += counterTop(i, F, CH + 2.4, r);
-      push(u + sl / 2, y0 + 0.42, s);
+      if (!blocked("N", u, u + sl)) push(u + sl / 2, y0 + 0.42, s);
     }
     /* koelkast aan het eind van de counter */
     var FK = { ax: "x", x: x0 + 6.98, y: y0 + 0.08, L: 0.72, D: 0.64 }, fk = sub(FK, 0, 1, 0, 1, 0, 76, "#d9dde3");
     fk += face(FK, 0.04, 0.96, 50, 74, "#e6e9ed") + face(FK, 0.04, 0.96, 3, 48, "#e6e9ed") + face(FK, 0.08, 0.12, 30, 44, "#9aa5b1") + face(FK, 0.08, 0.12, 54, 66, "#9aa5b1");
     fk += face(FK, 0.3, 0.7, 58, 70, "#fff27a") + face(FK, 0.55, 0.78, 36, 44, "#9fe6ff");   /* memo's op de deur */
-    push(x0 + 7.34, y0 + 0.4, fk);
+    if (!blocked("N", x0 + 6.98, x0 + 7.7)) push(x0 + 7.34, y0 + 0.4, fk);
     /* waterkoeler rechts van het raam */
-    push(x0 + 9.96, y0 + 0.31, FURN.cooler.f({ ax: "x", x: x0 + 9.75, y: y0 + 0.1, L: 0.42, D: 0.42 }));
+    if (!blocked("N", x0 + 9.75, x0 + 10.17)) push(x0 + 9.96, y0 + 0.31, FURN.cooler.f({ ax: "x", x: x0 + 9.75, y: y0 + 0.1, L: 0.42, D: 0.42 }));
     /* lange wandkast langs de y-wand */
     var ku0 = y0 + 1.0, ku1 = y0 + 5.4, kn = 5, kl = (ku1 - ku0) / kn, kc = "#e3e6ea";
     for (i = 0; i < kn; i++) {
@@ -1992,13 +2001,13 @@
       ks += face(FC, 0.04, 0.49, 3, 77, "#eef0f3") + face(FC, 0.51, 0.96, 3, 77, "#eef0f3");
       ks += face(FC, 0.44, 0.47, 34, 46, "#8a96a3") + face(FC, 0.53, 0.56, 34, 46, "#8a96a3");
       ks += face(FC, 0.04, 0.96, 40, 41.2, "#cfd4da");
-      push(x0 + 0.33, ky + kl / 2, ks);
+      if (!blocked("W", ky, ky + kl)) push(x0 + 0.33, ky + kl / 2, ks);
     }
     /* statafels */
     CT_TABLES.forEach(function (t) { push(x0 + t[0], y0 + t[1], highTable(x0 + t[0], y0 + t[1], r)); });
     /* planten voor in de hoeken */
-    push(x0 + 0.5, y1 - 0.5, PLANTS.bush(x0 + 0.5, y1 - 0.5, r));
-    push(x1 - 0.5, y1 - 0.55, PLANTS.palm(x1 - 0.5, y1 - 0.55, r));
+    if (!nearDoor(x0 + 0.5, y1 - 0.5)) push(x0 + 0.5, y1 - 0.5, PLANTS.bush(x0 + 0.5, y1 - 0.5, r));
+    if (!nearDoor(x1 - 0.5, y1 - 0.55)) push(x1 - 0.5, y1 - 0.55, PLANTS.palm(x1 - 0.5, y1 - 0.55, r));
     frontParts(c, push);
     return out;
   }
@@ -2008,6 +2017,11 @@
     c._wpk = [c.x, c.y, c.w, c.d].map(function (v) { return v.toFixed(2); }).join(",");
     c._wp = { x: [{ t: "win", a: x0 + 7.95, b: x0 + 9.5, panes: 2, tall: false }, { t: "clock", a: x0 + 5.55, b: x0 + 5.89, z: 76 }],
               y: [{ t: "win", a: y0 + 5.8, b: y0 + 7.75, panes: 2, tall: false }] };
+    /* 22-10: deur van de pijp in een achterwand: ramen en klok die daar zouden hangen vervallen */
+    var dk = dockInfo(c), dg = DOOR / 2 + 0.3;
+    [["x", "N"], ["y", "W"]].forEach(function (w) {
+      if (dk.k === w[1]) c._wp[w[0]] = c._wp[w[0]].filter(function (it) { return !(it.a < dk.u + dg && dk.u - dg < it.b); });
+    });
     var cc = iso((x0 + x1) / 2, (y0 + y1) / 2, 0);
     h += '<ellipse class="shadow" cx="' + f1(cc[0]) + '" cy="' + f1(cc[1] + 6) + '" rx="' + f1((c.w + c.d) * HW * 0.55) + '" ry="' + f1((c.w + c.d) * HH * 0.55) + '"/>';
     h += '<polygon class="slab-l" points="' + pts([iso(x0, y1, SLAB), iso(x1, y1, SLAB), iso(x1, y1), iso(x0, y1)]) + '"/>';
@@ -2018,8 +2032,12 @@
     h += '<polyline class="slab-lip" points="' + pts([iso(x0, y1, SLAB), iso(x1, y1, SLAB), iso(x1, y0, SLAB)]) + '"/>';
     h += wallsInner(c);
     /* lichtreclame boven de counter */
-    var np = wpt(c, "x", x0 + 1.55, 72, 0.02), tf = 'transform="matrix(.894,.447,0,1,' + f1(np[0]) + "," + f1(np[1]) + ')"';
+    var nx = x0 + 1.55, NL = 2.7;   /* lichtreclame verschuift naast de deur als die in de weg zit */
+    if (dk.k === "N" && nx < dk.u + dg && dk.u - dg < nx + NL) nx = dk.u + dg + NL <= x1 - 0.3 ? dk.u + dg : (dk.u - dg - NL >= x0 + 1.0 ? dk.u - dg - NL : null);
+    if (nx != null) {
+    var np = wpt(c, "x", nx, 72, 0.02), tf = 'transform="matrix(.894,.447,0,1,' + f1(np[0]) + "," + f1(np[1]) + ')"';
     h += '<text class="ct-neon-g" ' + tf + '>KANTINE</text><text class="ct-neon" ' + tf + ">KANTINE</text>";
+    }
     canteenProps(c).sort(function (p, q) { return p.k - q.k; }).forEach(function (o) { h += o.h; });
     var pp = iso(x0 + 0.3, y1, 0);
     h += '<text class="plate" transform="matrix(.894,.447,0,1,' + f1(pp[0]) + "," + f1(pp[1] - 6.5) + ')">Kantine · overleg</text>';
@@ -2252,9 +2270,11 @@
   function fireBall(id) {
     if (document.hidden) return;
     var a = S.byId[id], d = a && deptOf(a); if (!a || !d || !a._p || !d._port) return;
-    var c = iso(0, 0, 0), ps = iso(d._port[0], d._port[1], SLAB), pf = iso(d._port[0], d._port[1], 0);
-    var via = (d._pipe || []).slice(1, -1).reverse().map(function (p) { return iso(p[0], p[1], 0); });
-    var pts = [[a._p[0], a._p[1] - 30], [a._p[0], a._p[1] - 6], ps, pf].concat(via).concat([[c[0], c[1] - 20], [c[0], c[1] - LIVE_LIFT - LIVE_H * 0.42]]);
+    /* 22-10: van het bureau naar de deur, door de deur naar buiten en langs de pijp naar het brein */
+    var dk = dockInfo(d), c = iso(0, 0, 0), ps = iso(d._port[0], d._port[1], SLAB);
+    var dS = iso(dk.door[0], dk.door[1], SLAB), dG = iso(dk.door[0], dk.door[1], 0);
+    var via = dk.via.slice().reverse().map(function (p) { return iso(p[0], p[1], 0); });
+    var pts = [[a._p[0], a._p[1] - 30], [a._p[0], a._p[1] - 6], ps, dS, dG].concat(via).concat([[c[0], c[1] - 20], [c[0], c[1] - LIVE_LIFT - LIVE_H * 0.42]]);
     var segs = [], tot = 0;
     for (var i = 1; i < pts.length; i++) { var l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push(l); tot += l; }
     var NS = "http://www.w3.org/2000/svg", g = document.createElementNS(NS, "g");
@@ -2544,7 +2564,7 @@
   /* van naast de stoel van agent a naar deur 'side' (N/W achterwand, S voordeur, E zijdeur), via de
      gangpaden; eindigt buiten onderaan het opstapje (of op de drempel als toThreshold) */
   function routeOut(d, a, side, from, toThreshold) {
-    var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, gx = doorX(d), gy = doorY(d), fx = frontDoorX(d);
+    var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d, gx = doorX(d), gw = doorYW(d), ge = doorYE(d), fx = frontDoorX(d);
     var st = from || [x0 + a._lx + STAND_OFF[0], y0 + a._ly + STAND_OFF[1]];
     var ax = aisleX(d, a), row = aisleY(d, a);
     var R = [[st, SLAB], [[ax, st[1]], SLAB]];
@@ -2554,9 +2574,9 @@
         [[p[0] + n[0] * OUT, p[1] + n[1] * OUT], 0]);
     }
     if (side === "N") { R.push([[ax, y0 + WALL + 0.2], SLAB], [[gx, y0 + WALL + 0.2], SLAB]); out([gx, y0], [0, -1]); }
-    if (side === "W") { R.push([[ax, row], SLAB], [[x0 + WALL + 0.2, row], SLAB], [[x0 + WALL + 0.2, gy], SLAB]); out([x0, gy], [-1, 0]); }
+    if (side === "W") { R.push([[ax, row], SLAB], [[x0 + WALL + 0.2, row], SLAB], [[x0 + WALL + 0.2, gw], SLAB]); out([x0, gw], [-1, 0]); }
     if (side === "S") { R.push([[ax, y1 - 1.0], SLAB], [[fx, y1 - 1.0], SLAB]); out([fx, y1], [0, 1]); }
-    if (side === "E") { R.push([[ax, row], SLAB], [[x1 - ER, row], SLAB], [[x1 - ER, gy], SLAB]); out([x1, gy], [1, 0]); }
+    if (side === "E") { R.push([[ax, row], SLAB], [[x1 - ER, row], SLAB], [[x1 - ER, ge], SLAB]); out([x1, ge], [1, 0]); }
     return R;
   }
   function routeLen(R) { var L = 0; for (var i = 1; i < R.length; i++) L += Math.hypot(R[i][0][0] - R[i - 1][0][0], R[i][0][1] - R[i - 1][0][1]); return L; }
@@ -2593,10 +2613,10 @@
     return bi;
   }
   function outRect(d) { return [d.x - OUT, d.y - OUT, d.x + d.w + OUT, d.y + d.d + OUT]; }
-  /* overleg in een andere afdeling: eigen deur uit (de dichtstbijzijnde bij de pijp), langs de omtrek naar
-     de pijp, langs de pijp naar het brein, om het brein heen (bij voorkeur langs de voorkant), langs de
-     pijp van de andere afdeling, om die afdeling heen (bij voorkeur langs de voorkant) naar de voordeur,
-     naar binnen en via de gangpaden naar het bureau van de collega */
+  /* overleg in een andere afdeling (22-10): via de gangpaden naar de deur waar de eigen pijp aansluit,
+     langs de pijp naar het brein, om het brein heen (bij voorkeur langs de voorkant), langs de pijp van de
+     andere afdeling recht naar de deur waar die pijp aansluit, naar binnen en via de gangpaden naar het
+     bureau van de collega. Geen omwegen meer om afdelingen heen. */
   function visitRoute(d, a, dt, t, vis, inOverride) {
     var start = [d.x + a._lx + STAND_OFF[0], d.y + a._ly + STAND_OFF[1]];
     if (d === dt) {
@@ -2605,61 +2625,24 @@
          collega -> zijn gangpad -> naast zijn stoel; zo loopt hij altijd tussen de eilanden door, langs de bureaus */
       return cleanRoute([[start, SLAB], [[ax, start[1]], SLAB], [[ax, rowT], SLAB], [[axT, rowT], SLAB], [[axT, vis[1]], SLAB], [vis, SLAB]]);
     }
-    var dkS = dockInfo(d), pm = perim(outRect(d)), Cs = dkS.out, sC = pS(pm, Cs), best = null;
-    ["N", "W", "S", "E"].forEach(function (sd) {
-      /* deur en richting om de afdeling: kort, en zo min mogelijk achter de hoge achtermuren langs */
-      var R0 = routeOut(d, a, sd), e0 = R0[R0.length - 1][0], sA = pS(pm, e0);
-      [pPath(pm, sA, sC, 1), pPath(pm, sA, sC, -1)].forEach(function (pp) {
-        var L = routeLen(R0) + pp.len + 4 * hiddenLen(d, [e0].concat(pp.pts));
-        if (!best || L < best.L) best = { L: L, R: R0, P: pp.pts };
-      });
-    });
-    var R = best.R.slice();
-    best.P.forEach(function (p) { R.push([p, 0]); });
-    var dkT = dockInfo(dt), pmT = perim(outRect(dt)), Ct = dkT.out, sCt = pS(pmT, Ct), ring = perim([-RING, -RING, RING, RING]);
+    var dkS = dockInfo(d), dkT = dockInfo(dt), R = routeOut(d, a, dkS.k), ring = perim([-RING, -RING, RING, RING]);
     function onRing(c) { var m = RING / Math.max(Math.abs(c[0]), Math.abs(c[1]), 1e-6); return [c[0] * m, c[1] * m]; }
     function beside(c) { var L = Math.hypot(c[0], c[1]) || 1, n = [-c[1] / L, c[0] / L]; if (n[0] + n[1] < 0) n = [-n[0], -n[1]]; return [n[0] * 0.3, n[1] * 0.3]; }
-    /* langs de pijp (met knik als die er is): buitenpunt -> knikpunten -> ring om het brein, 0,3 cel ernaast */
+    /* langs de pijp: buiten voor de deur -> knik -> ring om het brein, 0,3 cel ernaast */
     function alongPipe(dk) {
-      var first = (dk.via && dk.via[0]) || dk.out, n = beside(first), Rg = onRing(first);
-      var P = [dk.out].concat((dk.via || []).slice().reverse()).concat([Rg]);
+      var first = dk.via[0], n = beside(first), Rg = onRing(first);
+      var P = [dk.out].concat(dk.via.slice().reverse()).concat([Rg]);
       return P.map(function (p) { return [p[0] + n[0], p[1] + n[1]]; }).concat([Rg]);
     }
     var srcPipe = alongPipe(dkS), dstPipe = alongPipe(dkT).reverse();
-    var As = srcPipe[srcPipe.length - 1], At = dstPipe[0], nt = beside((dkT.via && dkT.via[0]) || Ct);
-    R.push([Cs, 0]); srcPipe.forEach(function (p) { R.push([p, 0]); });
+    srcPipe.forEach(function (p) { R.push([p, 0]); });
+    var As = srcPipe[srcPipe.length - 1], At = dstPipe[0];
     var sA = pS(ring, As), sB = pS(ring, At), r1 = pPath(ring, sA, sB, 1), r2 = pPath(ring, sA, sB, -1);
     function front(p) { return p.corners.indexOf(2) >= 0; }
     var rp = front(r1) && !front(r2) && r1.len <= r2.len * 1.7 ? r1 : front(r2) && !front(r1) && r2.len <= r1.len * 1.7 ? r2 : (r1.len <= r2.len ? r1 : r2);
     rp.pts.forEach(function (p) { R.push([p, 0]); });
-    var inR = inOverride || routeOut(dt, t, "S", vis).reverse();   /* kantine: eigen route van de voordeur naar de statafel */
-    var sF = pS(pmT, inR[0][0]), q1 = pPath(pmT, sCt, sF, 1), q2 = pPath(pmT, sCt, sF, -1);
-    function back(p) { return p.corners.indexOf(0) >= 0; }
-    var qp = back(q1) && !back(q2) ? q2 : back(q2) && !back(q1) ? q1 : (q1.len <= q2.len ? q1 : q2);
-    var tail = dstPipe.slice(1).concat([Ct]).concat(qp.pts);
-    /* zit de pijp aan de achterhoek (achter de hoge muren), dan halverwege de pijp afbuigen naar een
-       zijhoek, zodat de loper zichtbaar langs de voorkant naar de voordeur loopt */
-    if (dkT.k === "C0" || back(qp)) {
-      /* afbuigpunt op de pijp zo hoog op het scherm dat de loper boven de hoge achtermuur langs loopt */
-      var r = pmT.r, sAt = At[0] + At[1], sCt2 = Ct[0] + Ct[1], aim = dt.x + dt.y - (SLAB + WALL_H + 12) / HH;
-      var tb = sCt2 !== sAt ? Math.max(0.15, Math.min(0.6, (aim - sAt) / (sCt2 - sAt))) : 0.5;
-      var Mp = [At[0] + nt[0] + (Ct[0] - At[0]) * tb, At[1] + nt[1] + (Ct[1] - At[1]) * tb], alt = null;
-      [[3, Mp[0] <= r[0]], [1, Mp[1] <= r[1]]].forEach(function (c) {
-        if (!c[1]) return;
-        var sc = pmT.cs[c[0]], cp = pP(pmT, sc), a1 = pPath(pmT, sc, sF, 1), a2 = pPath(pmT, sc, sF, -1);
-        var ap = !back(a1) ? (!back(a2) && a2.len < a1.len ? a2 : a1) : (!back(a2) ? a2 : null);
-        if (!ap) return;
-        /* eerst op schermhoogte opzij (x + y gelijk) tot naast de muur, dan recht naar de hoek: zo loopt hij
-           niet achter de hoge zijmuur langs */
-        var s0 = Mp[0] + Mp[1], m = cp[0] - cp[1] + (c[0] === 3 ? -0.3 : 0.3), Q = [(s0 + m) / 2, (s0 - m) / 2], via = [];
-        if (s0 < cp[0] + cp[1] - 0.5 && !segHitsDept(Mp, Q) && !segHitsDept(Q, cp)) via = [Q];
-        else if (segHitsDept(Mp, cp)) return;
-        var L = Math.hypot(cp[0] - Mp[0], cp[1] - Mp[1]) + ap.len;
-        if (!alt || L < alt.L) alt = { L: L, pts: via.concat([cp]).concat(ap.pts) };
-      });
-      if (alt) tail = [[At[0] + nt[0], At[1] + nt[1]], Mp].concat(alt.pts);
-    }
-    tail.forEach(function (p) { R.push([p, 0]); });
+    dstPipe.slice(1).concat([dkT.out]).forEach(function (p) { R.push([p, 0]); });
+    var inR = inOverride || routeOut(dt, t, dkT.k, vis).reverse();   /* kantine: eigen route van de deur naar de statafel */
     return cleanRoute(R.concat(inR));
   }
   function segHitsDept(p, q) { return S.depts.some(function (d) { return segHitsRect(p, q, d, 0.3); }) || !!(S.canteen && segHitsRect(p, q, S.canteen, 0.3)); }
@@ -2711,13 +2694,18 @@
   }
 
   /* ---- 21-10 kantine: overleg aan een statafel ---- */
-  /* route binnen de kantine: voordeur -> gang voor de tafels -> dichtstbijzijnde looppad -> staplek (lokaal sp) */
+  /* route binnen de kantine (22-10): pijpdeur -> vrije gang (achter de tafels, of via een buitenste looppad
+     naar de gang voor de tafels) -> dichtstbijzijnde looppad -> staplek (lokaal sp) */
   function canteenIn(sp) {
-    var c = S.canteen, fx = c.fdx, y1 = c.y + c.d, row = y1 - 1.0, lane = CT_LANES[0];
+    var c = S.canteen, dk = dockInfo(c), g = dk.door, n = dk.n, x0 = c.x, y0 = c.y, y1 = c.y + c.d, row = y1 - 1.0, lane = CT_LANES[0];
     CT_LANES.forEach(function (l) { if (Math.abs(l - sp[0]) < Math.abs(lane - sp[0])) lane = l; });
-    var lx = c.x + lane, sx = c.x + sp[0], sy = c.y + sp[1];
-    return cleanRoute([[[fx, y1 + OUT], 0], [[fx, y1 + 0.37], SLAB / 3], [[fx, y1 + 0.12], SLAB * 2 / 3], [[fx, y1], SLAB],
-      [[fx, row], SLAB], [[lx, row], SLAB], [[lx, sy], SLAB], [[sx, sy], SLAB]]);
+    var lx = x0 + lane, sx = x0 + sp[0], sy = y0 + sp[1];
+    var R = [[dk.out, 0], [[g[0] + n[0] * 0.37, g[1] + n[1] * 0.37], SLAB / 3], [[g[0] + n[0] * 0.12, g[1] + n[1] * 0.12], SLAB * 2 / 3], [g, SLAB]];
+    if (dk.k === "S") R.push([[g[0], row], SLAB], [[lx, row], SLAB]);
+    else if (dk.k === "N") R.push([[g[0], y0 + 1.5], SLAB], [[lx, y0 + 1.5], SLAB]);
+    else { var ex = x0 + (dk.k === "W" ? CT_LANES[0] : CT_LANES[CT_LANES.length - 1]); R.push([[ex, g[1]], SLAB], [[ex, row], SLAB], [[lx, row], SLAB]); }
+    R.push([[lx, sy], SLAB], [[sx, sy], SLAB]);
+    return cleanRoute(R);
   }
   function freeTable() {
     var used = S.subs.filter(function (s) { return s.live && s.meet; }).map(function (s) { return s.table; }), order = [2, 3, 0, 1];   /* voorste tafels eerst */
@@ -2816,8 +2804,8 @@
   function subSpot(d) {
     var x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d;
     var doors = {
-      S: { p: [frontDoorX(d), y1], n: [0, 1], t: [1, 0] }, E: { p: [x1, doorY(d)], n: [1, 0], t: [0, 1] },
-      N: { p: [doorX(d), y0], n: [0, -1], t: [1, 0] }, W: { p: [x0, doorY(d)], n: [-1, 0], t: [0, 1] }
+      S: { p: [frontDoorX(d), y1], n: [0, 1], t: [1, 0] }, E: { p: [x1, doorYE(d)], n: [1, 0], t: [0, 1] },
+      N: { p: [doorX(d), y0], n: [0, -1], t: [1, 0] }, W: { p: [x0, doorYW(d)], n: [-1, 0], t: [0, 1] }
     };
     var cx = x0 + d.w / 2, cy = y0 + d.d / 2;
     var order = ["S", "E", "N", "W"].sort(function (a, b) {
