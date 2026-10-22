@@ -235,6 +235,8 @@ document.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;
   if(c&&(!p||p.contains(c))){e.stopPropagation();
     /* in Binnenkomend opent een aanvraag het contact rechts in hetzelfde venster, op Contactmomenten (Rick, 22-10-2026) */
     if(c.closest("#p-ac .feed")){acPick(c);return}
+    /* een aanvraag op Overzicht opent die aanvraag in de tab Aanvragen, niet het losse contact (Rick, 22-10-2026) */
+    if(c.closest(".ov-act .feed")){acSel=c.dataset.fr||c.dataset.c;goHash("ac");return}
     FLREQ=null;go.c(c.dataset.c);return}
   if(p){
     /* een woning opent altijd volledig scherm; vanuit de lijst onthouden we de scrollpositie voor 'Terug' */
