@@ -229,7 +229,8 @@ $("#prAll").onclick=()=>{prFocus=false;prFrom=null;applyPrFocus();if(/^#?p\//.te
 document.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;
   const del=e.target.closest("[data-del-id]");if(del){e.stopPropagation();e.preventDefault();delActivity(del.dataset.delK,del.dataset.delId);return}
   const c=e.target.closest("[data-c]"), p=e.target.closest("[data-p]");
-  if(c&&(!p||p.contains(c))){e.stopPropagation();go.c(c.dataset.c);return}
+  /* vanuit Binnenkomend opent het contact altijd op Contactmomenten, met de aangeklikte aanvraag gemarkeerd in de formulierflows (Rick, 22-10-2026) */
+  if(c&&(!p||p.contains(c))){e.stopPropagation();if(c.closest("#p-ac")){ctSub="tijdlijn";FLREQ=c.dataset.fr||null}else FLREQ=null;go.c(c.dataset.c);return}
   if(p){
     /* een woning opent altijd volledig scherm; vanuit de lijst onthouden we de scrollpositie voor 'Terug' */
     const fromList=!!p.closest("#prRows");
@@ -340,7 +341,7 @@ async function delActivity(k,id){
 function feedHtml(list){
   const IC={request:["#ec4899","✉"],lead:["#f59e0b","★"],viewing:["#22c55e","◉"]};
   if(!list||!list.length)return`<div class="empty">${t("noactivity")}</div>`;
-  return list.map(a=>{const ic=IC[a.kind]||IC.request;return `<div class="it" ${a.contact_wp_id?`data-c="${a.contact_wp_id}"`:""}>
+  return list.map(a=>{const ic=IC[a.kind]||IC.request;return `<div class="it" ${a.contact_wp_id?`data-c="${a.contact_wp_id}"`:""}${a.kind==="request"&&a.id?` data-fr="${esc(a.id)}"`:""}>
     <div class="ic" style="--ic:${ic[0]}">${ic[1]}</div>
     <div style="min-width:0"><div class="t">${esc(a.name||t("unknown"))}</div><div class="d">${esc(a.kind==="request"?rq(a.type):a.type)}${a.ref?" · "+esc(a.ref):""} · <span style="color:${REPC[a.rep]||"#64748b"}">${esc(rep(a.rep||""))}</span></div></div>
     <span class="sm muted" style="display:flex;align-items:center;gap:6px">${ago(a.ts)}${a.kind==="request"?delBtn("request",a.id):""}</span></div>`}).join("")}
@@ -366,7 +367,7 @@ async function loadContacts(reset){
   if(ctOff<r.total){box.insertAdjacentHTML("beforeend",`<div class="more"><button class="btn" id="ctMore">${t("more",{n:num(r.total-ctOff)})}</button></div>`);$("#ctMore").onclick=()=>loadContacts(false)}
   if(reset)box.insertAdjacentHTML("afterbegin",`<div class="sub muted sm" style="padding:6px 12px">${t("n.contacts",{n:num(r.total)})}</div>`);
 }
-let ctSub="profiel", CT=null;
+let ctSub="profiel", CT=null, FLREQ=null;
 async function openContact(id){
   id=String(id);ctSel=id;$$("#ctRows .row").forEach(r=>r.classList.toggle("sel",r.dataset.c===id));
   if(!ctLoaded)loadContacts(true);
@@ -404,7 +405,8 @@ function renderContact(){
   const B=$("#ctBody");
   if(ctSub==="profiel")B.innerHTML=ctProfile(c,raw);
   if(ctSub==="woningen")B.innerHTML=ctProps();
-  if(ctSub==="tijdlijn")B.innerHTML=timeline(CT.timeline);
+  if(ctSub==="tijdlijn"){B.innerHTML=`<div id="ctFlows"></div>`+timeline(CT.timeline);
+    if(window.NEXUS_FLOWS)NEXUS_FLOWS.open($("#ctFlows"),c.key||c.id,FLREQ,{rpc,rq,lang:()=>LANG})}
   if(ctSub==="relaties")B.innerHTML=ctRelations(c);
   if(ctSub==="mailings")B.innerHTML=ctMailings(c);
   B.querySelectorAll("[data-cedit]").forEach(ce=>ce.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.openContact(c.key||c.id||c.wp_id,{sb,rpc,lang:()=>LANG,me:()=>ME,onSaved:()=>{openContact(ctSel);loadContacts(true)}}));
