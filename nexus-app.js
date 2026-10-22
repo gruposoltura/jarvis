@@ -340,7 +340,7 @@ const delBtn=(k,id)=>isAdmin()&&id!=null?`<button class="act-del" data-del-k="${
 async function delActivity(k,id){
   if(!confirm(t("act.del.confirm")))return;
   try{await rpc("nexus_activity_delete",{p_kind:k,p_id:String(id)})}catch(e){alert(e.message);return}
-  OV=null;ovLoaded=false;
+  OV=null;ovLoaded=false;AC=null;
   if(curTab==="ov")loadOverview();
   if(curTab==="ac")loadActivity();
   if(curTab==="ct"&&ctSel)openContact(ctSel);
@@ -1227,15 +1227,56 @@ function acPick(row){if(!row)return;
   acSel=row.dataset.fr||row.dataset.c;ctSub="tijdlijn";FLREQ=row.dataset.fr||null;
   const slot=$("#acSlot"),d=$("#ctDetail");if(slot&&d&&d.parentNode!==slot){if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};slot.appendChild(d)}
   if(ctSel===String(row.dataset.c)&&CT)renderContact();else openContact(row.dataset.c,{noScroll:true})}
+/* Filter op Aanvragen (Rick, 22-10-2026): per soort websiteformulier, per portaal (Idealista; nieuwe portalen komen
+   vanzelf mee via core.request_portals) en de oude site. Bron: RPC nexus_requests_feed (migratie 068). Keuze blijft onthouden. */
+let acFilter=(()=>{try{return localStorage.getItem("nexus-ac-filter")||"all"}catch(e){return"all"}})(), AC=null, acOff=0, acSeq=0;
+const AC_GRP={web:["Website","Website"],portal:["Portalen","Portals"],old:["",""]};
+function acChips(){
+  if(!AC||!AC.filters)return"";
+  const all=AC.filters.reduce((a,f)=>a+Number(f.n||0),0);
+  const chip=(k,lbl,n,c,dim)=>`<span class="chip ${acFilter===k?"on":""}${dim?" dim":""}" data-acf="${esc(k)}" style="--cc:${c}">${esc(lbl)}${n!=null?` <b>${num(n)}</b>`:""}</span>`;
+  let h=chip("all",L2("Alle","All"),all,"var(--c-ac)"), grp="";
+  AC.filters.forEach(f=>{
+    if(f.grp!==grp){grp=f.grp;const g=AC_GRP[grp]||["",""];h+=g[0]?`<span class="ac-fg">${esc(L2(g[0],g[1]))}</span>`:`<span class="ac-fg"></span>`}
+    const c=f.grp==="portal"?"#84cc16":f.grp==="old"?"#64748b":"var(--c-ac)";
+    h+=chip(f.key,LANG==="en"?f.en:f.nl,f.n,c,!Number(f.n));
+  });
+  return h;
+}
+function acListHtml(){
+  if(!AC)return`<div class="loader">${t("loading")}</div>`;
+  const more=AC.total>acOff?`<div class="more ac-more"><button class="btn" data-acmore="1">${esc(L2(`Meer laden (${num(AC.total-acOff)} over)`,`Load more (${num(AC.total-acOff)} left)`))}</button></div>`:"";
+  return feedHtml(AC.rows)+more;
+}
+function acBind(){
+  $$("#p-ac [data-acf]").forEach(c=>c.onclick=()=>{if(acFilter===c.dataset.acf)return;acFilter=c.dataset.acf;
+    try{localStorage.setItem("nexus-ac-filter",acFilter)}catch(e){}acSel=null;loadActivity()});
+  const m=$("#p-ac [data-acmore]");if(m)m.onclick=async()=>{m.disabled=true;const my=acSeq;
+    let r;try{r=await rpc("nexus_requests_feed",{p_filter:acFilter,p_limit:50,p_offset:acOff})}catch(e){m.disabled=false;alert(e.message);return}
+    if(my!==acSeq)return;AC.rows=AC.rows.concat(r.rows||[]);acOff+=(r.rows||[]).length;
+    const box=$("#p-ac .feed"),sel=acSel;box.innerHTML=acListHtml();acBind();
+    $$("#p-ac .feed .it").forEach(x=>x.classList.toggle("sel",(x.dataset.fr||x.dataset.c)===sel))};
+}
 async function loadActivity(){
   ctDetailHome();
-  const p=$("#p-ac");if(!OV){p.innerHTML=`<div class="loader">${t("loading")}</div>`;try{OV=await rpc("nexus_overview")}catch(e){p.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}}
-  if(curTab!=="ac")return;
-  p.innerHTML=`<div class="split ac-split">
-    <div class="card list"><div class="hd"><h3>${t("ac.req")}</h3><span class="sm muted">${t("ac.7d",{n:num(OV.requests_7d)})}</span></div><div class="rows scroll feed">${feedHtml(OV.activity)}</div></div>
+  const p=$("#p-ac"), my=++acSeq;
+  if(!AC||AC.filter!==acFilter)AC=null;
+  if(!p.querySelector(".ac-split"))p.innerHTML=`<div class="split ac-split">
+    <div class="card list"><div class="hd"><h3>${t("ac.req")}</h3><span class="sm muted" id="acCnt"></span></div>
+      <div class="toolbar ac-filter" id="acFilter"></div><div class="rows scroll feed"></div></div>
     <div class="ac-slot" id="acSlot"></div></div>`;
+  $("#p-ac .feed").innerHTML=acListHtml();
+  let r;try{r=await rpc("nexus_requests_feed",{p_filter:acFilter,p_limit:50,p_offset:0})}
+  catch(e){if(my===acSeq)$("#p-ac .feed").innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
+  if(my!==acSeq||curTab!=="ac")return;
+  if(r.filter!==acFilter&&acFilter!=="all"&&!(r.filters||[]).some(f=>f.key===acFilter)){acFilter="all"}
+  AC=r;acOff=(r.rows||[]).length;
+  $("#acFilter").innerHTML=acChips();
+  $("#acCnt").textContent=t("ac.7d",{n:num(r.total_7d||0)});
+  $("#p-ac .feed").innerHTML=(r.rows||[]).length?acListHtml():`<div class="empty">${esc(L2("Geen aanvragen voor dit filter","No requests for this filter"))}</div>`;
+  acBind();
   const rows=$$("#p-ac .feed .it[data-c]");
-  acPick(rows.find(r=>(r.dataset.fr||r.dataset.c)===acSel)||rows[0]);
+  acPick(rows.find(x=>(x.dataset.fr||x.dataset.c)===acSel)||rows[0]);
 }
 
 })();

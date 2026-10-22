@@ -20,9 +20,9 @@ const repName=e=>REPN[String(e||"").toLowerCase()]||e||"";
 const QL={hot:["Hot","Hot"],warm:["Warm","Warm"],cold:["Cold","Cold"],none:["Geen lead","No lead"]};
 /* zelfde tabel als LeadProcessor-v2 (Build scoring prompt, 22-10-2026) plus de oude-site-typen */
 const QT={
-  hot:["viewing","valuation","bookaviewing","book-viewing","makeoffer","make-offer","callme","sellforfree"],
+  hot:["viewing","valuation","bookaviewing","book-viewing","makeoffer","make-offer","offer","idealista-offer","callme","sellforfree"],
   warm:["costs","move","contact","contact-form","general-homepage","general_enquiry","purchaseinfo","guide","property-details","agent","info","mortgage","setprice","listings","listingshelp",
-        "3rdkyero","3rdthinkspain","3rdmovechannel","3rdpropaway","3rdpropshowrms","3rdeudomi","huizeninspanje","ferienbolig","solturadirect","apprequest","order","idealista"],
+        "3rdkyero","3rdthinkspain","3rdmovechannel","3rdpropaway","3rdpropshowrms","3rdeudomi","huizeninspanje","ferienbolig","solturadirect","apprequest","order","idealista","idealista-message"],
   cold:["favorite","favorites","favourite","notify","notify-back","pdfbrochure","pdf-brochure","searchdetails","search-details","emailalert","bargain","secretdeals","dashboard"],
   none:["newsletter","optin"]};
 function qual(f){
@@ -76,7 +76,9 @@ function steps(f){
     if(isGuide||isVal){const fo=f.follow;
       S.push({id:isGuide?"gids":"seller",st:fo?(fo.status==="error"?"fail":"done"):(lp&&late?"fail":"wait"),t:isGuide?tr(["Aankoopgids","Buying guide"]):"SellerGuide",
         s:fo?(fo.attachment?tr(["met PDF","with PDF"]):tr(["verstuurd","sent"])):tr(["wacht","waiting"])});}
-    S.push({id:"mail",st:mailSt(mail)||(lp&&late?"skip":"wait"),t:tr(["Mail klant","Client email"]),s:mail?mailSub(mail):(lp&&late?tr(["niet gevonden","not found"]):tr(["wacht","waiting"]))});
+    /* portalen (Idealista) leveren geen e-mailadres: geen automatische klantmail, de rep belt of whatsappt (Rick, 22-10-2026) */
+    if(o==="other"&&!mail)S.push({id:"call",st:lp?"skip":"wait",t:tr(["Bellen / WhatsApp","Call / WhatsApp"]),s:tr(["geen e-mail","no email"])});
+    else S.push({id:"mail",st:mailSt(mail)||(lp&&late?"skip":"wait"),t:tr(["Mail klant","Client email"]),s:mail?mailSub(mail):(lp&&late?tr(["niet gevonden","not found"]):tr(["wacht","waiting"]))});
     if(q==="hot")S.push({id:"hot",st:lp?"done":"wait",t:tr(["Agenda","Calendar"]),s:tr(["+ cc Rick","+ cc Rick"])});
   } else if(r==="newsletter"){
     const fo=f.follow;S.push({id:"nl",st:fo?(fo.status==="error"?"fail":"done"):(late?"fail":"wait"),t:"NewsletterConfirm",s:fo?(fo.lang||"").toUpperCase():tr(["wacht","waiting"])});
@@ -108,8 +110,8 @@ const INFO={
      "Reads the form (name, fields, UTM, property) and picks the follow-up: LeadProcessor for questions and the buying guide, NewsletterConfirm for the newsletter, FavoritesMail for favourites, BackOnMarket for a notify request."]],
     facts:[[tr(["Verwerkt","Processed"]),f.web&&f.web.processed_at?dmyt(f.web.processed_at):"—"],[tr(["Route","Route"]),f.intake&&f.intake.route],[tr(["Doorgestuurd","Forwarded"]),f.intake?(f.intake.routed?tr(["ja","yes"]):tr(["nee","no"])):"—"],
       [tr(["Reden","Reason"]),f.intake&&f.intake.skip],[tr(["Fout","Error"]),(f.web&&f.web.error)||(f.intake&&f.intake.error)]]}),
-  bridge:f=>({h:["Doorgifte","Hand-over"],p:[["Deze aanvraag kwam niet via het websiteformulier binnen, maar via een ander kanaal (bijvoorbeeld Idealista) en werd door WpLeadBridge-v2 in NEXUS gezet.",
-    "This request did not come in through the website form but through another channel (for example Idealista) and was put into NEXUS by WpLeadBridge-v2."]],facts:[[tr(["Bron","Source"]),f.source],[tr(["Tijd","Time"]),f.intake&&dmyt(f.intake.at)]]}),
+  bridge:f=>({h:["Doorgifte","Hand-over"],p:[["Deze aanvraag kwam niet via het websiteformulier binnen, maar via een ander kanaal (bijvoorbeeld Idealista) en werd door IdealistaLeadIntake en WpLeadBridge-v2 in NEXUS gezet.",
+    "This request did not come in through the website form but through another channel (for example Idealista) and was put into NEXUS by IdealistaLeadIntake and WpLeadBridge-v2."]],facts:[[tr(["Bron","Source"]),f.source],[tr(["Tijd","Time"]),f.intake&&dmyt(f.intake.at)]]}),
   nexus:f=>({h:["NEXUS · contact + aanvraag","NEXUS · contact + request"],p:[["Het contact is gevonden op e-mail of telefoon, of nieuw aangemaakt als Suspect. De aanvraag staat als contactmoment bij het contact. Hetzelfde formulier wordt nooit twee keer verwerkt.",
     "The contact was matched on email or phone, or created as a new Suspect. The request is stored as a contact moment. The same form is never processed twice."]],facts:[[tr(["Aangemaakt","Created"]),dmyt(f.ts)],[tr(["Status aanvraag","Request status"]),f.status]]}),
   import:f=>({h:["Geïmporteerd uit de oude site","Imported from the old site"],p:[["Deze aanvraag kwam binnen via de oude WordPress-site en is bij de overstap naar NEXUS geïmporteerd. De opvolging liep toen via de oude flow; daar zijn hier geen stappen van bewaard.",
@@ -132,6 +134,8 @@ const INFO={
     "The request stays open until the reserved property is available again. Then BackOnMarket emails the visitor and closes the request."]],facts:[[tr(["Woning","Property"]),f.ref],["Status",f.status]]}),
   mail:f=>({h:["Mail aan de klant","Email to the client"],p:[["Transactionele mail via Brevo, met de rep als reply-to. Hieronder de status zoals Brevo die terugmeldt.","Transactional email via Brevo, with the rep as reply-to. Below is the status as reported back by Brevo."]],
     facts:(f.mails||[]).map(m=>[hm(m.at)+" · "+(m.subject||""),(m.events||[]).join(", ")])}),
+  call:f=>({h:["Bellen of WhatsApp","Call or WhatsApp"],p:[["Deze lead kwam via een portaal zonder e-mailadres van de klant. JARVIS stuurt dus geen mail; de leadcard vraagt de rep om te bellen of te whatsappen. Reageert de klant via het portaal, dan wordt daar geantwoord.",
+    "This lead came through a portal without the client's email address. JARVIS therefore sends no email; the lead card asks the rep to call or WhatsApp. If the client replies through the portal, the answer goes there."]],facts:[[tr(["Bron","Source"]),f.source],[tr(["Rep","Rep"]),f.lp&&repName(f.lp.rep)]]}),
   hot:f=>({h:["Hot: agenda en cc Rick","Hot: calendar and cc Rick"],p:[["Bij een Hot lead staat Rick in cc op de leadcard en komt er een afspraak in de agenda van de rep: bij terugbellen 2 uur na binnenkomst, anders 10:00 op de eerstvolgende werkdag.",
     "For a Hot lead Rick is cc'd on the lead card and the rep gets a calendar event: for a call-back 2 hours after arrival, otherwise 10:00 on the next working day."]],facts:[[tr(["Rep","Rep"]),f.lp&&repName(f.lp.rep)]]}),
   end:f=>({h:["Afgerond","Done"],p:[["Het formulier is als verwerkt gemarkeerd en elke run staat in jarvis_runs. Blijft een formulier 30 minuten liggen, dan meldt JARVIS dat direct.",
@@ -147,7 +151,8 @@ function sendGroups(f){const G={};(f._sends||[]).forEach(m=>{const k=m.title||"m
 const dm=ts=>{if(!ts)return"";const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")};
 function flowHtml(f,i){
   const q=qual(f), S=steps(f), o=f._synthetic?"optin":origin(f), G=sendGroups(f);
-  const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],other:[f.source||"Overig",f.source||"Other"]};
+  const PORT={idealista:"Idealista"};
+  const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],other:[PORT[f.source]||f.source||"Overig",PORT[f.source]||f.source||"Other"]};
   const title=f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):(X.rq(f.key)||f.key);
   return `<div class="fl-card q-${q}${f.id===RID?" on":""}" data-fi="${i}">
     <div class="fl-hd"><span class="fl-q">${esc(tr(QL[q]))}</span><b class="fl-t">${esc(title)}</b>${f.ref?`<span class="fl-ref" data-p="${esc(f.ref)}">${esc(f.ref)}</span>`:""}

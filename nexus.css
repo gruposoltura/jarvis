@@ -1318,3 +1318,12 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .fl-si:last-child{border-bottom:0}.fl-si:hover{background:var(--card2)}.fl-si:focus-visible{outline:2px solid var(--qc);outline-offset:-2px}
 .fl-si[disabled]{cursor:default}.fl-si[disabled]:hover{background:none}
 .fl-sd{color:var(--tx3);font-variant-numeric:tabular-nums;white-space:nowrap}.fl-ss{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fl-sm{color:var(--tx3);white-space:nowrap}
+
+/* ---------- Aanvragen-filter: soort websiteformulier · portaal · oude site (Rick, 22-10-2026) ---------- */
+.ac-filter{gap:6px;padding:8px 12px;max-height:132px;overflow:auto;scrollbar-width:thin}
+.ac-filter .chip{padding:3px 9px;font-size:calc(11.5px*var(--fs,1))}
+.ac-filter .chip.dim{opacity:.45}
+.ac-filter .chip.dim.on{opacity:1}
+.ac-fg{flex-basis:100%;font-size:calc(10px*var(--fs,1));letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);font-weight:600;margin:2px 0 -2px}
+.ac-fg:empty{height:0;margin:0}
+.ac-more{padding:10px 14px;text-align:center}
