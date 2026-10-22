@@ -167,7 +167,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden&&booted)lo
 /* ================= TABS / ROUTING ================= */
 const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp",vw:"--c-vw",fa:"--c-fa",cn:"--c-cn"};
 let curTab="ov";
-function setTab(t_,ref){curTab=t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t_));
+function setTab(t_,ref){curTab=t_;if(t_!=="ac")ctDetailHome();$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===t_));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
   document.documentElement.style.setProperty("--acc",`var(${TABC[t_]})`);
   if(t_==="ov"&&!ovLoaded)loadOverview();
@@ -230,7 +230,10 @@ document.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;
   const del=e.target.closest("[data-del-id]");if(del){e.stopPropagation();e.preventDefault();delActivity(del.dataset.delK,del.dataset.delId);return}
   const c=e.target.closest("[data-c]"), p=e.target.closest("[data-p]");
   /* vanuit Binnenkomend opent het contact altijd op Contactmomenten, met de aangeklikte aanvraag gemarkeerd in de formulierflows (Rick, 22-10-2026) */
-  if(c&&(!p||p.contains(c))){e.stopPropagation();if(c.closest("#p-ac")){ctSub="tijdlijn";FLREQ=c.dataset.fr||null}else FLREQ=null;go.c(c.dataset.c);return}
+  if(c&&(!p||p.contains(c))){e.stopPropagation();
+    /* in Binnenkomend opent een aanvraag het contact rechts in hetzelfde venster, op Contactmomenten (Rick, 22-10-2026) */
+    if(c.closest("#p-ac .feed")){acPick(c);return}
+    FLREQ=null;go.c(c.dataset.c);return}
   if(p){
     /* een woning opent altijd volledig scherm; vanuit de lijst onthouden we de scrollpositie voor 'Terug' */
     const fromList=!!p.closest("#prRows");
@@ -367,8 +370,8 @@ async function loadContacts(reset){
   if(ctOff<r.total){box.insertAdjacentHTML("beforeend",`<div class="more"><button class="btn" id="ctMore">${t("more",{n:num(r.total-ctOff)})}</button></div>`);$("#ctMore").onclick=()=>loadContacts(false)}
   if(reset)box.insertAdjacentHTML("afterbegin",`<div class="sub muted sm" style="padding:6px 12px">${t("n.contacts",{n:num(r.total)})}</div>`);
 }
-let ctSub="profiel", CT=null, FLREQ=null;
-async function openContact(id){
+let ctSub="profiel", CT=null, FLREQ=null, acSel=null, CTHOME=null;
+async function openContact(id,opt){
   id=String(id);ctSel=id;$$("#ctRows .row").forEach(r=>r.classList.toggle("sel",r.dataset.c===id));
   if(!ctLoaded)loadContacts(true);
   const d=$("#ctDetail");d.innerHTML=`<div class="loader">${t("loading.ct")}</div>`;
@@ -378,7 +381,7 @@ async function openContact(id){
   if(!CT){d.innerHTML=`<div class="empty">${t("notfound.ct")}</div>`;return}
   renderContact();
   loadCampaigns(id);
-  if(innerWidth<1100)d.scrollIntoView({behavior:"smooth",block:"start"});
+  if(innerWidth<1100&&!(opt&&opt.noScroll))d.scrollIntoView({behavior:"smooth",block:"start"});
 }
 function renderContact(){
   const c=CT.contact, raw=CT.raw||{}, d=$("#ctDetail");
@@ -1204,13 +1207,25 @@ function renderMap(fit){
 }
 
 /* ================= ACTIVITEIT ================= */
+/* Binnenkomend (Rick, 22-10-2026): links de aanvragen, rechts het contactscherm van de gekozen aanvraag, altijd op Contactmomenten.
+   Bij openen staat het eerste contact uit de lijst al gekozen. Het contactscherm (#ctDetail) is één element dat tussen
+   Contacten en Binnenkomend verhuist, zodat bewerken, verwijderen, mailpreview en formulierflows overal hetzelfde werken. */
+function ctDetailHome(){const d=$("#ctDetail");if(!d)return;if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};
+  if(d.parentNode!==CTHOME.parent)CTHOME.parent.insertBefore(d,CTHOME.next&&CTHOME.next.parentNode===CTHOME.parent?CTHOME.next:null)}
+function acPick(row){if(!row)return;
+  $$("#p-ac .feed .it").forEach(r=>r.classList.toggle("sel",r===row));
+  acSel=row.dataset.fr||row.dataset.c;ctSub="tijdlijn";FLREQ=row.dataset.fr||null;
+  const slot=$("#acSlot"),d=$("#ctDetail");if(slot&&d&&d.parentNode!==slot){if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};slot.appendChild(d)}
+  if(ctSel===String(row.dataset.c)&&CT)renderContact();else openContact(row.dataset.c,{noScroll:true})}
 async function loadActivity(){
+  ctDetailHome();
   const p=$("#p-ac");if(!OV){p.innerHTML=`<div class="loader">${t("loading")}</div>`;try{OV=await rpc("nexus_overview")}catch(e){p.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}}
-  p.innerHTML=`<div class="split" style="grid-template-columns:1fr 1fr">
+  if(curTab!=="ac")return;
+  p.innerHTML=`<div class="split ac-split">
     <div class="card list"><div class="hd"><h3>${t("ac.req")}</h3><span class="sm muted">${t("ac.7d",{n:num(OV.requests_7d)})}</span></div><div class="rows scroll feed">${feedHtml(OV.activity)}</div></div>
-    <div class="card list"><div class="hd"><h3>${t("ac.view")}</h3><span class="sm muted">${t("ac.planned",{n:num(OV.viewings_upcoming)})}</span></div><div class="rows scroll feed">${viewingsHtml(OV.viewings)}
-    <div class="hd" style="border-top:1px solid var(--line)"><h3>${t("ov.notaries")}</h3></div>${notariesHtml(OV.notaries)}
-    <div class="hd" style="border-top:1px solid var(--line)"><h3>${t("ac.types")}</h3></div><div style="padding:12px 14px;display:flex;flex-wrap:wrap;gap:6px">${(OV.req_types_30d||[]).map(x=>`<span class="tag">${esc(rq(x.t))} · ${x.n}</span>`).join("")}</div></div></div></div>`;
+    <div class="ac-slot" id="acSlot"></div></div>`;
+  const rows=$$("#p-ac .feed .it[data-c]");
+  acPick(rows.find(r=>(r.dataset.fr||r.dataset.c)===acSel)||rows[0]);
 }
 
 })();

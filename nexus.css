@@ -1294,3 +1294,10 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .fl-st.done{color:var(--qc);background:color-mix(in srgb,var(--qc) 14%,transparent)}.fl-st.fail{color:#ef4444;background:rgba(239,68,68,.12)}
 .fl-x{all:unset;cursor:pointer;font-size:20px;line-height:1;color:var(--tx3);padding:2px 6px;border-radius:6px}
 .fl-x:hover{color:var(--hi)}.fl-x:focus-visible{outline:2px solid var(--qc)}
+
+/* ---------- Binnenkomend: aanvragen links, contactscherm rechts op Contactmomenten (Rick, 22-10-2026) ---------- */
+#p-ac > .ac-split{height:100%;min-height:0}
+.ac-slot{display:flex;min-height:0;min-width:0}
+.ac-slot > .detail{flex:1;min-width:0}
+.feed .it.sel{background:var(--card2);box-shadow:inset 3px 0 0 var(--c-ac)}
+@media (max-width:1100px){.ac-slot{min-height:70vh}}
