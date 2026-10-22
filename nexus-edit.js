@@ -449,7 +449,7 @@ async function quickStatus(ctx,id,ref,status,base){X=ctx;
 /* ---------- contact bewerken (compact) ---------- */
 /* Alle bewerkbare contactvelden (core.contacts). Rick 18-10-2026: bij wijzigen moeten alle velden zichtbaar zijn, ook de lege. */
 const CPERSON=[["title",["Aanhef","Title"]],["first_name",["Voornaam","First name"]],["last_name",["Achternaam","Last name"]],["company",["Bedrijf","Company"]],
-  ["nie","NIE"],["passport",["Paspoortnummer","Passport number"]],["birthday",["Geboortedatum","Birthday"],"date"],["language",["Taal (nl/en/es…)","Language (nl/en/es…)"]],
+  ["nie","NIE"],["passport",["Paspoortnummer","Passport number"]],["birthday",["Geboortedatum","Birthday"],"date"],["language",["Correspondentietaal","Correspondence language"]],
   ["marital",["Burgerlijke staat","Marital status"]],["jobtitle",["Functie","Job title"]]];
 const CADDR=[["street",["Straat","Street"]],["street_number",["Nr.","No."]],["postcode",["Postcode","Postcode"]],["city",["Plaats","City"]],["suburb",["Wijk","Area"]],["state",["Provincie","Province"]],
   ["country",["Land","Country"]],["website","Website"],["referred_by",["Verwezen door","Referred by"]]];
@@ -496,7 +496,8 @@ async function openContact(key,ctx){X=ctx;
     return typeof rs!=="undefined"&&rs.has("agent")?esc(tr(["Nieuw kantoor: wordt bij Opslaan aan de lijst toegevoegd","New office: added to the list on Save"])):""};
   const cfCompany=f=>`<label class="ad-f"><span>${esc(tr(typeof rs!=="undefined"&&rs.has("agent")?["Bedrijf (kantoor)","Company (office)"]:f[1]))} <a class="pe-aglink" data-agm="c">🏢 ${esc(tr(["beheren","manage"]))}</a></span>
      <input data-cf="company" list="peAgList" value="${esc(v.company??"")}" autocomplete="off" placeholder="${esc(tr(["kies of typ","pick or type"]))}"><small id="peAgHint" class="muted">${agHint()}</small></label>`;
-  const cfIn=f=>f[0]==="company"?cfCompany(f):f[0]==="title"?`<label class="ad-f"><span>${esc(tr(f[1]))}</span>${optSel("data-cf","title",TITLES,v.title)}</label>`
+  const LANGS=[["",""],["nl",["Nederlands","Dutch"]],["en",["Engels","English"]],["es",["Spaans","Spanish"]],["de",["Duits","German"]],["fr",["Frans","French"]],["sv",["Zweeds","Swedish"]],["no",["Noors","Norwegian"]],["da",["Deens","Danish"]],["fi",["Fins","Finnish"]],["ru",["Russisch","Russian"]],["other",["Anders","Other"]]];
+  const cfIn=f=>f[0]==="language"?`<label class="ad-f"><span>${esc(tr(f[1]))}</span>${optSel("data-cf","language",LANGS,v.language)}</label>`:f[0]==="company"?cfCompany(f):f[0]==="title"?`<label class="ad-f"><span>${esc(tr(f[1]))}</span>${optSel("data-cf","title",TITLES,v.title)}</label>`
     :`<label class="ad-f"><span>${esc(tr(f[1]))}</span><input data-cf="${f[0]}" type="${f[2]||"text"}" value="${esc(v[f[0]]??"")}"></label>`;
   /* labels: aan/uit; bij Seller/Suspect-Seller aan verschijnt de optie om meteen een woning aan te maken */
   const RL=[["suspect","Suspect"],["seller","Seller"],["buyer","Buyer"],["suspect_seller","Suspect-Seller"],["agent","Agent"]];

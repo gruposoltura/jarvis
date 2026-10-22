@@ -22,6 +22,9 @@ const TEAM=[{wp:2,name:"Rick",email:"rick@gruposoltura.com",c:"#f97316"},{wp:3,n
 const ROLES=[["suspect","Suspect","--r-suspect"],["seller","Seller","--r-seller"],["buyer","Buyer","--r-buyer"],["suspect_seller","Suspect-Seller","--r-suspect-seller"],["agent","Agent","--r-agent"]];
 const LANGS=[["nl","Nederlands","Dutch"],["en","Engels","English"],["es","Spaans","Spanish"],["de","Duits","German"],["fr","Frans","French"],
   ["sv","Zweeds","Swedish"],["no","Noors","Norwegian"],["da","Deens","Danish"],["fi","Fins","Finnish"],["ru","Russisch","Russian"],["other","Anders","Other"]];
+/* Zoekprofiel-keuzes gelijk aan nexus-edit.js (SP_BUDGET/SP_PERIOD), 22-10-2026 */
+const SP_BUDGET=[["100k","€ 100k"],["150k","€ 150k"],["250k","€ 250k"],["more",["Meer","More"]]];
+const SP_PERIOD=[["0-3",["0-3 maanden","0-3 months"]],["3-6",["3-6 maanden","3-6 months"]],["longer",["Langer","Longer"]]];
 const SOURCES=[["website","Website"],["phone",["Telefoon","Phone"]],["email","E-mail"],["walkin",["Binnenloper","Walk-in"]],["agent",["Partnermakelaar","Partner agent"]],
   ["referral",["Doorverwezen","Referral"]],["portal",["Portaal (Idealista e.d.)","Portal (Idealista etc.)"]],["social","Social media"],["other",["Anders","Other"]]];
 const EMAIL_KINDS=[["","—"],["private",["Privé","Private"]],["work",["Werk","Work"]]];
@@ -85,8 +88,8 @@ const REF_PFX=["RH","BE","QU","LM","LP","PL","PB","DP","FO","AL","PR","SB","SR",
 
 /* ================= STATE ================= */
 const blankContact=()=>({title:"",first_name:"",last_name:"",company:"",language:"",country:"",state:"",city:"",postcode:"",street:"",street_number:"",
-  birthday:"",website:"",referred_by:"",owner:"",source:"",roles:[],emails:[{email:"",kind:""}],phones:[{phone:"",kind:"mobile"}],
-  keyholder:false,mailing_optin:false,prefs:[],search:{budget:"",property_type:"",period:"",build:[]},internal_comments:"",
+  birthday:"",website:"",referred_by:"",owner:"",source:"",nie:"",passport:"",marital:"",jobtitle:"",suburb:"",roles:[],emails:[{email:"",kind:""}],phones:[{phone:"",kind:"mobile"}],
+  keyholder:false,mailing_optin:false,prefs:[],search:{budget:"",property_type:"",period:"",bedrooms_min:"",areas:"",must_haves:"",build:[]},internal_comments:"",
   partner:{on:false,title:"",first_name:"",last_name:"",email:"",phone:""}});
 /* Echtpaar = twee contacten (Rick 19-10-2026). Herkent alleen een heel duidelijk "John & Heather" / "Ian and Diane" / "Henk en Joke". */
 const COUPLE_RE=/^([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.-]+)\s*(?:&|\+|\s(?:and|en|y|und|og|och|et|e)\s)\s*([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'.-]+)$/i;
@@ -143,8 +146,8 @@ function multi(k,opts,o={}){const arr=getP(S,k)||[];
     return `<label class="ad-c"><input type="checkbox" data-k="${k}" data-arr="${esc(val)}" ${arr.includes(val)?"checked":""}><span>${esc(tr(lab))}</span></label>`}).join("")}</div>`}
 /* 19-10-2026: elk invulblok een eigen kleur (dunne rand, ronde hoeken, lichte achtergrond) */
 const SEC_C={"pf-basis":"#3b82f6","pf-prijs":"#22c55e","pf-loc":"#06b6d4","pf-ind":"#f59e0b","pf-ken":"#a855f7","pf-tekst":"#ec4899","pf-media":"#f97316","pf-kost":"#64748b","pf-pub":"#eab308",
-  "ct-labels":"#ec4899","ct-partner":"#e11d48","ct-person":"#3b82f6","ct-chan":"#22c55e","ct-addr":"#06b6d4","ct-search":"#f59e0b","ct-mail":"#a855f7","ct-note":"#64748b","ag":"#14b8a6"};
-const SEC_T={"Labels":"#ec4899","Persoon":"#3b82f6","E-mail en telefoon":"#22c55e","Adres":"#06b6d4","Zoekprofiel":"#f59e0b","Mailings":"#a855f7","Interne opmerking":"#64748b",
+  "ct-labels":"#ec4899","ct-partner":"#e11d48","ct-person":"#3b82f6","ct-chan":"#22c55e","ct-addr":"#06b6d4","ct-search":"#f59e0b","ct-mail":"#a855f7","ct-note":"#64748b","ct-owner":"#f97316","ag":"#14b8a6"};
+const SEC_T={"Labels":"#ec4899","Persoon en identiteit":"#3b82f6","Partner gegevens":"#e11d48","Contactgegevens":"#22c55e","Adres en overig":"#06b6d4","Verantwoordelijk":"#f97316","Persoon":"#3b82f6","E-mail en telefoon":"#22c55e","Adres":"#06b6d4","Zoekprofiel":"#f59e0b","Mailings":"#a855f7","Interne opmerking":"#64748b",
   "Makelaar zoeken":"#14b8a6","Nieuwe makelaar":"#14b8a6","Of: vrij verwezen door":"#64748b","Verwezen door":"#64748b","Bestaand contact":"#3b82f6","Bestaande woning":"#f97316","Status":"#22c55e",
   "Wat er geschreven wordt (core-schema)":"#64748b","Eigenaar":"#14b8a6","Contact":"#3b82f6","Woning":"#f97316","Koppeling":"#a855f7"};
 const sec=(title,body,o={})=>`<section class="ad-sec" ${o.id?`id="${o.id}"`:""} style="--sc:${SEC_C[o.id]||SEC_T[Array.isArray(title)?title[0]:title]||"#94a3b8"}"><h4>${esc(tr(title))}${o.aside?`<span class="sm muted">${o.aside}</span>`:""}</h4>${body}</section>`;
@@ -255,26 +258,29 @@ function stepContact(){
   <div id="adDup"></div>
   ${sec(["Labels","Labels"],`<div class="ad-f w4"><span>${esc(tr(["Rol(len) van dit contact","Role(s) of this contact"]))}${mark("save")}</span>${roleChips()}
      <small>${esc(tr(["Meerdere mogelijk. Seller of Suspect-Seller opent de woningstap.","Several allowed. Seller or Suspect-Seller opens the property step."]))}</small></div>`)}
-  ${sec(["Persoon","Person"],row(sel("c.title",["Aanhef","Title"],[["Mr","Mr"],["Mrs","Mrs"],["Ms","Ms"],["Dhr.","Dhr."],["Mevr.","Mevr."],["Sr.","Sr."],["Sra.","Sra."],["Herr","Herr"],["Frau","Frau"],["Dr.","Dr."]]),
+  ${sec(["Persoon en identiteit","Person and identity"],row(sel("c.title",["Aanhef","Title"],[["Mr","Mr"],["Mrs","Mrs"],["Ms","Ms"],["Dhr.","Dhr."],["Mevr.","Mevr."],["Sr.","Sr."],["Sra.","Sra."],["Herr","Herr"],["Frau","Frau"],["Dr.","Dr."]]),
        inp("c.first_name",["Voornaam","First name"],{req:"save",ac:"off"}),inp("c.last_name",["Achternaam","Last name"],{ac:"off"}),inp("c.company",["Bedrijf","Company"]))
-     +row(sel("c.language",["Correspondentietaal","Correspondence language"],LANGS.map(l=>[l[0],[l[1],l[2]]]),{req:"save"}),inp("c.birthday",["Geboortedatum","Birthday"],{type:"date"}),
-       sel("c.owner",["Verantwoordelijk teamlid","Responsible team member"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}),sel("c.source",["Bron","Source"],SOURCES))
-     +`<small class="muted">${esc(tr(["Voornaam óf bedrijf is genoeg. Eén persoon per contact: een echtpaar leg je vast als contact + partner hieronder.","First name or company is enough. One person per contact: record a couple as contact + partner below."]))}</small><div id="adPtHint">${ptHint()}</div>`)}
-  ${sec(["Partner / tweede persoon","Partner / second person"],ptBlock(),{id:"ct-partner"})}
-  ${sec(["E-mail en telefoon","E-mail and phone"],`
+     +row(inp("c.nie","NIE",{ac:"off"}),inp("c.passport",["Paspoortnummer","Passport number"],{ac:"off"}),inp("c.birthday",["Geboortedatum","Birthday"],{type:"date"}),
+       sel("c.language",["Correspondentietaal","Correspondence language"],LANGS.map(l=>[l[0],[l[1],l[2]]]),{req:"save"}))
+     +row(inp("c.marital",["Burgerlijke staat","Marital status"]),inp("c.jobtitle",["Functie","Job title"]))
+     +`<small class="muted">${esc(tr(["Voornaam óf bedrijf is genoeg. Eén persoon per contact: een echtpaar leg je vast als contact + partner hieronder.","First name or company is enough. One person per contact: record a couple as contact + partner below."]))}</small><div id="adPtHint">${ptHint()}</div>`,{id:"ct-person"})}
+  ${sec(["Partner gegevens","Partner details"],ptBlock(),{id:"ct-partner"})}
+  ${sec(["Contactgegevens","Contact details"],`
     <div class="ad-list">${c.emails.map((e,i)=>`<div class="ad-row">${inp(`c.emails.${i}.email`,i?["Extra e-mail","Extra e-mail"]:"E-mail",{type:"email",w:3,req:i||agentSuspect()?"":"save",ac:"off"})}${sel(`c.emails.${i}.kind`,["Soort","Kind"],EMAIL_KINDS,{empty:false})}
       ${i?`<button class="ad-x" data-rm="emails" data-i="${i}" title="×">×</button>`:""}</div>`).join("")}<button class="btn sm" data-add="emails">+ ${esc(tr(["e-mail","e-mail"]))}</button></div>
     <div class="ad-list">${c.phones.map((p,i)=>`<div class="ad-row">${inp(`c.phones.${i}.phone`,i?["Extra telefoon","Extra phone"]:["Telefoon","Phone"],{type:"tel",w:3,ph:"+34 …",ac:"off"})}${sel(`c.phones.${i}.kind`,["Soort","Kind"],PHONE_KINDS,{empty:false})}
       ${i?`<button class="ad-x" data-rm="phones" data-i="${i}" title="×">×</button>`:""}</div>`).join("")}<button class="btn sm" data-add="phones">+ ${esc(tr(["telefoon","phone"]))}</button></div>
-    <small class="muted">${esc(tr(agentSuspect()?["Aangebracht door een makelaar: e-mail en telefoon zijn niet verplicht.","Introduced by an agent: e-mail and phone are optional."]:["Minstens één e-mailadres of telefoonnummer.","At least one e-mail address or phone number."]))}</small>`)}
-  ${sec(["Adres","Address"],row(inp("c.street",["Straat","Street"],{w:2}),inp("c.street_number",["Nr.","No."]),inp("c.postcode",["Postcode","Postcode"]))
-     +row(inp("c.city",["Plaats","City"],{w:2}),inp("c.state",["Provincie / regio","Province / region"]),inp("c.country",["Land","Country"],{list:"adCountries"}))
-     +row(inp("c.website","Website",{w:2})))}
-  ${c.roles.includes("suspect")?sec(["Zoekprofiel","Search profile"],row(inp("c.search.budget",["Budget","Budget"],{ph:["bijv. 200-300k","e.g. 200-300k"]}),
-     sel("c.search.property_type",["Woningtype","Property type"],CATS),inp("c.search.period",["Wanneer kopen","When to buy"],{ph:["bijv. binnen 6 maanden","e.g. within 6 months"]}))
-     +row(`<div class="ad-f w4"><span>${esc(tr(["Bestaande bouw of nieuwbouw (beide mag)","Resale or new build (both allowed)"]))}</span>${multi("c.search.build",[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]],{cols:2})}</div>`)):""}
-  ${sec(["Mailings","Mailings"],`${chk("c.mailing_optin",["Toestemming voor mailings (opt-in)","Consent to mailings (opt-in)"])}${S.c.mailing_optin?multi("c.prefs",MAILINGS,{cols:3}):""}`)}
-  ${sec(["Interne opmerking","Internal note"],row(area("c.internal_comments",["Alleen zichtbaar voor het team","Only visible to the team"],{rows:3})))}`}
+    <small class="muted">${esc(tr(agentSuspect()?["Aangebracht door een makelaar: e-mail en telefoon zijn niet verplicht.","Introduced by an agent: e-mail and phone are optional."]:["Minstens één e-mailadres of telefoonnummer. Het eerste is het hoofdadres (mailings en WhatsApp). Telefoon met landcode, bijv. +34 of +31.","At least one e-mail address or phone number. The first one is primary (mailings and WhatsApp). Phone with country code, e.g. +34 or +31."]))}</small>`,{id:"ct-chan"})}
+  ${sec(["Adres en overig","Address and other"],row(inp("c.street",["Straat","Street"],{w:2}),inp("c.street_number",["Nr.","No."]),inp("c.postcode",["Postcode","Postcode"]))
+     +row(inp("c.city",["Plaats","City"]),inp("c.suburb",["Wijk","Area"]),inp("c.state",["Provincie","Province"]),inp("c.country",["Land","Country"],{list:"adCountries"}))
+     +row(inp("c.website","Website",{w:2}))
+     +row(area("c.internal_comments",["Interne opmerking (alleen zichtbaar voor het team)","Internal note (only visible to the team)"],{rows:3})),{id:"ct-addr"})}
+  ${c.roles.includes("suspect")?sec(["Zoekprofiel","Search profile"],row(sel("c.search.budget",["Budget","Budget"],SP_BUDGET),
+     sel("c.search.property_type",["Woningtype","Property type"],CATS),sel("c.search.period",["Wanneer kopen","When to buy"],SP_PERIOD),inp("c.search.bedrooms_min",["Min. slaapkamers","Min. bedrooms"],{type:"number",min:0}))
+     +row(inp("c.search.areas",["Gewenste gebieden","Preferred areas"],{w:2,ph:["bijv. Rojales, Ciudad Quesada","e.g. Rojales, Ciudad Quesada"]}),inp("c.search.must_haves",["Must-haves","Must-haves"],{w:2,ph:["bijv. zwembad, zeezicht","e.g. pool, sea view"]}))
+     +row(`<div class="ad-f w4"><span>${esc(tr(["Bestaande bouw of nieuwbouw (beide mag)","Resale or new build (both allowed)"]))}</span>${multi("c.search.build",[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]],{cols:2})}</div>`),{id:"ct-search"}):""}
+  ${sec(["Mailings","Mailings"],`${chk("c.mailing_optin",["Toestemming voor mailings (opt-in)","Consent to mailings (opt-in)"])}${S.c.mailing_optin?multi("c.prefs",MAILINGS,{cols:3}):""}`,{id:"ct-mail"})}
+  ${sec(["Verantwoordelijk","Responsible"],row(sel("c.owner",["Teamlid","Team member"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}),sel("c.source",["Bron","Source"],SOURCES)),{id:"ct-owner"})}`}
   <datalist id="adCountries">${["Spain","Netherlands","Belgium","United Kingdom","Ireland","Germany","France","Sweden","Norway","Denmark","Finland","Switzerland","Austria"].map(x=>`<option value="${x}">`).join("")}</datalist>`;
 }
 function ptHint(){const c=S.c, x=coupleSplit(c.first_name);if(!x||(c.partner&&c.partner.on))return "";
@@ -462,7 +468,7 @@ function validate(flow){
       const pt=c.partner||{};if(pt.on){if(!String(pt.first_name||"").trim()&&!String(pt.last_name||"").trim())add(["Naam van de partner (of ‘Geen partner’)","Partner's name (or ‘No partner’)"],"save",2,"ct-partner");
         if(String(pt.email||"").trim()&&!emailOk(pt.email.trim()))add([`Ongeldig e-mailadres partner: ${pt.email}`,`Invalid partner e-mail: ${pt.email}`],"save",2,"ct-partner");
         if(String(pt.email||"").trim()&&em.some(e=>e.toLowerCase()===pt.email.trim().toLowerCase()))add(["Partner heeft hetzelfde e-mailadres als het contact","Partner has the same e-mail as the contact"],"save",2,"ct-partner")}
-      if(!c.owner)add(["Verantwoordelijk teamlid","Responsible team member"],"save",2);
+      if(!c.owner)add(["Verantwoordelijk teamlid","Responsible team member"],"save",2,"ct-owner");
       if(c.phones.some(p=>p.phone&&!/^\+/.test(p.phone.trim())))add(["Telefoon zonder landcode (+34, +31 …)","Phone without country code (+34, +31 …)"],"tip",2);
       if(DUPS.length)add([`${DUPS.length} mogelijk dubbel contact`,`${DUPS.length} possible duplicate contact(s)`],"tip",2)}
     if(isSeller()&&pm()==="none")add(["Verkoper zonder woning: kies ‘later’ of maak hem aan","Seller without property: choose ‘later’ or create it"],"tip",3);
@@ -516,7 +522,7 @@ function payload(flow){
   if(S.agentMode==="new")out["core.contacts (makelaar)"]={company:S.newAgent.company,first_name:S.newAgent.first_name||null,last_name:S.newAgent.last_name||null,language:S.newAgent.language,website:S.newAgent.website||null,
     emails:S.newAgent.email?[S.newAgent.email]:[],phones:S.newAgent.phone?[S.newAgent.phone]:[],roles:["agent"],source:"nexus"};
   if(S.contactMode==="existing")out["core.contacts"]={bestaand:S.existing?`legacy_map contact wp_id ${S.existing.wp_id}`:null,roles_toevoegen:c.roles};
-  else{out["core.contacts"]={title:c.title||null,first_name:c.first_name||null,last_name:c.last_name||null,company:c.company||null,language:c.language||null,country:c.country||null,state:c.state||null,
+  else{out["core.contacts"]={title:c.title||null,first_name:c.first_name||null,last_name:c.last_name||null,company:c.company||null,nie:c.nie||null,passport:c.passport||null,marital:c.marital||null,jobtitle:c.jobtitle||null,language:c.language||null,country:c.country||null,state:c.state||null,suburb:c.suburb||null,
       city:c.city||null,postcode:c.postcode||null,street:c.street||null,street_number:c.street_number||null,birthday:c.birthday||null,website:c.website||null,referred_by:c.referred_by||null,
       owner_id:teamName(c.owner),keyholder:!!c.keyholder,mailing_optin:c.mailing_optin,mailing_prefs:Object.fromEntries(MAILINGS.map(([k])=>[k,{on:!!c.mailing_optin&&(c.prefs||[]).includes(k)}])),
       search_profile:Object.fromEntries(Object.entries(c.roles.includes("suspect")?c.search:{}).filter(([,v])=>Array.isArray(v)?v.length:v)),internal_comments:c.internal_comments||null,source:c.source?"nexus:"+c.source:"nexus"};
@@ -541,12 +547,12 @@ function payload(flow){
 /* ================= OPSLAAN (gekoppeld 18-10-2026, migratie 019) ================= */
 let BUSY=false, DONE=null, PROG="";
 const nul=v=>v===""||v==null?null:v;
-const CONTACT_KEYS=["title","first_name","last_name","company","language","birthday","street","street_number","postcode","city","state","country","website","referred_by","internal_comments"];
+const CONTACT_KEYS=["title","first_name","last_name","company","nie","passport","language","birthday","marital","jobtitle","suburb","street","street_number","postcode","city","state","country","website","referred_by","internal_comments"];
 function contactFields(c){
   const f={};CONTACT_KEYS.forEach(k=>{const v=typeof c[k]==="string"?c[k].trim():c[k];if(nul(v)!=null)f[k]=v});
   if(c.owner)f.owner_id=String(c.owner);
   f.source=c.source?"nexus:"+c.source:"nexus";
-  const sp=Object.fromEntries(Object.entries((c.roles||[]).includes("suspect")&&c.search||{}).filter(([,v])=>Array.isArray(v)?v.length:v));if(Object.keys(sp).length)f.search_profile=sp;
+  const sp=Object.fromEntries(Object.entries((c.roles||[]).includes("suspect")&&c.search||{}).filter(([,v])=>Array.isArray(v)?v.length:v));if(sp.bedrooms_min!=null)sp.bedrooms_min=Number(sp.bedrooms_min);if(Object.keys(sp).length)f.search_profile=sp;
   if(c.mailing_optin){f.mailing_optin=true;f.mailing_prefs=Object.fromEntries(MAILINGS.map(([k])=>[k,(c.prefs||[]).includes(k)]))}
   return f;
 }
