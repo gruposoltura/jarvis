@@ -334,12 +334,12 @@ function pick(r){
   $("clientForm").hidden=false;
   const ps=r.properties||[];
   $("propLbl").hidden=!ps.length;
-  $("prop").innerHTML=ps.map(p=>`<option value="${p.wp_id}">${esc(p.reference||"?")} · ${esc(p.town||"")}${p.role==="buyer"?" (koper)":""}</option>`).join("")+'<option value="">Andere woning / geen</option>';
+  $("prop").innerHTML=ps.map(p=>`<option value="${p.key||p.wp_id}">${esc(p.reference||"?")} · ${esc(p.town||"")}${p.role==="buyer"?" (koper)":""}</option>`).join("")+'<option value="">Andere woning / geen</option>';
   if(ps.length)applyProp(ps[0]);else{$("finca").value="";$("refcat").value=""}
   render();
 }
-function applyProp(p){$("prop").value=p?String(p.wp_id):"";$("finca").value=p&&p.finca||"";$("refcat").value=p&&p.ref_catastral||"";render()}
-$("prop").onchange=()=>{const p=(crm&&crm.properties||[]).find(x=>String(x.wp_id)===$("prop").value);applyProp(p||null)};
+function applyProp(p){$("prop").value=p?String(p.key||p.wp_id):"";$("finca").value=p&&p.finca||"";$("refcat").value=p&&p.ref_catastral||"";render()}
+$("prop").onchange=()=>{const p=(crm&&crm.properties||[]).find(x=>String(x.key||x.wp_id)===$("prop").value);applyProp(p||null)};
 $("unpick").onclick=()=>{crm=null;$("picked").hidden=true;$("clientForm").hidden=true;$("propLbl").hidden=true;$("finca").value="";$("refcat").value="";$("q").focus();render()};
 $("manual").onclick=()=>{crm=null;$("picked").hidden=false;$("pickedTxt").innerHTML="<b>Nieuwe klant</b><small>Niet in het CRM; wordt alleen in de proefomgeving bewaard</small>";setForm({});$("clientForm").hidden=false;$("propLbl").hidden=true;$("c-name").focus();render()};
 
@@ -382,7 +382,7 @@ $("drop").addEventListener("drop",e=>extractFile(e.dataTransfer.files[0]));
 /* ---------- klant, taal, regels ---------- */
 function client(){
   if($("clientForm").hidden)return null;
-  return{wp_contact_id:crm?crm.wp_id:null,salutation:$("c-sal").value,full_name:$("c-name").value.trim(),id_type:$("c-idt").value,id_number:$("c-idn").value.trim(),
+  return{wp_contact_id:crm?crm.wp_id:null,contact_id:crm?crm.contact_id:null,salutation:$("c-sal").value,full_name:$("c-name").value.trim(),id_type:$("c-idt").value,id_number:$("c-idn").value.trim(),
     address:$("c-addr").value.trim(),city:$("c-city").value.trim(),country:$("c-country").value.trim()||"España",email:$("c-mail").value.trim(),language:$("c-lang").value};
 }
 function language(){
@@ -495,8 +495,8 @@ $("frm").addEventListener("submit",async e=>{
   if(!o.lines.length)return msg("Voeg minstens één dienst toe.","err");
   if(o.lines.some(l=>isNaN(l.unit)||l.unit<=0))return msg("Elke dienst heeft een bedrag hoger dan nul nodig.","err");
   if(CFG.last&&o.date<CFG.last.issue_date)return msg(`Deze datum ligt vóór de vorige factuur (${CFG.last.invoice_no} van ${fecha(CFG.last.issue_date)}). Kies die datum of later.`,"err");
-  const propSel=$("propLbl").hidden?"":$("prop").value,prop=crm&&(crm.properties||[]).find(p=>String(p.wp_id)===propSel);
-  const payload={issue_date:o.date,language:o.lang,finca:o.finca,ref_catastral:o.ref,property_wp_id:prop?prop.wp_id:null,property_ref:prop?prop.reference:null,
+  const propSel=$("propLbl").hidden?"":$("prop").value,prop=crm&&(crm.properties||[]).find(p=>String(p.key||p.wp_id)===propSel);
+  const payload={issue_date:o.date,language:o.lang,finca:o.finca,ref_catastral:o.ref,property_wp_id:prop?prop.wp_id:null,property_id:prop?prop.id:null,property_ref:prop?prop.reference:null,
     client:Object.assign({},c,{country:countryEs(c.country)}),
     lines:o.lines.map(l=>({service_code:l.code,description:l.desc,detail:l.detail,quantity:l.qty,unit_amount:l.unit,iva_rate:21,price_overridden:l.ov,pricing_input:l.input}))};
   busy=true;$("emit").disabled=true;$("sendbox").hidden=true;msg("Factuur wordt aangemaakt…");
