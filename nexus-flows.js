@@ -167,11 +167,12 @@ function popup(f,id,st){
     <div class="fl-bh"><div><small>${esc(X.rq(f.key)||f.key)} · ${esc(dmyt(f.ts))}</small><h3 id="flPopH">${esc(tr(I.h))}</h3></div><button type="button" class="fl-x" aria-label="${esc(tr(["Sluiten","Close"]))}">×</button></div>
     <div class="fl-bb"><span class="fl-st ${st}">${ICON[st]} ${esc(tr(STL[st]||STL.done))}</span>
       ${(I.p||[]).map(p=>`<p>${esc(tr(p))}</p>`).join("")}
-      ${facts.length?`<dl>${facts.map(x=>`<dt>${esc(x[0])}</dt><dd>${esc(x[1])}</dd>`).join("")}</dl>`:""}</div></div>`;
+      ${facts.length?`<dl>${facts.map(x=>`<dt>${esc(x[0])}</dt><dd>${esc(x[1])}</dd>`).join("")}</dl>`:""}
+      ${id==="mail"&&(f._mailUuids||[]).length&&X.openMail?`<div class="fl-acts">${f._mailUuids.map((u,i)=>`<button type="button" class="btn fl-mv" data-u="${esc(u)}">✉ ${esc(tr(["Mail bekijken","View email"]))}${f._mailUuids.length>1?" "+(i+1):""}</button>`).join("")}</div>`:""}</div></div>`;
   document.body.appendChild(ov);
   const shut=()=>{ov.remove();document.removeEventListener("keydown",key)};
   const key=e=>{if(e.key==="Escape")shut()};
-  ov.onclick=e=>{if(e.target===ov||e.target.closest(".fl-x"))shut()};
+  ov.onclick=e=>{const mv=e.target.closest(".fl-mv");if(mv){shut();X.openMail({uuid:mv.dataset.u});return}if(e.target===ov||e.target.closest(".fl-x"))shut()};
   document.addEventListener("keydown",key);ov.querySelector(".fl-x").focus();
 }
 function close(){CID=null;RID=null;D=null;const p=document.getElementById("flPop");if(p)p.remove()}
@@ -180,8 +181,21 @@ async function open(root,contactId,requestId,ctx){
   if(CID!==contactId){CID=contactId;D=null}
   RID=requestId||null;render();
   const my=++SEQ;
-  try{const d=await X.rpc("nexus_contact_flows",{p_contact:contactId,p_limit:15});if(my!==SEQ)return;D=d||{flows:[]};render()}
-  catch(e){if(my!==SEQ)return;ROOT.innerHTML=`<div class="fl-wrap"><div class="empty">${esc(e.message||e)}</div></div>`}
+  if(D&&X.onData)X.onData(D);
+  try{const d=await X.rpc("nexus_contact_flows",{p_contact:contactId,p_limit:50});if(my!==SEQ)return;D=d||{flows:[]};if(X.onData)X.onData(D);render()}
+  catch(e){if(my!==SEQ)return;ROOT.innerHTML=`<div class="fl-wrap"><div class="empty">${esc(e.message||e)}</div></div>`;if(X.onError)X.onError(e)}
 }
-window.NEXUS_FLOWS={open,close,rerender:render,current:()=>CID};
+/* Tijdlijnregels die bij een formulierflow horen (de aanvraag, de lead en de mails aan de klant) gaan op in die flow;
+   de rest (mailings, notities, bezichtigingen) blijft als gewone contactmomenten staan. Mail-uuid's gaan mee naar de flow (Mail bekijken). */
+function fold(list,data){
+  const fl=(data&&data.flows)||[], ids=new Set(fl.map(f=>String(f.id))), T=x=>new Date(x).getTime();
+  fl.forEach(f=>{f._mailUuids=[]});
+  return (list||[]).filter(e=>{
+    if(e.kind==="request")return !ids.has(String(e.id));
+    if(e.kind==="lead")return !fl.some(f=>f.source!=="cpr_import"&&Math.abs(T(e.ts)-T(f.ts))<=10*60000);
+    if(e.kind==="mail"){const f=fl.find(f=>{const d=T(e.ts)-T(f.ts);return d>=-60000&&d<=3*3600000&&(f.mails||[]).some(m=>m.subject===e.text)});
+      if(!f)return true;if(e.uuid&&!f._mailUuids.includes(e.uuid))f._mailUuids.push(e.uuid);return false}
+    return true});
+}
+window.NEXUS_FLOWS={open,close,fold,rerender:render,current:()=>CID};
 })();

@@ -408,8 +408,14 @@ function renderContact(){
   const B=$("#ctBody");
   if(ctSub==="profiel")B.innerHTML=ctProfile(c,raw);
   if(ctSub==="woningen")B.innerHTML=ctProps();
-  if(ctSub==="tijdlijn"){B.innerHTML=`<div id="ctFlows"></div>`+timeline(CT.timeline);
-    if(window.NEXUS_FLOWS)NEXUS_FLOWS.open($("#ctFlows"),c.key||c.id,FLREQ,{rpc,rq,lang:()=>LANG})}
+  if(ctSub==="tijdlijn"){
+    /* Contactmomenten (Rick, 22-10-2026): bovenaan elk formulier als flow; wat bij een flow hoort (aanvraag, lead, mail aan de klant)
+       staat alleen in die flow. Daaronder de overige contactmomenten (mailings, notities, bezichtigingen). */
+    B.innerHTML=`<div id="ctFlows"></div><div id="ctTl"></div>`;
+    const tlRest=data=>{const el=$("#ctTl");if(!el)return;const rest=data?NEXUS_FLOWS.fold(CT.timeline,data):CT.timeline;
+      el.innerHTML=!rest.length?"":(data&&(data.flows||[]).length?`<div class="fl-rest">${esc(L2("Overige contactmomenten","Other contact moments"))}</div>`:"")+timeline(rest)};
+    if(window.NEXUS_FLOWS)NEXUS_FLOWS.open($("#ctFlows"),c.key||c.id,FLREQ,{rpc,rq,lang:()=>LANG,openMail,onData:tlRest,onError:()=>tlRest(null)});
+    else tlRest(null)}
   if(ctSub==="relaties")B.innerHTML=ctRelations(c);
   if(ctSub==="mailings")B.innerHTML=ctMailings(c);
   B.querySelectorAll("[data-cedit]").forEach(ce=>ce.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.openContact(c.key||c.id||c.wp_id,{sb,rpc,lang:()=>LANG,me:()=>ME,onSaved:()=>{openContact(ctSel);loadContacts(true)}}));
