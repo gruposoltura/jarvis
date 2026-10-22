@@ -304,7 +304,7 @@ function showResults(){
   if(!results.length){box.innerHTML='<div class="res"><small>Niets gevonden. Gebruik "Klant die niet in het CRM staat" of lees het contract in.</small></div>';box.hidden=false;return}
   box.innerHTML=results.map((r,i)=>{
     const props=(r.properties||[]).map(p=>p.reference).filter(Boolean).join(", ");
-    return `<button type="button" class="res${i===act?" act":""}" role="option" data-i="${i}"><b>${esc(r.full_name||"(zonder naam)")}</b><span class="chip">${esc(catNl(r.category))}</span><small>${esc([r.email,r.city,props&&("woning "+props)].filter(Boolean).join(" · "))}</small></button>`}).join("");
+    return `<button type="button" class="res${i===act?" act":""}" role="option" data-i="${i}"><b>${esc(r.list_name||r.full_name||"(zonder naam)")}</b><span class="chip">${esc(catNl(r.category))}</span><small>${esc([r.email,r.city,props&&("woning "+props)].filter(Boolean).join(" · "))}</small></button>`}).join("");
   box.hidden=false;
   box.querySelectorAll(".res[data-i]").forEach(b=>b.onclick=()=>pick(results[+b.dataset.i]));
 }
@@ -330,7 +330,7 @@ function setForm(c){
 function pick(r){
   crm=r;$("results").hidden=true;$("q").value="";
   setForm(Object.assign({},r,{salutation:r.salutation??TITLE[String(r.title_raw||"").toLowerCase()]??"Don"}));
-  $("picked").hidden=false;$("pickedTxt").innerHTML=`<b>${esc(r.full_name)}</b><small>Uit het CRM · ${esc(catNl(r.category))}${r.enriched?" · eerder aangevuld":""}</small>`;
+  $("picked").hidden=false;$("pickedTxt").innerHTML=`<b>${esc(r.list_name||r.full_name)}</b><small>Uit het CRM · ${esc(catNl(r.category))}${r.enriched?" · eerder aangevuld":""}</small>`;
   $("clientForm").hidden=false;
   const ps=r.properties||[];
   $("propLbl").hidden=!ps.length;
