@@ -1,0 +1,3 @@
+logo.png https://res.cloudinary.com/dxmx3a2ea/image/upload/v1792266661/soltura/assets/brochure/Soltura-logo-345x120-1.png
+logo-01.jpg https://res.cloudinary.com/dxmx3a2ea/image/upload/v1792681223/Soltura-logo-01_qiidx6.jpg
+office.jpg https://wuvpbwowdycsdlrqkaoq.supabase.co/storage/v1/object/public/web-media/contact-office.jpg
