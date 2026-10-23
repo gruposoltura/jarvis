@@ -1098,20 +1098,51 @@ function renderProp(){
       ${it.length?`<div style="display:flex;flex-direction:column;gap:6px">${it.map(x=>`<div class="rel" data-c="${esc(x.id||x.wp_id)}"><div class="ini" style="background:${hue(x.name||x.email)};width:30px;height:30px;font-size:calc(11px*var(--fs,1))">${esc(initials(x.name||x.email))}</div><div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.name||x.email)}</div><div class="sm muted">${x.n}× · ${esc((x.types||[]).map(rq).join(", "))}</div></div><span class="sm muted">${ago(x.last)}</span></div>`).join("")}</div>`:`<div class="empty sm">${t("norequests")}</div>`}`}
   if(prSub==="website")renderPropWeb(p,B);
 }
-/* ---------- woning: websitestatistiek (eigen meting gruposoltura.com, web_events) ---------- */
+/* ---------- woning: statistieken (eigen meting gruposoltura.com, web_events) ----------
+   In lijn met de Seller Weekly Update (Rick 23-10-2026): dezelfde cijfers en begrippen als in de verkopersmail,
+   in gekleurde panelen zoals elders in het woningvenster. Gevonden = in het resultaat van de zoekbalk / live assistant
+   (gemeten sinds 23-10-2026); conversie = detailpagina bekeken / gevonden. Bron: rpc nexus_property_web_stats (migratie 074). */
 async function renderPropWeb(p,B){
   B.innerHTML=`<div class="loader">${t("loading")}</div>`;
   let w;try{w=await rpc("nexus_property_web_stats",{p_id:p.id})}catch(e){B.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   if(PR.property.id!==p.id||prSub!=="website")return;
-  w=w||{};const dl=w.daily||[],mx=Math.max(1,...dl.map(x=>x.n));
-  const bw=600/Math.max(1,dl.length);
-  const bars=dl.map((x,i)=>`<rect x="${(i*bw+1).toFixed(1)}" y="${(70-x.n/mx*62).toFixed(1)}" width="${Math.max(1,bw-2).toFixed(1)}" height="${(x.n/mx*62).toFixed(1)}" rx="1.5" fill="var(--c-pr)" opacity="${x.n?0.9:0.15}"><title>${fdate(x.d)}: ${x.n}</title></rect>`).join("");
-  const f=(v,l)=>`<div><b>${num(v||0)}</b><span>${l}</span></div>`;
-  B.innerHTML=`<div class="card" style="margin-bottom:12px"><div class="hd"><h3>${L2("Bezoek op gruposoltura.com","Visits on gruposoltura.com")}</h3><span class="tag">${w.last_view?L2("laatst bekeken ","last viewed ")+ago(w.last_view):L2("nog niet bekeken","not viewed yet")}</span></div>
-    <div class="facts" style="padding:12px 14px 0">${f(w.views_7d,L2("bekeken · 7 dagen","views · 7 days"))}${f(w.views_30d,L2("bekeken · 30 dagen","views · 30 days"))}${f(w.sessions_30d,L2("sessies · 30 dagen","sessions · 30 days"))}${f(w.returning_visitors,L2("terugkerende bezoekers","returning visitors"))}${f(w.favorites,L2("keer bewaard","times saved"))}${f(w.contact_intents,L2("contactintenties","contact intents"))}${f(w.leads,L2("aanvragen via de site","requests via the site"))}${f(w.views_all,L2("bekeken · totaal","views · total"))}</div>
-    <div style="padding:6px 14px 4px"><svg viewBox="0 0 600 72" preserveAspectRatio="none" style="width:100%;height:72px;display:block">${bars}</svg>
-      <div class="sm muted" style="display:flex;justify-content:space-between"><span>${dl.length?fdate(dl[0].d):""}</span><span>${L2("bekeken per dag, 30 dagen","views per day, 30 days")}</span><span>${dl.length?fdate(dl[dl.length-1].d):""}</span></div></div>
-    <div class="sm muted" style="padding:6px 14px 12px">${L2("Eigen meting van de website (anoniem). Terugkerend = bezoeker met cookietoestemming die deze woning op meer dan één dag bekeek. Contactintenties = WhatsApp, bellen, kostenoverzicht, bezichtigingsformulier geopend. Telling sinds 18-10-2026.","Own website measurement (anonymous). Returning = visitor with cookie consent who viewed this home on more than one day. Contact intents = WhatsApp, call, cost overview, viewing form opened. Counted since 18 Oct 2026.")}</div></div>`;
+  w=w||{};const dl=w.daily||[];
+  const dash="—", n0=v=>v==null?dash:num(v), avg=v=>v==null?dash:(Math.round(v/7*10)/10).toLocaleString(LANG==="nl"?"nl-NL":"en-GB");
+  const fSince=w.found_since?new Date(w.found_since):null, fullWeek=fSince&&(Date.now()-fSince)>=7*864e5;
+  const f7=fSince?Number(w.found_7d||0):null, v7=Number(w.views_7d||0);
+  const conv=(fullWeek&&f7>0)?Math.round(v7/f7*1000)/10:null;
+  const cq=conv==null?null:conv<5?["Onder gemiddeld","Below average","#ef4444"]:conv<=10?["Goed","Good","#f59e0b"]:["Erg goed","Very good","#22c55e"];
+  const dom=w.list_date?days(w.list_date):null;
+  const tile=(v,l,o)=>{o=o||{};return `<div class="st-tile${o.big?" big":""}"${o.title?` title="${esc(o.title)}"`:""}><b>${v}</b><span>${l}</span>${o.sub?`<small>${o.sub}</small>`:""}</div>`};
+  const pnl=(c,title,body,aside)=>`<div class="card pk-card st-pnl" style="--sc:${c}"><div class="hd"><h3>${title}</h3>${aside?`<span class="tag">${aside}</span>`:""}</div><div class="st-tiles">${body}</div></div>`;
+  const su=w.seller_update;
+  const eye=su&&(su.clicked_at||su.opened_at)?`<span class="st-eye" style="color:${su.clicked_at?"#38bdf8":"#22c55e"}" title="${esc((su.opened_at?L2("Geopend ","Opened ")+fdate(su.opened_at):"")+(su.clicked_at?" · "+L2("geklikt ","clicked ")+fdate(su.clicked_at):""))}"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M1.5 12S5.5 4.5 12 4.5 22.5 12 22.5 12 18.5 19.5 12 19.5 1.5 12 1.5 12Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></span>`:"";
+  /* grafiek: gevonden (blauw) en bekeken (groen) per dag, 30 dagen */
+  const mx=Math.max(1,...dl.map(x=>Math.max(x.n||0,x.f||0))), bw=600/Math.max(1,dl.length), hw=Math.max(1,bw/2-1.5);
+  const bar=(x,i,k,off,col)=>{const h=(x[k]||0)/mx*62;return `<rect x="${(i*bw+off).toFixed(1)}" y="${(70-h).toFixed(1)}" width="${hw.toFixed(1)}" height="${Math.max(h,0).toFixed(1)}" rx="1.5" fill="${col}" opacity="${x[k]?0.92:0.12}"><title>${fdate(x.d)}: ${x[k]||0} ${k==="f"?L2("gevonden","found"):L2("bekeken","viewed")}</title></rect>`};
+  const bars=dl.map((x,i)=>bar(x,i,"f",1,"#3b82f6")+bar(x,i,"n",1+hw+1,"#22c55e")).join("");
+  B.innerHTML=`<div class="st-wrap">
+    <div class="st-band">
+      ${pnl("#3b82f6",L2("Gevonden in zoekresultaten","Found in search results"),
+        tile(fullWeek?n0(f7):dash,L2("gevonden · 7 dagen","found · 7 days"),{big:1})+tile(fullWeek?avg(f7):dash,L2("gem. per dag","avg. per day"))+tile(fSince?n0(w.found_30d):dash,L2("gevonden · 30 dagen","found · 30 days"))+tile(fSince?n0(w.found_all):dash,L2("gevonden · totaal","found · total")),
+        fSince?(fullWeek?"":L2("meting sinds ","measured since ")+fdate(fSince)):L2("nog niet gemeten","not measured yet"))}
+      ${pnl("#22c55e",L2("Detailpagina bekeken","Detail page views"),
+        tile(n0(v7),L2("bekeken · 7 dagen","views · 7 days"),{big:1})+tile(avg(v7),L2("gem. per dag","avg. per day"))+tile(n0(w.visitors_7d),L2("unieke bezoekers · 7 dagen","unique visitors · 7 days"))+tile(n0(w.views_30d),L2("bekeken · 30 dagen","views · 30 days"))+tile(n0(w.returning_visitors),L2("terugkerende bezoekers","returning visitors"))+tile(n0(w.views_all),L2("bekeken · totaal","views · total")),
+        w.last_view?L2("laatste bezoek ","last visit ")+ago(w.last_view):L2("nog niet bekeken","not viewed yet"))}
+      ${pnl("#f59e0b",L2("Conversie","Conversion"),
+        `<div class="st-tile big st-conv"><b>${conv==null?dash:conv.toLocaleString(LANG==="nl"?"nl-NL":"en-GB")+"%"}</b><span>${L2("van gevonden naar bekeken · 7 dagen","from found to viewed · 7 days")}</span>${cq?`<em style="background:${cq[2]}">${L2(cq[0],cq[1])}</em>`:`<small>${L2("beschikbaar zodra de zoekmeting een volle week loopt","available once search tracking has run a full week")}</small>`}</div>`+
+        `<div class="st-scale"><i style="background:#ef4444"></i>0–5% ${L2("onder gemiddeld","below average")}<i style="background:#f59e0b"></i>5–10% ${L2("goed","good")}<i style="background:#22c55e"></i>&gt;10% ${L2("erg goed","very good")}</div>`)}
+      ${pnl("#ec4899",L2("Interesse op de site","Interest on the site"),
+        tile(n0(w.favorites),L2("keer bewaard","times saved"))+tile(n0(w.contact_intents),L2("contactintenties","contact intents"),{title:L2("WhatsApp, bellen, kostenoverzicht, bezichtigingsformulier geopend","WhatsApp, call, cost overview, viewing form opened")})+tile(n0(w.leads),L2("aanvragen via de site","requests via the site"))+tile(dash,L2("brochure downloads","brochure downloads"),{title:L2("De nieuwe site heeft (nog) geen brochure-download","The new site has no brochure download (yet)")}))}
+      ${pnl("#a855f7",L2("Verkoop","Sale"),
+        tile(dom==null?dash:num(dom),L2("dagen te koop","days on market"),{big:1})+tile(w.list_date?fdate(w.list_date):dash,L2("start promotie","start promotion"))+tile(n0(w.viewings_total),L2("bezichtigingen (fysiek)","property viewings"),{sub:w.viewings_7d?L2(`${w.viewings_7d} in 7 dagen`,`${w.viewings_7d} in 7 days`):""})+tile(w.last_viewing?fdate(w.last_viewing):dash,L2("laatste bezichtiging","last property viewing"))+
+        tile(su&&su.sent_at?fdate(su.sent_at)+eye:dash,L2("laatste verkopersupdate","last seller update"),{sub:su?(su.clicked_at?L2("geopend en geklikt","opened and clicked"):su.opened_at?L2("geopend","opened"):L2("nog niet geopend","not opened yet")):L2("vrijdag 16:00","Friday 16:00")}))}
+    </div>
+    <div class="card st-chart"><div class="hd"><h3>${L2("Per dag · 30 dagen","Per day · 30 days")}</h3><span class="st-leg"><i style="background:#3b82f6"></i>${L2("gevonden","found")}<i style="background:#22c55e"></i>${L2("bekeken","viewed")}</span></div>
+      <div style="padding:8px 14px 4px"><svg viewBox="0 0 600 72" preserveAspectRatio="none" style="width:100%;height:84px;display:block">${bars}</svg>
+      <div class="sm muted" style="display:flex;justify-content:space-between"><span>${dl.length?fdate(dl[0].d):""}</span><span>${dl.length?fdate(dl[dl.length-1].d):""}</span></div></div></div>
+    <div class="sm muted st-note">${L2("Eigen, anonieme meting van gruposoltura.com; dezelfde cijfers als in de wekelijkse verkopersupdate. Gevonden = de woning zat in het resultaat van een zoekopdracht via de zoekbalk of live assistant (gemeten sinds 23-10-2026). Conversie = detailpagina bekeken ÷ gevonden. Terugkerend = bezoeker met cookietoestemming die de woning op meer dan één dag bekeek. Paginaweergaven geteld sinds 18-10-2026.",
+      "Own anonymous measurement of gruposoltura.com; the same figures as in the weekly seller update. Found = the home was in the result of a search via the search bar or live assistant (measured since 23 Oct 2026). Conversion = detail page views ÷ found. Returning = visitor with cookie consent who viewed the home on more than one day. Page views counted since 18 Oct 2026.")}</div></div>`;
 }
 
 /* ================= MAP ================= */

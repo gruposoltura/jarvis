@@ -1329,3 +1329,27 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .ac-fg{flex-basis:100%;font-size:calc(10px*var(--fs,1));letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);font-weight:600;margin:2px 0 -2px}
 .ac-fg:empty{height:0;margin:0}
 .ac-more{padding:10px 14px;text-align:center}
+
+/* ---------- woning › Statistieken (23-10-2026): gekleurde panelen zoals de vaste band, in lijn met de verkopersmail ---------- */
+.st-wrap{display:flex;flex-direction:column;gap:14px;container-type:inline-size}
+.st-band{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:stretch}
+@container (min-width:760px){.st-band{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container (min-width:1180px){.st-band{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.st-pnl{margin:0;display:flex;flex-direction:column;min-width:0;border:1px solid color-mix(in srgb,var(--sc) 38%,var(--line));border-top:4px solid var(--sc)!important;background:color-mix(in srgb,var(--sc) 6%,var(--card))}
+.st-pnl>.hd{background:color-mix(in srgb,var(--sc) 16%,transparent);border-bottom:1px solid color-mix(in srgb,var(--sc) 30%,var(--line))}
+.st-pnl>.hd h3{color:color-mix(in srgb,var(--sc) 70%,var(--hi,#e2e8f0));font-weight:700}
+.st-pnl .tag{border-color:color-mix(in srgb,var(--sc) 45%,var(--line))}
+.st-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px 14px 14px}
+.st-tile{display:flex;flex-direction:column;gap:2px;padding:9px 11px;border-radius:9px;background:color-mix(in srgb,var(--sc) 9%,var(--bg2));border:1px solid color-mix(in srgb,var(--sc) 22%,var(--line));min-width:0}
+.st-tile b{font:700 calc(18px*var(--fs,1))/1.15 'Space Grotesk';color:var(--hi);display:flex;align-items:center;gap:6px}
+.st-tile span{font-size:calc(11.5px*var(--fs,1));color:var(--tx2)}
+.st-tile small{font-size:calc(11px*var(--fs,1));color:color-mix(in srgb,var(--sc) 70%,var(--tx2))}
+.st-tile.big{grid-column:1/-1;background:color-mix(in srgb,var(--sc) 15%,var(--bg2))}
+.st-tile.big b{font-size:calc(28px*var(--fs,1));color:color-mix(in srgb,var(--sc) 55%,var(--hi,#fff))}
+.st-conv em{align-self:flex-start;margin-top:4px;padding:2px 9px;border-radius:5px;color:#fff;font:600 calc(11px*var(--fs,1)) Inter;font-style:normal}
+.st-scale{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:calc(11px*var(--fs,1));color:var(--tx3)}
+.st-scale i,.st-leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-left:4px}
+.st-leg{display:flex;align-items:center;gap:6px;font-size:calc(11.5px*var(--fs,1));color:var(--tx2)}
+.st-eye{display:inline-flex}
+.st-chart{margin:0}
+.st-note{padding:0 4px}
