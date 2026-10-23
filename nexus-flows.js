@@ -1,3 +1,4 @@
+/* v5 (23-10-2026): losse automatische mails als flow met één node. */
 /* NEXUS · Contact › Contactmomenten — formulierflows per contact (Rick, 22-10-2026).
    Klik in Binnenkomend op een aanvraag: het contact opent altijd op Contactmomenten, met bovenaan alle aanvragen van dat contact
    als compacte flow onder elkaar, van het formulier (links) tot afgerond (rechts); de aangeklikte aanvraag is gemarkeerd. Kleur = kwalificatie van de lead (Hot / Warm / Cold / geen lead).
@@ -17,7 +18,7 @@ const REPN={"rick@gruposoltura.com":"Rick","marco@gruposoltura.com":"Marco","ing
 const repName=e=>REPN[String(e||"").toLowerCase()]||e||"";
 
 /* ---------- kwalificatie ---------- */
-const QL={hot:["Hot","Hot"],warm:["Warm","Warm"],cold:["Cold","Cold"],none:["Geen lead","No lead"]};
+const QL={hot:["Hot","Hot"],warm:["Warm","Warm"],cold:["Cold","Cold"],none:["Geen lead","No lead"],mail:["Mail","Email"]};
 /* zelfde tabel als LeadProcessor-v2 (Build scoring prompt, 22-10-2026) plus de oude-site-typen */
 const QT={
   hot:["viewing","valuation","bookaviewing","book-viewing","makeoffer","make-offer","offer","idealista-offer","callme","sellforfree"],
@@ -26,6 +27,7 @@ const QT={
   cold:["favorite","favorites","favourite","notify","notify-back","pdfbrochure","pdf-brochure","searchdetails","search-details","emailalert","bargain","secretdeals","dashboard"],
   none:["newsletter","optin"]};
 function qual(f){
+  if(f._mail)return"mail";
   const s=String(f.lp&&f.lp.score||"").toLowerCase();if(QL[s])return s;
   for(const k of [f.kind,f.type,f.key]){const v=String(k||"").toLowerCase().replace(/^request-/,"");for(const q in QT)if(QT[q].includes(v))return q}
   return "warm";
@@ -45,11 +47,21 @@ function route(f){
 }
 const origin=f=>f.source==="cpr_import"?"old":(f.web||f.source==="website"||f.source==="website-new")?"web":"other";
 
+/* ---------- mailnode-status ---------- */
+const mailSt=m=>!m?null:(m.events||[]).some(e=>/hard|soft|block|invalid|spam|error/.test(e))?"fail":"done";
+const mailSub=m=>{const ev=m.events||[];return ev.some(e=>/click/.test(e))?tr(["geklikt","clicked"]):ev.some(e=>/open/.test(e))?tr(["geopend","opened"]):ev.some(e=>/deliver/.test(e))?tr(["afgeleverd","delivered"]):(ev[0]||"")};
+/* oogje op de mailnode (Rick, 23-10-2026): de klant opende (of klikte in) de mail, ook als dat dagen later was (migratie 071) */
+const mailEye=m=>{if(!m)return null;const ev=m.events||[];const op=m.opened_at||(ev.some(e=>/open/.test(e))?"?":null),cl=m.clicked_at||(ev.some(e=>/click/.test(e))?"?":null);
+    if(!op&&!cl)return null;const w=x=>x&&x!=="?"?" "+dmyt(x):"";
+    return {click:!!cl,title:(op?tr(["Geopend door de klant","Opened by the client"])+w(op):"")+(cl?(op?" · ":"")+tr(["geklikt","clicked"])+w(cl):"")}};
+
 /* ---------- stappen per flow ---------- */
 /* st: done | wait | fail | skip ; id verwijst naar de uitleg in INFO */
 function steps(f){
   const o=origin(f), q=qual(f), age=(Date.now()-new Date(f.ts))/60000, S=[];
   const late=age>30;
+  /* losse automatische mail zonder formulier (bv. "Your property is live!", seller-update): één node "Mail klant" (Rick, 23-10-2026) */
+  if(f._mail){const m=(f.mails||[])[0];S.push({id:"mail",st:mailSt(m)||"done",t:tr(["Mail klant","Client email"]),s:mailSub(m)||hm(f.ts),eye:mailEye(m)});return S}
   if(f._synthetic){}else S.push({id:"form",st:"done",t:X.rq(f.key)||f.key,s:o==="old"?tr(["oude site","old site"]):o==="web"?tr(["website","website"]):(f.source||"")});
   if(f._synthetic){
     S.push({id:"optin",st:"done",t:tr(["Opt-in","Opt-in"]),s:tr(["bij import","at import"])});
@@ -72,12 +84,6 @@ function steps(f){
   }
   S.push({id:"nexus",st:"done",t:"NEXUS",s:tr(["contact + aanvraag","contact + request"])});
   const r=route(f), mail=(f.mails||[])[0];
-  const mailSt=m=>!m?null:(m.events||[]).some(e=>/hard|soft|block|invalid|spam|error/.test(e))?"fail":"done";
-  const mailSub=m=>{const ev=m.events||[];return ev.some(e=>/click/.test(e))?tr(["geklikt","clicked"]):ev.some(e=>/open/.test(e))?tr(["geopend","opened"]):ev.some(e=>/deliver/.test(e))?tr(["afgeleverd","delivered"]):(ev[0]||"")};
-  /* oogje op de mailnode (Rick, 23-10-2026): de klant opende (of klikte in) de mail, ook als dat dagen later was (migratie 071) */
-  const mailEye=m=>{if(!m)return null;const ev=m.events||[];const op=m.opened_at||(ev.some(e=>/open/.test(e))?"?":null),cl=m.clicked_at||(ev.some(e=>/click/.test(e))?"?":null);
-    if(!op&&!cl)return null;const w=x=>x&&x!=="?"?" "+dmyt(x):"";
-    return {click:!!cl,title:(op?tr(["Geopend door de klant","Opened by the client"])+w(op):"")+(cl?(op?" · ":"")+tr(["geklikt","clicked"])+w(cl):"")}};
   if(r==="leadprocessor"){
     const lp=f.lp, lpErr=lp&&(lp.status==="error"||lp.error);
     S.push({id:"lp",st:lp?(lpErr?"fail":"done"):(late?"fail":"wait"),t:"LeadProcessor",s:lp?tr(["score ","score "])+String(lp.score||"?"):(late?tr(["geen run","no run"]):tr(["wacht","waiting"])),q:true});
@@ -161,10 +167,10 @@ function sendGroups(f){const G={};(f._sends||[]).forEach(m=>{const k=m.title||"m
   return Object.values(G).sort((a,b)=>new Date(b.last)-new Date(a.last))}
 const dm=ts=>{if(!ts)return"";const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")};
 function flowHtml(f,i){
-  const q=qual(f), S=steps(f), o=f._synthetic?"optin":origin(f), G=sendGroups(f);
+  const q=qual(f), S=steps(f), o=f._mail?"mail":f._synthetic?"optin":origin(f), G=sendGroups(f);
   const PORT={idealista:"Idealista"};
-  const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],other:[PORT[f.source]||f.source||"Overig",PORT[f.source]||f.source||"Other"]};
-  const title=f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):(X.rq(f.key)||f.key);
+  const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],mail:["Automatische mail","Automatic email"],other:[PORT[f.source]||f.source||"Overig",PORT[f.source]||f.source||"Other"]};
+  const title=f._mail?(f.subject||tr(["Mail","Email"])):f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):(X.rq(f.key)||f.key);
   return `<div class="fl-card q-${q}${f.id===RID?" on":""}" data-fi="${i}">
     <div class="fl-hd"><span class="fl-q">${esc(tr(QL[q]))}</span><b class="fl-t">${esc(title)}</b>${f.ref?`<span class="fl-ref" data-p="${esc(f.ref)}">${esc(f.ref)}</span>`:""}
       <span class="fl-o">${esc(tr(ORIG[o]))}</span><span class="fl-ts" title="${esc(dmyt(f.ts))}">${esc(dmyt(f.ts))}</span></div>
@@ -177,10 +183,10 @@ function render(){
   const fl=D.flows||[];
   if(!fl.length){ROOT.innerHTML="";return}
   ROOT.innerHTML=`<div class="fl-wrap">
-    <div class="fl-top"><h4>${esc(tr(["Formulieren","Forms"]))} <span class="cnt">${D.total||fl.length}</span></h4>
+    <div class="fl-top"><h4>${esc(tr(["Formulieren","Forms"]))} <span class="cnt">${D.total||fl.filter(f=>!f._synthetic).length}</span>${fl.some(f=>f._mail)?` · ${esc(tr(["Mails","Emails"]))} <span class="cnt">${fl.filter(f=>f._mail).length}</span>`:""}</h4>
       <div class="fl-leg">${["hot","warm","cold","none"].map(q=>`<span class="fl-lg q-${q}">${esc(tr(QL[q]))}</span>`).join("")}</div></div>
     <div class="fl-list">${fl.map(flowHtml).join("")}
-      ${D.total>fl.length?`<div class="sm muted" style="padding:2px 4px">${esc(tr([`en ${D.total-fl.length} oudere aanvragen, zie de tijdlijn hieronder`,`and ${D.total-fl.length} older requests, see the timeline below`]))}</div>`:""}</div></div>`;
+      ${D.total>fl.filter(f=>!f._synthetic).length?`<div class="sm muted" style="padding:2px 4px">${esc(tr([`en ${D.total-fl.filter(f=>!f._synthetic).length} oudere aanvragen, zie de tijdlijn hieronder`,`and ${D.total-fl.filter(f=>!f._synthetic).length} older requests, see the timeline below`]))}</div>`:""}</div></div>`;
   ROOT.querySelectorAll(".fl-n").forEach(b=>b.onclick=e=>{e.stopPropagation();const card=b.closest(".fl-card"),f=fl[+card.dataset.fi];
     if(b.dataset.g!=null)popSends(f,sendGroups(f)[+b.dataset.g]);else popup(f,b.dataset.id,b.className.split(" ")[1])});
   const on=ROOT.querySelector(".fl-card.on");if(on&&on.scrollIntoView)try{on.scrollIntoView({block:"nearest"})}catch(e){}
@@ -192,7 +198,7 @@ function popup(f,id,st){
   let ov=document.getElementById("flPop");if(ov)ov.remove();
   ov=document.createElement("div");ov.id="flPop";ov.className="fl-pop";
   ov.innerHTML=`<div class="fl-box q-${qual(f)}" role="dialog" aria-modal="true" aria-labelledby="flPopH">
-    <div class="fl-bh"><div><small>${esc(X.rq(f.key)||f.key)} · ${esc(dmyt(f.ts))}</small><h3 id="flPopH">${esc(tr(I.h))}</h3></div><button type="button" class="fl-x" aria-label="${esc(tr(["Sluiten","Close"]))}">×</button></div>
+    <div class="fl-bh"><div><small>${esc(f._mail?(f.subject||""):(X.rq(f.key)||f.key))} · ${esc(dmyt(f.ts))}</small><h3 id="flPopH">${esc(tr(I.h))}</h3></div><button type="button" class="fl-x" aria-label="${esc(tr(["Sluiten","Close"]))}">×</button></div>
     <div class="fl-bb"><span class="fl-st ${st}">${ICON[st]} ${esc(tr(STL[st]||STL.done))}</span>
       ${(I.p||[]).map(p=>`<p>${esc(tr(p))}</p>`).join("")}
       ${facts.length?`<dl>${facts.map(x=>`<dt>${esc(x[0])}</dt><dd>${esc(x[1])}</dd>`).join("")}</dl>`:""}
@@ -249,7 +255,8 @@ function fold(list,data){
     if(!f){if(!synth){synth={id:"_optin",_synthetic:true,ts:e.ts,key:"optin",source:"optin",mails:[],_mailUuids:[],_sends:[]};fl.push(synth)}
       if(T(e.ts)<T(synth.ts))synth.ts=e.ts;f=synth}
     f._sends.push(e)});
-  return (list||[]).filter(e=>{
+  const M={};
+  const rest=(list||[]).filter(e=>{
     if(e.kind==="mailing")return false;
     /* opens en clicks op een mailing (Brevo-event met het mailingtype als tekst) tellen al mee in die mailing */
     if(e.kind==="mail"&&/^[a-z_]+$/.test(String(e.text||"")))return false;
@@ -259,8 +266,16 @@ function fold(list,data){
     if(e.kind==="mail"&&e.uuid){const f=fl.find(f=>(f.mails||[]).some(m=>m.uuid&&m.uuid===e.uuid));
       if(f){if(!f._mailUuids.includes(e.uuid))f._mailUuids.push(e.uuid);return false}}
     if(e.kind==="mail"){const f=fl.find(f=>{const d=T(e.ts)-T(f.ts);return d>=-60000&&d<=3*3600000&&(f.mails||[]).some(m=>m.subject===e.text)});
-      if(!f)return true;if(e.uuid&&!f._mailUuids.includes(e.uuid))f._mailUuids.push(e.uuid);return false}
+      if(!f){if(!e.uuid)return true;(M[e.uuid]=M[e.uuid]||[]).push(e);return false}if(e.uuid&&!f._mailUuids.includes(e.uuid))f._mailUuids.push(e.uuid);return false}
     return true});
+  /* Losse transactionele mails (geen formulier, bv. "Your property is live!" of de seller-update): alle Brevo-events
+     van dezelfde mail (uuid) worden één flow met één node "Mail klant", met oogje bij geopend/geklikt (Rick, 23-10-2026). */
+  Object.keys(M).forEach(u=>{const ev=M[u].slice().sort((a,b)=>T(a.ts)-T(b.ts)),nm=e=>String(e.title||"").toLowerCase();
+    const first=ev.find(e=>/sent|request|deliver/.test(nm(e)))||ev[0], fo=ev.find(e=>/open/.test(nm(e))), fc=ev.find(e=>/click/.test(nm(e)));
+    const m={uuid:u,at:first.ts,subject:first.text||"",events:[...new Set(ev.map(nm).filter(Boolean))],opened_at:fo?fo.ts:null,clicked_at:fc?fc.ts:null};
+    fl.push({id:"_mail_"+u,_synthetic:true,_mail:true,ts:first.ts,key:"mail",subject:m.subject,ref:ev.map(e=>e.ref).find(Boolean)||null,mails:[m],_mailUuids:[u],_sends:[]})});
+  if(Object.keys(M).length)fl.sort((a,b)=>T(b.ts)-T(a.ts));
+  return rest;
 }
 window.NEXUS_FLOWS={open,close,fold,rerender:render,current:()=>CID};
 })();
