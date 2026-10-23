@@ -74,6 +74,10 @@ function steps(f){
   const r=route(f), mail=(f.mails||[])[0];
   const mailSt=m=>!m?null:(m.events||[]).some(e=>/hard|soft|block|invalid|spam|error/.test(e))?"fail":"done";
   const mailSub=m=>{const ev=m.events||[];return ev.some(e=>/click/.test(e))?tr(["geklikt","clicked"]):ev.some(e=>/open/.test(e))?tr(["geopend","opened"]):ev.some(e=>/deliver/.test(e))?tr(["afgeleverd","delivered"]):(ev[0]||"")};
+  /* oogje op de mailnode (Rick, 23-10-2026): de klant opende (of klikte in) de mail, ook als dat dagen later was (migratie 071) */
+  const mailEye=m=>{if(!m)return null;const ev=m.events||[];const op=m.opened_at||(ev.some(e=>/open/.test(e))?"?":null),cl=m.clicked_at||(ev.some(e=>/click/.test(e))?"?":null);
+    if(!op&&!cl)return null;const w=x=>x&&x!=="?"?" "+dmyt(x):"";
+    return {click:!!cl,title:(op?tr(["Geopend door de klant","Opened by the client"])+w(op):"")+(cl?(op?" · ":"")+tr(["geklikt","clicked"])+w(cl):"")}};
   if(r==="leadprocessor"){
     const lp=f.lp, lpErr=lp&&(lp.status==="error"||lp.error);
     S.push({id:"lp",st:lp?(lpErr?"fail":"done"):(late?"fail":"wait"),t:"LeadProcessor",s:lp?tr(["score ","score "])+String(lp.score||"?"):(late?tr(["geen run","no run"]):tr(["wacht","waiting"])),q:true});
@@ -84,14 +88,14 @@ function steps(f){
         s:fo?(fo.attachment?tr(["met PDF","with PDF"]):tr(["verstuurd","sent"])):tr(["wacht","waiting"])});}
     /* portalen (Idealista) leveren geen e-mailadres: geen automatische klantmail, de rep belt of whatsappt (Rick, 22-10-2026) */
     if(o==="other"&&!mail)S.push({id:"call",st:lp?"skip":"wait",t:tr(["Bellen / WhatsApp","Call / WhatsApp"]),s:tr(["geen e-mail","no email"])});
-    else S.push({id:"mail",st:mailSt(mail)||(lp&&late?"skip":"wait"),t:tr(["Mail klant","Client email"]),s:mail?mailSub(mail):(lp&&late?tr(["niet gevonden","not found"]):tr(["wacht","waiting"]))});
+    else S.push({id:"mail",st:mailSt(mail)||(lp&&late?"skip":"wait"),t:tr(["Mail klant","Client email"]),s:mail?mailSub(mail):(lp&&late?tr(["niet gevonden","not found"]):tr(["wacht","waiting"])),eye:mailEye(mail)});
     if(q==="hot")S.push({id:"hot",st:lp?"done":"wait",t:tr(["Agenda","Calendar"]),s:tr(["+ cc Rick","+ cc Rick"])});
   } else if(r==="newsletter"){
     const fo=f.follow;S.push({id:"nl",st:fo?(fo.status==="error"?"fail":"done"):(late?"fail":"wait"),t:"NewsletterConfirm",s:fo?(fo.lang||"").toUpperCase():tr(["wacht","waiting"])});
-    S.push({id:"mail",st:mailSt(mail)||(fo?"skip":"wait"),t:tr(["Bevestiging","Confirmation"]),s:mail?mailSub(mail):"—"});
+    S.push({id:"mail",st:mailSt(mail)||(fo?"skip":"wait"),t:tr(["Bevestiging","Confirmation"]),s:mail?mailSub(mail):"—",eye:mailEye(mail)});
   } else if(r==="favorites"){
     const fo=f.follow;S.push({id:"fav",st:fo?(fo.status==="error"?"fail":"done"):(late?"fail":"wait"),t:"FavoritesMail",s:fo?(fo.to?tr(["verstuurd","sent"]):""):tr(["wacht","waiting"])});
-    S.push({id:"mail",st:mailSt(mail)||(fo?"skip":"wait"),t:tr(["Mail klant","Client email"]),s:mail?mailSub(mail):"—"});
+    S.push({id:"mail",st:mailSt(mail)||(fo?"skip":"wait"),t:tr(["Mail klant","Client email"]),s:mail?mailSub(mail):"—",eye:mailEye(mail)});
   } else {
     S.push({id:"bom",st:f.status==="closed"?"done":"wait",t:"BackOnMarket",s:f.status==="closed"?tr(["gemaild","emailed"]):tr(["wacht op woning","waits for property"])});
   }
@@ -139,7 +143,8 @@ const INFO={
   bom:f=>({h:["BackOnMarket","BackOnMarket"],p:[["De aanvraag blijft open tot de gereserveerde woning weer beschikbaar is. Dan mailt BackOnMarket de bezoeker en sluit de aanvraag.",
     "The request stays open until the reserved property is available again. Then BackOnMarket emails the visitor and closes the request."]],facts:[[tr(["Woning","Property"]),f.ref],["Status",f.status]]}),
   mail:f=>({h:["Mail aan de klant","Email to the client"],p:[["Transactionele mail via Brevo, met de rep als reply-to. Hieronder de status zoals Brevo die terugmeldt.","Transactional email via Brevo, with the rep as reply-to. Below is the status as reported back by Brevo."]],
-    facts:(f.mails||[]).map(m=>[hm(m.at)+" · "+(m.subject||""),(m.events||[]).join(", ")])}),
+    facts:(f.mails||[]).flatMap(m=>[[hm(m.at)+" · "+(m.subject||""),(m.events||[]).join(", ")],
+      [tr(["Geopend","Opened"]),m.opened_at?dmyt(m.opened_at):null],[tr(["Geklikt","Clicked"]),m.clicked_at?dmyt(m.clicked_at):null]])}),
   call:f=>({h:["Bellen of WhatsApp","Call or WhatsApp"],p:[["Deze lead kwam via een portaal zonder e-mailadres van de klant. JARVIS stuurt dus geen mail; de leadcard vraagt de rep om te bellen of te whatsappen. Reageert de klant via het portaal, dan wordt daar geantwoord.",
     "This lead came through a portal without the client's email address. JARVIS therefore sends no email; the lead card asks the rep to call or WhatsApp. If the client replies through the portal, the answer goes there."]],facts:[[tr(["Bron","Source"]),f.source],[tr(["Rep","Rep"]),f.lp&&repName(f.lp.rep)]]}),
   hot:f=>({h:["Hot: agenda en cc Rick","Hot: calendar and cc Rick"],p:[["Bij een Hot lead staat Rick in cc op de leadcard en komt er een afspraak in de agenda van de rep: bij terugbellen 2 uur na binnenkomst, anders 10:00 op de eerstvolgende werkdag.",
@@ -164,7 +169,7 @@ function flowHtml(f,i){
     <div class="fl-hd"><span class="fl-q">${esc(tr(QL[q]))}</span><b class="fl-t">${esc(title)}</b>${f.ref?`<span class="fl-ref" data-p="${esc(f.ref)}">${esc(f.ref)}</span>`:""}
       <span class="fl-o">${esc(tr(ORIG[o]))}</span><span class="fl-ts" title="${esc(dmyt(f.ts))}">${esc(dmyt(f.ts))}</span></div>
     ${f.message?`<div class="fl-msg" title="${esc(f.message)}">${esc(f.message)}</div>`:""}
-    <div class="fl-track">${S.map((s,j)=>`<button type="button" class="fl-n ${s.st}" data-s="${j}" data-id="${s.id}"><i aria-hidden="true">${ICON[s.st]}</i><b>${esc(s.t)}</b><small>${esc(s.s||"")}</small></button>`).join("")}${G.map((g,gi)=>`<button type="button" class="fl-n done send" data-g="${gi}"><i aria-hidden="true">✉</i><b>${esc(g.t)} ${g.items.length}×</b><small>${esc(tr([`${g.o} geopend · ${g.c} geklikt · ${dm(g.last)}`,`${g.o} opened · ${g.c} clicked · ${dm(g.last)}`]))}</small></button>`).join("")}</div></div>`;
+    <div class="fl-track">${S.map((s,j)=>`<button type="button" class="fl-n ${s.st}" data-s="${j}" data-id="${s.id}"><i aria-hidden="true">${ICON[s.st]}</i><b>${esc(s.t)}${s.eye?`<span class="fl-eye" style="display:inline-flex;vertical-align:-1px;margin-left:4px;color:${s.eye.click?"#38bdf8":"#22c55e"}" title="${esc(s.eye.title)}" aria-label="${esc(s.eye.title)}"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M1.5 12S5.5 4.5 12 4.5 22.5 12 22.5 12 18.5 19.5 12 19.5 1.5 12 1.5 12Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></span>`:""}</b><small>${esc(s.s||"")}</small></button>`).join("")}${G.map((g,gi)=>`<button type="button" class="fl-n done send" data-g="${gi}"><i aria-hidden="true">✉</i><b>${esc(g.t)} ${g.items.length}×</b><small>${esc(tr([`${g.o} geopend · ${g.c} geklikt · ${dm(g.last)}`,`${g.o} opened · ${g.c} clicked · ${dm(g.last)}`]))}</small></button>`).join("")}</div></div>`;
 }
 function render(){
   if(!ROOT)return;
@@ -250,6 +255,9 @@ function fold(list,data){
     if(e.kind==="mail"&&/^[a-z_]+$/.test(String(e.text||"")))return false;
     if(e.kind==="request")return !ids.has(String(e.id));
     if(e.kind==="lead")return !fl.some(f=>f.source!=="cpr_import"&&Math.abs(T(e.ts)-T(f.ts))<=10*60000);
+    /* Brevo-events (open, klik) op de klantmail van een flow gaan op in die flow, ook dagen later: herkend aan de mail-uuid (23-10-2026) */
+    if(e.kind==="mail"&&e.uuid){const f=fl.find(f=>(f.mails||[]).some(m=>m.uuid&&m.uuid===e.uuid));
+      if(f){if(!f._mailUuids.includes(e.uuid))f._mailUuids.push(e.uuid);return false}}
     if(e.kind==="mail"){const f=fl.find(f=>{const d=T(e.ts)-T(f.ts);return d>=-60000&&d<=3*3600000&&(f.mails||[]).some(m=>m.subject===e.text)});
       if(!f)return true;if(e.uuid&&!f._mailUuids.includes(e.uuid))f._mailUuids.push(e.uuid);return false}
     return true});
