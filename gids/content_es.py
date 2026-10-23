@@ -49,9 +49,9 @@ PAGES = [
     ('lead', 'Gracias por pedir esta guía. Si la estás leyendo, seguramente tu sueño de una casa al sol empieza a tomar forma.'),
     ('p', 'Desde 2002 ayudamos a personas a encontrar su hogar en la Vega Baja: el interior verde de la Costa Blanca Sur, entre el río Segura, las salinas y el mar. En estos años hemos visto cambiar al comprador. Antes se compraban sobre todo casas de vacaciones; ahora llegan cada vez más familias que construyen aquí una nueva vida, personas que teletrabajan y jubilados que quieren cambiar el invierno por luz.'),
     ('p', 'Lo que no ha cambiado: comprar en España tiene sus propias reglas. Procedimientos, impuestos y trampas que conviene conocer. Esta guía lo ordena todo, con honestidad y sin discurso de venta. Verás lo que cuesta de verdad, qué preguntas debes hacerte antes, cómo es el proceso de compra y qué viene después de recibir las llaves.'),
-    ('p', 'Hoy mucha gente llega con una lista que ha preparado con inteligencia artificial. Perfecto, nos encanta empezar por ahí. Pero las preguntas que marcan la diferencia rara vez están en esa lista. Esas las encontrarás aquí.'),
+    ('p', 'Hoy mucha gente llega con una lista que ha preparado con inteligencia artificial. Perfecto, nos encanta empezar por ahí. Pero las preguntas que marcan la diferencia rara vez están en esa lista. Esas las encontrarás aquí. Nosotros también usamos IA en todos nuestros canales online, para que llegues mejor y más completamente informado.'),
     ('p', '¿Te quedan dudas después de leerla? Llámanos, escríbenos por WhatsApp o pásate por Formentera del Segura. El café está listo.'),
-    ('html', '<div class="sig">Rick van Hoeven</div><p class="small" style="margin-top:1mm">Director de Grupo Soltura · Soltura Real Estate</p>'),
+    ('html', '<div class="sig">Rick van Hoeven</div><p class="small" style="margin-top:1mm">Cofundador de Soltura Real Estate</p>'),
   ], [
     ('img', 'office-crop.jpg', 60, 'Nuestra oficina en Formentera del Segura.'),
     ('quote', 'Lo que hace especial a Rick es que solo habla de lo que de verdad conoce a fondo.', 'Reseña en Google, octubre de 2026'),
@@ -60,19 +60,20 @@ PAGES = [
 ]},
 
 # ------------------------------------------------------------------ QUIÉNES SOMOS
-{'kind': 'page', 'label': 'Sobre Soltura', 'band': 'town-torrevieja-3.jpg', 'band_h': 48, 'band_pos': 'center 60%', 'hero': 'ai-09-aerial.jpg', 'hero_h': 78, 'hero_pos': 'center 60%', 'blocks': [
+{'kind': 'page', 'label': 'Sobre Soltura Real Estate', 'hero': 'ai-09-aerial.jpg', 'hero_h': 78, 'hero_pos': 'center 60%', 'blocks': [
   ('sp', 72),
   ('h2', 'Expertos locales, <em>siempre un paso por delante</em>'),
-  ('stats', [('2002', 'trabajando en la Vega Baja'), ('4,7★', 'valoración media en Google'), ('4', 'idiomas: NL · EN · DE · ES'), ('1', 'equipo desde el primer contacto hasta la posventa')]),
+  ('stats', [('2002', 'trabajando en la Vega Baja'), ('4,7★', 'valoración media en Google'), ('4', 'idiomas: NL · EN · DE · ES'), ('IA', 'en todos nuestros canales online')]),
   ('cols', [[
     ('h3', 'Quiénes somos'),
-    ('p', 'Grupo Soltura es una agencia inmobiliaria con oficina física en Formentera del Segura, en pleno corazón de nuestra zona. Conocemos Rojales, Ciudad Quesada, Benijófar, Guardamar, Torrevieja, Orihuela Costa y los pueblos de alrededor calle a calle.'),
+    ('p', 'Soltura Real Estate es una agencia inmobiliaria con oficina física en Formentera del Segura, en pleno corazón de nuestra zona. Conocemos Rojales, Ciudad Quesada, Benijófar, Guardamar, Torrevieja, Orihuela Costa y los pueblos de alrededor calle a calle.'),
     ('p', 'Estamos inscritos en el Registro de Agentes de Intermediación Inmobiliaria de la Comunitat Valenciana (RAICV 5781), somos el colegiado n.º 992 del Colegio de API de Alicante y miembros de GIPE y AIPP.'),
   ], [
-    ('h3', 'Pioneros por costumbre'),
-    ('p', 'Fuimos de los primeros en usar drones para fotografiar viviendas, en tener app propia y en enviar información de inmuebles por SMS, mucho antes de que todo el mundo tuviera un smartphone. Hoy, en nuestra web buscas con tus propias palabras, preguntas lo que quieras sobre cada vivienda y los vendedores reciben cada semana un informe automático.'),
-    ('p', 'Esa ventaja la usamos para una sola cosa: informarte mejor y más rápido de lo que estás acostumbrado.'),
+    ('h3', 'Pioneros, ahora con IA'),
+    ('p', 'Fuimos de los primeros con drones, app propia e información de viviendas por SMS, mucho antes de los smartphones. Hoy usamos IA en todo lo que publicamos online. En nuestra web buscas con tus propias palabras y preguntas lo que quieras sobre cada vivienda, de día y de noche, con respuestas basadas en los datos reales.'),
+    ('p', 'El objetivo: que llegues mejor y más completamente informado, incluso antes de hablar con nosotros.'),
   ]]),
+  ('callout', 'soltura', 'Lo que nos dicen los clientes', 'Nuestros clientes describen la web y el contacto por redes sociales como una experiencia agradable: clara, con respuesta rápida y toda la información en un solo sitio. Por eso seguimos innovando.'),
 ]},
 
 # ------------------------------------------------------------------ ÍNDICE
@@ -502,7 +503,7 @@ PAGES = [
   ('cols', [[
     ('h3', 'Hacer una oferta'),
     ('p', 'La oferta se hace a través de nosotros, mejor por escrito, con el precio, las condiciones (como una hipoteca o los muebles que se quedan) y la fecha de escritura que deseas. La presentamos al vendedor y negociamos por ti.'),
-    ('h3', 'Reservada en Soltura'),
+    ('h3', 'Reservada en Soltura Real Estate'),
     ('p', 'Cuando se acepta una oferta y se paga la reserva, la vivienda pasa a estar reservada. Dejamos de hacer visitas y damos por hecho que la venta sigue adelante. Si la operación se cae, la vivienda vuelve al mercado. En nuestra web puedes apuntarte para recibir un aviso en ese momento.'),
   ], [
     ('h3', 'El contrato de arras'),
@@ -745,7 +746,7 @@ PAGES = [
   ('h2', 'Lo que <em>hacemos</em> por ti'),
   ('lead', 'Un solo equipo desde el primer contacto hasta los meses después de las llaves, en tu idioma. Tú eliges lo que necesitas.'),
   ('cards', [
-    {'icon': 'search', 't': 'Búsqueda a medida', 'x': 'Seleccionamos viviendas según tus deseos, a menudo antes de que salgan en internet, y agrupamos las visitas en un solo viaje.'},
+    {'icon': 'search', 't': 'Búsqueda a medida', 'x': 'Seleccionamos viviendas a tu medida, a menudo antes de que salgan online. O busca tú con tus palabras en nuestro buscador con IA.'},
     {'icon': 'shield', 't': 'Acompañamiento en la compra', 'x': 'Revisión legal, contratos, coordinación con notaría y banco, y alguien a tu lado el día de la escritura.'},
     {'icon': 'bank', 't': 'Hipoteca', 'x': 'Contacto con bancos españoles, solicitud, tasación y acompañamiento hasta la notaría.'},
     {'icon': 'doc', 't': 'NIE, banco y poder', 'x': 'Formularios, citas y, si quieres, todo resuelto a distancia con un poder.'},
@@ -753,7 +754,7 @@ PAGES = [
     {'icon': 'key', 't': 'Testamento y posventa', 'x': 'Testamento español, suministros a tu nombre y una persona de contacto fija después.'},
     {'icon': 'home', 't': 'Vender', 'x': 'Valoración gratuita, fotos profesionales, dron y 3D, y cada semana un informe sobre tu vivienda.'},
     {'icon': 'people', 't': 'Red de contactos', 'x': 'Profesionales, administradores, asesores fiscales y abogados de confianza que conocemos desde hace años.'},
-    {'icon': 'chat', 't': 'En tu idioma', 'x': 'Neerlandés, inglés, alemán y español. También después de la compra.'},
+    {'icon': 'chat', 't': 'En tu idioma', 'x': 'Neerlandés, inglés, alemán y español. Online, nuestro asistente con IA responde sobre cada vivienda, día y noche.'},
   ], 3),
   ('cta', LINKS['contact'], 'Tarifas y condiciones bajo petición', 'Cada caso es distinto. Cuéntanos qué necesitas y recibirás una propuesta clara, sin sorpresas.'),
 ]},
@@ -781,7 +782,7 @@ PAGES = [
     ('check', ['Sé para qué compro (parte 1)', 'Mi hoja de deseos está rellena', 'Sé en qué 2-3 localidades quiero buscar',
                'Conozco mi presupuesto total, con todos los gastos de compra', 'Mi financiación está preaprobada', 'He solicitado el NIE']),
     ('h3', 'El viaje'),
-    ('check', ['Soltura conoce las fechas de mi viaje', 'Llevo pasaporte, tarjeta y justificante de ingresos', 'He visto mi primera selección de viviendas']),
+    ('check', ['Soltura Real Estate conoce las fechas de mi viaje', 'Llevo pasaporte, tarjeta y justificante de ingresos', 'He visto mi primera selección de viviendas']),
   ], [
     ('h3', 'La compra'),
     ('check', ['Tengo cuenta bancaria española', 'Se ha hecho la revisión legal', 'He leído y entendido el contrato de arras',
@@ -802,7 +803,7 @@ PAGES = [
 </div>
 <div style="position:absolute;left:16mm;right:16mm;top:132mm;display:grid;grid-template-columns:1fr 1fr;gap:6mm">
   <div style="font-size:10.5pt;line-height:1.7">
-    <div style="color:#FBCC10;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:8pt;margin-bottom:2mm">Soltura Real Estate · Grupo Soltura S.L.</div>
+    <div style="color:#FBCC10;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:8pt;margin-bottom:2mm">Soltura Real Estate</div>
     Avda. de la Constitución s/n<br>03179 Formentera del Segura (Alicante)<br><br>
     <b>T</b> +34 966 792 113<br><b>WhatsApp</b> +34 664 414 515<br><b>E</b> info@gruposoltura.com<br><br>
     <b>Oficina</b> lun-vie 10:00-14:00 · sáb-dom con cita
@@ -815,7 +816,7 @@ PAGES = [
   </div>
 </div>
 <div style="position:absolute;left:16mm;right:16mm;bottom:12mm;font-size:7.4pt;opacity:.75;line-height:1.5">
-  Grupo Soltura S.L. · RAICV 5781 · API 992 Alicante · GIPE 3.473 · miembro de AIPP · gruposoltura.com<br>
+  Grupo Soltura SL · RAICV 5781 · API 992 Alicante · GIPE 3.473 · miembro de AIPP · gruposoltura.com<br>
   Esta guía contiene información general (a octubre de 2026) y no constituye asesoramiento jurídico, fiscal ni financiero. Su contenido no genera derechos.
   Imágenes de ambiente: en parte creadas con IA; fotos de localidades vía Wikimedia Commons con la licencia indicada.
 </div>'''},

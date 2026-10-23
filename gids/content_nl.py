@@ -48,9 +48,9 @@ PAGES = [
     ('lead', 'Fijn dat je deze gids hebt opgevraagd. Dat je hem leest, betekent waarschijnlijk dat je droom over een huis in de zon concreter begint te worden.'),
     ('p', 'Sinds 2002 helpen wij mensen een thuis te vinden in de Vega Baja: het groene achterland van de Costa Blanca Zuid, tussen de rivier de Segura, de zoutmeren en de zee. In die jaren zagen we de koper veranderen. Waar vroeger vooral vakantiehuizen werden gekocht, komen nu steeds vaker gezinnen die hier een nieuw leven opbouwen, mensen die op afstand werken en gepensioneerden die de winter willen ruilen voor licht.'),
     ('p', 'Wat niet veranderde: kopen in Spanje werkt anders dan thuis. Andere procedures, andere belastingen, andere valkuilen. Deze gids zet alles op een rij, eerlijk en zonder verkooppraatje. Je leest wat het echt kost, welke vragen je jezelf vooraf moet stellen, hoe het aankoopproces verloopt en wat er ná de sleutels komt.'),
-    ('p', 'Veel mensen komen tegenwoordig binnen met een lijstje dat ze met AI hebben gemaakt. Prima, daar beginnen we graag mee. Maar de vragen die het verschil maken, staan zelden op dat lijstje. Die vind je hier.'),
+    ('p', 'Veel mensen komen tegenwoordig binnen met een lijstje dat ze met AI hebben gemaakt. Prima, daar beginnen we graag mee. Maar de vragen die het verschil maken, staan zelden op dat lijstje. Die vind je hier. Ook wij zetten AI in, in al onze online uitingen, zodat je vooraf beter en vollediger geïnformeerd bent.'),
     ('p', 'Heb je na het lezen vragen? Bel, app of loop binnen in Formentera del Segura. De koffie staat klaar.'),
-    ('html', '<div class="sig">Rick van Hoeven</div><p class="small" style="margin-top:1mm">Directeur Grupo Soltura · Soltura Real Estate</p>'),
+    ('html', '<div class="sig">Rick van Hoeven</div><p class="small" style="margin-top:1mm">Medeoprichter, Soltura Real Estate</p>'),
   ], [
     ('img', 'office-crop.jpg', 60, 'Ons kantoor in Formentera del Segura.'),
     ('quote', 'Wat Rick bijzonder maakt, is dat hij alleen praat over zaken waar hij écht verstand van heeft.', 'Google-review, oktober 2026'),
@@ -59,19 +59,20 @@ PAGES = [
 ]},
 
 # ------------------------------------------------------------------ OVER ONS
-{'kind': 'page', 'label': 'Over Soltura', 'band': 'town-torrevieja-3.jpg', 'band_h': 58, 'band_pos': 'center 60%', 'hero': 'ai-09-aerial.jpg', 'hero_h': 78, 'hero_pos': 'center 60%', 'blocks': [
+{'kind': 'page', 'label': 'Over Soltura Real Estate', 'band': 'town-torrevieja-3.jpg', 'band_h': 32, 'band_pos': 'center 60%', 'hero': 'ai-09-aerial.jpg', 'hero_h': 78, 'hero_pos': 'center 60%', 'blocks': [
   ('sp', 72),
   ('h2', 'Lokale experts, <em>altijd een stap vooruit</em>'),
-  ('stats', [('2002', 'actief in de Vega Baja'), ('4,7★', 'gemiddeld op Google'), ('4', 'talen: NL · EN · DE · ES'), ('1', 'team van eerste kennismaking tot nazorg')]),
+  ('stats', [('2002', 'actief in de Vega Baja'), ('4,7★', 'gemiddeld op Google'), ('4', 'talen: NL · EN · DE · ES'), ('AI', 'in al onze online kanalen')]),
   ('cols', [[
     ('h3', 'Wie we zijn'),
-    ('p', 'Grupo Soltura is een makelaarskantoor met een fysiek kantoor in Formentera del Segura, midden in ons werkgebied. Rojales, Ciudad Quesada, Benijófar, Guardamar, Torrevieja, Orihuela Costa en de dorpen ertussen kennen we straat voor straat.'),
+    ('p', 'Soltura Real Estate is een makelaarskantoor met een fysiek kantoor in Formentera del Segura, midden in ons werkgebied. Rojales, Ciudad Quesada, Benijófar, Guardamar, Torrevieja, Orihuela Costa en de dorpen ertussen kennen we straat voor straat.'),
     ('p', 'We zijn ingeschreven in het Valenciaanse makelaarsregister (RAICV 5781), lid nr. 992 van het API-college van Alicante, aangesloten bij GIPE en de AIPP.'),
   ], [
-    ('h3', 'Pionieren als gewoonte'),
-    ('p', 'We waren bij de eersten met dronebeelden van woningen, met een eigen app en met woninginformatie per sms, lang voor iedereen een smartphone had. Vandaag zoek je op onze website in je eigen woorden, stel je vragen over elke woning en krijgen verkopers elke week automatisch een update.'),
-    ('p', 'Die voorsprong gebruiken we voor één ding: jou sneller en beter informeren dan je gewend bent.'),
+    ('h3', 'Pionieren, nu met AI'),
+    ('p', 'We waren bij de eersten met dronebeelden, een eigen app en woninginformatie per sms, lang voor iedereen een smartphone had. Nu zetten we AI in, in al onze online uitingen. Op onze website zoek je in je eigen woorden en stel je over elke woning je vragen, dag en nacht. Het antwoord komt uit de echte woninggegevens.'),
+    ('p', 'Het doel: dat je als koper beter en vollediger geïnformeerd bent, nog vóór je eerste gesprek met ons.'),
   ]]),
+  ('callout', 'soltura', 'Wat klanten ons vertellen', 'Klanten ervaren onze website en het contact via social media als prettig: overzichtelijk, snel antwoord en alle informatie op één plek. Precies daarom blijven we vernieuwen.'),
 ]},
 
 # ------------------------------------------------------------------ INHOUD
@@ -501,7 +502,7 @@ PAGES = [
   ('cols', [[
     ('h3', 'Een bod doen'),
     ('p', 'Een bod doe je via ons, liefst schriftelijk, met de prijs, eventuele voorwaarden (zoals een hypotheek of wat er aan meubels achterblijft) en je gewenste datum van overdracht. Wij leggen het voor aan de verkoper en onderhandelen voor je.'),
-    ('h3', 'Onder bod bij Soltura'),
+    ('h3', 'Onder bod bij Soltura Real Estate'),
     ('p', 'Zodra een bod is geaccepteerd en de reservering is betaald, staat een woning bij ons onder bod. We stoppen dan met bezichtigingen en gaan ervan uit dat de verkoop doorgaat. Valt de koop toch af, dan komt de woning terug in de verkoop. Op onze website kun je je aanmelden om dan direct bericht te krijgen.'),
   ], [
     ('h3', 'Het koopcontract met aanbetaling (arras)'),
@@ -744,7 +745,7 @@ PAGES = [
   ('h2', 'Wat <em>wij</em> voor je doen'),
   ('lead', 'Eén team van eerste kennismaking tot de maanden na de sleutel, in jouw taal. Je kiest wat je nodig hebt.'),
   ('cards', [
-    {'icon': 'search', 't': 'Zoeken op maat', 'x': 'We selecteren woningen op jouw wensen, vaak al voordat ze online staan, en bundelen bezichtigingen in één efficiënte reis.'},
+    {'icon': 'search', 't': 'Zoeken op maat', 'x': 'We selecteren woningen op jouw wensen, vaak al voordat ze online staan. Online zoek je zelf in je eigen woorden met onze AI-zoekfunctie.'},
     {'icon': 'shield', 't': 'Aankoopbegeleiding', 'x': 'Juridische controles, contracten, afstemming met notaris en bank, en een collega naast je op de dag van de overdracht.'},
     {'icon': 'bank', 't': 'Hypotheek', 'x': 'Contact met Spaanse banken, aanvraag, taxatie en begeleiding tot en met de notaris.'},
     {'icon': 'doc', 't': 'NIE, bank en volmacht', 'x': 'Formulieren, afspraken en desgewenst alles op afstand geregeld met een volmacht.'},
@@ -752,7 +753,7 @@ PAGES = [
     {'icon': 'key', 't': 'Testament en nazorg', 'x': 'Een Spaans testament, nutsvoorzieningen op je naam en een vast aanspreekpunt daarna.'},
     {'icon': 'home', 't': 'Verkopen', 'x': 'Gratis waardebepaling, professionele foto\'s, drone en 3D, en elke week een update over je woning.'},
     {'icon': 'people', 't': 'Netwerk', 'x': 'Betrouwbare vakmensen, beheerders, fiscalisten en advocaten die we al jaren kennen.'},
-    {'icon': 'chat', 't': 'In je eigen taal', 'x': 'Nederlands, Engels, Duits en Spaans. Ook na de aankoop.'},
+    {'icon': 'chat', 't': 'In je eigen taal', 'x': 'Nederlands, Engels, Duits en Spaans, ook na de aankoop. Online beantwoordt onze AI-assistent je vragen over elke woning, dag en nacht.'},
   ], 3),
   ('cta', LINKS['contact'], 'Tarieven en voorwaarden op aanvraag', 'Elke situatie is anders. Vertel ons wat je nodig hebt, dan ontvang je een helder voorstel zonder verrassingen.'),
 ]},
@@ -780,7 +781,7 @@ PAGES = [
     ('check', ['Ik weet waarvoor ik koop (deel 1)', 'Mijn werkblad met wensen is ingevuld', 'Ik weet in welke 2-3 plaatsen ik wil zoeken',
                'Ik ken mijn totale budget, inclusief alle aankoopkosten', 'Mijn financiering is voorlopig rond', 'Mijn NIE is aangevraagd']),
     ('h3', 'De reis'),
-    ('check', ['Mijn reisdata zijn bekend bij Soltura', 'Ik heb paspoort, bankpas en inkomensbewijs bij me', 'Ik heb mijn eerste selectie woningen gezien']),
+    ('check', ['Mijn reisdata zijn bekend bij Soltura Real Estate', 'Ik heb paspoort, bankpas en inkomensbewijs bij me', 'Ik heb mijn eerste selectie woningen gezien']),
   ], [
     ('h3', 'De aankoop'),
     ('check', ['Ik heb een Spaanse bankrekening', 'De juridische controle is gedaan', 'Ik heb het koopcontract gelezen en begrepen',
@@ -801,7 +802,7 @@ PAGES = [
 </div>
 <div style="position:absolute;left:16mm;right:16mm;top:132mm;display:grid;grid-template-columns:1fr 1fr;gap:6mm">
   <div style="font-size:10.5pt;line-height:1.7">
-    <div style="color:#FBCC10;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:8pt;margin-bottom:2mm">Soltura Real Estate · Grupo Soltura S.L.</div>
+    <div style="color:#FBCC10;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:8pt;margin-bottom:2mm">Soltura Real Estate</div>
     Avda. de la Constitución s/n<br>03179 Formentera del Segura (Alicante)<br><br>
     <b>T</b> +34 966 792 113<br><b>WhatsApp</b> +34 664 414 515<br><b>E</b> info@gruposoltura.com<br><br>
     <b>Kantoor</b> ma-vr 10:00-14:00 · za-zo op afspraak
@@ -814,7 +815,7 @@ PAGES = [
   </div>
 </div>
 <div style="position:absolute;left:16mm;right:16mm;bottom:12mm;font-size:7.4pt;opacity:.75;line-height:1.5">
-  Grupo Soltura S.L. · RAICV 5781 · API 992 Alicante · GIPE 3.473 · lid AIPP · gruposoltura.com<br>
+  Grupo Soltura SL · RAICV 5781 · API 992 Alicante · GIPE 3.473 · lid AIPP · gruposoltura.com<br>
   Deze gids bevat algemene informatie (stand oktober 2026) en is geen juridisch, fiscaal of financieel advies. Aan de inhoud kunnen geen rechten worden ontleend.
   Sfeerbeelden: deels gemaakt met AI; plaatsfoto's via Wikimedia Commons met vermelde licentie.
 </div>'''},
