@@ -1353,3 +1353,19 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .st-eye{display:inline-flex}
 .st-chart{margin:0}
 .st-note{padding:0 4px}
+
+/* ---------- Kop op telefoon (Rick, 23-10-2026): knoppen onder de naam i.p.v. eroverheen ----------
+   De actieknoppen kregen naast de naamkolom geen ruimte, waardoor naam en contactpillen tot een smalle strook werden samengeperst
+   (naam onder de knoppen, "Geen telefoon/e-mail" als lange stippellijn). Op smal scherm: naamkolom naast de avatar, knoppen eronder op volle breedte. */
+@media (max-width:700px){
+  .dh{flex-wrap:wrap;gap:12px;padding:14px}
+  .dh .big{width:48px;height:48px;border-radius:14px}
+  .dh > :not(.ini):not(.acts){flex:1 1 calc(100% - 60px);min-width:0}
+  .dh .acts{order:3;flex:1 1 100%;margin-left:0;justify-content:stretch;align-self:stretch}
+  .dh h2{overflow-wrap:anywhere}
+  .subtabs{overflow-x:auto;scrollbar-width:none;padding:6px 8px 0;gap:0}
+  .subtabs::-webkit-scrollbar{display:none}
+  .subtabs .st{flex:0 0 auto;white-space:nowrap;padding:8px 10px}
+  .dh .cpill a{font-size:calc(13.5px*var(--fs,1));padding:6px 10px}
+  .dh .cpill.nophone a{display:block;line-height:1.35}
+}
