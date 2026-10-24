@@ -774,7 +774,8 @@ function propFeatures(p,raw,o,K,XL,m){
   const age=yr&&/^\d{4}$/.test(yr)?new Date().getFullYear()-Number(yr):null;
   const fz=(PR.detail&&PR.detail.features)||[], pP=fz.includes("pool"), pC=fz.includes("communal_pool");
   const pool=pP&&pC?L2("Privé én gemeenschappelijk","Private and communal"):pP?L2("Privé zwembad","Private pool"):pC?L2("Gemeenschappelijk zwembad","Communal pool"):L2("Geen zwembad","No pool");
-  const offered=p.is_external?(p.external_agency||t("external"))+(raw.external_refnr?" · "+raw.external_refnr:""):t("p.owngs");
+  const offered=p.is_external?(p.external_agency||t("external")):t("p.owngs"); /* Rick 24-10-2026: hun referentie staat nu in een eigen veld "Externe referentie" */
+  const XR=p.is_external&&raw.external_refnr?(()=>{const L=extLink(p.external_agency,raw.external_url,raw.external_refnr);return L?`<a class="ext-l" href="${esc(L.href)}" target="_blank" rel="noopener" title="${esc(L.exact?t("ext.open",{a:p.external_agency||t("external")}):t("ext.search"))}"><b class="mono">${esc(raw.external_refnr)}</b> ↗</a>`:`<b class="mono">${esc(raw.external_refnr)}</b>`})():null;
   const tile=(ic,val,lbl)=>`<div><span class="fi">${ic}</span><b>${val}</b><span>${lbl}</span></div>`;
   const D=PR.detail||{}, S=Object.assign({},PR.sale||{}); delete S.deed_price; /* Rick 20-10-2026: aktewaarde weg uit Status & verkoop, staat al onder eigendomsakte */
   const yn=b=>b?L2("Ja","Yes"):null, m2u=v=>v?num(v)+" m²":null;
@@ -832,6 +833,7 @@ function propFeatures(p,raw,o,K,XL,m){
       [t("p.mandate"),D.own_listing_type?(MANDATE[D.own_listing_type]?L2(...MANDATE[D.own_listing_type]):D.own_listing_type):raw.authority?(MANDATE[raw.authority]?L2(...MANDATE[raw.authority]):raw.authority):null],
       [L2("Referentie","Reference"),`<b>${esc(p.reference)}</b>`,1],
       [t("p.offeredby"),offered],
+      [L2("Externe referentie","External reference"),XR,1],
       [t("p.year"),yr?`${esc(yr)}${age!=null&&age>=0?` <span class="muted sm">· ${L2(age+" jaar oud",age+" years old")}</span>`:""}`:null,1],
       [L2("In aanbod sinds","Listed since"),lst?`${fdate(lst)} <span class="muted sm">· ${since(lst)}</span>`:null,1],
       [L2("Makelaar","Listing agent"),p.rep?`<b style="color:${REPC[p.rep]||"#94a3b8"}">${esc(rep(p.rep))}</b>`:null,1],
