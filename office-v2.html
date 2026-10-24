@@ -86,7 +86,7 @@
 <script src="bridge-frame.js"></script><!-- uniforme paneel-toggle -->
 <style>
   :root{
-    --bg:#06090f; --ground:#cfd4db; --slab:#101826; --line:#1c2636; --panel:#0b1019; --panel2:#0f1623;
+    --bg:#06090f; --ground:#3a3f4f; --slab:#101826; --line:#1c2636; --panel:#0b1019; --panel2:#0f1623;
     --text:#cfe2ec; --dim:#7590a3; --cyan:#00d4ff; --green:#3ee08f; --amber:#ffb547; --red:#ff5d5d;
     --grey:#8aa0b5; --violet:#b58cff; --gold:#ffd166;
     --font:'Segoe UI',system-ui,-apple-system,sans-serif;
@@ -196,7 +196,7 @@
   .tool.on .ic{background:rgba(0,0,0,.55);color:var(--tc,#fff);box-shadow:none}
 
   .scene{flex:1;min-height:0;position:relative;overflow:hidden;background:
-    radial-gradient(ellipse 75% 65% at 50% 46%,#e3e6eb,transparent 75%),var(--ground);touch-action:none}
+    radial-gradient(ellipse 75% 65% at 50% 46%,#4d5367,transparent 75%),var(--ground);touch-action:none}
   #floor{display:block;width:100%;height:100%;font-family:var(--font);cursor:grab;user-select:none;-webkit-user-select:none}
   #floor.drag{cursor:grabbing}
   #wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
@@ -217,15 +217,16 @@
   .ground-tex{display:none}
   .grid{display:none}
   /* 24-10: alles zweeft boven een lichtgrijze vloer; zachte slagschaduw FLOAT px eronder */
-  .fl-sh{fill:#1f2733;fill-opacity:.052}
+  .fl-sh{fill:#05070b;fill-opacity:.07}
   .slab-glow{display:none}
-  .fl-shp{fill:none;stroke:#1f2733;stroke-opacity:.075;stroke-linecap:round;stroke-linejoin:round}
+  .fl-shp{fill:none;stroke:#05070b;stroke-opacity:.1;stroke-linecap:round;stroke-linejoin:round}
   /* looppaden brein -> deur (vervangen de datapijpen): licht pad met stippellijn in de afdelingskleur */
   .walk{pointer-events:none}
-  .walk .wk-edge{fill:none;stroke:#9ea7b3;stroke-width:22;stroke-linecap:round;stroke-linejoin:round}
-  .walk .wk-base{fill:none;stroke:#eef0f3;stroke-width:19;stroke-linecap:round;stroke-linejoin:round}
-  .walk .wk-dots{fill:none;stroke:var(--c);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:.1 8;opacity:.95}
-  .slab-tex{opacity:.85}
+  .walk .wk-edge{fill:none;stroke:#2c3140;stroke-width:50;stroke-linecap:round;stroke-linejoin:round}
+  .walk .wk-base{fill:none;stroke:#565c6d;stroke-width:45;stroke-linecap:round;stroke-linejoin:round}
+  .walk .wk-dots{fill:none;stroke:var(--c);stroke-width:4.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:.1 12;opacity:.95}
+  .slab-floor{fill:color-mix(in srgb,var(--c) 66%,#2a3040)}
+  .slab-tex{opacity:.22;mix-blend-mode:multiply}
   .prop{pointer-events:none}
   .prop polygon{stroke:#000;stroke-opacity:.28;stroke-width:.5;stroke-linejoin:round}
   .prop .lamp-glow{opacity:.22;filter:url(#fSoft)}
@@ -308,7 +309,7 @@
   .slab:hover .slab-top,.slab:focus-visible .slab-top,.dept.cur .slab-top{stroke:var(--c);stroke-width:1.8}
   .dept.cur .slab-glow{fill:color-mix(in srgb,var(--c) 16%,transparent)}
   .band{fill:#fff;fill-opacity:.028}
-  .isle{fill:color-mix(in srgb,var(--c) 10%,#0d1420);fill-opacity:.85;stroke:color-mix(in srgb,var(--c) 38%,transparent);stroke-width:.8;stroke-opacity:.7}
+  .isle{fill:color-mix(in srgb,var(--c) 50%,#1a2030);fill-opacity:.55;stroke:color-mix(in srgb,var(--c) 38%,transparent);stroke-width:.8;stroke-opacity:.7}
   .lane{font:700 7.6px var(--mono);letter-spacing:.1em;fill:color-mix(in srgb,var(--c) 55%,#b9cbd8)}
   .plate{font:700 10.5px var(--mono);letter-spacing:.08em;fill:color-mix(in srgb,var(--c) 55%,#fff)}
 
@@ -356,8 +357,8 @@
   .brain .core-glow{fill:url(#gBrainGlow)}
   .brain .halo{fill:url(#gBrainGlow);animation:breathe 3.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
   @keyframes breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
-  .brain .bt{font:700 11px var(--mono);letter-spacing:.26em;fill:#0086a6;text-anchor:middle}
-  .brain .bs{font:8.5px var(--mono);letter-spacing:.08em;fill:#52606f;text-anchor:middle}
+  .brain .bt{font:700 11px var(--mono);letter-spacing:.26em;fill:#6fe0ff;text-anchor:middle}
+  .brain .bs{font:8.5px var(--mono);letter-spacing:.08em;fill:#b3bdca;text-anchor:middle}
   .brain .live-anchor{fill:transparent;cursor:pointer}
   .brain .beam{fill:url(#gBeam);mix-blend-mode:screen;pointer-events:none;animation:beam 3.6s ease-in-out infinite}
   @keyframes beam{0%,100%{opacity:.55}50%{opacity:.95}}
@@ -1381,7 +1382,7 @@
   }
   function lineShadow(P) {
     var pl = shadowPoly(P);
-    return [30, 22, 14].map(function (w) { return '<polyline class="fl-shp" stroke-width="' + w + '" points="' + pl + '"/>'; }).join("");
+    return [76, 62, 50].map(function (w) { return '<polyline class="fl-shp" stroke-width="' + w + '" points="' + pl + '"/>'; }).join("");
   }
   function shadowPoly(P) { return pts(P.map(function (p) { var q = iso(p[0], p[1], 0); return [q[0], q[1] + FLOAT]; })); }
 
@@ -2392,8 +2393,9 @@
       h += '<polygon class="slab-l" points="' + pts([iso(x0, y1, SLAB), iso(x1, y1, SLAB), iso(x1, y1), iso(x0, y1)]) + '"/>';
       h += '<polygon class="slab-r" points="' + pts([iso(x1, y1, SLAB), iso(x1, y0, SLAB), iso(x1, y0), iso(x1, y1)]) + '"/>';
       var topPoly = pts([iso(x0, y0, SLAB), iso(x1, y0, SLAB), iso(x1, y1, SLAB), iso(x0, y1, SLAB)]);
-      h += '<polygon class="slab-tex" fill="url(#pTop)" points="' + topPoly + '"/>'
-        + '<polygon class="slab-top" fill="none" points="' + topPoly + '"/>';
+      h += '<polygon class="slab-floor" points="' + topPoly + '"/>'   /* 24-10: vloer in de afdelingskleur (= kleding) */
+        + '<polygon class="slab-tex" fill="url(#pTop)" points="' + topPoly + '"/>'
+        + '<polygon class="slab-top" style="fill:none" points="' + topPoly + '"/>';
       h += '<polyline class="slab-lip" points="' + pts([iso(x0, y1, SLAB), iso(x1, y1, SLAB), iso(x1, y0, SLAB)]) + '"/>';
       h += wallsInner(d);
       d.lanes.forEach(function (l) {
@@ -2933,7 +2935,7 @@
     }
     var dkS = dockInfo(d), dkT = dockInfo(dt), R = routeOut(d, a, dkS.k), ring = perim([-RING, -RING, RING, RING]);
     function onRing(c) { var m = RING / Math.max(Math.abs(c[0]), Math.abs(c[1]), 1e-6); return [c[0] * m, c[1] * m]; }
-    function beside(c) { var L = Math.hypot(c[0], c[1]) || 1, n = [-c[1] / L, c[0] / L]; if (n[0] + n[1] < 0) n = [-n[0], -n[1]]; return [n[0] * 0.13, n[1] * 0.13]; }
+    function beside(c) { var L = Math.hypot(c[0], c[1]) || 1, n = [-c[1] / L, c[0] / L]; if (n[0] + n[1] < 0) n = [-n[0], -n[1]]; return [n[0] * 0.3, n[1] * 0.3]; }
     /* langs de pijp: buiten voor de deur -> knik -> ring om het brein, 0,3 cel ernaast */
     function alongPipe(dk) {
       var first = dk.via[0], n = beside(first), Rg = onRing(first);
