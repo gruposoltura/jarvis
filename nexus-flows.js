@@ -260,11 +260,9 @@ function fold(list,data){
   const byTs=fl.slice().sort((a,b)=>T(a.ts)-T(b.ts));
   const origin=m=>{const t=T(m.ts),before=byTs.filter(f=>T(f.ts)<=t);
     return before.filter(isOptin).pop()||before.pop()||null};
-  let synth=null;
-  (list||[]).forEach(e=>{if(e.kind!=="mailing")return;let f=origin(e);
-    if(!f){if(!synth){synth={id:"_optin",_synthetic:true,ts:e.ts,key:"optin",source:"optin",mails:[],_mailUuids:[],_sends:[]};fl.push(synth)}
-      if(T(e.ts)<T(synth.ts))synth.ts=e.ts;f=synth}
-    f._sends.push(e)});
+  /* Rick 24-10-2026: geen losse flow "Opt-in voor mailings" meer. Mailings zonder aanvraag ervoor verschijnen niet onder Aanvragen;
+     wat aan of uit staat staat in het tabblad Opt-ins / opt-outs. */
+  (list||[]).forEach(e=>{if(e.kind!=="mailing")return;const f=origin(e);if(f)f._sends.push(e)});
   const M={};
   const rest=(list||[]).filter(e=>{
     if(e.kind==="mailing")return false;
