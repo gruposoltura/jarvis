@@ -168,7 +168,7 @@ function sendGroups(f){const G={};(f._sends||[]).forEach(m=>{const k=m.title||"m
 const dm=ts=>{if(!ts)return"";const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")};
 function flowHtml(f,i){
   const q=qual(f), S=steps(f), o=f._mail?"mail":f._synthetic?"optin":origin(f), G=sendGroups(f);
-  const PORT={idealista:"Idealista"};
+  const PORT={idealista:"Idealista","agent-portal":"Makelaarsportaal (Sola)","appointment-agent":"viewing@ (e-mail)"};
   const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],mail:["Automatische mail","Automatic email"],other:[PORT[f.source]||f.source||"Overig",PORT[f.source]||f.source||"Other"]};
   const title=f._mail?(f.subject||tr(["Mail","Email"])):f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):(X.rq(f.key)||f.key);
   return `<div class="fl-card q-${q}${f.id===RID?" on":""}" data-fi="${i}">

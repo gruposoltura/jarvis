@@ -1,4 +1,4 @@
-/* NEXUS · Bezichtiging — elke bezichtigingsaanvraag via viewing@gruposoltura.com als flow van links naar rechts (Rick, 20-10-2026).
+/* NEXUS · Bezichtiging — elke bezichtigingsaanvraag via viewing@gruposoltura.com of het makelaarsportaal (agents.gruposoltura.com, sinds 24-10-2026) als flow van links naar rechts (Rick, 20-10-2026).
    Bron: RPC nexus_viewing_board(p_days, p_test) (migratie 046) over core.viewing_intake; één rij = één aanvraag (chain),
    d.w.z. alle mails van dezelfde makelaar tot de aanvraag verwerkt is. Gevuld door n8n JARVIS-AppointmentAgent-v2.
    Stappen: Ontvangen → Makelaar → Gegevens compleet → Woning → NEXUS → Bevestigd & doorgestuurd.
@@ -34,7 +34,9 @@ function model(c){
   const known=st.some(s=>s.agent_known)||has("agent_registered");
   const proc=lastOf(s=>s.outcome==="processed"), view=lastOf(s=>s.kind==="viewing"&&s.outcome!=="registration_requested");
   const S=[];
-  S.push({k:"in",st:"done",t:tr(["Ontvangen","Received"]),d:`${st.length} ${tr(st.length===1?["mail","email"]:["mails","emails"])} · ${ago(c.started_at)}`});
+  // kanaal (24-10-2026): viewing@ (mail) of het makelaarsportaal op de website (gesprek met Sola)
+  if(c.channel==="website")S.push({k:"in",st:"done",t:tr(["Website · Sola","Website · Sola"]),d:`${tr(["makelaarsportaal","agent portal"])} · ${ago(c.started_at)}`});
+  else S.push({k:"in",st:"done",t:tr(["Ontvangen","Received"]),d:`${st.length} ${tr(st.length===1?["mail","email"]:["mails","emails"])} · ${ago(c.started_at)}`});
   // makelaar
   if(st.length&&st[0].agent_known)S.push({k:"ag",st:"done",t:tr(["Makelaar bekend","Agent known"]),d:""});
   else if(has("agent_registered"))S.push({k:"ag",st:"done",t:tr(["Geregistreerd als Agent","Registered as agent"]),d:dmyt(lastOf(s=>s.outcome==="agent_registered").at)});
@@ -112,7 +114,7 @@ function render(){
         <div class="vw-state"><span class="vw-pill ${m.state}">${esc(tr(STATE[m.state]))}</span><small>${esc(ago(c.last_at))}</small></div>
         ${OPEN===c.chain_id?`<div class="vw-detwrap">${detail(c)}</div>`:""}</div>`).join("")}
     </div></div>`;
-  ROOT.innerHTML=`<div class="vw">${head}<p class="vw-lead">${esc(tr(["Elke rij is één aanvraag van een makelaar via viewing@gruposoltura.com. De flow loopt van links (binnengekomen) naar rechts (bevestigd en doorgestuurd naar de verkoper). Klik op een rij voor alle mails.","Each row is one request from an agent via viewing@gruposoltura.com. The flow runs from left (received) to right (confirmed and forwarded to the sales rep). Click a row for every email."]))}</p>${body}</div>`;
+  ROOT.innerHTML=`<div class="vw">${head}<p class="vw-lead">${esc(tr(["Elke rij is één aanvraag van een makelaar via viewing@gruposoltura.com of het makelaarsportaal op de website (Sola). De flow loopt van links (binnengekomen) naar rechts (bevestigd en doorgestuurd naar de verkoper). Klik op een rij voor alle mails.","Each row is one request from an agent via viewing@gruposoltura.com or the agent portal on the website (Sola). The flow runs from left (received) to right (confirmed and forwarded to the sales rep). Click a row for every email."]))}</p>${body}</div>`;
   wire();
 }
 function wire(){
