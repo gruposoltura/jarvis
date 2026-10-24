@@ -148,15 +148,17 @@ async function boot(){
   loadTabBadges();
 }
 
-/* Rode teller op Bezichtiging en Binnenkomend: aantal binnengekomen in de laatste 12 uur (Rick, 22-10-2026).
+/* Rode teller op Aanvragen en Portalen: aantal binnengekomen in de laatste 12 uur (Rick, 22-10-2026);
+   op Bezichtiging: aantal open aanvragen (Rick, 24-10-2026).
    Bron: RPC nexus_tab_badges (migratie 058) — viewing@-aanvragen (chains, geen testrijen) en aanvragen in core.requests. */
 let badgeTimer=null;
 async function loadTabBadges(){
   clearTimeout(badgeTimer);
   try{const b=await rpc("nexus_tab_badges",{p_hours:12})||{};
-    const set=(id,n,nl,en)=>{const el=$(id);if(!el)return;n=Number(n||0);el.textContent=n>0?(n>99?"99+":String(n)):"";
-      el.title=n>0?(LANG==="en"?`${n} ${en} in the last 12 hours`:`${n} ${nl} in de afgelopen 12 uur`):""};
-    set("#nbVw",b.viewings,"nieuwe bezichtigingsaanvragen","new viewing requests");
+    const set=(id,n,nl,en,win=true)=>{const el=$(id);if(!el)return;n=Number(n||0);el.textContent=n>0?(n>99?"99+":String(n)):"";
+      el.title=n>0?(LANG==="en"?`${n} ${en}${win?" in the last 12 hours":""}`:`${n} ${nl}${win?" in de afgelopen 12 uur":""}`):""};
+    /* Bezichtiging = aantal OPEN aanvragen (wacht op makelaar / actie nodig), niet "nieuw" (Rick, 24-10-2026, migratie 074) */
+    set("#nbVw",b.viewings,"open bezichtigingsaanvragen","open viewing requests",false);
     set("#nbAc",b.incoming,"nieuwe aanvragen","new requests");
     set("#nbPo",b.portals,"nieuwe portaalaanvragen","new portal requests");
   }catch(e){}
