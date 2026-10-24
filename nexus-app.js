@@ -528,46 +528,66 @@ function ctProfile(c,raw){
       :`<div class="cp-empty">${has("suspect-seller")?L2("Mogelijke verkoper — nog geen woning gekoppeld.","Possible seller — no property linked yet."):L2("Nog geen woning gekoppeld.","No property linked yet.")}${CT.core&&CT.core.id?` <button class="btn sm act-newpr" type="button" data-newpr="ct">+ ${t("act.addpr")}</button>`:""}</div>`;
     return cpSec("sell",has("suspect-seller")&&!own.length?L2("Mogelijke verkoop","Potential sale"):L2("Verkoop","Selling"),tiles+rows,{wide:1,aside:own.length?`<span class="tag">${own.length}</span>`:""})};
 
+  /* Zoekprofiel (Rick 24-10-2026): leesbaar, één bron voor Lead en Zoekt een woning.
+     Opgegeven profiel (core.search_profile) eerst; gedrag (aangevraagde woningen) als aanvulling. */
+  const SPv=CT.search_profile||{};
+  const BUD={"100k":L2("tot € 100.000","up to € 100,000"),"150k":"€ 100.000 – 150.000","250k":"€ 150.000 – 250.000","more":L2("boven € 250.000","over € 250,000")};
+  const PER={"0-3":L2("binnen 3 maanden","within 3 months"),"3-6":L2("3 – 6 maanden","3 – 6 months"),"longer":L2("later dan 6 maanden","after 6 months")};
+  const TYP={villa:"Villa",apartment:L2("Appartement","Apartment"),penthouse:"Penthouse",bungalow:"Bungalow",quadrant:L2("Quad (kwadrant)","Quad house"),"semi-detached":L2("Halfvrijstaand","Semi-detached"),townhouse:L2("Geschakelde woning","Townhouse"),duplex:"Duplex",finca:"Finca",other:L2("Overig","Other")};
+  const spBudget=SPv.budget||raw.sd_budget, spType=SPv.property_type||raw.sd_type, spBuild=[].concat(SPv.build||raw.sd_build||[]);
+  const behav=ip.price_min?`${eur(ip.price_min)} – ${eur(ip.price_max)}`:null;
+  const searchProf=()=>[[t("f.budget"),spBudget?esc(BUD[spBudget]||spBudget)+(behav?` <span class="muted sm">· ${L2("vroeg naar","asked about")} ${behav}</span>`:""):(ip.declared_budget_min||ip.declared_budget_max)?`${eur(ip.declared_budget_min)} – ${eur(ip.declared_budget_max)}`:behav?`${behav} <span class="muted sm">(${t("behaviour")})</span>`:null,1],
+      [t("f.type"),spType?esc(TYP[spType]||cap(spType)):(ip.declared_property_type||(ip.preferred_categories?Object.keys(ip.preferred_categories).slice(0,3).map(k=>TYP[k]||cap(k)).join(", "):null))],
+      [L2("Bouw","Build"),spBuild.map(b=>b==="new_build"?L2("Nieuwbouw","New build"):L2("Bestaande bouw","Resale")).join(" + ")||null],
+      [t("f.areas"),SPv.areas||raw.sd_areas||(ip.declared_areas?[].concat(ip.declared_areas).join(", "):null)],
+      [t("f.beds"),(SPv.bedrooms_min||raw.sd_beds||ip.declared_bedrooms_min)?"≥ "+(SPv.bedrooms_min||raw.sd_beds||ip.declared_bedrooms_min):null],
+      [t("f.musthaves"),SPv.must_haves||raw.sd_musthaves||(ip.declared_must_haves?[].concat(ip.declared_must_haves).join(", "):null)],
+      [L2("Wanneer kopen","When to buy"),(SPv.period||raw.sd_period)?esc(PER[SPv.period||raw.sd_period]||SPv.period||raw.sd_period):ip.declared_period],
+      [t("f.feedback"),Object.keys(fb).length?Object.entries(fb).map(([k,v])=>k+": "+v).join(" · "):null]].filter(x=>x[1]);
+  const spEmpty=`<div class="cp-empty">${L2("Nog geen zoekprofiel vastgelegd.","No search profile yet.")} <a class="cp-add" data-cedit="1">+ ${L2("Invullen","Add")}</a></div>`;
+
   /* Aankoop: koop in behandeling/afgerond, daarna pas het zoekgedrag */
   const buyBlock=()=>{
     const done=bought.length>0;
-    const prof=[[t("f.budget"),(ip.declared_budget_min||ip.declared_budget_max)?`${eur(ip.declared_budget_min)} – ${eur(ip.declared_budget_max)}`:(raw.sd_budget||(ip.price_min?`${eur(ip.price_min)} – ${eur(ip.price_max)} (${t("behaviour")})`:null))],
-      [L2("Bouw","Build"),(raw.sd_build||[]).map(b=>b==="new_build"?L2("Nieuwbouw","New build"):L2("Bestaande bouw","Resale")).join(" + ")||null],
-      [t("f.type"),ip.declared_property_type||raw.sd_type||(ip.preferred_categories?Object.keys(ip.preferred_categories).slice(0,3).join(", "):null)],
-      [t("f.beds"),(raw.sd_beds||ip.declared_bedrooms_min)?"≥ "+(raw.sd_beds||ip.declared_bedrooms_min):null],
-      [t("f.areas"),raw.sd_areas||(ip.declared_areas?[].concat(ip.declared_areas).join(", "):null)],
-      [t("f.musthaves"),raw.sd_musthaves||(ip.declared_must_haves?[].concat(ip.declared_must_haves).join(", "):null)],
-      [t("f.period"),ip.declared_period||raw.sd_period],
-      [t("f.feedback"),Object.keys(fb).length?Object.entries(fb).map(([k,v])=>k+": "+v).join(" · "):null]].filter(x=>x[1]);
+    const prof=searchProf();
     const act=[[L2("Woningaanvragen","Property enquiries"),reqProp.length],[L2("Overige vragen","Other enquiries"),reqOther.length],[L2("Woningen bekeken","Properties viewed"),ip.distinct_properties_viewed||ints.length||0],[L2("Bezichtigingen","Viewings"),views.length],[L2("Matches verstuurd","Matches sent"),m.sent||0]];
     const anyAct=act.some(x=>x[1]>0);
     let body="";
     if(done)body+=`<div class="cp-prs">${bought.map(p=>cpPropRow(p,"buy")).join("")}</div>`;
     if(anyAct)body+=`<div class="cp-tiles${done?" cp-dim":""}">${act.filter(x=>x[1]>0||!done).map(x=>cpTile(x[0],num(x[1]))).join("")}${Number(ip.engagement_score)>0?cpTile(L2("Engagement","Engagement"),Number(ip.engagement_score).toFixed(0),ip.data_confidence?L2("betrouwbaarheid ","confidence ")+esc(ip.data_confidence):""):""}</div>`;
-    if(!done||prof.length){body+=`<div class="pk-grp">${t("h.search")}${done?` <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">· ${L2("vóór de aankoop","before the purchase")}</span>`:""}</div>`+(prof.length?kv(prof):`<div class="cp-empty">${L2("Nog geen zoekprofiel vastgelegd.","No search profile yet.")} <a class="cp-add" data-cedit="1">+ ${L2("Invullen","Add")}</a></div>`)}
+    if(!done||prof.length){body+=`<div class="pk-grp">${t("h.search")}${done?` <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">· ${L2("vóór de aankoop","before the purchase")}</span>`:""}</div>`+(prof.length?kv(prof):spEmpty)}
     if(ip.first_request_at)body+=`<div class="cp-foot">${L2("Zoekt actief van","Searching from")} ${fdate(ip.first_request_at)} ${L2("tot","to")} ${fdate(ip.last_request_at)}</div>`;
     return cpSec("buy",done?L2("Aankoop","Purchase"):L2("Zoekt een woning","Looking for a home"),body,{wide:!!done||anyAct,edit:!done})};
 
   /* Makelaar/partner */
   const agentBlock=()=>{
+    /* Portaal (Rick 24-10-2026): bij het contact van thinkSPAIN / Idealista tellen de contacten en aanvragen die via dat portaal binnenkwamen */
+    const PS=CT.portal_stats;
+    if(PS){
+      const tiles=`<div class="cp-tiles">${cpTile(L2("Aangebrachte contacten","Contacts introduced"),num(PS.contacts||0),PS.contacts_30d?L2(`${PS.contacts_30d} in de laatste 30 dagen`,`${PS.contacts_30d} in the last 30 days`):"")}${cpTile(L2("Aanvragen","Enquiries"),num(PS.requests||0),PS.requests_direct?L2(`${PS.requests_direct} rechtstreeks via ${PS.portal} sinds 18-10`,`${PS.requests_direct} directly via ${PS.portal} since 18-10`):"")}${cpTile(L2("Laatste aanvraag","Last enquiry"),PS.last_request?ago(PS.last_request):"—",PS.last_request?fdate(PS.last_request):"")}</div>`;
+      const list=(PS.recent||[]).length?`<div class="pk-grp">${L2("Laatst aangebracht","Most recently introduced")}</div><div class="cp-chips">${PS.recent.map(x=>`<a class="cp-chip" data-c="${esc(x.key)}">${esc(x.name||"?")} <span class="muted sm">${x.ts?fdate(x.ts):""}</span></a>`).join("")}</div>`:"";
+      return cpSec("agent",L2("Portaal","Portal")+" · "+esc(PS.portal),tiles+list,{wide:1})}
     const introduced=rels.filter(x=>x.why==="aangebracht via deze makelaar");
     const tiles=`<div class="cp-tiles">${cpTile(L2("Aangebrachte contacten","Contacts introduced"),num(introduced.length))}${cpTile(L2("Aangeboden woningen","Properties offered"),num(offered.length))}</div>`;
     const list=introduced.length?`<div class="cp-chips">${introduced.slice(0,12).map(x=>`<a class="cp-chip" data-c="${esc(x.key||x.wp_id)}">${esc(x.name||x.email)}</a>`).join("")}${introduced.length>12?`<span class="muted sm">+${introduced.length-12}</span>`:""}</div>`:"";
     return cpSec("agent",L2("Makelaar / partner","Agent / partner"),tiles+list)};
 
-  /* Lead: alleen Suspect zonder andere rol */
+  /* Lead / Suspect (Rick 24-10-2026): compact. Kerncijfers op één rij, daaronder Zoekprofiel en Interesse naast elkaar */
   const leadBlock=()=>{
-    const top=ints.slice(0,4);
-    const tiles=`<div class="cp-tiles">${cpTile(L2("Woningaanvragen","Property enquiries"),num(reqProp.length),nPropAsked?L2(`over ${nPropAsked} woning${nPropAsked>1?"en":""}`,`about ${nPropAsked} propert${nPropAsked>1?"ies":"y"}`):"")}${reqOther.length?cpTile(L2("Overige vragen","Other enquiries"),num(reqOther.length),L2("algemeen, zonder woning","general, no property")):""}${cpTile(L2("Eerste contact","First contact"),firstTouch?fdate(firstTouch):"—")}${cpTile(L2("Laatst actief","Last active"),lastTouch?ago(lastTouch):"—")}</div>`;
-    const list=top.length?`<div class="pk-grp">${L2("Interesse in","Interested in")}</div><div class="cp-chips">${top.map(p=>`<a class="cp-chip" data-p="${esc(p.key||p.reference)}"><b>${esc(p.reference)}</b> ${eur(p.price)} · ${p.n}×</a>`).join("")}</div>`:"";
-    return cpSec("lead",L2("Lead","Lead"),tiles+list,{wide:1})};
+    const src=D.referred_by;
+    const tiles=`<div class="cp-tiles">${cpTile(L2("Woningaanvragen","Property enquiries"),num(reqProp.length),nPropAsked?L2(`over ${nPropAsked} woning${nPropAsked>1?"en":""}`,`about ${nPropAsked} propert${nPropAsked>1?"ies":"y"}`):"")}${reqOther.length?cpTile(L2("Overige vragen","Other enquiries"),num(reqOther.length),L2("algemeen, zonder woning","general, no property")):""}${views.length?cpTile(L2("Bezichtigingen","Viewings"),num(views.length)):""}${cpTile(L2("Eerste contact","First contact"),firstTouch?fdate(firstTouch):"—",src?L2("via ","via ")+esc(src):"")}${cpTile(L2("Laatst actief","Last active"),lastTouch?ago(lastTouch):"—",lastTouch?fdate(lastTouch):"")}${m.sent?cpTile(L2("Matches verstuurd","Matches sent"),num(m.sent),m.last?L2("laatste ","last ")+fdate(m.last):""):""}</div>`;
+    const prof=searchProf();
+    const left=`<div class="cp-col"><div class="pk-grp">${t("h.search")} <a class="cp-add cp-grp-ed" data-cedit="1" title="${L2("Zoekprofiel bewerken","Edit search profile")}">✎</a></div>${prof.length?kv(prof):spEmpty}</div>`;
+    const top=ints.slice(0,5);
+    const right=`<div class="cp-col"><div class="pk-grp">${L2("Interesse in","Interested in")}${ints.length>5?` <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">· ${L2("top 5 van","top 5 of")} ${ints.length}</span>`:""}</div>${top.length?`<div class="cp-int">${top.map(p=>`<a class="cp-int-r" data-p="${esc(p.key||p.reference)}">${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="">`:'<span class="ph"></span>'}<span class="cp-int-b"><b>${esc(p.reference)}</b> <span class="muted sm">${esc(p.town||"")}</span>${p.core_status&&p.core_status!=="available"?` <span class="cp-st st-${esc(p.core_status)}">${esc(stLabel(p.core_status))}</span>`:""}<br><span class="cp-int-p">${eur(p.price)}</span> <span class="muted sm">· ${p.n}× · ${p.last?ago(p.last):""}</span></span></a>`).join("")}</div>`:`<div class="cp-empty">${L2("Nog niet op een woning gereageerd.","Has not enquired about a property yet.")}</div>`}</div>`;
+    return cpSec("lead",L2("Lead","Lead"),tiles+`<div class="cp-2col">${left}${right}</div>`,{wide:1,edit:1})};
 
   /* volgorde: de actieve rol eerst. Verkoper met woning online gaat voor koper die al gekocht heeft. */
   const blocks=[];
   if(isSeller)blocks.push([own.some(p=>p.core_status==="available")?0:2,sellBlock]);
   if(isBuyer)blocks.push([bought.some(p=>p.core_status!=="sold")?1:3,buyBlock]);
   if(isAgent)blocks.push([4,agentBlock]);
-  if(!isSeller&&!isBuyer&&!isAgent)blocks.push([0,leadBlock]);
+  if((!isSeller&&!isBuyer&&!isAgent)||(has("suspect")&&!isBuyer))blocks.push([isSeller||isAgent?1:0,leadBlock]);
   let halves=0;
   blocks.sort((a,b)=>a[0]-b[0]).forEach(b=>{const h=b[1]();if(!/cp-wide/.test(h.slice(0,80)))halves++;out.push(h)});
 
@@ -581,10 +601,11 @@ function ctProfile(c,raw){
 
   /* Dossier: beheer en contacthistorie in één oogopslag */
   const mailOn=M.master_optin==="yes";
-  const file=[[L2("Laatste contactmoment","Last contact"),lastTouch?`${fdate(lastTouch)} <span class="muted sm">· ${ago(lastTouch)}</span>`:null,1],
+  const leadShown=(!isSeller&&!isBuyer&&!isAgent)||(has("suspect")&&!isBuyer);
+  const file=[[L2("Laatste contactmoment","Last contact"),lastTouch&&!leadShown?`${fdate(lastTouch)} <span class="muted sm">· ${ago(lastTouch)}</span>`:null,1],
     [L2("Contactmomenten","Contact moments"),tl.length?num(tl.length):null],
     [L2("Mailings","Mailings"),`<span class="mpill ${mailOn?"in":"out"}">${mailOn?L2("Ingeschreven","Subscribed"):L2("Niet ingeschreven","Not subscribed")}</span>${(M.events||{}).last_delivered?` <span class="muted sm">· ${L2("laatste","last")} ${fdate(M.events.last_delivered)}</span>`:""}`,1],
-    [t("f.referred"),D.referred_by],[L2("In systeem sinds","In system since"),raw.created_wp?fdate(raw.created_wp):null],[t("f.modified"),c.wp_modified?fdate(c.wp_modified):null]];
+    [t("f.referred"),leadShown?null:D.referred_by],[L2("In systeem sinds","In system since"),raw.created_wp?fdate(raw.created_wp):null],[t("f.modified"),c.wp_modified?fdate(c.wp_modified):null]];
   /* Laat een halve rolkaart (bv. Makelaar) een gat rechts, dan schuift Dossier daarin en krijgt Persoonsgegevens de volle breedte */
   if(halves%2)out.push(cpSec("file",L2("Dossier","File"),kv(file)),cpSec("person",L2("Persoonsgegevens","Personal details"),persBody,{edit:1,wide:1}));
   else out.push(`<div class="cp-pair">${cpSec("person",L2("Persoonsgegevens","Personal details"),persBody,{edit:1})}${cpSec("file",L2("Dossier","File"),kv(file))}</div>`);
