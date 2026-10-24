@@ -86,7 +86,7 @@
 <script src="bridge-frame.js"></script><!-- uniforme paneel-toggle -->
 <style>
   :root{
-    --bg:#06090f; --ground:#080c14; --slab:#101826; --line:#1c2636; --panel:#0b1019; --panel2:#0f1623;
+    --bg:#06090f; --ground:#cfd4db; --slab:#101826; --line:#1c2636; --panel:#0b1019; --panel2:#0f1623;
     --text:#cfe2ec; --dim:#7590a3; --cyan:#00d4ff; --green:#3ee08f; --amber:#ffb547; --red:#ff5d5d;
     --grey:#8aa0b5; --violet:#b58cff; --gold:#ffd166;
     --font:'Segoe UI',system-ui,-apple-system,sans-serif;
@@ -196,7 +196,7 @@
   .tool.on .ic{background:rgba(0,0,0,.55);color:var(--tc,#fff);box-shadow:none}
 
   .scene{flex:1;min-height:0;position:relative;overflow:hidden;background:
-    radial-gradient(ellipse 70% 60% at 50% 48%,rgba(0,212,255,.06),transparent 70%),var(--ground);touch-action:none}
+    radial-gradient(ellipse 75% 65% at 50% 46%,#e3e6eb,transparent 75%),var(--ground);touch-action:none}
   #floor{display:block;width:100%;height:100%;font-family:var(--font);cursor:grab;user-select:none;-webkit-user-select:none}
   #floor.drag{cursor:grabbing}
   #wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
@@ -213,9 +213,18 @@
   .hint.off{opacity:0}
 
   /* vloer */
-  .ground{fill:var(--ground)}
-  .ground-tex{opacity:.9}
-  .grid{stroke:#0e1521;stroke-width:1}
+  .ground{fill:transparent}
+  .ground-tex{display:none}
+  .grid{display:none}
+  /* 24-10: alles zweeft boven een lichtgrijze vloer; zachte slagschaduw FLOAT px eronder */
+  .fl-sh{fill:#1f2733;fill-opacity:.052}
+  .slab-glow{display:none}
+  .fl-shp{fill:none;stroke:#1f2733;stroke-opacity:.075;stroke-linecap:round;stroke-linejoin:round}
+  /* looppaden brein -> deur (vervangen de datapijpen): licht pad met stippellijn in de afdelingskleur */
+  .walk{pointer-events:none}
+  .walk .wk-edge{fill:none;stroke:#9ea7b3;stroke-width:22;stroke-linecap:round;stroke-linejoin:round}
+  .walk .wk-base{fill:none;stroke:#eef0f3;stroke-width:19;stroke-linecap:round;stroke-linejoin:round}
+  .walk .wk-dots{fill:none;stroke:var(--c);stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:.1 8;opacity:.95}
   .slab-tex{opacity:.85}
   .prop{pointer-events:none}
   .prop polygon{stroke:#000;stroke-opacity:.28;stroke-width:.5;stroke-linejoin:round}
@@ -347,14 +356,15 @@
   .brain .core-glow{fill:url(#gBrainGlow)}
   .brain .halo{fill:url(#gBrainGlow);animation:breathe 3.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
   @keyframes breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
-  .brain .bt{font:700 11px var(--mono);letter-spacing:.26em;fill:var(--cyan);text-anchor:middle}
-  .brain .bs{font:8.5px var(--mono);letter-spacing:.08em;fill:var(--dim);text-anchor:middle}
+  .brain .bt{font:700 11px var(--mono);letter-spacing:.26em;fill:#0086a6;text-anchor:middle}
+  .brain .bs{font:8.5px var(--mono);letter-spacing:.08em;fill:#52606f;text-anchor:middle}
   .brain .live-anchor{fill:transparent;cursor:pointer}
   .brain .beam{fill:url(#gBeam);mix-blend-mode:screen;pointer-events:none;animation:beam 3.6s ease-in-out infinite}
   @keyframes beam{0%,100%{opacity:.55}50%{opacity:.95}}
   /* levend brein: video over de SVG, zwart valt weg door screen; positie/schaal zet placeBrainLive() */
   .brain-live{position:absolute;left:0;top:0;width:600px;height:540px;z-index:1;pointer-events:none;
-    mix-blend-mode:screen;transform-origin:0 0;will-change:transform;opacity:0;transition:opacity .8s ease;background:#000}
+    transform-origin:0 0;will-change:transform;opacity:0;transition:opacity .8s ease;background:#000;
+    -webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent 98%);mask-image:radial-gradient(closest-side,#000 55%,transparent 98%)}
   .brain-live.on{opacity:1}
   /* powerballen afdeling -> brein */
   #ballLayer{pointer-events:none}
@@ -386,7 +396,7 @@
   @keyframes bubFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
   @keyframes dot{0%,100%{opacity:.25}50%{opacity:1}}
   .walker{pointer-events:none}
-  .walker .w-sh{fill:#000;opacity:.45}
+  .walker .w-sh{fill:#1e2530;opacity:.3}
   .walker .w-body{fill:color-mix(in srgb,var(--c) 45%,#e8fbff);opacity:.92}
   .walker .w-glow{fill:var(--c);opacity:.45;filter:url(#fSoft)}
   .walker .w-leg{stroke:color-mix(in srgb,var(--c) 45%,#e8fbff);stroke-width:2.6;stroke-linecap:round;opacity:.92}
@@ -1352,15 +1362,28 @@
   }
   function stColor(k) { return { working: "#00d4ff", ok: "#3ee08f", error: "#ff5d5d", silent: "#ffb547", paused: "#8aa0b5", idle: "#3a4a5c" }[k] || "#8aa0b5"; }
 
-  function pipeInner(d) {
-    var P = (d._pipe || [[0, 0], d._port]).map(function (p) { return iso(p[0], p[1], 0); });
-    var s = deptStats(d), t = Math.max(1.6, Math.min(10, 10 - Math.log10(1 + s.runs) * 3.2));
-    var ln = 'points="' + pts(P) + '" stroke-linejoin="round"';
-    return '<polyline class="pipe-base" ' + ln + "/>"
-      + '<polyline class="pipe-edge" ' + ln + "/>"
-      + '<polyline class="pipe-core" ' + ln + "/>"
-      + '<polyline class="pipe-flow' + (s.runs ? "" : " quiet") + '" style="--t:' + t.toFixed(1) + 's" ' + ln + "/>";
+  /* 24-10: geen datapijp meer; het looppad loopt van de ring om het brein langs de knik naar de deur */
+  var FLOAT = 120;   /* schermpixels tussen een zwevend element en zijn slagschaduw op de vloer */
+  function walkPts(d) {
+    var dk = dockInfo(d), E = dk.via[0], m = RING / Math.max(Math.abs(E[0]), Math.abs(E[1]), 1e-6);
+    return [[E[0] * m, E[1] * m], E, dk.out, dk.door];
   }
+  function walkInner(d) {
+    var ln = 'points="' + pts(walkPts(d).map(function (p) { return iso(p[0], p[1], 0); })) + '"';
+    return '<polyline class="wk-edge" ' + ln + '/><polyline class="wk-base" ' + ln + '/><polyline class="wk-dots" ' + ln + "/>";
+  }
+  function pipeInner(d) { return walkInner(d); }
+  function ringPts() { var R = RING; return [[-R, -R], [R, -R], [R, R], [-R, R], [-R, -R]]; }
+  /* zachte slagschaduw zonder filter: vier lagen van groot naar klein, elk licht transparant */
+  var SH_STEPS = [1.3, 1.1, 0.9, 0.7, 0.5, 0.3, 0.1, -0.1];
+  function rectShadow(x0, y0, x1, y1) {
+    return SH_STEPS.map(function (g) { return '<polygon class="fl-sh" points="' + shadowPoly([[x0 - g, y0 - g], [x1 + g, y0 - g], [x1 + g, y1 + g], [x0 - g, y1 + g]]) + '"/>'; }).join("");
+  }
+  function lineShadow(P) {
+    var pl = shadowPoly(P);
+    return [30, 22, 14].map(function (w) { return '<polyline class="fl-shp" stroke-width="' + w + '" points="' + pl + '"/>'; }).join("");
+  }
+  function shadowPoly(P) { return pts(P.map(function (p) { var q = iso(p[0], p[1], 0); return [q[0], q[1] + FLOAT]; })); }
 
   /* Brain = gerenderde sprite (platform + lichtpilaar); de ademende halo eromheen blijft code zodat hij
      leeft. Daarboven het levende brein: de video zelf staat buiten de SVG, .live-anchor geeft de plek. */
@@ -1732,7 +1755,8 @@
     return best;
   }
   function dockPoint(d) { return dockInfo(d).p; }
-  function dockInner(d) {
+  function dockInner(d) { return ""; }
+  function dockInnerOld(d) {
     var p = d._port, c = iso(p[0], p[1], SLAB), R = 0.34;
     return '<g class="dock"><title>Aansluiting datapijp naar het JARVIS-brein</title>'
       + poly([iso(p[0] - R, p[1] - R, SLAB), iso(p[0] + R, p[1] - R, SLAB), iso(p[0] + R, p[1] + R, SLAB), iso(p[0] - R, p[1] + R, SLAB)], "#0c1320", ' class="d-plate"')
@@ -2296,7 +2320,6 @@
       if (dk.k === w[1]) c._wp[w[0]] = c._wp[w[0]].filter(function (it) { return !(it.a < dk.u + dg && dk.u - dg < it.b); });
     });
     var cc = iso((x0 + x1) / 2, (y0 + y1) / 2, 0);
-    h += '<ellipse class="shadow" cx="' + f1(cc[0]) + '" cy="' + f1(cc[1] + 6) + '" rx="' + f1((c.w + c.d) * HW * 0.55) + '" ry="' + f1((c.w + c.d) * HH * 0.55) + '"/>';
     h += '<polygon class="slab-l" points="' + pts([iso(x0, y1, SLAB), iso(x1, y1, SLAB), iso(x1, y1), iso(x0, y1)]) + '"/>';
     h += '<polygon class="slab-r" points="' + pts([iso(x1, y1, SLAB), iso(x1, y0, SLAB), iso(x1, y0), iso(x1, y1)]) + '"/>';
     h += '<polygon class="slab-top" points="' + pts([iso(x0, y0, SLAB), iso(x1, y0, SLAB), iso(x1, y1, SLAB), iso(x0, y1, SLAB)]) + '"/>';
@@ -2331,11 +2354,22 @@
 
     buildGlows();
 
-    /* laag 1: pijpen op de vloer (onder alles) */
+    /* laag 0 (24-10): slagschaduwen op de vloer van alles wat zweeft: afdelingen, kantine, brein, paden */
+    var sh = '<g id="shLayer">';
+    function rectSh(o) { sh += rectShadow(o.x, o.y, o.x + o.w, o.y + o.d); }
+    S.depts.forEach(function (d) { rectSh(d); sh += lineShadow(walkPts(d)); });
+    if (S.canteen) { rectSh(S.canteen); sh += lineShadow(walkPts(S.canteen)); }
+    sh += lineShadow(ringPts());
+    var bB = BRAIN / 2 - 0.3; sh += rectShadow(-bB, -bB, bB, bB);
+    h += sh + "</g>";
+
+    /* laag 1: looppaden (vervangen de datapijpen): ring om het brein + pad per afdeling naar de deur */
+    h += '<g class="walk" style="--c:#7d8a99">' + (function () { var ln = 'points="' + pts(ringPts().map(function (p) { return iso(p[0], p[1], 0); })) + '"';
+      return '<polyline class="wk-edge" ' + ln + '/><polyline class="wk-base" ' + ln + '/><polyline class="wk-dots" ' + ln + "/>"; })() + "</g>";
     S.depts.forEach(function (d) {
-      h += '<g class="pipe" data-pipe="' + esc(d.name) + '" style="--c:' + esc(d.color) + '">' + pipeInner(d) + "</g>";
+      h += '<g class="pipe walk" data-pipe="' + esc(d.name) + '" style="--c:' + esc(d.color) + '">' + walkInner(d) + "</g>";
     });
-    if (S.canteen) h += '<g class="cpath" style="--c:' + CANTEEN_C + '">' + canteenPathInner(S.canteen) + "</g>";
+    if (S.canteen) h += '<g class="walk" style="--c:' + CANTEEN_C + '">' + walkInner(S.canteen) + "</g>";
 
     /* laag 2: platforms + bureaus + Brain, van achter naar voor */
     var items = S.paint.map(function (d) { return { k: d.x + d.w / 2 + d.y + d.d / 2, d: d }; });
@@ -2353,7 +2387,6 @@
       var d = it.d, x0 = d.x, y0 = d.y, x1 = d.x + d.w, y1 = d.y + d.d;
       h += '<g class="dept" data-dept="' + esc(d.name) + '" data-r="' + [x0, y0, x1, y1].map(function (v) { return v.toFixed(3); }).join(",") + '" style="--c:' + esc(d.color) + ";--i:" + (di++) + '">';
       var cc = iso((x0 + x1) / 2, (y0 + y1) / 2, 0);
-      h += '<ellipse class="shadow" cx="' + f1(cc[0]) + '" cy="' + f1(cc[1] + 6) + '" rx="' + f1((d.w + d.d) * HW * 0.55) + '" ry="' + f1((d.w + d.d) * HH * 0.55) + '"/>';
       h += '<ellipse class="slab-glow" cx="' + f1(cc[0]) + '" cy="' + f1(cc[1] - SLAB) + '" rx="' + f1((d.w + d.d) * HW * 0.5) + '" ry="' + f1((d.w + d.d) * HH * 0.5) + '"/>';
       h += '<g class="slab" tabindex="0" role="button" aria-label="Afdeling ' + esc(d.name) + ", " + d.agents.length + ' agents">';
       h += '<polygon class="slab-l" points="' + pts([iso(x0, y1, SLAB), iso(x1, y1, SLAB), iso(x1, y1), iso(x0, y1)]) + '"/>';
@@ -2900,7 +2933,7 @@
     }
     var dkS = dockInfo(d), dkT = dockInfo(dt), R = routeOut(d, a, dkS.k), ring = perim([-RING, -RING, RING, RING]);
     function onRing(c) { var m = RING / Math.max(Math.abs(c[0]), Math.abs(c[1]), 1e-6); return [c[0] * m, c[1] * m]; }
-    function beside(c) { var L = Math.hypot(c[0], c[1]) || 1, n = [-c[1] / L, c[0] / L]; if (n[0] + n[1] < 0) n = [-n[0], -n[1]]; return [n[0] * 0.3, n[1] * 0.3]; }
+    function beside(c) { var L = Math.hypot(c[0], c[1]) || 1, n = [-c[1] / L, c[0] / L]; if (n[0] + n[1] < 0) n = [-n[0], -n[1]]; return [n[0] * 0.13, n[1] * 0.13]; }
     /* langs de pijp: buiten voor de deur -> knik -> ring om het brein, 0,3 cel ernaast */
     function alongPipe(dk) {
       var first = dk.via[0], n = beside(first), Rg = onRing(first);
@@ -3171,6 +3204,9 @@
       + '<rect class="sd-screen" x="' + f1(DX0) + '" y="' + f1(DY0) + '" width="' + f1(DESK_W) + '" height="' + f1(DESK_H) + '" mask="url(#mScreen)"/></g>'
       + '<text class="sub-name" x="' + f1(lp[0]) + '" y="' + f1(lp[1] + 12) + '">↳ ' + esc(name.toUpperCase()) + '</text>';
     depthInsert(g, x0 + b.w / 2, y0 + b.d / 2);
+    /* 24-10: zwevende werkplek krijgt ook een slagschaduw op de vloer */
+    var shL = $("shLayer"), subSh = null;
+    if (shL) { subSh = document.createElementNS(NS, "g"); subSh.innerHTML = rectShadow(x0, y0, x1, y1); shL.appendChild(subSh); }
     requestAnimationFrame(function () { g.classList.add("on"); });
     var sdDesk = g.querySelector(".sd-desk");
     function subPose(pose, f) {
@@ -3233,7 +3269,7 @@
     }).then(function () {
       home(); renderBubbles();
       return sleep(750);
-    }, function () { home(); }).then(function () { W.el.remove(); g.remove(); ses.live = false; S.subs = S.subs.filter(function (s) { return s.live; }); });
+    }, function () { home(); }).then(function () { W.el.remove(); g.remove(); if (subSh) subSh.remove(); ses.live = false; S.subs = S.subs.filter(function (s) { return s.live; }); });
   }
 
   /* aankomst: een ring in de afdelingskleur die vanuit het brein uitdijt */
