@@ -1181,20 +1181,20 @@
   /* ---- labels + kleuren per mailing-type (gebruikt in tooltip EN in de tabel) ---- */
   var TYPE_LABELS = {
     weekly_news:'Wekelijks lokaal nieuws', price_reduced:'Prijsverlagingen', monthly_matches:'Suspect matches',
-    new_listing:'Nieuw aanbod', weekly_top10:'Top 10', market_report:'Market Report', reserved:'Gereserveerd / te laat',
+    new_listing:'Nieuw aanbod', market_report:'Market Report', reserved:'Gereserveerd / te laat',
     welcome_seller:'Welkom verkoper', review_invite:'Review-uitnodiging', other:'Overig'
   };
   // eigen kleur per mailing-type; gevalideerd op de donkere achtergrond (onderling onderscheidbaar,
   // ook bij kleurenblindheid samen met de code boven de balk). Zelfde kleur in grafiek, legenda en tabel.
   var TYPE_CLR = {
     weekly_news:'#00d4ff', price_reduced:'#e67e22', monthly_matches:'#5a6bff', new_listing:'#2fb87a',
-    weekly_top10:'#ffd400', market_report:'#ee5fb8', reserved:CLR.muted, welcome_seller:CLR.muted,
+    market_report:'#ee5fb8', reserved:CLR.muted, welcome_seller:CLR.muted,
     review_invite:CLR.muted, other:CLR.muted
   };
   /* korte code boven de balk in de mailgrafiek - leesbaar zonder hover */
   var TYPE_CODE = {
     weekly_news:'NWS', price_reduced:'PV', monthly_matches:'SM', new_listing:'NA', market_report:'MAR',
-    weekly_top10:'T10', reserved:'RES', welcome_seller:'WV', review_invite:'REV', other:'OV'
+    reserved:'RES', welcome_seller:'WV', review_invite:'REV', other:'OV'
   };
   function typeCode(t){ return TYPE_CODE[t] || String(t || '?').slice(0,3).toUpperCase(); }
 
@@ -1459,7 +1459,10 @@
          LAATSTE verzending; die kan buiten deze 14-daagse periode vallen, en de
          afstemregel eronder benoemt beide bronnen apart. */
       var mail = pivot(kpi, 'brevo');
-      var camp = (res[7] && !res[7].error) ? (res[7].data || []) : [];
+      // 24-10-2026: Top 10 (weekly_top10) bestaat niet meer - oude rijen nergens tonen
+      var RETIRED_TYPES = { weekly_top10: true };
+      var camp = ((res[7] && !res[7].error) ? (res[7].data || []) : [])
+        .filter(function(r){ return !RETIRED_TYPES[r.mailing_type]; });
       var campByDate = {}, campTypesByDate = {};
       camp.forEach(function(r){
         var o = campByDate[r.kpi_date] = campByDate[r.kpi_date] ||
