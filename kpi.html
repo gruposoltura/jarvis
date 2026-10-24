@@ -390,6 +390,16 @@
       <div id="mailbd-body"></div>
     </div>
 
+    <div class="card" style="margin-top:14px" id="chan-card">
+      <h2><span class="dot" style="background:var(--green)"></span>Herkomst &amp; kanalen (UTM)
+        <span class="when" id="chan-when"></span></h2>
+      <div class="nums" id="chan-nums"></div>
+      <div id="chan-body"></div>
+      <h3 style="margin:16px 0 6px;font-size:13px">Mailprogramma&rsquo;s &middot; 30 dagen &middot; van inbox tot aanvraag</h3>
+      <div id="mailprog-body"></div>
+      <div id="utm-health" style="font-size:11px;color:var(--muted);margin-top:10px"></div>
+    </div>
+
       </div>
     </section>
 
@@ -1258,6 +1268,74 @@
     }catch(e){ el.innerHTML = '<p style="color:var(--muted)">Fout bij laden voorstellen.</p>'; }
   }
 
+
+  /* ================= herkomst & kanalen (UTM-conventie 24-10-2026) =================
+     Bronnen: bridge_traffic_channels_daily (session_start in web_events, sinds 24-10-2026),
+     bridge_requests_by_channel (core.requests), bridge_mail_programs_30d (Brevo + sitebezoek + aanvragen),
+     bridge_utm_health. Los van load() zodat een fout hier de rest van de pagina niet raakt. */
+  var MAILPROG_NL = { suspect_matches: 'Suspect matches', new_listing: 'Nieuw in aanbod', price_reduced: 'Prijsverlagingen',
+    weekly_news: 'Weekly news', market_report: 'Marktrapport', back_on_market: 'Terug in aanbod', favorites_mail: 'Favorietenmail',
+    seller_update: 'Seller update', welcome_seller: 'Welkom verkoper', too_late: 'Te laat', hot_lead: 'Hot lead',
+    dossier_ready: 'Dossier compleet', review_invite: 'Review-uitnodiging', buying_guide: 'Koopgids', viewing: 'Bezichtiging',
+    newsletter_confirm: 'Nieuwsbrief-bevestiging', match_feedback: 'Match-feedback', mail_property: 'Woningklik (oud label)' };
+  var CHAN_ORDER = ['E-mail','Portalen','Partnermakelaars','Social','Betaald social','Zoekmachine','Google Ads','Verwijzing','Overig (getagd)','Direct'];
+  function escH(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  async function loadChannels(){
+    try{
+      var res = await Promise.all([
+        sb.from('bridge_traffic_channels_daily').select('*').range(0, 9999),
+        sb.from('bridge_requests_by_channel').select('*').range(0, 9999),
+        sb.from('bridge_mail_programs_30d').select('*'),
+        sb.from('bridge_utm_health').select('*')
+      ]);
+      var tr = (res[0] && res[0].data) || [], rq = (res[1] && res[1].data) || [], mp = (res[2] && res[2].data) || [], hl = ((res[3] && res[3].data) || [])[0] || null;
+      var today = new Date(); function daysAgo(d){ return Math.floor((today - new Date(d + 'T12:00:00')) / 864e5); }
+      var ch = {}, src7 = {}, first = null;
+      tr.forEach(function(r){
+        var a = daysAgo(r.day); if (!first || r.day < first) first = r.day;
+        var c = ch[r.channel] || (ch[r.channel] = { s7:0, s28:0, r28:0 });
+        if (a <= 6) c.s7 += r.sessions; if (a <= 27) c.s28 += r.sessions;
+        if (a <= 6 && r.channel !== 'Direct') { var k = r.channel + ' · ' + r.source + (r.campaign && r.campaign !== '-' ? ' · ' + r.campaign : ''); src7[k] = (src7[k]||0) + r.sessions; }
+      });
+      rq.forEach(function(r){ if (daysAgo(r.day) <= 27) { var c = ch[r.channel] || (ch[r.channel] = { s7:0, s28:0, r28:0 }); c.r28 += r.requests; } });
+      var names = Object.keys(ch).sort(function(a,b){ var ia = CHAN_ORDER.indexOf(a), ib = CHAN_ORDER.indexOf(b); return (ia<0?99:ia) - (ib<0?99:ib); });
+      var tot7 = 0, tot28 = 0, totR = 0; names.forEach(function(n){ tot7 += ch[n].s7; tot28 += ch[n].s28; totR += ch[n].r28; });
+      $('chan-when').textContent = first ? '— gemeten sinds ' + first : '— meting start bij de eerste bezoeken';
+      var top = names.filter(function(n){ return n !== 'Direct'; }).sort(function(a,b){ return ch[b].s7 - ch[a].s7; }).slice(0, 3);
+      $('chan-nums').innerHTML = num('Sessies 7d (gemeten)', fmt(tot7), '') + num('Aanvragen 28d', fmt(totR), '')
+        + top.map(function(n){ return num(escH(n) + ' · 7d', fmt(ch[n].s7), tot7 ? '<span class="d flat">' + pctTxt(pct(ch[n].s7, tot7)) + '</span>' : ''); }).join('');
+      var rows = names.map(function(n){ var c = ch[n];
+        return '<tr><td>' + escH(n) + '</td><td>' + fmt(c.s7) + '</td><td>' + fmt(c.s28) + '</td><td>' + pctTxt(pct(c.s28, tot28)) + '</td><td>' + fmt(c.r28) + '</td><td>' + (c.s28 ? pctTxt(pct(c.r28, c.s28)) : '—') + '</td></tr>'; }).join('');
+      var srcRows = Object.keys(src7).sort(function(a,b){ return src7[b]-src7[a]; }).slice(0, 10)
+        .map(function(k){ return '<tr><td colspan="5">' + escH(k) + '</td><td>' + fmt(src7[k]) + '</td></tr>'; }).join('');
+      $('chan-body').innerHTML = names.length
+        ? '<table class="adt"><thead><tr><th>Kanaal</th><th>Sessies 7d</th><th>Sessies 28d</th><th>Aandeel</th><th>Aanvragen 28d</th><th>Conversie</th></tr></thead><tbody>' + rows + '</tbody></table>'
+          + (srcRows ? '<table class="adt" style="margin-top:10px"><thead><tr><th colspan="5">Top bronnen &middot; 7 dagen (kanaal &middot; bron &middot; campagne)</th><th>Sessies</th></tr></thead><tbody>' + srcRows + '</tbody></table>' : '')
+        : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Nog geen sessies met herkomst gemeten.</div>';
+      mp.sort(function(a,b){ return (b.sent||0) - (a.sent||0) || (b.sessions||0) - (a.sessions||0); });
+      var mrows = mp.filter(function(r){ return r.campaign; }).map(function(r){
+        return '<tr><td>' + escH(MAILPROG_NL[r.campaign] || r.campaign) + (r.bulk ? '' : ' <span style="color:var(--muted)">(transact.)</span>') + '</td>'
+          + '<td>' + (r.bulk ? fmt(r.delivered) : '—') + '</td>'
+          + '<td>' + (r.bulk ? pctTxt(pct(r.opens, r.delivered)) : '—') + '</td>'
+          + '<td>' + (r.bulk ? pctTxt(pct(r.clicks, r.delivered)) : '—') + '</td>'
+          + '<td>' + fmt(r.sessions) + '</td><td>' + fmt(r.requests) + '</td>'
+          + '<td>' + (r.bulk ? pctTxt(pct(r.unsubscribed, r.delivered)) : '—') + '</td></tr>'; }).join('');
+      $('mailprog-body').innerHTML = mrows
+        ? '<table class="adt"><thead><tr><th>Programma</th><th>Bezorgd</th><th>Open</th><th>Klik</th><th>Sitebezoek</th><th>Aanvragen</th><th>Afmeld</th></tr></thead><tbody>' + mrows + '</tbody></table>'
+          + '<p style="color:var(--muted);font-size:11px;margin:8px 0 0">Bezorgd/open/klik uit Brevo; sitebezoek = sessies met utm_medium=email en deze campagne (sinds 24-10-2026); aanvragen = formulieren met die campagne als herkomst.</p>'
+        : '<div style="color:var(--muted);font-size:12px;padding:6px 0">Geen mailprogramma&rsquo;s in de afgelopen 30 dagen.</div>';
+      if (hl) {
+        var warn = [];
+        if (hl.social_untagged_recent > 0) warn.push('<b style="color:var(--orange)">' + hl.social_untagged_recent + '</b> van de laatste 30 social posts met een link zonder UTM');
+        if (hl.web_requests_7d) warn.push(hl.web_requests_no_origin_7d + ' van ' + hl.web_requests_7d + ' website-aanvragen (7d) zonder herkomst');
+        warn.push('herkomst gemeten in ' + fmt(hl.sessions_tracked_7d) + ' nieuwe sessies (7d)');
+        $('utm-health').innerHTML = 'UTM-bewaking: ' + warn.join(' &middot; ');
+      }
+    }catch(e){
+      $('chan-body').innerHTML = '<p style="color:var(--muted);font-size:12px">Herkomstdata niet beschikbaar.</p>';
+    }
+  }
+
   /* ================= data laden ================= */
   async function load(){
     var errEl = $('err'); errEl.textContent = '';
@@ -1772,10 +1850,10 @@
       var btn = ev.target.closest('button[data-kind]');
       if(btn){ propDispatch(btn.dataset.kind, btn.dataset.id, btn.dataset.action); return; }
     });
-    load();
-    setInterval(load, 5 * 60 * 1000);
+    load(); loadChannels();
+    setInterval(function(){ load(); loadChannels(); }, 5 * 60 * 1000);
     document.addEventListener('visibilitychange', function(){
-      if(document.visibilityState === 'visible') load();
+      if(document.visibilityState === 'visible') { load(); loadChannels(); }
     });
   }
   init();
