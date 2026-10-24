@@ -249,10 +249,7 @@ document.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;
     else if(curTab!=="pr")prFrom=curTab==="ct"&&CT&&CT.contact?{name:CT.contact.full_name||CT.contact.email,hash:location.hash.replace(/^#/,"")}:{hash:location.hash.replace(/^#/,"")||curTab};
     go.p(p.dataset.p)}});
 
-/* globale zoek */
-let gT;$("#gSearch").addEventListener("input",e=>{clearTimeout(gT);gT=setTimeout(()=>{const v=e.target.value.trim();
-  if(/^[A-Za-z]{2,4}\d{2,4}$/.test(v)){location.hash="pr";$("#prQ").value=v;loadProps(true);return}
-  $("#ctQ").value=v;if(location.hash!=="#ct")location.hash="ct";loadContacts(true)},300)});
+/* globale zoekbalk verwijderd (Rick 24-10-2026): elk venster heeft zijn eigen zoekveld */
 
 /* ================= OVERZICHT ================= */
 let ovLoaded=false, OV=null;
