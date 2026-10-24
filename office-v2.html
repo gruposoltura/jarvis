@@ -1681,6 +1681,7 @@
      vrij voor de patchkast. */
   var WALL_THEME = { SALES: ["chart", "chart"], META: ["grid", "post", "post"], SOCIAL: ["grid", "post", "post", "post"] };
   var THEME_LEN = { chart: 1.5, grid: 1.4, post: 0.55 };
+  var PRN_SPAN = 2 * 0.92 + 0.18;   /* twee laserprinters naast elkaar in de linkerhoek van INFRA */
   function deptKey(d) { return String(d.name || "").toUpperCase(); }
   function wallPlan(d) {
     var key = [d.x, d.y, d.w, d.d].map(function (v) { return v.toFixed(2); }).join(",");
@@ -1690,7 +1691,8 @@
     if (theme.length) budget = 0;
     var walls = [["x", d.x, d.x + d.w, doorX(d)], ["y", d.y, d.y + d.d, doorYW(d)]].map(function (W) {
       var g = W[3];
-      return { ax: W[0], A: W[1], B: W[2], busy: [[W[1] - 1, W[1] + corner], [g - DOOR / 2 - 0.25, g + DOOR / 2 + 0.25], [W[2] - 0.2, W[2] + 1]] };
+      var endFree = deptKey(d) === "INFRA" && W[0] === "y" ? PRN_SPAN + 0.3 : 0.2;   /* 24-10: printerhoek INFRA */
+      return { ax: W[0], A: W[1], B: W[2], busy: [[W[1] - 1, W[1] + corner], [g - DOOR / 2 - 0.25, g + DOOR / 2 + 0.25], [W[2] - endFree, W[2] + 1]] };
     });
     theme.forEach(function (kind, i) {
       var L = THEME_LEN[kind];
@@ -1946,7 +1948,10 @@
     var plants = WALL_PLANTS.slice().sort(function () { return r() - 0.5; }), pi = 0;
     function nextPlant() { return plants[pi++ % plants.length]; }
     /* 24-10: INFRA krijgt twee grote laserprinters tegen de wand en een patchkast in de achterhoek */
-    var infra = String(d.name || "").toUpperCase() === "INFRA", force = infra ? ["laser", "laser"] : [];
+    var infra = String(d.name || "").toUpperCase() === "INFRA", force = [];
+    /* 24-10 (Rick): de twee laserprinters staan in de linkerhoek, aan het eind van de y-wand (grote y) */
+    var prnEnd = y1 - 0.2, prnStart = prnEnd - PRN_SPAN, prnOk = infra && Math.abs(doorYW(d) - (prnStart + prnEnd) / 2) > PRN_SPAN / 2 + DOOR / 2 + 0.3;
+    if (infra && !prnOk) force = ["laser", "laser"];
     /* 17-10: rustiger wanden. Niets voor een raam of iets dat aan de muur hangt, ruime tussenruimte
        en hooguit één meubel per ~2,2 cel wand. */
     var wplan = wallPlan(d);
@@ -1983,7 +1988,11 @@
       else force.unshift("patch");
     } else if (!nearDock(x0 + 0.45, y0 + 0.45, 0.9)) push(x0 + 0.45, y0 + 0.45, PLANTS.leafy(x0 + 0.45, y0 + 0.45));
     placeWall("x", x0 + WALL + (infra ? 0.4 : 0.02), x1 - 0.1, doorX(d));
-    placeWall("y", y0 + WALL + (infra ? 0.6 : 0.02), y1 - 0.15, doorYW(d));
+    placeWall("y", y0 + WALL + (infra ? 0.6 : 0.02), prnOk ? prnStart - 0.3 : y1 - 0.15, doorYW(d));
+    if (prnOk) [prnStart, prnStart + 0.92 + 0.18].forEach(function (u) {
+      var L = FURN.laser.L, F = { ax: "y", x: x0 + 0.08, y: u, L: L, D: FURN.laser.D };
+      if (!nearDock(x0 + 0.4, u + L / 2, 1.0 + L / 2)) push(x0 + 0.4, u + L / 2, FURN.laser.f(F, r));
+    });
     frontParts(d, push);
 
     /* voorzijde: planten en lampen in de hoeken en in de vrije strook rechts; alleen waar ze geen bureau raken */
@@ -2000,7 +2009,7 @@
       cand.push([x1 - PROP_LANE / 2, t]);
     }
     cand.forEach(function (c, i) {
-      if (nearDock(c[0], c[1])) return;
+      if (nearDock(c[0], c[1]) || (prnOk && i === 0)) return;
       var kind = i < 2 ? nextPlant() : (r() < 0.3 ? "lamp" : nextPlant());
       if (!freeAt(c[0], c[1], kind === "lamp" ? 60 : 40)) return;
       push(c[0], c[1], PLANTS[kind](c[0], c[1], r));
