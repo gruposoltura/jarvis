@@ -239,8 +239,9 @@ async function open(root,contactId,requestId,ctx){
 /* Tijdlijnregels die bij een formulierflow horen (de aanvraag, de lead en de mails aan de klant) gaan op in die flow;
    de rest (mailings, notities, bezichtigingen) blijft als gewone contactmomenten staan. Mail-uuid's gaan mee naar de flow (Mail bekijken). */
 /* Verzendingen (Rick, 22-10-2026): elke mailing komt voort uit een aanvraag. Een mailing hoort bij de laatste opt-in-aanvraag
-   (nieuwsbrief, zoekprofiel, e-mailalert) van vóór de verzending, anders bij de laatste aanvraag ervoor, anders bij de oudste.
-   Zonder enige aanvraag ontstaat één flow "Opt-in bij import" (contacten met standaard-opt-in uit de oude CPR). */
+   (nieuwsbrief, zoekprofiel, e-mailalert) van vóór de verzending, anders bij de laatste aanvraag ervoor.
+   Een mailing gaat NOOIT naar een aanvraag van ná de verzending (Rick, 24-10-2026: oude mailings verschenen in de koopgidsflow).
+   Zonder aanvraag vóór de verzending gaat hij naar één flow "Opt-in voor mailings" (standaard-opt-in uit de oude import). */
 const OPTIN=/^(newsletter|searchdetails|search-details|emailalert|bargain|secretdeals|web-newsletter.*)$/;
 const isOptin=f=>[f.kind,f.type,f.key].some(k=>OPTIN.test(String(k||"").toLowerCase()));
 function fold(list,data){
@@ -249,7 +250,7 @@ function fold(list,data){
   fl.forEach(f=>{f._mailUuids=[];f._sends=[]});
   const byTs=fl.slice().sort((a,b)=>T(a.ts)-T(b.ts));
   const origin=m=>{const t=T(m.ts),before=byTs.filter(f=>T(f.ts)<=t);
-    return before.filter(isOptin).pop()||before.pop()||byTs[0]||null};
+    return before.filter(isOptin).pop()||before.pop()||null};
   let synth=null;
   (list||[]).forEach(e=>{if(e.kind!=="mailing")return;let f=origin(e);
     if(!f){if(!synth){synth={id:"_optin",_synthetic:true,ts:e.ts,key:"optin",source:"optin",mails:[],_mailUuids:[],_sends:[]};fl.push(synth)}
