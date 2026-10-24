@@ -237,6 +237,8 @@
   .door-leaf{fill:#6e4b31;stroke:#000;stroke-opacity:.3;stroke-width:.5}
   .door-glass{fill:color-mix(in srgb,var(--c) 18%,#9fd3f0);fill-opacity:.2;stroke:#c9d3de;stroke-width:.9;stroke-opacity:.8}
   .door-sign{fill:var(--c);opacity:.9}
+  .prop .rk-led{animation:blink 1.3s steps(2,jump-none) infinite}
+  .prop .rk-led.b{animation-duration:.9s;animation-delay:-.4s}
   .visit-bub{pointer-events:none}
   /* 21-10 replay 24 u */
   .motion.rp-btn.on{color:var(--gold);border-color:rgba(255,209,102,.6)}
@@ -527,7 +529,7 @@
     .hint{display:none}
   }
   @media (prefers-reduced-motion:reduce){
-    #floor.intro .dept,#floor.intro .brain,.pipe-flow,.link.live,.brain .halo,.brain .beam,.bub .b-pop,.bub .b-in,.bub .dots circle,.ag .m-glow,.ag.s-error .m-screen,.ag.s-silent .m-screen,#wires path,.cursor::after,.ag .m-code .roll,.dock .d-core,.motion.on i,.tourmsg.on .bar{animation:none}
+    #floor.intro .dept,#floor.intro .brain,.pipe-flow,.link.live,.brain .halo,.brain .beam,.bub .b-pop,.bub .b-in,.bub .dots circle,.ag .m-glow,.ag.s-error .m-screen,.ag.s-silent .m-screen,#wires path,.cursor::after,.ag .m-code .roll,.dock .d-core,.motion.on i,.tourmsg.on .bar,.prop .rk-led{animation:none}
     .pcard{transition:none}
     .card:hover .pcard,.card:focus-visible .pcard,.dept.cur .card .pcard{transform:none}
     #wires path{stroke-dashoffset:0}
@@ -1439,6 +1441,69 @@
       });
       return s;
     } },
+    /* 24-10: grote vloerlaserprinter (INFRA): papierladen, motorblok met uitvoer, scanner met documentinvoer */
+    laser: { L: 0.92, D: 0.66, f: function (F) {
+      var s = sub(F, 0, 1, 0, 1, 0, 26, "#cfd4db");
+      for (var i = 0; i < 3; i++) {
+        var z = 3 + i * 7.6;
+        s += face(F, 0.06, 0.94, z, z + 6.3, "#c1c7cf") + face(F, 0.38, 0.62, z + 4.3, z + 5.3, "#6b7685");
+      }
+      s += sub(F, 0, 1, 0, 1, 26, 3, "#2f3744");
+      s += sub(F, 0.02, 0.98, 0.02, 0.98, 29, 17, "#e4e8ed");
+      s += face(F, 0.08, 0.56, 33, 40, "#2f3744", 0.984) + face(F, 0.12, 0.5, 33.6, 35.4, "#fbfbf6", 0.99);
+      s += face(F, 0.08, 0.3, 42.4, 43.6, "#e8231a", 0.984) + face(F, 0.88, 0.92, 41, 43, "#3ee08f", 0.984, ' class="rk-led"');
+      s += sub(F, 0.02, 0.98, 0.02, 0.98, 46, 5, "#d3d8de");
+      s += sub(F, 0.05, 0.74, 0.08, 0.9, 51, 6, "#c2c8cf");
+      s += sub(F, 0.14, 0.6, 0.22, 0.78, 57, 1.4, "#fbfbf6");
+      s += face(F, 0.64, 0.95, 46.5, 51.5, "#1d2430", 0.984) + face(F, 0.68, 0.91, 47.4, 50.6, "#5fb3ff", 0.99);
+      return s;
+    } },
+    /* 24-10: patchkast (INFRA): 19-inch rek met patchpanelen, switches en gekleurde UTP-kabels, twee routers erop */
+    patch: { L: 0.8, D: 0.64, f: function (F, r) {
+      var h = 64, s = "", CAB = ["#2f8fe0", "#f2c230", "#e8231a", "#3ecf8e", "#f08a24", "#9b6ad6", "#e9edf2"];
+      /* kabelbundel van de kast omhoog de muur in */
+      s += sub(F, 0.36, 0.52, -0.12, -0.02, h - 4, 104 - h, "#3a4350");
+      for (var c = 0; c < 4; c++) s += face(F, 0.375 + c * 0.035, 0.39 + c * 0.035, h - 4, 100, CAB[c], -0.018);
+      s += sub(F, 0, 1, 0, 1, 0, h, "#1f2630");
+      s += face(F, 0.05, 0.95, 3, h - 3, "#0e1318");
+      var zs = [];
+      for (var i = 0; i < 7; i++) {
+        var z = 5 + i * 8, kind = i % 3;
+        if (kind === 0) {                  /* patchpaneel */
+          s += face(F, 0.08, 0.92, z, z + 5, "#c9ced6");
+          for (var p = 0; p < 10; p++) s += face(F, 0.12 + p * 0.077, 0.165 + p * 0.077, z + 1.6, z + 3.4, "#20262e", 1.01);
+          zs.push(z + 2.5);
+        } else if (kind === 1) {           /* switch met ledjes */
+          s += face(F, 0.08, 0.92, z, z + 5, "#2c3542");
+          for (var q = 0; q < 10; q++) {
+            s += face(F, 0.12 + q * 0.077, 0.165 + q * 0.077, z + 1.2, z + 3, "#0d1117", 1.01);
+            if (r() < 0.7) s += face(F, 0.13 + q * 0.077, 0.15 + q * 0.077, z + 3.4, z + 4.3, q % 3 ? "#3ee08f" : "#ffb547", 1.012, ' class="rk-led' + (q % 2 ? " b" : "") + '"');
+          }
+          zs.push(z + 2.1);
+        } else s += face(F, 0.08, 0.92, z + 1, z + 4, "#232b36");   /* kabelgoot */
+      }
+      /* UTP-patchkabels: van een poort in het paneel in een boog naar de switch eronder */
+      for (var k = 0; k < zs.length - 1; k += 2) {
+        for (var m = 0; m < 7; m++) {
+          var u0 = 0.14 + m * 0.11 + r() * 0.03, u1 = 0.14 + Math.floor(r() * 10) * 0.077;
+          var a = fpt(F, u0, 1.02, zs[k]), b = fpt(F, u1, 1.02, zs[k + 1]), sag = 6 + r() * 5;
+          s += '<path d="M' + f1(a[0]) + "," + f1(a[1]) + " C" + f1(a[0] + 1) + "," + f1(a[1] + sag) + " " + f1(b[0] - 1) + "," + f1(b[1] + sag)
+            + " " + f1(b[0]) + "," + f1(b[1]) + '" fill="none" stroke="' + CAB[(k + m) % CAB.length] + '" stroke-width="1.1" stroke-linecap="round"/>';
+        }
+      }
+      /* zijkant van de deur (glas) */
+      s += face(F, 0.02, 0.98, 2, h - 2, "#9fd3f0", 1.03, ' fill-opacity=".07" stroke="#c9d3de" stroke-opacity=".5"');
+      /* twee routers op de kast, met antennes en ledjes */
+      [[0.08, 0.46, "#f0f2f5", 5], [0.54, 0.92, "#2b3442", 4.5]].forEach(function (R, j) {
+        s += sub(F, R[0], R[1], 0.22, 0.78, h, R[3], R[2]);
+        for (var l = 0; l < 4; l++) s += face(F, R[0] + 0.05 + l * 0.07, R[0] + 0.08 + l * 0.07, h + 1.4, h + 2.8, j ? "#5fb3ff" : "#3ee08f", 0.784, ' class="rk-led' + (l % 2 ? " b" : "") + '"');
+        [0.12, 0.5, 0.88].forEach(function (t, n) {
+          var base = fpt(F, R[0] + (R[1] - R[0]) * t, 0.3, h + R[3]), lean = (n - 1) * 3;
+          s += '<line x1="' + f1(base[0]) + '" y1="' + f1(base[1]) + '" x2="' + f1(base[0] + lean) + '" y2="' + f1(base[1] - 13) + '" stroke="#1b2029" stroke-width="1.5" stroke-linecap="round"/>';
+        });
+      });
+      return s;
+    } },
     cooler: { L: 0.42, D: 0.42, f: function (F) {
       var s = sub(F, 0.1, 0.9, 0.1, 0.9, 0, 27, "#dfe4ea");
       s += face(F, 0.3, 0.45, 18, 21, "#2f6fa8", 0.904) + face(F, 0.55, 0.7, 18, 21, "#c0392b", 0.904);
@@ -1611,13 +1676,35 @@
   }
   /* ramen en wanddecoratie per achterwand; vaste seed, cache op de afmetingen */
   var ART = ["#e8231a", "#2f6fa8", "#d9a441", "#3c8c5a", "#7a4fa0", "#1f8a8a", "#c2643a"];
+  /* 24-10: vaste wanddecoratie per afdeling (gaat voor ramen en losse decoratie). SALES: twee stijgende
+     lijngrafieken; META en SOCIAL: een profielraster plus losse social-creatives. INFRA houdt de achterhoek
+     vrij voor de patchkast. */
+  var WALL_THEME = { SALES: ["chart", "chart"], META: ["grid", "post", "post"], SOCIAL: ["grid", "post", "post", "post"] };
+  var THEME_LEN = { chart: 1.5, grid: 1.4, post: 0.55 };
+  function deptKey(d) { return String(d.name || "").toUpperCase(); }
   function wallPlan(d) {
     var key = [d.x, d.y, d.w, d.d].map(function (v) { return v.toFixed(2); }).join(",");
     if (d._wp && d._wpk === key) return d._wp;
     var r = rngOf(hash(d.name) ^ 0xa11ce), plan = { x: [], y: [] }, budget = Math.floor(r() * 3);   /* 17-10: hooguit 2 dingen aan de muur per afdeling */
-    [["x", d.x, d.x + d.w, doorX(d)], ["y", d.y, d.y + d.d, doorYW(d)]].forEach(function (W) {
-      var A = W[1], B = W[2], g = W[3];
-      var busy = [[A - 1, A + 0.4], [g - DOOR / 2 - 0.25, g + DOOR / 2 + 0.25], [B - 0.2, B + 1]];
+    var theme = WALL_THEME[deptKey(d)] || [], corner = deptKey(d) === "INFRA" ? 1.05 : 0.4;
+    if (theme.length) budget = 0;
+    var walls = [["x", d.x, d.x + d.w, doorX(d)], ["y", d.y, d.y + d.d, doorYW(d)]].map(function (W) {
+      var g = W[3];
+      return { ax: W[0], A: W[1], B: W[2], busy: [[W[1] - 1, W[1] + corner], [g - DOOR / 2 - 0.25, g + DOOR / 2 + 0.25], [W[2] - 0.2, W[2] + 1]] };
+    });
+    theme.forEach(function (kind, i) {
+      var L = THEME_LEN[kind];
+      for (var t = 0; t < 80; t++) {
+        var w = walls[(i + (t < 40 ? 0 : 1)) % 2];
+        var a = w.A + 0.35 + r() * Math.max(0, w.B - w.A - 0.55 - L), b = a + L;
+        if (a - 0.12 < w.A + 0.35 || b + 0.12 > w.B - 0.2 || w.busy.some(function (q) { return a - 0.12 < q[1] && q[0] < b + 0.12; })) continue;
+        w.busy.push([a - 0.12, b + 0.12]);
+        plan[w.ax].push({ t: kind, a: a, b: b, z: kind === "post" ? 56 + r() * 12 : 62, seed: Math.floor(r() * 1e9), n: i });
+        break;
+      }
+    });
+    walls.forEach(function (Wo) {
+      var W = [Wo.ax], A = Wo.A, B = Wo.B, busy = Wo.busy;
       function free(a, b) { return a >= A + 0.35 && b <= B - 0.2 && !busy.some(function (q) { return a < q[1] && q[0] < b; }); }
       var nWin = 1 + Math.floor(r() * 2), k = 0, t;
       for (t = 0; t < 40 && k < nWin; t++) {
@@ -1654,8 +1741,83 @@
     s += wquad(d, ax, a - 0.07, b + 0.07, z0 - 5, z0 - 2, "win-sill", 0.04);
     return s;
   }
+  function wq(d, ax, a, b, z0, z1, fill, extra) { return wquad(d, ax, a, b, z0, z1, "", 0, ' fill="' + fill + '"' + (extra || "")).replace('class="" ', ""); }
+  function wl(d, ax, a, za, b, zb, stroke, w) {
+    var p = wpt(d, ax, a, za), q = wpt(d, ax, b, zb);
+    return '<line x1="' + f1(p[0]) + '" y1="' + f1(p[1]) + '" x2="' + f1(q[0]) + '" y2="' + f1(q[1]) + '" stroke="' + stroke + '" stroke-width="' + w + '"/>';
+  }
+  function wdot(d, ax, u, z, rad, fill) { var p = wpt(d, ax, u, z); return '<circle cx="' + f1(p[0]) + '" cy="' + f1(p[1]) + '" r="' + rad + '" fill="' + fill + '"/>'; }
+  /* beeld van een social-creative in vak (ia..ib, iz0..iz1); v = variant */
+  function creative(d, ax, ia, ib, iz0, iz1, v, rr) {
+    var s = "", W = ib - ia, H = iz1 - iz0;
+    if (v === 0) {        /* woning met zwembad */
+      s += wq(d, ax, ia, ib, iz0, iz1, "#8fd0f2");
+      s += wq(d, ax, ia, ib, iz0, iz0 + H * 0.3, "#2fa7c9");
+      s += wq(d, ax, ia + W * 0.18, ia + W * 0.78, iz0 + H * 0.3, iz0 + H * 0.66, "#f4efe6");
+      s += wq(d, ax, ia + W * 0.3, ia + W * 0.44, iz0 + H * 0.36, iz0 + H * 0.52, "#5e86a8");
+      s += wq(d, ax, ia + W * 0.12, ia + W * 0.84, iz0 + H * 0.66, iz0 + H * 0.72, "#c2643a");
+    } else if (v === 1) { /* zonsondergang boven zee */
+      s += wq(d, ax, ia, ib, iz0, iz1, "#f6a65b");
+      s += wq(d, ax, ia, ib, iz0 + H * 0.55, iz1, "#f7c873");
+      s += wdot(d, ax, ia + W * (0.35 + rr() * 0.3), iz0 + H * 0.5, 1.8, "#fff1c9");
+      s += wq(d, ax, ia, ib, iz0, iz0 + H * 0.42, "#2b6f9e");
+    } else if (v === 2) { /* tekst-creative in huisstijl */
+      s += wq(d, ax, ia, ib, iz0, iz1, "#e8231a");
+      s += wq(d, ax, ia + W * 0.14, ia + W * 0.86, iz0 + H * 0.6, iz0 + H * 0.72, "#ffffff");
+      s += wq(d, ax, ia + W * 0.14, ia + W * 0.62, iz0 + H * 0.44, iz0 + H * 0.52, "#ffd9d6");
+      s += wq(d, ax, ia + W * 0.14, ia + W * 0.44, iz0 + H * 0.16, iz0 + H * 0.28, "#333333");
+    } else {              /* golfbaan met palm */
+      s += wq(d, ax, ia, ib, iz0, iz1, "#a9dcf3");
+      s += wq(d, ax, ia, ib, iz0, iz0 + H * 0.38, "#5aa85c");
+      s += wq(d, ax, ia + W * 0.6, ia + W * 0.66, iz0 + H * 0.3, iz0 + H * 0.78, "#7a5a3a");
+      s += wdot(d, ax, ia + W * 0.63, iz0 + H * 0.8, 2.2, "#2f7a45");
+    }
+    return s;
+  }
   function hangSvg(d, ax, it) {
     var a = it.a, b = it.b, zc = it.z, s = "";
+    if (it.t === "chart") {   /* 24-10: lijngrafiek met stijgende lijn (SALES) */
+      var rr = rngOf(it.seed), z0 = zc - 18, z1 = zc + 18, col = it.n % 2 ? "#2f9e5b" : "#e8231a";
+      s += wq(d, ax, a, b, z0, z1, "#2b3442") + wq(d, ax, a + 0.025, b - 0.025, z0 + 1.4, z1 - 1.4, "#f7f8fa");
+      s += wq(d, ax, a + 0.07, a + 0.07 + (b - a) * 0.36, z1 - 5, z1 - 3.5, "#2b3442");
+      s += wq(d, ax, b - 0.24, b - 0.07, z1 - 5.2, z1 - 3.3, col);
+      var ia = a + 0.09, ib = b - 0.06, iz0 = z0 + 3.4, iz1 = z1 - 7.2, P = [], n = 8, v = 0.06 + rr() * 0.1;
+      for (var g = 1; g <= 3; g++) { var zg = iz0 + (iz1 - iz0) * g / 4; s += wl(d, ax, ia, zg, ib, zg, "#dde2e8", 0.6); }
+      s += wl(d, ax, ia, iz0, ib, iz0, "#8a94a3", 0.8) + wl(d, ax, ia, iz0, ia, iz1, "#8a94a3", 0.8);
+      for (var i = 0; i <= n; i++) {
+        if (i) v = Math.min(0.92, Math.max(0.04, v + 0.05 + rr() * 0.12 - (rr() < 0.3 ? 0.11 : 0)));
+        if (i === n) v = Math.max(v, 0.88);
+        P.push(wpt(d, ax, ia + (ib - ia) * i / n, iz0 + (iz1 - iz0) * v));
+      }
+      s += '<polygon points="' + pts(P.concat([wpt(d, ax, ib, iz0), wpt(d, ax, ia, iz0)])) + '" fill="' + col + '" fill-opacity=".16"/>';
+      s += '<polyline points="' + pts(P) + '" fill="none" stroke="' + col + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
+      var e = P[P.length - 1];
+      return s + '<circle cx="' + f1(e[0]) + '" cy="' + f1(e[1]) + '" r="1.8" fill="' + col + '" stroke="#fff" stroke-width=".7"/>';
+    }
+    if (it.t === "grid") {    /* 24-10: profielpagina (META, SOCIAL): kop met avatar en tellers, 3 x 2 posts */
+      var rg = rngOf(it.seed), gz0 = zc - 19, gz1 = zc + 19, Lg = b - a;
+      s += wq(d, ax, a, b, gz0, gz1, "#20262e") + wq(d, ax, a + 0.025, b - 0.025, gz0 + 1.2, gz1 - 1.2, "#ffffff");
+      s += wdot(d, ax, a + Lg * 0.1, gz1 - 5.6, 4, "#e8231a") + wdot(d, ax, a + Lg * 0.1, gz1 - 5.6, 2.9, "#f4efe6");
+      s += wq(d, ax, a + Lg * 0.2, a + Lg * 0.42, gz1 - 4.6, gz1 - 3.2, "#333333") + wq(d, ax, a + Lg * 0.2, a + Lg * 0.36, gz1 - 7.6, gz1 - 6.8, "#b9bec6");
+      for (var c = 0; c < 3; c++) {
+        var cu = a + Lg * (0.52 + c * 0.15);
+        s += wq(d, ax, cu, cu + Lg * 0.07, gz1 - 4.8, gz1 - 3.2, "#333333") + wq(d, ax, cu, cu + Lg * 0.09, gz1 - 7.6, gz1 - 6.8, "#b9bec6");
+      }
+      var tw = (b - a - 0.09) / 3, th = (gz1 - 11 - (gz0 + 2.2)) / 2, vs = [0, 1, 2, 3, 0, 2].sort(function () { return rg() - 0.5; });
+      for (var row = 0; row < 2; row++) for (var col2 = 0; col2 < 3; col2++) {
+        var ta = a + 0.045 + col2 * tw, tz = gz0 + 2.2 + (1 - row) * th;
+        s += creative(d, ax, ta + 0.006, ta + tw - 0.006, tz + 0.4, tz + th - 0.4, vs[row * 3 + col2], rg);
+      }
+      return s;
+    }
+    if (it.t === "post") {    /* 24-10: losse social-creative als ingelijste post */
+      var rp = rngOf(it.seed), pz0 = zc - 13, pz1 = zc + 13;
+      s += wq(d, ax, a, b, pz0, pz1, "#d5d9df") + wq(d, ax, a + 0.015, b - 0.015, pz0 + 0.8, pz1 - 0.8, "#ffffff");
+      s += wdot(d, ax, a + 0.06, pz1 - 2.6, 1.3, "#e8231a") + wq(d, ax, a + 0.1, a + 0.24, pz1 - 3, pz1 - 2.2, "#c7ccd3");
+      s += creative(d, ax, a + 0.03, b - 0.03, pz0 + 3.2, pz1 - 4.6, Math.floor(rp() * 4), rp);
+      s += wdot(d, ax, a + 0.06, pz0 + 1.8, 0.9, "#e8231a") + wq(d, ax, a + 0.1, a + 0.2, pz0 + 1.4, pz0 + 2.2, "#c7ccd3");
+      return s;
+    }
     if (it.t === "clock") {
       var uc = (a + b) / 2, R = 7.5, ru = R / EDGE, P = [];
       for (var i = 0; i < 18; i++) { var th = i / 18 * Math.PI * 2; P.push(wpt(d, ax, uc + Math.cos(th) * ru, zc + Math.sin(th) * R)); }
@@ -1783,6 +1945,8 @@
     var furn = WALL_FURN.slice().sort(function () { return r() - 0.5; }), fi = 0;
     var plants = WALL_PLANTS.slice().sort(function () { return r() - 0.5; }), pi = 0;
     function nextPlant() { return plants[pi++ % plants.length]; }
+    /* 24-10: INFRA krijgt twee grote laserprinters tegen de wand en een patchkast in de achterhoek */
+    var infra = String(d.name || "").toUpperCase() === "INFRA", force = infra ? ["laser", "laser"] : [];
     /* 17-10: rustiger wanden. Niets voor een raam of iets dat aan de muur hangt, ruime tussenruimte
        en hooguit één meubel per ~2,2 cel wand. */
     var wplan = wallPlan(d);
@@ -1790,7 +1954,7 @@
       var u = from, n = 0, placed = 0, maxItems = Math.max(2, Math.floor((to - from) / 2.2));
       var free = wplan[ax].map(function (it) { return [it.a - 0.25, it.b + 0.25]; });
       while (u < to - 0.35 && placed < maxItems) {
-        var plantTurn = (n % 3 === 2) || r() < 0.18, id = plantTurn ? null : furn[fi % furn.length], L = id ? itemLen(id) : 0.5;
+        var plantTurn = !force.length && ((n % 3 === 2) || r() < 0.18), id = plantTurn ? null : (force.length ? force[0] : furn[fi % furn.length]), L = id ? itemLen(id) : 0.5;
         if (u + L > to) { id = null; L = 0.5; if (u + L > to) break; }
         var blk = null;
         free.forEach(function (q) { if (u < q[1] && q[0] < u + L && (!blk || q[1] > blk[1])) blk = q; });
@@ -1801,7 +1965,7 @@
         if (nearDock(cx, cy, 1.0 + L / 2)) { u += L + 0.15; n++; continue; }
         if (!id) push(cx, cy, PLANTS[nextPlant()](cx, cy, r));
         else {
-          fi++;
+          if (force.length && id === force[0]) force.shift(); else fi++;
           if (id.indexOf("s:") === 0) push(cx, cy, spriteAt(id.slice(2), SPRITES[id.slice(2)][0], cx, cy, 32));
           else {
             var D = FURN[id].D, F = ax === "x" ? { ax: "x", x: u, y: y0 + 0.08, L: L, D: D } : { ax: "y", x: x0 + 0.08, y: u, L: L, D: D };
@@ -1814,9 +1978,12 @@
       }
     }
     /* achterhoek: grote plant (tenzij daar het dock zit) */
-    if (!nearDock(x0 + 0.45, y0 + 0.45, 0.9)) push(x0 + 0.45, y0 + 0.45, PLANTS.leafy(x0 + 0.45, y0 + 0.45));
-    placeWall("x", x0 + WALL + 0.02, x1 - 0.1, doorX(d));
-    placeWall("y", y0 + WALL + 0.02, y1 - 0.15, doorYW(d));
+    if (infra) {
+      if (!nearDock(x0 + 0.45, y0 + 0.45, 0.9)) push(x0 + 0.45, y0 + 0.45, FURN.patch.f({ ax: "x", x: x0 + 0.1, y: y0 + 0.08, L: FURN.patch.L, D: FURN.patch.D }, r));
+      else force.unshift("patch");
+    } else if (!nearDock(x0 + 0.45, y0 + 0.45, 0.9)) push(x0 + 0.45, y0 + 0.45, PLANTS.leafy(x0 + 0.45, y0 + 0.45));
+    placeWall("x", x0 + WALL + (infra ? 0.4 : 0.02), x1 - 0.1, doorX(d));
+    placeWall("y", y0 + WALL + (infra ? 0.6 : 0.02), y1 - 0.15, doorYW(d));
     frontParts(d, push);
 
     /* voorzijde: planten en lampen in de hoeken en in de vrije strook rechts; alleen waar ze geen bureau raken */
