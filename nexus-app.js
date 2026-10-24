@@ -604,10 +604,19 @@ function ctMailings(c){
   const M=(CT.details||{}).mailing||{}, jin=M.jarvis_optin||{}, jout=M.jarvis_optout||{}, ev=M.events||{};
   const pill=(on,txtOn,txtOff)=>on==null?`<span class="mpill">—</span>`:`<span class="mpill ${on?"in":"out"}">${on?txtOn:txtOff}</span>`;
   const masterOn=M.master_optin==="yes"||(M.master_optin==null&&M.synced_opt_in);
-  const types=(M.types||[]).map(tp=>{const i=jin[tp.slug], o=jout[tp.slug];
+  const c_masterOn=!!masterOn;
+  /* Rick 24-10-2026: zelfde 10 mailings, volgorde en logica als het Mailings-paneel bij Bewerken (nexus-edit.js).
+     Nieuwsbrieven gaan alleen uit met toestemming (opt-in); zonder toestemming staan ze hier dus op uit. */
+  const NEWS=["weekly_news","price_reduced","monthly_matches","new_listing","market_report"];
+  const ORD=NEWS.concat(["seller_update","welcome_seller","reserved","review_invite","review_viewing"]);
+  const srt=(M.types||[]).slice().sort((a,b)=>(ORD.indexOf(a.slug)+99*(ORD.indexOf(a.slug)<0))-(ORD.indexOf(b.slug)+99*(ORD.indexOf(b.slug)<0)));
+  const grpRow=lbl=>`<tr class="mgrp-tr"><td colspan="6">${esc(lbl)}</td></tr>`;
+  const types=srt.map((tp,ix)=>{const i=jin[tp.slug], o=jout[tp.slug];
     let st=tp.opted_in, src="Supabase";
     if(st==null&&(i||o)){st=!o||(!!i&&i>o);src="JARVIS"} if(st==null){st=tp.default;src=t("ml.default")}
-    return `<tr><td>${esc(t("mt."+tp.slug)!=="mt."+tp.slug?t("mt."+tp.slug):tp.label)}</td><td>${pill(st,t("ml.in"),t("ml.out"))}</td><td class="muted">${esc(src)}</td><td>${i?fdate(i):"—"}</td><td>${o?fdate(o):"—"}</td><td>${tp.updated?fdate(tp.updated):"—"}</td></tr>`}).join("");
+    if(NEWS.includes(tp.slug)&&!c_masterOn){st=false;src=L2("geen toestemming","no consent")}
+    const head=ix===0?grpRow(L2("Nieuwsbrieven","Newsletters")):(tp.slug===ORD[NEWS.length]||(NEWS.includes(srt[ix-1].slug)&&!NEWS.includes(tp.slug)))?grpRow(L2("Servicemails","Service mails")):"";
+    return head+`<tr><td>${esc(t("mt."+tp.slug)!=="mt."+tp.slug?t("mt."+tp.slug):tp.label)}</td><td>${pill(st,t("ml.in"),t("ml.out"))}</td><td class="muted">${esc(src)}</td><td>${i?fdate(i):"—"}</td><td>${o?fdate(o):"—"}</td><td>${tp.updated?fdate(tp.updated):"—"}</td></tr>`}).join("");
   const legacy=Object.keys(jout).filter(k=>!(M.types||[]).some(x=>x.slug===k));
   const cpr=(M.cpr||[]).map(x=>`<tr><td>${esc(t("cm."+x.key)!=="cm."+x.key?t("cm."+x.key):x.key)}</td><td>${pill(x.on==="yes",t("ml.in"),t("ml.out"))}</td><td>${cprDate(x.last)||"—"}</td></tr>`).join("");
   return `<div class="bigtiles">
