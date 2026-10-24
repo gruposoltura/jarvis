@@ -400,6 +400,11 @@
   .ag{cursor:pointer;outline:none;transition:opacity .2s;--s:var(--green)}
   .ag .hit{fill:transparent}
   .ag .sprite{image-rendering:auto}
+  /* 24-10: typen - handen tikken om en om op het toetsenbord (alleen bij een draaiende agent) */
+  .ag .hand{pointer-events:none;animation:typeL .82s linear infinite}
+  .ag .hand-r{animation-name:typeR;animation-duration:.74s}
+  @keyframes typeL{0%,100%{transform:none}10%{transform:translateY(-.85px)}20%{transform:none}38%{transform:translate(.12px,-.6px)}48%{transform:none}70%{transform:translateY(-.95px)}80%{transform:none}}
+  @keyframes typeR{0%,100%{transform:none}14%{transform:translate(-.1px,-.8px)}26%{transform:none}52%{transform:translateY(-.7px)}62%{transform:none}84%{transform:translateY(-.9px)}92%{transform:none}}
   .ag .m-screen{fill:var(--s);opacity:.62;mix-blend-mode:screen}
   .ag .m-glow{fill:var(--s);opacity:.3;filter:url(#fSoft);mix-blend-mode:screen;pointer-events:none}
   .ag .loop{fill:var(--violet)}
@@ -529,7 +534,7 @@
     .hint{display:none}
   }
   @media (prefers-reduced-motion:reduce){
-    #floor.intro .dept,#floor.intro .brain,.pipe-flow,.link.live,.brain .halo,.brain .beam,.bub .b-pop,.bub .b-in,.bub .dots circle,.ag .m-glow,.ag.s-error .m-screen,.ag.s-silent .m-screen,#wires path,.cursor::after,.ag .m-code .roll,.dock .d-core,.motion.on i,.tourmsg.on .bar,.prop .rk-led{animation:none}
+    #floor.intro .dept,#floor.intro .brain,.pipe-flow,.link.live,.brain .halo,.brain .beam,.bub .b-pop,.bub .b-in,.bub .dots circle,.ag .m-glow,.ag.s-error .m-screen,.ag.s-silent .m-screen,#wires path,.cursor::after,.ag .m-code .roll,.dock .d-core,.motion.on i,.tourmsg.on .bar,.prop .rk-led,.ag .hand{animation:none}
     .pcard{transition:none}
     .card:hover .pcard,.card:focus-visible .pcard,.dept.cur .card .pcard{transform:none}
     #wires path{stroke-dashoffset:0}
@@ -1090,6 +1095,7 @@
     });
   }
   loadPair("desk", "desk-v3", 384, Math.round(384 * 904 / 757), "ready").then(function () {
+    try { buildHands(); } catch (e) { HANDS.ready = false; }
     if (S.agents && S.agents.length) patchAgents();
   }, function () {});
   loadPair("walk", "walker-v4", 640, 480, "walk").catch(function () {});
@@ -1112,6 +1118,96 @@
     x.putImageData(out, 0, 0);
     return (AV.cache[key] = c.toDataURL("image/png"));
   }
+  /* 24-10: typende handen voor een draaiende agent. De handen worden uit de bureau-sprite geknipt
+     (huidskleur binnen twee vakken boven het toetsenbord, grootste vlek, gaten gevuld, 1 px verbreed)
+     en als losse lagen over een variant zonder handen gelegd; daar is het toetsenbord per rij
+     bijgekleurd vanuit de buren links en rechts (kleding overslaan). CSS laat de lagen om en om
+     op en neer tikken. Vakken in bronpixels van de 757 x 904-sprite. */
+  var HANDS = { ready: false, cache: {} };
+  var HAND_BOX = [[295, 318, 398, 402], [380, 276, 478, 352]];
+  function buildHands() {
+    var B = AV.img.desk.b, M = AV.img.desk.m, w = B.w, h = B.h, d = B.d, m = M.d, k = w / 757;
+    var all = new Uint8Array(w * h);
+    HANDS.layers = HAND_BOX.map(function (bx) {
+      var x0 = Math.floor(bx[0] * k), y0 = Math.floor(bx[1] * k), x1 = Math.ceil(bx[2] * k), y1 = Math.ceil(bx[3] * k);
+      var sk = new Uint8Array(w * h), x, y, i;
+      for (y = y0; y < y1; y++) for (x = x0; x < x1; x++) {
+        i = (y * w + x) * 4; var r = d[i], g = d[i + 1], b = d[i + 2];
+        if (d[i + 3] > 100 && r > 60 && r - b > 14 && r - b > 0.17 * r && r >= g && g >= b - 4 && m[i + 1] < 80 && m[i + 2] < 80) sk[y * w + x] = 1;
+      }
+      /* grootste aaneengesloten vlek */
+      var lab = new Int32Array(w * h), best = 0, bestN = 0, id = 0;
+      for (y = y0; y < y1; y++) for (x = x0; x < x1; x++) {
+        var p0 = y * w + x; if (!sk[p0] || lab[p0]) continue;
+        id++; var st = [p0], n = 0; lab[p0] = id;
+        while (st.length) {
+          var q = st.pop(), qx = q % w; n++;
+          [q - 1, q + 1, q - w, q + w].forEach(function (z) {
+            if (z >= 0 && z < w * h && Math.abs((z % w) - qx) <= 1 && sk[z] && !lab[z]) { lab[z] = id; st.push(z); }
+          });
+        }
+        if (n > bestN) { bestN = n; best = id; }
+      }
+      /* per rij gaten vullen, daarna 1 px verbreden */
+      var f = new Uint8Array(w * h), mk = new Uint8Array(w * h);
+      for (y = y0; y < y1; y++) {
+        var lo = -1, hi = -1;
+        for (x = x0; x < x1; x++) if (lab[y * w + x] === best) { if (lo < 0) lo = x; hi = x; }
+        for (x = lo; lo >= 0 && x <= hi; x++) f[y * w + x] = 1;
+      }
+      for (y = y0 - 1; y <= y1; y++) for (x = x0 - 1; x <= x1; x++) {
+        if (y < 1 || x < 1 || y >= h - 1 || x >= w - 1) continue;
+        var o = y * w + x;
+        if (f[o] || f[o - 1] || f[o + 1] || f[o - w] || f[o + w]) { mk[o] = 1; all[o] = 1; }
+      }
+      var c = document.createElement("canvas"); c.width = w; c.height = h;
+      var cx = c.getContext("2d"), out = cx.createImageData(w, h), od = out.data;
+      for (i = 0; i < w * h; i++) if (mk[i]) { od[i * 4] = d[i * 4]; od[i * 4 + 1] = d[i * 4 + 1]; od[i * 4 + 2] = d[i * 4 + 2]; od[i * 4 + 3] = d[i * 4 + 3]; }
+      cx.putImageData(out, 0, 0);
+      return c.toDataURL("image/png");
+    });
+    HANDS.mask = all; HANDS.ready = true;
+  }
+  /* bureau zonder handen in de kleuren van deze agent */
+  function noHands(cloth, hair) {
+    var key = cloth + hair; if (HANDS.cache[key]) return HANDS.cache[key];
+    var B = AV.img.desk.b, M = AV.img.desk.m.d, w = B.w, h = B.h, mk = HANDS.mask;
+    var c = document.createElement("canvas"); c.width = w; c.height = h;
+    var x = c.getContext("2d");
+    /* tinted() geeft een dataURL; de pixels opnieuw uitrekenen is goedkoper dan wachten op decode */
+    var out = x.createImageData(w, h), o = out.data, b = B.d, C = hexRgb(cloth), Hh = hexRgb(hair);
+    for (var i = 0; i < o.length; i += 4) {
+      var sh = Math.min(1.25, M[i] / 255 * 1.12), wc = M[i + 1] / 255, wh = M[i + 2] / 255;
+      for (var k = 0; k < 3; k++) { var v = b[i + k] * (1 - wc) + C[k] * sh * wc; o[i + k] = v * (1 - wh) + Hh[k] * sh * 1.1 * wh; }
+      o[i + 3] = b[i + 3];
+    }
+    function cloth_(p) { return M[p * 4 + 1] > 80; }
+    for (var y = 1; y < h - 1; y++) {
+      for (var xx = 1; xx < w - 1; xx++) {
+        if (!mk[y * w + xx]) continue;
+        var a = xx; while (xx < w - 1 && mk[y * w + xx]) xx++;
+        var L = y * w + a - 1, R = y * w + xx, useL = !cloth_(L), useR = !cloth_(R);
+        if (!useL && !useR) { useL = true; }
+        for (var q = a; q < xx; q++) {
+          var t = (q - a + 1) / (xx - a + 1), P = (y * w + q) * 4;
+          for (var k2 = 0; k2 < 4; k2++) {
+            var lv = o[L * 4 + k2], rv = o[R * 4 + k2];
+            o[P + k2] = useL && useR ? lv * (1 - t) + rv * t : useL ? lv : rv;
+          }
+        }
+      }
+    }
+    x.putImageData(out, 0, 0);
+    return (HANDS.cache[key] = c.toDataURL("image/png"));
+  }
+  /* vertraging per agent zodat niet iedereen in de maat tikt */
+  function handsSvg(a) {
+    var box = 'x="' + f1(DX0) + '" y="' + f1(DY0) + '" width="' + f1(DESK_W) + '" height="' + f1(DESK_H) + '" preserveAspectRatio="none"';
+    var hsh = 0, sid = String(a.agent_id || ""); for (var i = 0; i < sid.length; i++) hsh = (hsh * 31 + sid.charCodeAt(i)) >>> 0;
+    var dl = -((hsh % 900) / 1000);
+    return '<image class="hand hand-l" href="' + HANDS.layers[0] + '" ' + box + ' style="animation-delay:' + dl.toFixed(2) + 's"/>'
+      + '<image class="hand hand-r" href="' + HANDS.layers[1] + '" ' + box + ' style="animation-delay:' + (dl - 0.37).toFixed(2) + 's"/>';
+  }
   S.pose = S.pose || {};
   /* leeg bureau voor wie gepauzeerd is, nog nooit draaide, of op dit moment elders zit */
   function isVacant(a) { var s = st(a), p = S.pose[a.agent_id]; return s === "paused" || s === "idle" || (p && p.p === "empty"); }
@@ -1127,8 +1223,9 @@
   }
   function deskSprite(a) {
     var box = 'x="' + f1(DX0) + '" y="' + f1(DY0) + '" width="' + f1(DESK_W) + '" height="' + f1(DESK_H) + '"';
-    var p = S.pose[a.agent_id];
-    return (p && p.p === "stand" ? poseImg("sprite", "stand", p.f, colorOf(a), hairOf(a)) : '<image class="sprite" href="' + deskHref(a) + '" ' + box + ' preserveAspectRatio="none"/>')
+    var p = S.pose[a.agent_id], typing = !p && st(a) === "working" && HANDS.ready && AV.ready;
+    return (p && p.p === "stand" ? poseImg("sprite", "stand", p.f, colorOf(a), hairOf(a))
+      : '<image class="sprite" href="' + (typing ? noHands(colorOf(a), hairOf(a)) : deskHref(a)) + '" ' + box + ' preserveAspectRatio="none"/>' + (typing ? handsSvg(a) : ""))
       + '<rect class="m-glow" ' + box + ' mask="url(#mScreen)"/>'
       + '<rect class="m-screen" ' + box + ' mask="url(#mScreen)"/>'
       + (st(a) === "working" ? codeScreen(a) : "");
@@ -3027,6 +3124,9 @@
   function setOwnPose(a, pose, f) {
     if (pose) S.pose[a.agent_id] = { p: pose, f: f || 0 }; else delete S.pose[a.agent_id];
     var el = agentEl(a.agent_id), spr = el && el.querySelector(".spr .sprite"); if (!spr) return;
+    /* 24-10: typende handen alleen aan het eigen bureau; terug zitten = sprite opnieuw opbouwen */
+    if (!pose) { var g0 = el.querySelector(".spr"), w0 = deskSprite(a); if (g0 && g0.innerHTML !== w0) g0.innerHTML = w0; return; }
+    Array.prototype.forEach.call(el.querySelectorAll(".spr .hand"), function (n) { n.remove(); });
     if (pose === "stand" && spr.tagName.toLowerCase() === "svg") { spr.setAttribute("viewBox", (f * STAND_W) + " 0 " + STAND_W + " " + STAND_H); return; }
     swapEl(spr, pose === "stand" ? poseImg("sprite", "stand", f, colorOf(a), hairOf(a))
       : '<image class="sprite" href="' + deskHref(a) + '" x="' + f1(DX0) + '" y="' + f1(DY0) + '" width="' + f1(DESK_W) + '" height="' + f1(DESK_H) + '" preserveAspectRatio="none"/>');
