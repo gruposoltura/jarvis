@@ -350,7 +350,7 @@ function feedHtml(list){
   if(!list||!list.length)return`<div class="empty">${t("noactivity")}</div>`;
   return list.map(a=>{const ic=IC[a.kind]||IC.request;return `<div class="it" ${a.contact_wp_id?`data-c="${a.contact_wp_id}"`:""}${a.kind==="request"&&a.id?` data-fr="${esc(a.id)}"`:""}${a.grp?` data-grp="${esc(a.grp)}"`:""}>
     <div class="ic" style="--ic:${ic[0]}">${ic[1]}</div>
-    <div style="min-width:0"><div class="t">${esc(a.name||t("unknown"))}</div><div class="d">${esc(a.kind==="request"?rq(a.type):a.type)}${a.ref?" · "+esc(a.ref):""} · <span style="color:${REPC[a.rep]||"#64748b"}">${esc(rep(a.rep||""))}</span></div></div>
+    <div style="min-width:0"><div class="t">${esc(a.name||t("unknown"))}</div><div class="d">${esc(a.kind==="request"?rq(a.type):a.type)}${a.kind==="request"&&Array.isArray(a.docs)&&a.docs.length?" · "+esc(a.docs.map(x=>x==="brochure"?L2("Brochure","Brochure"):x==="costs"?L2("Kosten","Costs"):x).join(" + ")):""}${a.ref?" · "+esc(a.ref):""} · <span style="color:${REPC[a.rep]||"#64748b"}">${esc(rep(a.rep||""))}</span></div></div>
     <span class="sm muted" style="display:flex;align-items:center;gap:6px">${ago(a.ts)}${a.kind==="request"?delBtn("request",a.id):""}</span></div>`}).join("")}
 
 /* ================= CONTACTEN ================= */

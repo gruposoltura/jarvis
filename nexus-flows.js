@@ -16,6 +16,14 @@ const mins=(a,b)=>a&&b?Math.max(0,Math.round((new Date(b)-new Date(a))/1000)):nu
 const dur=s=>s==null?"":s<60?`${s} s`:s<3600?`${Math.round(s/60)} min`:`${Math.round(s/3600)} u`;
 const REPN={"rick@gruposoltura.com":"Rick","marco@gruposoltura.com":"Marco","ingrid@gruposoltura.com":"Ingrid","lisette@gruposoltura.com":"Lisette","info@gruposoltura.com":"info@"};
 const repName=e=>REPN[String(e||"").toLowerCase()]||e||"";
+/* brochureblok woningpagina (BD-149, 24-10-2026): welke documenten de klant vroeg (fields.docs) */
+const DOCN={brochure:["Woningbrochure","Property brochure"],costs:["Kostenoverzicht","Cost overview"]};
+const docsTxt=f=>{const d=Array.isArray(f&&f.docs)?f.docs.filter(x=>DOCN[x]):[];return d.length?d.map(x=>tr(DOCN[x])).join(" + "):""};
+const docsSent=f=>{const d=Array.isArray(f&&f.docs)?f.docs:[];return d.map(x=>x==="brochure"?tr(["Woningbrochure als bijlage (PDF)","Property brochure attached (PDF)"]):x==="costs"?tr(["Kostenoverzicht als downloadlink","Cost overview as download link"]):null).filter(Boolean).join(" · ")};
+const ANS={yes:["ja","yes"],no:["nee","no"]};
+const ansTxt=f=>{const a=f&&f.answers;if(!a)return"";const v=k=>a[k]?tr(ANS[a[k]]||[a[k],a[k]]):tr(["niet beantwoord","not answered"]);
+  return tr(["NIE nodig: ","Needs NIE: "])+v("nie")+" · "+tr(["Spaanse hypotheek: ","Spanish mortgage: "])+v("mortgage")+" · "+tr(["Volmacht: ","Power of attorney: "])+v("power_of_attorney")};
+const fTitle=f=>{const b=X.rq(f.key)||f.key,d=docsTxt(f);return d?b+" · "+d:b};
 
 /* ---------- kwalificatie ---------- */
 const QL={hot:["Hot","Hot"],warm:["Warm","Warm"],cold:["Cold","Cold"],none:["Geen lead","No lead"],mail:["Mail","Email"]};
@@ -65,7 +73,7 @@ function steps(f){
   const late=age>30;
   /* losse automatische mail zonder formulier (bv. "Your property is live!", seller-update): één node "Mail klant" (Rick, 23-10-2026) */
   if(f._mail){const m=(f.mails||[])[0];S.push({id:"mail",st:mailSt(m)||"done",t:tr(["Mail klant","Client email"]),s:mailSub(m)||hm(f.ts),eye:mailEye(m)});return S}
-  if(f._synthetic){}else S.push({id:"form",st:"done",t:X.rq(f.key)||f.key,s:o==="old"?tr(["oude site","old site"]):o==="web"?tr(["website","website"]):(f.source||"")});
+  if(f._synthetic){}else S.push({id:"form",st:"done",t:docsTxt(f)||X.rq(f.key)||f.key,s:o==="old"?tr(["oude site","old site"]):o==="web"?tr(["website","website"]):(f.source||"")});
   if(f._synthetic){
     S.push({id:"optin",st:"done",t:tr(["Opt-in","Opt-in"]),s:tr(["bij import","at import"])});
     S.push({id:"nexus",st:"done",t:"NEXUS",s:tr(["mailingvoorkeuren","mailing preferences"])});
@@ -117,8 +125,9 @@ function steps(f){
 const INFO={
   form:f=>({h:[X.rq(f.key)||f.key,X.rq(f.key)||f.key],p:[
     ["Het eerste contactmoment: de bezoeker vulde dit formulier in. Elk formulier is een lead.","The first contact moment: the visitor filled in this form. Every form is a lead."]],
-    facts:[[tr(["Formulier","Form"]),f.form_id||f.type],[tr(["Pagina","Page"]),f.page_url||(f.web&&f.web.page_url)],[tr(["Woning","Property"]),f.ref],[tr(["Taal","Language"]),f.lang],
+    facts:[[tr(["Aangevraagd","Requested"]),docsTxt(f)],[tr(["Formulier","Form"]),f.form_id||f.type],[tr(["Pagina","Page"]),f.page_url||(f.web&&f.web.page_url)],[tr(["Woning","Property"]),f.ref],[tr(["Taal","Language"]),f.lang],
       [tr(["Kwalificatie","Qualification"]),tr(QL[qual(f)])+(f.lp&&f.lp.score?tr([" (door AI gescoord)"," (scored by AI)"]):tr([" (volgens scoretabel)"," (by score table)"]))],
+      [tr(["Kostenvragen","Cost questions"]),f.docs&&f.docs.includes("costs")?ansTxt(f):null],
       [tr(["Bericht","Message"]),f.message]]}),
   edge:f=>({h:["Ontvangst · web-contact","Received · web-contact"],p:[
     ["Spamfilter (verborgen veld), controle op e-mail of telefoon, en opslag van het volledige formulier in web_contact_requests. Daarna direct gemeld aan de intake; lukt dat niet, dan pakt het vangnet het binnen 15 minuten op.",
@@ -158,8 +167,8 @@ const INFO={
   bom:f=>({h:["BackOnMarket","BackOnMarket"],p:[["De aanvraag blijft open tot de gereserveerde woning weer beschikbaar is. Dan mailt BackOnMarket de bezoeker en sluit de aanvraag.",
     "The request stays open until the reserved property is available again. Then BackOnMarket emails the visitor and closes the request."]],facts:[[tr(["Woning","Property"]),f.ref],["Status",f.status]]}),
   mail:f=>({h:["Mail aan de klant","Email to the client"],p:[["Transactionele mail via Brevo, met de rep als reply-to. Hieronder de status zoals Brevo die terugmeldt.","Transactional email via Brevo, with the rep as reply-to. Below is the status as reported back by Brevo."]],
-    facts:(f.mails||[]).flatMap(m=>[[hm(m.at)+" · "+(m.subject||""),(m.events||[]).join(", ")],
-      [tr(["Geopend","Opened"]),m.opened_at?dmyt(m.opened_at):null],[tr(["Geklikt","Clicked"]),m.clicked_at?dmyt(m.clicked_at):null]])}),
+    facts:[[tr(["Aangevraagd","Requested"]),docsTxt(f)],[tr(["Verstuurd","Sent"]),docsSent(f)]].concat((f.mails||[]).flatMap(m=>[[hm(m.at)+" · "+(m.subject||""),(m.events||[]).join(", ")],
+      [tr(["Geopend","Opened"]),m.opened_at?dmyt(m.opened_at):null],[tr(["Geklikt","Clicked"]),m.clicked_at?dmyt(m.clicked_at):null]]))}),
   call:f=>({h:["Bellen of WhatsApp","Call or WhatsApp"],p:[["Deze lead kwam via een portaal zonder e-mailadres van de klant. JARVIS stuurt dus geen mail; de leadcard vraagt de rep om te bellen of te whatsappen. Reageert de klant via het portaal, dan wordt daar geantwoord.",
     "This lead came through a portal without the client's email address. JARVIS therefore sends no email; the lead card asks the rep to call or WhatsApp. If the client replies through the portal, the answer goes there."]],facts:[[tr(["Bron","Source"]),f.source],[tr(["Rep","Rep"]),f.lp&&repName(f.lp.rep)]]}),
   hot:f=>({h:["Hot: agenda en cc Rick","Hot: calendar and cc Rick"],p:[["Bij een Hot lead staat Rick in cc op de leadcard en komt er een afspraak in de agenda van de rep: bij terugbellen 2 uur na binnenkomst, anders 10:00 op de eerstvolgende werkdag.",
@@ -179,7 +188,7 @@ function flowHtml(f,i){
   const q=qual(f), S=steps(f), o=f._mail?"mail":f._synthetic?"optin":origin(f), G=sendGroups(f);
   const PORT={idealista:"Idealista",thinkspain:"thinkSPAIN","agent-portal":"Makelaarsportaal (Sola)","appointment-agent":"viewing@ (e-mail)"};
   const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],mail:["Automatische mail","Automatic email"],other:[PORT[f.source]||f.source||"Overig",PORT[f.source]||f.source||"Other"]};
-  const title=f._mail?(f.subject||tr(["Mail","Email"])):f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):(X.rq(f.key)||f.key);
+  const title=f._mail?(f.subject||tr(["Mail","Email"])):f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):fTitle(f);
   return `<div class="fl-card q-${q}${f.id===RID?" on":""}" data-fi="${i}">
     <div class="fl-hd"><span class="fl-q">${esc(tr(QL[q]))}</span><b class="fl-t">${esc(title)}</b>${f.ref?`<span class="fl-ref" data-p="${esc(f.ref)}">${esc(f.ref)}</span>`:""}
       <span class="fl-o">${esc(tr(ORIG[o]))}</span><span class="fl-ts" title="${esc(dmyt(f.ts))}">${esc(dmyt(f.ts))}</span></div>
@@ -207,7 +216,7 @@ function popup(f,id,st){
   let ov=document.getElementById("flPop");if(ov)ov.remove();
   ov=document.createElement("div");ov.id="flPop";ov.className="fl-pop";
   ov.innerHTML=`<div class="fl-box q-${qual(f)}" role="dialog" aria-modal="true" aria-labelledby="flPopH">
-    <div class="fl-bh"><div><small>${esc(f._mail?(f.subject||""):(X.rq(f.key)||f.key))} · ${esc(dmyt(f.ts))}</small><h3 id="flPopH">${esc(tr(I.h))}</h3></div><button type="button" class="fl-x" aria-label="${esc(tr(["Sluiten","Close"]))}">×</button></div>
+    <div class="fl-bh"><div><small>${esc(f._mail?(f.subject||""):fTitle(f))} · ${esc(dmyt(f.ts))}</small><h3 id="flPopH">${esc(tr(I.h))}</h3></div><button type="button" class="fl-x" aria-label="${esc(tr(["Sluiten","Close"]))}">×</button></div>
     <div class="fl-bb"><span class="fl-st ${st}">${ICON[st]} ${esc(tr(STL[st]||STL.done))}</span>
       ${(I.p||[]).map(p=>`<p>${esc(tr(p))}</p>`).join("")}
       ${facts.length?`<dl>${facts.map(x=>`<dt>${esc(x[0])}</dt><dd>${esc(x[1])}</dd>`).join("")}</dl>`:""}
