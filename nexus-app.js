@@ -860,7 +860,7 @@ function propFeatures(p,raw,o,K,XL,m){
       +grp(L2("Afstanden","Distances"),[[L2("Zee","Sea"),sea],[L2("Luchthaven","Airport"),dist(D.dist_airport)],[L2("Centrum","Town centre"),dist(D.dist_city)],[L2("Winkels","Shops"),dist(D.dist_shops)]]))}
     ${pkSec("ken",L2("Kenmerken","Features"),window.NEXUS_FEAT&&NEXUS_FEAT.view?`<div class="pk-fx">${NEXUS_FEAT.view(D.features,D.feature_options,{tr:x=>L2(...x)})}</div>`:propFeatureList(D))}
     ${pkSec("tekst",L2("Teksten","Texts"),(descTxt?`<div class="pk-desc">${esc(descTxt)}</div>`:`<div class="empty sm">${L2("Nog geen omschrijving","No description yet")}</div>`)
-      +((D.internal_notes||raw.internal_notes)?`<div class="pk-grp">${L2("Interne notities","Internal notes")}</div><div class="pk-notes" style="margin:0 14px 12px">${esc(D.internal_notes||raw.internal_notes)}</div>`:""),{tag:D.desc_nl&&D.desc_en?(LANG==="en"?"EN":"NL"):""})}
+      +((D.internal_notes||raw.internal_notes)?`<div class="pk-grp">${L2("Interne notitie","Internal note")}</div><div class="pk-notes" style="margin:0 14px 12px">${esc(D.internal_notes||raw.internal_notes)}</div>`:""),{tag:D.desc_nl&&D.desc_en?(LANG==="en"?"EN":"NL"):""})}
     ${/* BESLUIT Rick 18-10-2026 (herbevestigd 19-10): GEEN kosten koper en geen vaste lasten in het woningdetail. Niet terugzetten. */""}
   </div></div></div>
   <div class="pk-band">

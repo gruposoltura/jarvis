@@ -187,7 +187,7 @@ function secContacts(){const C=D.contacts||{};
       <input class="ad-search" data-pick="${col}" data-role="${role||""}" type="search" placeholder="${esc(tr(["Zoek op naam, e-mail of telefoon","Search by name, e-mail or phone"]))}"><div class="ad-res" data-res="${col}"></div></div>`};
   return sec("con",["Contacten","Contacts"],row(box("owner","owner_contact_id",["Eigenaar / verkoper","Owner / seller"]),box("buyer","buyer_contact_id",["Koper","Buyer"]))
     +row(box("agency","agency_contact_id",["Aanbiedend kantoor (partner)","Listing agency (partner)"],"agent"))
-    +row(`<label class="ad-f w4"><span>${esc(tr(["Interne notities (bijv. wie de sleutelhouder is)","Internal notes (e.g. who holds the keys)"]))}</span><textarea data-k="internal_notes" rows="4">${esc(P.internal_notes||"")}</textarea><small>${esc(tr(["Alleen intern, nooit op de site","Internal only, never on the site"]))}</small></label>`))}
+    +row(`<label class="ad-f w4"><span>${esc(tr(["Interne notitie (bijv. wie de sleutelhouder is)","Internal note (e.g. who holds the keys)"]))}</span><textarea data-k="internal_notes" rows="4">${esc(P.internal_notes||"")}</textarea><small>${esc(tr(["Alleen intern, nooit op de site","Internal only, never on the site"]))}</small></label>`))}
 function secPub(){
   return sec("pub",["Publicatie","Publishing"],`<h5>Labels</h5>`+multi("labels",[["exclusive","EXCLUSIVE"],["premium","PREMIUM"],["bargain","BARGAIN"],["featured",["Uitgelicht","Featured"]]],{cols:4})+`<small class="muted">${esc(tr(["NEW zet NEXUS zelf: de eerste 7 dagen na de eerste publicatie","NEXUS sets NEW itself: the first 7 days after first publication"]))}${P.published_at?" ("+NEXUS_DMY(P.published_at)+")":""}.</small>`
     +`<h5>${esc(tr(["Exportfeeds","Export feeds"]))}</h5>`+multi("export_feeds",[["idealista","Idealista"]],{cols:4})+chk("no_export",["Uitsluiten van alle XML-feeds","Exclude from all XML feeds"]))}
@@ -576,7 +576,7 @@ async function openContact(key,ctx){X=ctx;
        <small class="muted">${esc(tr(["★ = hoofdadres (gebruikt voor mailings en WhatsApp). Telefoon met landcode, bijv. +34 of +31.","★ = primary (used for mailings and WhatsApp). Phone with country code, e.g. +34 or +31."]))}</small></section>
      <section class="ad-sec" id="pe-c-addr" style="--sc:#06b6d4"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
        <div class="ad-row">${CADDR.map(cfIn).join("")}</div>
-       <label class="ad-f w4"><span>${esc(tr(["Interne opmerking","Internal note"]))}</span><textarea data-cf="internal_comments" rows="4">${esc(v.internal_comments||"")}</textarea></label></section>
+       <label class="ad-f w4"><span>${esc(tr(["Interne notitie","Internal note"]))}</span><textarea data-cf="internal_comments" rows="4">${esc(v.internal_comments||"")}</textarea></label></section>
      <section class="ad-sec" id="pe-c-search" style="--sc:#f59e0b"><h4>${esc(tr(["Zoekprofiel","Search profile"]))}</h4>
        <div class="ad-row">
          <label class="ad-f"><span>${esc(tr(["Budget","Budget"]))}</span>${optSel("data-sp","budget",SP_BUDGET,SP.budget)}</label>

@@ -147,7 +147,7 @@ function multi(k,opts,o={}){const arr=getP(S,k)||[];
 /* 19-10-2026: elk invulblok een eigen kleur (dunne rand, ronde hoeken, lichte achtergrond) */
 const SEC_C={"pf-basis":"#3b82f6","pf-prijs":"#22c55e","pf-loc":"#06b6d4","pf-ind":"#f59e0b","pf-ken":"#a855f7","pf-tekst":"#ec4899","pf-media":"#f97316","pf-kost":"#64748b","pf-pub":"#eab308",
   "ct-labels":"#ec4899","ct-partner":"#e11d48","ct-person":"#3b82f6","ct-chan":"#22c55e","ct-addr":"#06b6d4","ct-search":"#f59e0b","ct-mail":"#a855f7","ct-note":"#64748b","ct-owner":"#f97316","ag":"#14b8a6"};
-const SEC_T={"Labels":"#ec4899","Persoon en identiteit":"#3b82f6","Partner gegevens":"#e11d48","Contactgegevens":"#22c55e","Adres en overig":"#06b6d4","Verantwoordelijk":"#f97316","Persoon":"#3b82f6","E-mail en telefoon":"#22c55e","Adres":"#06b6d4","Zoekprofiel":"#f59e0b","Mailings":"#a855f7","Interne opmerking":"#64748b",
+const SEC_T={"Labels":"#ec4899","Persoon en identiteit":"#3b82f6","Partner gegevens":"#e11d48","Contactgegevens":"#22c55e","Adres en overig":"#06b6d4","Verantwoordelijk":"#f97316","Persoon":"#3b82f6","E-mail en telefoon":"#22c55e","Adres":"#06b6d4","Zoekprofiel":"#f59e0b","Mailings":"#a855f7","Interne notitie":"#64748b",
   "Makelaar zoeken":"#14b8a6","Nieuwe makelaar":"#14b8a6","Of: vrij verwezen door":"#64748b","Verwezen door":"#64748b","Bestaand contact":"#3b82f6","Bestaande woning":"#f97316","Status":"#22c55e",
   "Wat er geschreven wordt (core-schema)":"#64748b","Eigenaar":"#14b8a6","Contact":"#3b82f6","Woning":"#f97316","Koppeling":"#a855f7"};
 const sec=(title,body,o={})=>`<section class="ad-sec" ${o.id?`id="${o.id}"`:""} style="--sc:${SEC_C[o.id]||SEC_T[Array.isArray(title)?title[0]:title]||"#94a3b8"}"><h4>${esc(tr(title))}${o.aside?`<span class="sm muted">${o.aside}</span>`:""}</h4>${body}</section>`;
@@ -274,7 +274,7 @@ function stepContact(){
   ${sec(["Adres en overig","Address and other"],row(inp("c.street",["Straat","Street"],{w:2}),inp("c.street_number",["Nr.","No."]),inp("c.postcode",["Postcode","Postcode"]))
      +row(inp("c.city",["Plaats","City"]),inp("c.suburb",["Wijk","Area"]),inp("c.state",["Provincie","Province"]),inp("c.country",["Land","Country"],{list:"adCountries"}))
      +row(inp("c.website","Website",{w:2}))
-     +row(area("c.internal_comments",["Interne opmerking (alleen zichtbaar voor het team)","Internal note (only visible to the team)"],{rows:3})),{id:"ct-addr"})}
+     +row(area("c.internal_comments",["Interne notitie (alleen zichtbaar voor het team)","Internal note (only visible to the team)"],{rows:3})),{id:"ct-addr"})}
   ${c.roles.includes("suspect")?sec(["Zoekprofiel","Search profile"],row(sel("c.search.budget",["Budget","Budget"],SP_BUDGET),
      sel("c.search.property_type",["Woningtype","Property type"],CATS),sel("c.search.period",["Wanneer kopen","When to buy"],SP_PERIOD),inp("c.search.bedrooms_min",["Min. slaapkamers","Min. bedrooms"],{type:"number",min:0}))
      +row(inp("c.search.areas",["Gewenste gebieden","Preferred areas"],{w:2,ph:["bijv. Rojales, Ciudad Quesada","e.g. Rojales, Ciudad Quesada"]}),inp("c.search.must_haves",["Must-haves","Must-haves"],{w:2,ph:["bijv. zwembad, zeezicht","e.g. pool, sea view"]}))
@@ -365,7 +365,7 @@ function propForm(base,media){
      ${row(area(B(`texts.${txLang}.description`),["Omschrijving","Description"],{rows:9}))}
      ${row(area(B(`texts.${txLang}.key_details`),["Kernpunten (één per regel, komen op de website)","Key points (one per line, shown on the website)"],{rows:5}))}
      ${row(inp(B(`texts.${txLang}.seo_title`),["SEO-titel","SEO title"],{w:2,hint:["max. ±60 tekens","max ±60 characters"]}),inp(B(`texts.${txLang}.seo_description`),["SEO-omschrijving","SEO description"],{w:2,hint:["max. ±155 tekens","max ±155 characters"]}))}
-     ${row(area(B("internal_notes"),["Interne notities","Internal notes"],{rows:3,hint:["Alleen intern, nooit op de site of in teksten","Internal only, never on the site or in texts"]}))}
+     ${row(area(B("internal_notes"),["Interne notitie","Internal note"],{rows:3,hint:["Alleen intern, nooit op de site of in teksten","Internal only, never on the site or in texts"]}))}
 `,{id:"pf-tekst"})}
   ${sec(["Foto's en media","Photos and media"],`<div class="ad-drop" data-media="${base}"><input type="file" multiple accept="image/*,application/pdf" hidden>
        <div><b>${esc(tr(["Sleep foto's hierheen of klik om te kiezen","Drop photos here or click to choose"]))}</b><div class="sm muted">${esc(tr(["JPG/PNG/WebP, ook plattegronden en PDF (energiecertificaat). Eerste foto = hoofdfoto. Volgorde aanpassen door te slepen.","JPG/PNG/WebP, also floor plans and PDF (energy certificate). First photo = main photo. Drag to reorder."]))}</div></div></div>
