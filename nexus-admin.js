@@ -146,8 +146,8 @@ function multi(k,opts,o={}){const arr=getP(S,k)||[];
     return `<label class="ad-c"><input type="checkbox" data-k="${k}" data-arr="${esc(val)}" ${arr.includes(val)?"checked":""}><span>${esc(tr(lab))}</span></label>`}).join("")}</div>`}
 /* 19-10-2026: elk invulblok een eigen kleur (dunne rand, ronde hoeken, lichte achtergrond) */
 const SEC_C={"pf-basis":"#3b82f6","pf-prijs":"#22c55e","pf-loc":"#06b6d4","pf-ind":"#f59e0b","pf-ken":"#a855f7","pf-tekst":"#ec4899","pf-media":"#f97316","pf-kost":"#64748b","pf-pub":"#eab308",
-  "ct-labels":"#ec4899","ct-partner":"#e11d48","ct-person":"#3b82f6","ct-chan":"#22c55e","ct-addr":"#06b6d4","ct-search":"#f59e0b","ct-mail":"#a855f7","ct-note":"#64748b","ct-owner":"#f97316","ag":"#14b8a6"};
-const SEC_T={"Labels":"#ec4899","Persoon en identiteit":"#3b82f6","Partner gegevens":"#e11d48","Contactgegevens":"#22c55e","Adres en overig":"#06b6d4","Verantwoordelijk":"#f97316","Persoon":"#3b82f6","E-mail en telefoon":"#22c55e","Adres":"#06b6d4","Zoekprofiel":"#f59e0b","Mailings":"#a855f7","Interne notitie":"#64748b",
+  "ct-labels":"#ec4899","ct-partner":"#e11d48","ct-person":"#3b82f6","ct-chan":"#22c55e","ct-addr":"#06b6d4","ct-search":"#f59e0b","ct-mail":"#a855f7","ct-note":"#6366f1","ct-owner":"#f97316","ag":"#14b8a6"};
+const SEC_T={"Labels":"#ec4899","Persoon en identiteit":"#3b82f6","Partner gegevens":"#e11d48","Contactgegevens":"#22c55e","Adres en overig":"#06b6d4","Verantwoordelijk":"#f97316","Persoon":"#3b82f6","E-mail en telefoon":"#22c55e","Adres":"#06b6d4","Zoekprofiel":"#f59e0b","Mailings":"#a855f7","Interne notitie":"#6366f1",
   "Makelaar zoeken":"#14b8a6","Nieuwe makelaar":"#14b8a6","Of: vrij verwezen door":"#64748b","Verwezen door":"#64748b","Bestaand contact":"#3b82f6","Bestaande woning":"#f97316","Status":"#22c55e",
   "Wat er geschreven wordt (core-schema)":"#64748b","Eigenaar":"#14b8a6","Contact":"#3b82f6","Woning":"#f97316","Koppeling":"#a855f7"};
 const sec=(title,body,o={})=>`<section class="ad-sec" ${o.id?`id="${o.id}"`:""} style="--sc:${SEC_C[o.id]||SEC_T[Array.isArray(title)?title[0]:title]||"#94a3b8"}"><h4>${esc(tr(title))}${o.aside?`<span class="sm muted">${o.aside}</span>`:""}</h4>${body}</section>`;
@@ -273,14 +273,14 @@ function stepContact(){
     <small class="muted">${esc(tr(agentSuspect()?["Aangebracht door een makelaar: e-mail en telefoon zijn niet verplicht.","Introduced by an agent: e-mail and phone are optional."]:["Minstens één e-mailadres of telefoonnummer. Het eerste is het hoofdadres (mailings en WhatsApp). Telefoon met landcode, bijv. +34 of +31.","At least one e-mail address or phone number. The first one is primary (mailings and WhatsApp). Phone with country code, e.g. +34 or +31."]))}</small>`,{id:"ct-chan"})}
   ${sec(["Adres en overig","Address and other"],row(inp("c.street",["Straat","Street"],{w:2}),inp("c.street_number",["Nr.","No."]),inp("c.postcode",["Postcode","Postcode"]))
      +row(inp("c.city",["Plaats","City"]),inp("c.suburb",["Wijk","Area"]),inp("c.state",["Provincie","Province"]),inp("c.country",["Land","Country"],{list:"adCountries"}))
-     +row(inp("c.website","Website",{w:2}))
-     +row(area("c.internal_comments",["Interne notitie (alleen zichtbaar voor het team)","Internal note (only visible to the team)"],{rows:3})),{id:"ct-addr"})}
+     +row(inp("c.website","Website",{w:2})),{id:"ct-addr"})}
   ${c.roles.includes("suspect")?sec(["Zoekprofiel","Search profile"],row(sel("c.search.budget",["Budget","Budget"],SP_BUDGET),
      sel("c.search.property_type",["Woningtype","Property type"],CATS),sel("c.search.period",["Wanneer kopen","When to buy"],SP_PERIOD),inp("c.search.bedrooms_min",["Min. slaapkamers","Min. bedrooms"],{type:"number",min:0}))
      +row(inp("c.search.areas",["Gewenste gebieden","Preferred areas"],{w:2,ph:["bijv. Rojales, Ciudad Quesada","e.g. Rojales, Ciudad Quesada"]}),inp("c.search.must_haves",["Must-haves","Must-haves"],{w:2,ph:["bijv. zwembad, zeezicht","e.g. pool, sea view"]}))
      +row(`<div class="ad-f w4"><span>${esc(tr(["Bestaande bouw of nieuwbouw (beide mag)","Resale or new build (both allowed)"]))}</span>${multi("c.search.build",[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]],{cols:2})}</div>`),{id:"ct-search"}):""}
   ${sec(["Mailings","Mailings"],`${chk("c.mailing_optin",["Toestemming voor mailings (opt-in)","Consent to mailings (opt-in)"])}${S.c.mailing_optin?multi("c.prefs",MAILINGS,{cols:3}):""}`,{id:"ct-mail"})}
-  ${sec(["Verantwoordelijk","Responsible"],row(sel("c.owner",["Teamlid","Team member"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}),sel("c.source",["Bron","Source"],SOURCES)),{id:"ct-owner"})}`}
+  ${sec(["Verantwoordelijk","Responsible"],row(sel("c.owner",["Teamlid","Team member"],TEAM.map(t=>[String(t.wp),t.name]),{req:"save"}),sel("c.source",["Bron","Source"],SOURCES)),{id:"ct-owner"})}
+  ${sec(["Interne notitie","Internal note"],row(area("c.internal_comments",["Alleen zichtbaar voor het team","Only visible to the team"],{rows:4})),{id:"ct-note"})}`}
   <datalist id="adCountries">${["Spain","Netherlands","Belgium","United Kingdom","Ireland","Germany","France","Sweden","Norway","Denmark","Finland","Switzerland","Austria"].map(x=>`<option value="${x}">`).join("")}</datalist>`;
 }
 function ptHint(){const c=S.c, x=coupleSplit(c.first_name);if(!x||(c.partner&&c.partner.on))return "";

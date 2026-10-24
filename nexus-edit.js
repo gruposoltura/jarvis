@@ -559,7 +559,7 @@ async function openContact(key,ctx){X=ctx;
   /* linkerkolom met paneelnamen, net als bij Woning bewerken (Rick 21-10-2026) */
   const CNAV=()=>[["c-labels",["Labels","Labels"]],["c-person",["Persoon en identiteit","Person and identity"]],["c-partner",["Partner gegevens","Partner details"]],
     ["c-contact",["Contactgegevens","Contact details"]],["c-addr",["Adres en overig","Address and other"]],["c-search",["Zoekprofiel","Search profile"]],["c-mail",["Mailings","Mailings"]]]
-    .concat((C.team||[]).length?[["c-owner",["Verantwoordelijk","Responsible"]]]:[]);
+    .concat((C.team||[]).length?[["c-owner",["Verantwoordelijk","Responsible"]]]:[]).concat([["c-note",["Interne notitie","Internal note"]]]);
   const draw=()=>{const sc=ROOT.querySelector(".pe-main");const top=sc?sc.scrollTop:0;ROOT.innerHTML=`<div class="pe-box pe-small pe-cnav"><header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(C.contact.full_name||"—")}</div><div class="pe-tt">${esc(tr(["Contactgegevens bewerken","Edit contact details"]))}</div></div>
      <button class="pe-x" data-act="cclose">×</button></header>
      <div class="pe-body"><nav class="pe-nav">${CNAV().map(n=>`<a data-cjump="${n[0]}">${esc(tr(n[1]))}</a>`).join("")}</nav>
@@ -576,7 +576,7 @@ async function openContact(key,ctx){X=ctx;
        <small class="muted">${esc(tr(["★ = hoofdadres (gebruikt voor mailings en WhatsApp). Telefoon met landcode, bijv. +34 of +31.","★ = primary (used for mailings and WhatsApp). Phone with country code, e.g. +34 or +31."]))}</small></section>
      <section class="ad-sec" id="pe-c-addr" style="--sc:#06b6d4"><h4>${esc(tr(["Adres en overig","Address and other"]))}</h4>
        <div class="ad-row">${CADDR.map(cfIn).join("")}</div>
-       <label class="ad-f w4"><span>${esc(tr(["Interne notitie","Internal note"]))}</span><textarea data-cf="internal_comments" rows="4">${esc(v.internal_comments||"")}</textarea></label></section>
+</section>
      <section class="ad-sec" id="pe-c-search" style="--sc:#f59e0b"><h4>${esc(tr(["Zoekprofiel","Search profile"]))}</h4>
        <div class="ad-row">
          <label class="ad-f"><span>${esc(tr(["Budget","Budget"]))}</span>${optSel("data-sp","budget",SP_BUDGET,SP.budget)}</label>
@@ -588,6 +588,8 @@ async function openContact(key,ctx){X=ctx;
        <div class="ad-row">${[["resale",["Bestaande bouw","Resale"]],["new_build",["Nieuwbouw","New build"]]].map(b=>`<label class="ad-c"><input type="checkbox" data-spb="${b[0]}" ${(SP.build||[]).includes(b[0])?"checked":""}><span>${esc(tr(b[1]))}</span></label>`).join("")}</div></section>
      <section class="ad-sec" id="pe-c-mail" style="--sc:#a855f7"><h4>${esc(tr(["Mailings","Mailings"]))}</h4><div id="peMail">${mailRows()}</div></section>
      ${(C.team||[]).length?`<section class="ad-sec" id="pe-c-owner" style="--sc:#f97316"><h4>${esc(tr(["Verantwoordelijk","Responsible"]))}</h4><label class="ad-f" style="max-width:320px"><span>${esc(tr(["Teamlid","Team member"]))}</span><select data-cf="owner_id"><option value="">—</option>${C.team.map(t=>`<option value="${t.id}" ${o.owner_id===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label></section>`:""}
+     <section class="ad-sec" id="pe-c-note" style="--sc:#6366f1"><h4>${esc(tr(["Interne notitie","Internal note"]))}</h4>
+       <label class="ad-f w4"><textarea data-cf="internal_comments" rows="5" placeholder="${esc(tr(["Alleen zichtbaar voor het team","Only visible to the team"]))}">${esc(v.internal_comments||"")}</textarea></label></section>
      </div></div>
      <footer class="pe-ft">${X.me&&X.me()&&X.me().role==="admin"?`<button class="btn pe-del" data-act="cdelete" title="${esc(tr(["Contact definitief verwijderen (alleen beheerder)","Delete contact permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
