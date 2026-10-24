@@ -596,10 +596,6 @@ function ctProfile(c,raw){
   out.push(cpSec("notes",t("h.notes"),notes?`<div class="note">${notes}</div>`:`<div class="cp-empty">${t("nonotes")}</div>`,{wide:1,edit:1}));
   return `<div class="cp">${out.join("")}</div>`;
 }
-function cprDate(v){if(!v)return null;let m;
-  if((m=String(v).match(/^SCHEDULED-(\d{4})(\d{2})(\d{2})/)))return t("ml.scheduled")+" "+fdate(`${m[1]}-${m[2]}-${m[3]}`);
-  if((m=String(v).match(/^(\d{4})(\d{2})(\d{2})\d{0,6}$/))&&+m[1]>2000)return fdate(`${m[1]}-${m[2]}-${m[3]}`);
-  return "#"+v}
 function ctMailings(c){
   const M=(CT.details||{}).mailing||{}, jin=M.jarvis_optin||{}, jout=M.jarvis_optout||{}, ev=M.events||{};
   const pill=(on,txtOn,txtOff)=>on==null?`<span class="mpill">—</span>`:`<span class="mpill ${on?"in":"out"}">${on?txtOn:txtOff}</span>`;
@@ -618,7 +614,6 @@ function ctMailings(c){
     const head=ix===0?grpRow(L2("Nieuwsbrieven","Newsletters")):(tp.slug===ORD[NEWS.length]||(NEWS.includes(srt[ix-1].slug)&&!NEWS.includes(tp.slug)))?grpRow(L2("Servicemails","Service mails")):"";
     return head+`<tr><td>${esc(t("mt."+tp.slug)!=="mt."+tp.slug?t("mt."+tp.slug):tp.label)}</td><td>${pill(st,t("ml.in"),t("ml.out"))}</td><td class="muted">${esc(src)}</td><td>${i?fdate(i):"—"}</td><td>${o?fdate(o):"—"}</td><td>${tp.updated?fdate(tp.updated):"—"}</td></tr>`}).join("");
   const legacy=Object.keys(jout).filter(k=>!(M.types||[]).some(x=>x.slug===k));
-  const cpr=(M.cpr||[]).map(x=>`<tr><td>${esc(t("cm."+x.key)!=="cm."+x.key?t("cm."+x.key):x.key)}</td><td>${pill(x.on==="yes",t("ml.in"),t("ml.out"))}</td><td>${cprDate(x.last)||"—"}</td></tr>`).join("");
   return `<div class="bigtiles">
      <div class="bt"><div class="l">${t("ml.master")}</div><div class="v">${pill(masterOn,t("yes"),t("no"))}</div></div>
      <div class="bt"><div class="l">${t("ml.delivered")}</div><div class="v">${num(ev.delivered||0)}</div></div>
@@ -627,9 +622,7 @@ function ctMailings(c){
    ${ev.unsubscribed||ev.hard_bounce||ev.spam||(M.bounces||[]).length?`<div class="alertbar">${ev.unsubscribed?`⛔ ${t("ml.unsub")} ${fdate(ev.unsubscribed)} `:""}${ev.hard_bounce?`· ⚠ hard bounce ${fdate(ev.hard_bounce)} `:""}${ev.spam?`· 🚫 spam ${fdate(ev.spam)} `:""}${(M.bounces||[]).map(b=>`· ${t("ml.bounce")} ${fdate(b.at)} (${esc(b.reason||b.action||"")})`).join(" ")}</div>`:""}
    <div class="card"><div class="hd"><h3>${t("ml.jarvis")}</h3><span class="sm muted">${M.optout_changed?t("ml.changed")+" "+fdate(M.optout_changed):""}</span></div>
      <div class="scroll"><table class="mtable"><thead><tr><th>${t("ml.type")}</th><th>${t("ml.status")}</th><th>${t("ml.source")}</th><th>${t("ml.optin")}</th><th>${t("ml.optout")}</th><th>${t("ml.updated")}</th></tr></thead><tbody>${types}</tbody></table></div>
-     ${legacy.length?`<div class="sm muted" style="padding:8px 14px">${t("ml.legacy")}: ${legacy.map(k=>esc(k)+" ("+fdate(jout[k])+")").join(", ")}</div>`:""}</div>
-   <div class="card" style="margin-top:12px"><div class="hd"><h3>${t("ml.cpr")}</h3></div>
-     <div class="scroll"><table class="mtable"><thead><tr><th>${t("ml.type")}</th><th>${t("ml.status")}</th><th>${t("ml.lastsent")}</th></tr></thead><tbody>${cpr||`<tr><td colspan="3" class="muted">—</td></tr>`}</tbody></table></div></div>`;
+     ${legacy.length?`<div class="sm muted" style="padding:8px 14px">${t("ml.legacy")}: ${legacy.map(k=>esc(k)+" ("+fdate(jout[k])+")").join(", ")}</div>`:""}</div>`;
 }
 function propCard(p,extra){return `<div class="pcard" data-p="${esc(p.key||p.reference||p.wp_id||"")}">${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="">`:'<div class="ph"></div>'}
   <div style="min-width:0"><div class="tt">${esc(p.reference||"?")} · ${esc(p.title||"")}</div><div class="pr">${eur(p.price)}</div>
