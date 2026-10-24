@@ -47,6 +47,9 @@ function route(f){
 }
 const origin=f=>f.source==="cpr_import"?"old":(f.web||f.source==="website"||f.source==="website-new")?"web":"other";
 
+/* portaalkanalen: naam zoals het team hem kent + de intake-agent die de portaalmail leest */
+const CHAN={idealista:{n:"Idealista",wf:"IdealistaLeadIntake"},"idealista-message":{n:"Idealista",wf:"IdealistaLeadIntake"},thinkspain:{n:"thinkSPAIN",wf:"ThinkSpainLeadIntake"}};
+
 /* ---------- mailnode-status ---------- */
 const mailSt=m=>!m?null:(m.events||[]).some(e=>/hard|soft|block|invalid|spam|error/.test(e))?"fail":"done";
 const mailSub=m=>{const ev=m.events||[];return ev.some(e=>/click/.test(e))?tr(["geklikt","clicked"]):ev.some(e=>/open/.test(e))?tr(["geopend","opened"]):ev.some(e=>/deliver/.test(e))?tr(["afgeleverd","delivered"]):(ev[0]||"")};
@@ -80,7 +83,7 @@ function steps(f){
     S.push({id:"intake",st:ierr?"fail":(w&&w.processed_at)||f.intake?"done":(late?"fail":"wait"),t:"Intake",
       s:ierr?tr(["fout","error"]):w&&w.processed_at?dur(mins(w.at,w.processed_at)):tr(["wacht","waiting"])});
   } else {
-    S.push({id:"bridge",st:f.intake?"done":"skip",t:tr(["Doorgifte","Hand-over"]),s:f.intake?hm(f.intake.at):(f.source||"")});
+    S.push({id:"bridge",st:f.intake?"done":"skip",t:tr(["Doorgifte","Hand-over"]),s:f.intake?hm(f.intake.at):((CHAN[f.source]&&CHAN[f.source].n)||f.source||"")});
   }
   S.push({id:"nexus",st:"done",t:"NEXUS",s:tr(["contact + aanvraag","contact + request"])});
   const r=route(f), mail=(f.mails||[])[0];
@@ -126,8 +129,14 @@ const INFO={
      "Reads the form (name, fields, UTM, property) and picks the follow-up: LeadProcessor for questions and the buying guide, NewsletterConfirm for the newsletter, FavoritesMail for favourites, BackOnMarket for a notify request."]],
     facts:[[tr(["Verwerkt","Processed"]),f.web&&f.web.processed_at?dmyt(f.web.processed_at):"—"],[tr(["Route","Route"]),f.intake&&f.intake.route],[tr(["Doorgestuurd","Forwarded"]),f.intake?(f.intake.routed?tr(["ja","yes"]):tr(["nee","no"])):"—"],
       [tr(["Reden","Reason"]),f.intake&&f.intake.skip],[tr(["Fout","Error"]),(f.web&&f.web.error)||(f.intake&&f.intake.error)]]}),
-  bridge:f=>({h:["Doorgifte","Hand-over"],p:[["Deze aanvraag kwam niet via het websiteformulier binnen, maar via een ander kanaal (bijvoorbeeld Idealista) en werd door IdealistaLeadIntake en WpLeadBridge-v2 in NEXUS gezet.",
-    "This request did not come in through the website form but through another channel (for example Idealista) and was put into NEXUS by IdealistaLeadIntake and WpLeadBridge-v2."]],facts:[[tr(["Bron","Source"]),f.source],[tr(["Tijd","Time"]),f.intake&&dmyt(f.intake.at)]]}),
+  /* Doorgifte per kanaal (fix 24-10-2026): de tekst noemde altijd Idealista, ook bij een thinkSPAIN-lead */
+  bridge:f=>{const c=CHAN[f.source], nm=c?c.n:(f.source||tr(["onbekend kanaal","unknown channel"]));
+    return {h:["Doorgifte","Hand-over"],p:[c?
+      ["Deze aanvraag kwam binnen via "+nm+", niet via het websiteformulier. "+c.wf+" las de portaalmail uit en WpLeadBridge-v2 zette het contact en de aanvraag in NEXUS.",
+       "This request came in through "+nm+", not through the website form. "+c.wf+" read the portal email and WpLeadBridge-v2 put the contact and request into NEXUS."]:
+      ["Deze aanvraag kwam binnen via "+nm+", niet via het websiteformulier, en is door JARVIS in NEXUS gezet.",
+       "This request came in through "+nm+", not through the website form, and was put into NEXUS by JARVIS."]],
+    facts:[[tr(["Bron","Source"]),nm],[tr(["Tijd","Time"]),f.intake&&dmyt(f.intake.at)]]}},
   nexus:f=>({h:["NEXUS · contact + aanvraag","NEXUS · contact + request"],p:[["Het contact is gevonden op e-mail of telefoon, of nieuw aangemaakt als Suspect. De aanvraag staat als contactmoment bij het contact. Hetzelfde formulier wordt nooit twee keer verwerkt.",
     "The contact was matched on email or phone, or created as a new Suspect. The request is stored as a contact moment. The same form is never processed twice."]],facts:[[tr(["Aangemaakt","Created"]),dmyt(f.ts)],[tr(["Status aanvraag","Request status"]),f.status]]}),
   import:f=>({h:["Geïmporteerd uit de oude site","Imported from the old site"],p:[["Deze aanvraag kwam binnen via de oude WordPress-site en is bij de overstap naar NEXUS geïmporteerd. De opvolging liep toen via de oude flow; daar zijn hier geen stappen van bewaard.",
@@ -168,7 +177,7 @@ function sendGroups(f){const G={};(f._sends||[]).forEach(m=>{const k=m.title||"m
 const dm=ts=>{if(!ts)return"";const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")};
 function flowHtml(f,i){
   const q=qual(f), S=steps(f), o=f._mail?"mail":f._synthetic?"optin":origin(f), G=sendGroups(f);
-  const PORT={idealista:"Idealista","agent-portal":"Makelaarsportaal (Sola)","appointment-agent":"viewing@ (e-mail)"};
+  const PORT={idealista:"Idealista",thinkspain:"thinkSPAIN","agent-portal":"Makelaarsportaal (Sola)","appointment-agent":"viewing@ (e-mail)"};
   const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],mail:["Automatische mail","Automatic email"],other:[PORT[f.source]||f.source||"Overig",PORT[f.source]||f.source||"Other"]};
   const title=f._mail?(f.subject||tr(["Mail","Email"])):f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):(X.rq(f.key)||f.key);
   return `<div class="fl-card q-${q}${f.id===RID?" on":""}" data-fi="${i}">
