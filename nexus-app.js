@@ -1289,16 +1289,45 @@ function ctDetailHome(){const d=$("#ctDetail");if(!d)return;if(!CTHOME)CTHOME={p
 const AC_TABS={ac:{scope:"web",key:"nexus-ac-filter"},po:{scope:"portal",key:"nexus-po-filter"}};
 const isAcTab=t_=>!!AC_TABS[t_];
 /* bij openen van Aanvragen/Portalen altijd filter Alle en de nieuwste aanvraag bovenaan gekozen; geen onthouden filter meer (Rick, 25-10-2026) */
-const acS={};Object.keys(AC_TABS).forEach(k=>{try{localStorage.removeItem(AC_TABS[k].key)}catch(e){}acS[k]={filter:"all",data:null,off:0,seq:0,sel:null,keep:false}});
-function acReset(tb){const st=acS[tb];if(!st)return;if(st.filter!=="all")st.data=null;st.filter="all";if(!st.keep)st.sel=null;st.keep=false;
+const acS={};Object.keys(AC_TABS).forEach(k=>{try{localStorage.removeItem(AC_TABS[k].key)}catch(e){}acS[k]={filter:"all",data:null,off:0,seq:0,sel:null,keep:false,focus:null}});
+function acReset(tb){const st=acS[tb];if(!st)return;if(st.filter!=="all")st.data=null;st.filter="all";st.focus=null;if(!st.keep)st.sel=null;st.keep=false;
   const f=acPane(tb)&&acPane(tb).querySelector(".feed");if(f)f.scrollTop=0}
 const acPane=tb=>$("#p-"+tb);
+/* Indeling sinds 25-10-2026 (Rick): links de contacten (een regel per contact, laatste aanvraag bovenaan), rechts alle aanvragen
+   van alle contacten van nieuw naar oud. Klik op een contact: zijn aanvragen lichten rechts op, de rest dimt, de lijst scrolt ernaartoe.
+   Klik op een aanvraag: het contactscherm (#ctDetail, op Contactmomenten met deze aanvraag bovenaan) schuift als paneel over de lijst. */
+function acSrcColor(g){g=String(g||"");return g.startsWith("p:")&&window.NEXUS_SRC?NEXUS_SRC.color(g):g==="old"?"#64748b":"var(--c-ac)"}
+function acSrcName(g){g=String(g||"");return g.startsWith("p:")&&window.NEXUS_SRC?NEXUS_SRC.name(g):g==="old"?L2("Oude site","Old site"):L2("Website","Website")}
+function acContacts(rows){const M=new Map();(rows||[]).forEach(a=>{const k=a.contact_wp_id;if(!k)return;let c=M.get(k);
+    if(!c){c={k,name:a.name,rep:a.rep,ts:a.ts,n:0,grps:[]};M.set(k,c)}c.n++;if(a.grp&&!c.grps.includes(a.grp))c.grps.push(a.grp)});
+  return[...M.values()]}
+function acCtHtml(st){const D=st.data;if(!D)return`<div class="loader">${t("loading")}</div>`;
+  const C=acContacts(D.rows);if(!C.length)return`<div class="empty">${esc(t("nocontacts"))}</div>`;
+  return C.map(c=>`<div class="row ac-ct${st.focus===c.k?" sel":""}" data-acc="${esc(c.k)}">
+     <div class="ini" style="background:${hue(c.name)}">${esc(initials(c.name))}</div>
+     <div style="min-width:0"><div class="nm">${esc(c.name||t("noname"))}</div>
+       <div class="sub">${c.grps.map(g=>`<span class="ac-dot" style="--sc:${acSrcColor(g)}" title="${esc(acSrcName(g))}"></span>`).join("")} ${esc(L2(c.n===1?"1 aanvraag":`${c.n} aanvragen`,c.n===1?"1 request":`${c.n} requests`))}</div></div>
+     <div style="text-align:right"><div class="sm" style="color:${REPC[c.rep]||"#64748b"}">${esc(rep(c.rep||""))}</div><div class="sm muted">${ago(c.ts)}</div></div></div>`).join("")}
+function acFocus(tb,k,scroll){const st=acS[tb],P=acPane(tb);if(!st||!P)return;st.focus=k||null;
+  P.querySelectorAll(".ac-cts .ac-ct").forEach(r=>r.classList.toggle("sel",r.dataset.acc===st.focus));
+  const its=[...P.querySelectorAll(".feed .it")];
+  its.forEach(r=>{const m=!!st.focus&&r.dataset.c===st.focus;r.classList.toggle("hit",m);r.classList.toggle("dim",!!st.focus&&!m)});
+  P.querySelector(".ac-split").classList.toggle("focused",!!st.focus);
+  const f=st.focus&&its.find(r=>r.dataset.c===st.focus);if(scroll!==false&&f&&f.scrollIntoView)try{f.scrollIntoView({block:"center",behavior:"smooth"})}catch(e){}
+  const n=P.querySelector(".ac-fhint");if(n)n.innerHTML=st.focus?`${esc(L2(`Aanvragen van ${(acContacts(st.data&&st.data.rows).find(c=>c.k===st.focus)||{}).name||""} gemarkeerd`,`Requests of ${(acContacts(st.data&&st.data.rows).find(c=>c.k===st.focus)||{}).name||""} highlighted`))} <button class="btn" data-acunf="1">${esc(L2("Alles tonen","Show all"))}</button>`:"";
+  const u=n&&n.querySelector("[data-acunf]");if(u)u.onclick=()=>acFocus(tb,null,false)}
+function acClose(tb){const P=acPane(tb||curTab);if(!P)return;const sl=P.querySelector(".ac-slot");if(sl)sl.classList.add("hidden");
+  P.querySelectorAll(".feed .it.sel").forEach(r=>r.classList.remove("sel"));const st=acS[tb||curTab];if(st)st.sel=null;ctDetailHome()}
 function acPick(row){if(!row)return;
   const pane=row.closest(".pane"),tb=pane?pane.id.slice(2):curTab,st=acS[tb];if(!st)return;
   $$(`#p-${tb} .feed .it`).forEach(r=>r.classList.toggle("sel",r===row));
   st.sel=acSel=row.dataset.fr||row.dataset.c;ctSub="tijdlijn";FLREQ=row.dataset.fr||null;
-  const slot=pane.querySelector(".ac-slot"),d=$("#ctDetail");if(slot&&d&&d.parentNode!==slot){if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};slot.appendChild(d)}
+  if(st.focus!==row.dataset.c)acFocus(tb,row.dataset.c,false);
+  const slot=pane.querySelector(".ac-slot"),d=$("#ctDetail");slot.classList.remove("hidden");
+  if(slot&&d&&d.parentNode!==slot){if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};slot.appendChild(d)}
   if(ctSel===String(row.dataset.c)&&CT)renderContact();else openContact(row.dataset.c,{noScroll:true})}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&isAcTab(curTab)){const sl=acPane(curTab)&&acPane(curTab).querySelector(".ac-slot");
+  if(sl&&!sl.classList.contains("hidden")&&!document.getElementById("flPop")&&!document.querySelector(".modal:not(.hidden),.ov-modal"))acClose(curTab)}});
 function acChips(st){
   const D=st.data;if(!D||!D.filters)return"";
   const all=D.filters.reduce((a,f)=>a+Number(f.n||0),0);
@@ -1316,14 +1345,19 @@ function acListHtml(st){const D=st.data;
   const more=D.total>st.off?`<div class="more ac-more"><button class="btn" data-acmore="1">${esc(L2(`Meer laden (${num(D.total-st.off)} over)`,`Load more (${num(D.total-st.off)} left)`))}</button></div>`:"";
   return feedHtml(D.rows)+more;
 }
+function acPaint(tb){const st=acS[tb],P=acPane(tb);
+  P.querySelector(".ac-cts").innerHTML=acCtHtml(st);
+  P.querySelector(".ac-ccnt").textContent=st.data?L2(`${num(acContacts(st.data.rows).length)} contacten`,`${num(acContacts(st.data.rows).length)} contacts`):"";
+  P.querySelector(".feed").innerHTML=st.data&&!(st.data.rows||[]).length?`<div class="empty">${esc(L2(tb==="po"?"Geen portaalaanvragen voor dit filter":"Geen aanvragen voor dit filter",tb==="po"?"No portal requests for this filter":"No requests for this filter"))}</div>`:acListHtml(st);
+  acBind(tb);acFocus(tb,st.focus,false);
+  P.querySelectorAll(".feed .it").forEach(x=>x.classList.toggle("sel",!!st.sel&&(x.dataset.fr||x.dataset.c)===st.sel))}
 function acBind(tb){const st=acS[tb],P=acPane(tb);
-  P.querySelectorAll("[data-acf]").forEach(c=>c.onclick=()=>{if(st.filter===c.dataset.acf)return;st.filter=c.dataset.acf;
-    st.sel=null;loadActivity(tb)});
+  P.querySelectorAll("[data-acf]").forEach(c=>c.onclick=()=>{if(st.filter===c.dataset.acf)return;st.filter=c.dataset.acf;st.sel=null;st.focus=null;acClose(tb);loadActivity(tb)});
+  P.querySelectorAll(".ac-cts [data-acc]").forEach(r=>r.onclick=()=>acFocus(tb,st.focus===r.dataset.acc?null:r.dataset.acc));
+  const x=P.querySelector("[data-acx]");if(x)x.onclick=()=>acClose(tb);
   const m=P.querySelector("[data-acmore]");if(m)m.onclick=async()=>{m.disabled=true;const my=st.seq;
-    let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:50,p_offset:st.off,p_scope:AC_TABS[tb].scope})}catch(e){m.disabled=false;alert(e.message);return}
-    if(my!==st.seq)return;st.data.rows=st.data.rows.concat(r.rows||[]);st.off+=(r.rows||[]).length;
-    const box=P.querySelector(".feed"),sel=st.sel;box.innerHTML=acListHtml(st);acBind(tb);
-    P.querySelectorAll(".feed .it").forEach(x=>x.classList.toggle("sel",(x.dataset.fr||x.dataset.c)===sel))};
+    let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:200,p_offset:st.off,p_scope:AC_TABS[tb].scope})}catch(e){m.disabled=false;alert(e.message);return}
+    if(my!==st.seq)return;st.data.rows=st.data.rows.concat(r.rows||[]);st.off+=(r.rows||[]).length;acPaint(tb)};
 }
 async function loadActivity(tb){
   tb=isAcTab(tb)?tb:(isAcTab(curTab)?curTab:"ac");
@@ -1331,21 +1365,25 @@ async function loadActivity(tb){
   const st=acS[tb],P=acPane(tb),my=++st.seq;if(!P)return;
   if(st.data&&st.data.filter!==st.filter)st.data=null;
   if(!P.querySelector(".ac-split"))P.innerHTML=`<div class="split ac-split">
-    <div class="card list"><div class="hd"><h3>${t(tb==="po"?"po.req":"ac.req")}</h3><span class="sm muted ac-cnt"></span></div>
-      <div class="toolbar ac-filter"></div><div class="rows scroll feed"></div></div>
-    <div class="ac-slot"></div></div>`;
-  P.querySelector(".feed").innerHTML=acListHtml(st);
-  let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:50,p_offset:0,p_scope:AC_TABS[tb].scope})}
+    <div class="card list"><div class="hd"><h3>${esc(L2("Contacten","Contacts"))}</h3><span class="sm muted ac-ccnt"></span></div>
+      <div class="rows scroll ac-cts"></div></div>
+    <div class="ac-main">
+      <div class="card list ac-reqs"><div class="hd"><h3>${t(tb==="po"?"po.req":"ac.req")}</h3><span class="sm muted ac-cnt"></span></div>
+        <div class="toolbar ac-filter"></div><div class="ac-fhint sm"></div><div class="rows scroll feed"></div></div>
+      <div class="ac-slot hidden"><div class="ac-dr-hd"><span class="sm muted">${esc(L2("Contact bij deze aanvraag · Esc sluit","Contact for this request · Esc closes"))}</span><button type="button" class="fl-x" data-acx="1" aria-label="${esc(L2("Sluiten","Close"))}">×</button></div></div>
+    </div></div>`;
+  P.querySelector(".ac-slot").classList.add("hidden");
+  acPaint(tb);
+  let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:200,p_offset:0,p_scope:AC_TABS[tb].scope})}
   catch(e){if(my===st.seq)P.querySelector(".feed").innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   if(my!==st.seq||curTab!==tb)return;
   if(st.filter!=="all"&&!(r.filters||[]).some(f=>f.key===st.filter)){st.filter="all";return loadActivity(tb)}
   st.data=r;st.off=(r.rows||[]).length;
   P.querySelector(".ac-filter").innerHTML=acChips(st);
   P.querySelector(".ac-cnt").textContent=t("ac.7d",{n:num(r.total_7d||0)});
-  P.querySelector(".feed").innerHTML=(r.rows||[]).length?acListHtml(st):`<div class="empty">${esc(L2(tb==="po"?"Geen portaalaanvragen voor dit filter":"Geen aanvragen voor dit filter",tb==="po"?"No portal requests for this filter":"No requests for this filter"))}</div>`;
-  acBind(tb);
-  const rows=[...P.querySelectorAll(".feed .it[data-c]")];
-  acPick(rows.find(x=>(x.dataset.fr||x.dataset.c)===st.sel)||rows[0]);
+  acPaint(tb);
+  /* vanuit Overzicht: die aanvraag direct openen */
+  if(st.sel){const row=[...P.querySelectorAll(".feed .it[data-c]")].find(x=>(x.dataset.fr||x.dataset.c)===st.sel);if(row){acPick(row);try{row.scrollIntoView({block:"center"})}catch(e){}}else st.sel=null}
 }
 
 })();

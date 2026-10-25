@@ -1309,10 +1309,20 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 /* Portalen (#p-po): zelfde pagina als Aanvragen, alleen portaalaanvragen (Rick, 22-10-2026) */
 :root{--c-po:#8b5cf6}
 #p-ac > .ac-split,#p-po > .ac-split{height:100%;min-height:0}
-.ac-slot{display:flex;min-height:0;min-width:0}
+/* sinds 25-10-2026: links contacten, rechts alle aanvragen; contactscherm als paneel over de aanvragenlijst */
+.ac-main{position:relative;display:flex;min-height:0;min-width:0}
+.ac-main > .ac-reqs{flex:1;min-width:0}
+.ac-slot{position:absolute;top:0;right:0;bottom:0;width:min(860px,80%);z-index:20;display:flex;flex-direction:column;min-height:0;min-width:0;
+  background:var(--bg,var(--card));border-radius:14px;box-shadow:-18px 0 40px rgba(0,0,0,.35),0 0 0 1px var(--line)}
+.ac-slot.hidden{display:none}
 .ac-slot > .detail{flex:1;min-width:0}
+.ac-dr-hd{display:flex;align-items:center;justify-content:space-between;padding:6px 10px 4px 14px}
+.ac-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sc);margin-right:3px;vertical-align:0}
+.ac-fhint{display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--tx2)}.ac-fhint:empty{display:none}.ac-fhint .btn{padding:3px 9px;font-size:calc(12px*var(--fs,1))}
+.ac-split .feed .it.dim{opacity:.35}.ac-split .feed .it.dim:hover{opacity:.8}
+.ac-split .feed .it.hit{background:color-mix(in srgb,var(--acc,var(--c-ac)) 12%,var(--card));box-shadow:inset 3px 0 0 var(--acc,var(--c-ac))}
 .feed .it.sel{background:var(--card2);box-shadow:inset 3px 0 0 var(--acc,var(--c-ac))}
-@media (max-width:1100px){.ac-slot{min-height:70vh}}
+@media (max-width:1100px){.ac-slot{position:fixed;inset:8px;width:auto}}
 .fl-rest{padding:4px 14px 2px;font-size:calc(11px*var(--fs,1));letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);font-weight:600}
 .fl-acts{display:flex;flex-wrap:wrap;gap:6px}.fl-acts .btn{padding:6px 11px;font-size:calc(12.5px*var(--fs,1))}
 /* verzendingen (mailings) als vervolg van de aanvraag waar ze uit voortkomen */
