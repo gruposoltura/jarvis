@@ -93,7 +93,7 @@ const app = document.getElementById("app");
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const STATUS_LABEL = { ok:"op koers", warn:"loopt voor", critical:"bijna op", nolimit:"limiet onbekend", stale:"meting oud", nodata:"nog geen meting" };
-const UNIT = { USD:{pre:"$",dec:2,word:""}, EUR:{pre:"€ ",dec:2,word:""}, executions:{dec:0,word:"executies"}, credits:{dec:0,word:"credits"}, emails:{dec:0,word:"e-mails"}, minutes:{dec:0,word:"minuten"} };
+const UNIT = { USD:{pre:"$",dec:2,word:""}, EUR:{pre:"€ ",dec:2,word:""}, executions:{dec:0,word:"executies"}, credits:{dec:0,word:"credits"}, emails:{dec:0,word:"e-mails"}, minutes:{dec:0,word:"minuten"}, GB:{dec:2,word:"GB"} };
 
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function fmt(v, unit){
@@ -192,22 +192,37 @@ function n8nBreakdown(t){
   </div>`;
 }
 
+// Supabase (kind=level): omvang op dit moment per dimensie (database, opslag, MAU) uit raw.dims; egress staat niet in SQL.
+function dimsBreakdown(t){
+  const r = t.raw || {};
+  if(!Array.isArray(r.dims) || !r.dims.length) return "";
+  const nf = (v,u) => u==="GB" ? Number(v).toLocaleString("nl-NL",{minimumFractionDigits:2,maximumFractionDigits:2})+" GB" : Number(v).toLocaleString("nl-NL");
+  const col = p => p>=90 ? "var(--crit)" : p>=75 ? "var(--warn)" : "var(--accent)";
+  const rows = r.dims.map(d=>`<div class="brk-r"><span>${esc(d.label)}</span><i style="width:${Math.max(2,Math.min(100,Math.round(d.pct)))}%;background:${col(d.pct)}"></i><b>${nf(d.used,d.unit)} / ${nf(d.limit,d.unit)}</b></div>`).join("");
+  const tb = Array.isArray(r.top_tables) && r.top_tables.length
+    ? `<span class="brk-h" style="margin-top:6px">Grootste tabellen</span>${r.top_tables.slice(0,4).map(x=>`<div class="brk-r"><span>${esc(x.table)}</span><i style="width:${Math.max(2,Math.round(100*x.mb/(r.top_tables[0].mb||1)))}%;background:var(--idle)"></i><b>${Number(x.mb).toLocaleString("nl-NL")} MB</b></div>`).join("")}` : "";
+  return `<div class="brk"><span class="brk-h">Plafonds Pro-plan</span>${rows}${tb}
+    <div class="legend"><span>Omvang op dit moment, geen maandteller. Egress (250 GB/mnd) is niet via SQL te meten.</span></div></div>`;
+}
+
 function card(t, hist){
   const st = t.status||"nodata";
   const pct = t.pct_used!==null ? Number(t.pct_used) : null;
   const pctProj = t.pct_projected!==null ? Number(t.pct_projected) : null;
   const pctPer = Number(t.pct_period||0);
-  const left = daysLeft(t.period_end);
+  const level = t.kind==="level";
+  const left = level ? null : daysLeft(t.period_end);
   let barHTML = "";
   if(pct!==null){
-    const projW = pctProj!==null && pctProj>pct ? Math.min(pctProj,100) : 0;
+    const projW = !level && pctProj!==null && pctProj>pct ? Math.min(pctProj,100) : 0;
     barHTML = `<div>
       <div class="bar">
         ${projW ? `<div class="proj" style="width:${projW}%"></div>`:""}
         <div class="fill" style="width:${Math.min(pct,100)}%"></div>
-        <div class="tick" style="left:calc(${Math.min(pctPer,100)}% - 1px)" title="${pctPer}% van de periode verstreken"></div>
+        ${level ? "" : `<div class="tick" style="left:calc(${Math.min(pctPer,100)}% - 1px)" title="${pctPer}% van de periode verstreken"></div>`}
       </div>
-      <div class="legend"><span>${d(t.period_start)}</span><span>vandaag ${pctPer.toFixed(0)}% van de periode</span><span>${d(t.period_end)}</span></div>
+      ${level ? `<div class="legend"><span>${esc((t.raw&&t.raw.dims||[]).find(x=>x.key===t.raw.headline)?.label||"")} · dichtst bij plafond</span><span>vanaf 75% oranje</span></div>`
+              : `<div class="legend"><span>${d(t.period_start)}</span><span>vandaag ${pctPer.toFixed(0)}% van de periode</span><span>${d(t.period_end)}</span></div>`}
     </div>`;
   }
   const big = pct!==null
@@ -219,7 +234,7 @@ function card(t, hist){
     : (st==="stale"||st==="nodata") ? `<div class="hint">${t.note ? "Laatste meting mislukt: "+esc(t.note) : "Nog geen geslaagde meting in de laatste 30 uur."}</div>` : "";
   const facts = `<div class="facts">
       <div><span>Resterend</span><b>${fmt(t.remaining,t.unit)}</b></div>
-      <div><span>Prognose einde periode</span><b>${pctProj!==null ? fmt(t.projected,t.unit)+" ("+pctProj.toFixed(0)+"%)" : "–"}</b></div>
+      <div><span>Prognose einde periode</span><b>${!level && pctProj!==null ? fmt(t.projected,t.unit)+" ("+pctProj.toFixed(0)+"%)" : "–"}</b></div>
       <div><span>Dagen tot reset</span><b>${left===null?"–":left}</b></div>
       <div><span>Kosten / maand</span><b>${t.cost_eur_month!==null ? "€ "+Number(t.cost_eur_month).toLocaleString("nl-NL") : "–"}</b></div>
     </div>`;
@@ -228,7 +243,7 @@ function card(t, hist){
       <div><div class="name">${esc(t.label)}</div><div class="plan">${esc(t.plan_name||"plan onbekend")} · ${esc(unitWord(t.unit)||t.unit)}${t.tool==="n8n"&&t.raw&&t.raw.method==="modes"?" (gefactureerd)":""}</div></div>
       <span class="pill ${st}">${esc(STATUS_LABEL[st]||st)}</span>
     </div>
-    ${big}${barHTML}${hint}${facts}${breakdown(t)}${n8nBreakdown(t)}
+    ${big}${barHTML}${hint}${facts}${breakdown(t)}${n8nBreakdown(t)}${dimsBreakdown(t)}
     ${spark(hist, t.unit)}
     <div class="foot"><span>Gemeten ${esc(ago(t.ok_at||t.captured_at))}</span>${t.manage_url?`<a href="${esc(t.manage_url)}" target="_blank" rel="noopener">Beheer ↗</a>`:""}</div>
   </div>`;
@@ -249,7 +264,7 @@ function render(rows, hist){
     </div>
     <div class="grid">${rows.map(r=>card(r, byTool[r.tool]||[])).join("") || `<div class="hint">Geen tools geconfigureerd.</div>`}</div>
     <div class="note">Witte streep = hoeveel van de periode verstreken is; ligt de balk ervoor, dan gaat het verbruik sneller dan de klok. Gearceerd = prognose tot einde periode (vanaf 15% van de periode).
-      Ook gratis plannen met een plafond staan erbij (Cloudinary, GitHub Actions). Diensten zonder verbruiksplafond (Google, Supabase, WordPress, Meta) en het Claude-chatabonnement (geen API voor het verbruik) staan hier niet.</div>
+      Ook gratis plannen met een plafond staan erbij (Cloudinary, GitHub Actions). Supabase toont omvang (database, opslag, MAU) tegen de Pro-plafonds. Diensten zonder verbruiksplafond (Google, WordPress, Meta) en het Claude-chatabonnement (geen API voor het verbruik) staan hier niet.</div>
   </div>`;
 }
 
