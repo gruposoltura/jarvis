@@ -1433,9 +1433,14 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .tc-pick:hover{border-color:var(--sc)}
 .tc-pick[disabled]{cursor:default;opacity:.6}
 .tc-radio{width:14px;height:14px;border-radius:50%;border:2px solid var(--tx3);flex:none;order:2}
-.tc-opt.on .tc-pick{border-color:var(--sc);background:color-mix(in srgb,var(--sc) 14%,transparent)}
-.tc-opt.on .tc-radio{border-color:var(--sc);background:radial-gradient(circle,var(--sc) 45%,transparent 50%)}
-.tc td.on{background:color-mix(in srgb,var(--sc) 9%,transparent)}
+.cp-tariff{--tc:#22c55e}
+.tc-opt.on .tc-pick{border:2px solid var(--tc);background:var(--tc);box-shadow:0 0 0 3px color-mix(in srgb,var(--tc) 25%,transparent)}
+.tc-opt.on .tc-pick b,.tc-opt.on .tc-pick small{color:#fff}
+.tc-opt.on .tc-radio{border-color:#fff;background:radial-gradient(circle,#fff 45%,transparent 50%)}
+.tc td.on{background:color-mix(in srgb,var(--tc) 16%,transparent);border-left:2px solid var(--tc);border-right:2px solid var(--tc)}
+.tc tfoot tr:last-child td.on{border-bottom:2px solid var(--tc)}
+.tc .tc-tot td.on,.tc .tc-tot td.on b{color:var(--tc)}
+.tc-ft b{color:var(--tc)}
 .tc td.off,.tc th.off{opacity:.45}
 .tc-allin{text-align:center!important}
 .tc-one{display:flex;flex-direction:column;align-items:center;gap:6px;line-height:1.3}
