@@ -1,4 +1,4 @@
-/* v9 (25-10-2026): aangeklikte aanvraag bovenaan met label en accentrand; portaalbron in eigen kleur (NEXUS_SRC). v8 (25-10-2026): interne mails (JARVIS, New Lead, ook met emoji vooraf) niet als losse mailflow. v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
+/* v10 (25-10-2026): list() - Aanvragen/Portalen tonen alle aanvragen als flowkaarten (bron: nexus_request_flows), met contactnaam en rep. v9 (25-10-2026): aangeklikte aanvraag bovenaan met label en accentrand; portaalbron in eigen kleur (NEXUS_SRC). v8 (25-10-2026): interne mails (JARVIS, New Lead, ook met emoji vooraf) niet als losse mailflow. v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
 /* NEXUS · Contact › Contactmomenten — formulierflows per contact (Rick, 22-10-2026).
    Klik in Binnenkomend op een aanvraag: het contact opent altijd op Contactmomenten, met bovenaan alle aanvragen van dat contact
    als compacte flow onder elkaar, van het formulier (links) tot afgerond (rechts); de aangeklikte aanvraag is gemarkeerd. Kleur = kwalificatie van de lead (Hot / Warm / Cold / geen lead).
@@ -198,13 +198,14 @@ function sendGroups(f){const G={};(f._sends||[]).forEach(m=>{const k=m.title||"m
     G[k].o+=Number(m.opens||0)>0?1:0;G[k].c+=Number(m.clicks||0)>0?1:0;if(!G[k].last||new Date(m.ts)>new Date(G[k].last))G[k].last=m.ts});
   return Object.values(G).sort((a,b)=>new Date(b.last)-new Date(a.last))}
 const dm=ts=>{if(!ts)return"";const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")};
-function flowHtml(f,i){
+function flowHtml(f,i,lst){
   const q=qual(f), S=steps(f), o=f._mail?"mail":f._synthetic?"optin":origin(f), G=sendGroups(f);
   const PORT={idealista:"Idealista",thinkspain:"thinkSPAIN","agent-portal":"Makelaarsportaal (Sola)","appointment-agent":"viewing@ (e-mail)"};
   const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],mail:["Automatische mail","Automatic email"],other:[PORT[f.source]||f.source||"Overig",PORT[f.source]||f.source||"Other"]};
   const title=f._mail?(f.subject||tr(["Mail","Email"])):f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):fTitle(f);
-  const on=!!RID&&f.id===RID, pc=o==="other"&&SRCC[String(f.source||"").toLowerCase()]?srcColor(f.source):"";
-  return `<div class="fl-card q-${q}${on?" on":""}" data-fi="${i}">
+  const on=!lst&&!!RID&&f.id===RID, pc=o==="other"&&SRCC[String(f.source||"").toLowerCase()]?srcColor(f.source):"";
+  return `<div class="fl-card q-${q}${on?" on":""}" data-fi="${i}"${lst?` data-rid="${esc(f.id)}"`:""}${lst&&f.contact_id?` data-fc="${esc(f.contact_id)}"`:""}>
+    ${lst?`<div class="fl-who"><b>${esc(f.contact_name||tr(["Onbekend contact","Unknown contact"]))}</b>${f.rep?`<span class="fl-rep">${esc(f.rep)}</span>`:""}</div>`:""}
     ${on?`<div class="fl-here">${esc(tr(["Aangeklikte aanvraag","Selected request"]))}</div>`:""}
     <div class="fl-hd"><span class="fl-q">${esc(tr(QL[q]))}</span><b class="fl-t">${esc(title)}</b>${f.ref?`<span class="fl-ref" data-p="${esc(f.ref)}">${esc(f.ref)}</span>`:""}
       <span class="fl-o${pc?" src":""}"${pc?` style="--sc:${pc}"`:""}>${esc(tr(ORIG[o]))}</span><span class="fl-ts" title="${esc(dmyt(f.ts))}">${esc(dmyt(f.ts))}</span></div>
@@ -316,5 +317,14 @@ function fold(list,data){
   if(Object.keys(M).length)fl.sort((a,b)=>T(b.ts)-T(a.ts));
   return rest;
 }
-window.NEXUS_FLOWS={open,close,fold,rerender:render,current:()=>CID};
+/* Aanvragen/Portalen (Rick, 25-10-2026): alle aanvragen van alle contacten als flowkaarten onder elkaar, nieuw naar oud.
+   flows komen uit nexus_request_flows (zelfde opbouw als nexus_contact_flows via nexus_flow_obj, plus contact_id/contact_name/rep). */
+function list(root,flows,ctx,opt){X=ctx;const fl=flows||[];opt=opt||{};
+  if(!fl.length){root.innerHTML=`<div class="empty">${esc(opt.empty||tr(["Geen aanvragen","No requests"]))}</div>`;return}
+  root.innerHTML=`<div class="fl-wrap fl-all">${opt.legend===false?"":`<div class="fl-top"><span></span><div class="fl-leg">${["hot","warm","cold","none"].map(q=>`<span class="fl-lg q-${q}">${esc(tr(QL[q]))}</span>`).join("")}</div></div>`}
+    <div class="fl-list">${fl.map((f,i)=>flowHtml(f,i,true)).join("")}</div></div>`;
+  root.querySelectorAll(".fl-n").forEach(b=>b.onclick=e=>{e.stopPropagation();const card=b.closest(".fl-card"),f=fl[+card.dataset.fi];
+    if(b.dataset.g!=null)popSends(f,sendGroups(f)[+b.dataset.g]);else popup(f,b.dataset.id,b.className.split(" ")[1])});
+}
+window.NEXUS_FLOWS={open,close,fold,list,rerender:render,current:()=>CID};
 })();

@@ -1290,7 +1290,7 @@ const AC_TABS={ac:{scope:"web",key:"nexus-ac-filter"},po:{scope:"portal",key:"ne
 const isAcTab=t_=>!!AC_TABS[t_];
 /* bij openen van Aanvragen/Portalen altijd filter Alle en de nieuwste aanvraag bovenaan gekozen; geen onthouden filter meer (Rick, 25-10-2026) */
 const acS={};Object.keys(AC_TABS).forEach(k=>{try{localStorage.removeItem(AC_TABS[k].key)}catch(e){}acS[k]={filter:"all",data:null,off:0,seq:0,sel:null,keep:false,focus:null}});
-function acReset(tb){const st=acS[tb];if(!st)return;if(st.filter!=="all")st.data=null;st.filter="all";st.focus=null;if(!st.keep)st.sel=null;st.keep=false;
+function acReset(tb){const st=acS[tb];if(!st)return;if(st.filter!=="all"){st.data=null;st.flows=null}st.filter="all";st.focus=null;if(!st.keep)st.sel=null;st.keep=false;
   const f=acPane(tb)&&acPane(tb).querySelector(".feed");if(f)f.scrollTop=0}
 const acPane=tb=>$("#p-"+tb);
 /* Indeling sinds 25-10-2026 (Rick): links de contacten (een regel per contact, laatste aanvraag bovenaan), rechts alle aanvragen
@@ -1310,10 +1310,10 @@ function acCtHtml(st){const D=st.data;if(!D)return`<div class="loader">${t("load
      <div style="text-align:right"><div class="sm" style="color:${REPC[c.rep]||"#64748b"}">${esc(rep(c.rep||""))}</div><div class="sm muted">${ago(c.ts)}</div></div></div>`).join("")}
 function acFocus(tb,k,scroll){const st=acS[tb],P=acPane(tb);if(!st||!P)return;st.focus=k||null;
   P.querySelectorAll(".ac-cts .ac-ct").forEach(r=>r.classList.toggle("sel",r.dataset.acc===st.focus));
-  const its=[...P.querySelectorAll(".feed .it")];
-  its.forEach(r=>{const m=!!st.focus&&r.dataset.c===st.focus;r.classList.toggle("hit",m);r.classList.toggle("dim",!!st.focus&&!m)});
+  const its=[...P.querySelectorAll(".feed .fl-card")];
+  its.forEach(r=>{const m=!!st.focus&&r.dataset.fc===st.focus;r.classList.toggle("hit",m);r.classList.toggle("dim",!!st.focus&&!m)});
   P.querySelector(".ac-split").classList.toggle("focused",!!st.focus);
-  const f=st.focus&&its.find(r=>r.dataset.c===st.focus);if(scroll!==false&&f&&f.scrollIntoView)try{f.scrollIntoView({block:"center",behavior:"smooth"})}catch(e){}
+  const f=st.focus&&its.find(r=>r.dataset.fc===st.focus);if(scroll!==false&&f&&f.scrollIntoView)try{f.scrollIntoView({block:"center",behavior:"smooth"})}catch(e){}
   const n=P.querySelector(".ac-fhint");if(n)n.innerHTML=st.focus?`${esc(L2(`Aanvragen van ${(acContacts(st.data&&st.data.rows).find(c=>c.k===st.focus)||{}).name||""} gemarkeerd`,`Requests of ${(acContacts(st.data&&st.data.rows).find(c=>c.k===st.focus)||{}).name||""} highlighted`))} <button class="btn" data-acunf="1">${esc(L2("Alles tonen","Show all"))}</button>`:"";
   const u=n&&n.querySelector("[data-acunf]");if(u)u.onclick=()=>acFocus(tb,null,false)}
 function acClose(tb){const P=acPane(tb||curTab);if(!P)return;const sl=P.querySelector(".ac-slot");if(sl)sl.classList.add("hidden");
@@ -1340,24 +1340,26 @@ function acChips(st){
   });
   return h;
 }
-function acListHtml(st){const D=st.data;
-  if(!D)return`<div class="loader">${t("loading")}</div>`;
-  const more=D.total>st.off?`<div class="more ac-more"><button class="btn" data-acmore="1">${esc(L2(`Meer laden (${num(D.total-st.off)} over)`,`Load more (${num(D.total-st.off)} left)`))}</button></div>`:"";
-  return feedHtml(D.rows)+more;
-}
+/* rechts: alle aanvragen als formulierflow (zoals op Contactmomenten), nieuw naar oud (Rick, 25-10-2026) */
+const acFlowCtx=()=>({rpc,rq,lang:()=>LANG,openMail});
+async function acFlows(rows){const ids=(rows||[]).filter(a=>a.kind==="request"&&a.id).map(a=>a.id);if(!ids.length)return[];
+  const r=await rpc("nexus_request_flows",{p_ids:ids});return(r&&r.flows)||[]}
 function acPaint(tb){const st=acS[tb],P=acPane(tb);
   P.querySelector(".ac-cts").innerHTML=acCtHtml(st);
   P.querySelector(".ac-ccnt").textContent=st.data?L2(`${num(acContacts(st.data.rows).length)} contacten`,`${num(acContacts(st.data.rows).length)} contacts`):"";
-  P.querySelector(".feed").innerHTML=st.data&&!(st.data.rows||[]).length?`<div class="empty">${esc(L2(tb==="po"?"Geen portaalaanvragen voor dit filter":"Geen aanvragen voor dit filter",tb==="po"?"No portal requests for this filter":"No requests for this filter"))}</div>`:acListHtml(st);
+  const box=P.querySelector(".feed");
+  if(!st.data||!st.flows)box.innerHTML=`<div class="loader">${t("loading")}</div>`;
+  else{if(window.NEXUS_FLOWS)NEXUS_FLOWS.list(box,st.flows,acFlowCtx(),{empty:L2(tb==="po"?"Geen portaalaanvragen voor dit filter":"Geen aanvragen voor dit filter",tb==="po"?"No portal requests for this filter":"No requests for this filter")});
+    if(st.data.total>st.off)box.insertAdjacentHTML("beforeend",`<div class="more ac-more"><button class="btn" data-acmore="1">${esc(L2(`Meer laden (${num(st.data.total-st.off)} over)`,`Load more (${num(st.data.total-st.off)} left)`))}</button></div>`)}
   acBind(tb);acFocus(tb,st.focus,false);
-  P.querySelectorAll(".feed .it").forEach(x=>x.classList.toggle("sel",!!st.sel&&(x.dataset.fr||x.dataset.c)===st.sel))}
+  P.querySelectorAll(".feed .fl-card").forEach(x=>x.classList.toggle("on",!!st.sel&&x.dataset.rid===st.sel))}
 function acBind(tb){const st=acS[tb],P=acPane(tb);
   P.querySelectorAll("[data-acf]").forEach(c=>c.onclick=()=>{if(st.filter===c.dataset.acf)return;st.filter=c.dataset.acf;st.sel=null;st.focus=null;acClose(tb);loadActivity(tb)});
   P.querySelectorAll(".ac-cts [data-acc]").forEach(r=>r.onclick=()=>acFocus(tb,st.focus===r.dataset.acc?null:r.dataset.acc));
   const x=P.querySelector("[data-acx]");if(x)x.onclick=()=>acClose(tb);
   const m=P.querySelector("[data-acmore]");if(m)m.onclick=async()=>{m.disabled=true;const my=st.seq;
-    let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:200,p_offset:st.off,p_scope:AC_TABS[tb].scope})}catch(e){m.disabled=false;alert(e.message);return}
-    if(my!==st.seq)return;st.data.rows=st.data.rows.concat(r.rows||[]);st.off+=(r.rows||[]).length;acPaint(tb)};
+    let r,fl;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:50,p_offset:st.off,p_scope:AC_TABS[tb].scope});fl=await acFlows(r.rows)}catch(e){m.disabled=false;alert(e.message);return}
+    if(my!==st.seq)return;st.data.rows=st.data.rows.concat(r.rows||[]);st.flows=(st.flows||[]).concat(fl);st.off+=(r.rows||[]).length;acPaint(tb)};
 }
 async function loadActivity(tb){
   tb=isAcTab(tb)?tb:(isAcTab(curTab)?curTab:"ac");
@@ -1374,16 +1376,20 @@ async function loadActivity(tb){
     </div></div>`;
   P.querySelector(".ac-slot").classList.add("hidden");
   acPaint(tb);
-  let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:200,p_offset:0,p_scope:AC_TABS[tb].scope})}
+  let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:50,p_offset:0,p_scope:AC_TABS[tb].scope})}
   catch(e){if(my===st.seq)P.querySelector(".feed").innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   if(my!==st.seq||curTab!==tb)return;
   if(st.filter!=="all"&&!(r.filters||[]).some(f=>f.key===st.filter)){st.filter="all";return loadActivity(tb)}
-  st.data=r;st.off=(r.rows||[]).length;
+  st.data=r;st.off=(r.rows||[]).length;st.flows=null;
   P.querySelector(".ac-filter").innerHTML=acChips(st);
   P.querySelector(".ac-cnt").textContent=t("ac.7d",{n:num(r.total_7d||0)});
   acPaint(tb);
+  let fl;try{fl=await acFlows(r.rows)}catch(e){if(my===st.seq)P.querySelector(".feed").innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
+  if(my!==st.seq||curTab!==tb)return;st.flows=fl;
+  P.querySelector(".ac-cnt").textContent=t("ac.7d",{n:num(r.total_7d||0)});
+  acPaint(tb);
   /* vanuit Overzicht: die aanvraag direct openen */
-  if(st.sel){const row=[...P.querySelectorAll(".feed .it[data-c]")].find(x=>(x.dataset.fr||x.dataset.c)===st.sel);if(row){acPick(row);try{row.scrollIntoView({block:"center"})}catch(e){}}else st.sel=null}
+  if(st.sel){const card=P.querySelector(`.feed .fl-card[data-rid="${CSS.escape(st.sel)}"]`);if(card){acFocus(tb,card.dataset.fc,false);try{card.scrollIntoView({block:"center"})}catch(e){}}}
 }
 
 })();
