@@ -549,17 +549,36 @@ function ctProfile(c,raw){
       [L2("Wanneer kopen","When to buy"),(SPv.period||raw.sd_period)?esc(PER[SPv.period||raw.sd_period]||SPv.period||raw.sd_period):ip.declared_period],
       [t("f.feedback"),Object.keys(fb).length?Object.entries(fb).map(([k,v])=>k+": "+v).join(" · "):null]].filter(x=>x[1]);
   const spEmpty=`<div class="cp-empty">${L2("Nog geen zoekprofiel vastgelegd.","No search profile yet.")} <a class="cp-add" data-cedit="1">+ ${L2("Invullen","Add")}</a></div>`;
+  /* Gedrag op de site (Rick 25-10-2026): core.contact_web_profile, berekend uit web_events van de vid(s) die met een aanvraag meekwamen.
+     Velden met bron 'web' (gedrag) of 'property' (eerste aangevraagde woning) zijn automatisch en worden bij een later bezoek bijgesteld;
+     wat de klant opgeeft of het team hier invult blijft staan. */
+  const WP=CT.web_profile||{}, WPS=WP.summary||{}, WPsrc=WP.src||{};
+  const SRCL={web:L2("gedrag op de site","site behaviour"),property:L2("uit aanvraag","from enquiry")};
+  const spRows=()=>{const keys=["budget","property_type","build","areas","bedrooms_min","must_haves","period",null];
+    return searchProf().map(r=>{const k=keys[[t("f.budget"),t("f.type"),L2("Bouw","Build"),t("f.areas"),t("f.beds"),t("f.musthaves"),L2("Wanneer kopen","When to buy"),t("f.feedback")].indexOf(r[0])];
+      const src=k&&WPsrc[k];return src?[r[0],(r[2]?r[1]:esc(r[1]))+` <span class="muted sm" title="${L2("Automatisch; wordt bij een volgend bezoek bijgesteld","Automatic; updated on the next visit")}">· ${SRCL[src]||esc(src)}</span>`,1]:r})};
+  const webBlock=()=>{
+    if(!WPS.sessions&&!WPS.properties_viewed&&!(WPS.searches||[]).length)return"";
+    const rng=WPS.price_p25?(WPS.price_p25===WPS.price_p75?eur(WPS.price_p50):`${eur(WPS.price_p25)} – ${eur(WPS.price_p75)}`):null;
+    const rows=[[L2("Bezoeken","Visits"),[WPS.sessions?WPS.sessions+" "+L2("sessies","sessions"):null,WPS.devices>1?WPS.devices+" "+L2("apparaten","devices"):null,WPS.last_at?L2("laatst ","last ")+ago(WPS.last_at):null].filter(Boolean).join(" · ")||null],
+      [L2("Woningen bekeken","Properties viewed"),WPS.properties_viewed?String(WPS.properties_viewed):null],
+      [L2("Prijs bekeken","Prices viewed"),rng],
+      [t("f.areas"),(WPS.towns||[]).join(", ")||null],
+      [t("f.type"),(WPS.types||[]).map(k=>TYP[k]||cap(k)).join(", ")||null],
+      [L2("Zocht op","Searched for"),(WPS.searches||[]).length?WPS.searches.slice(0,3).map(q=>`<span class="cp-q">“${esc(q)}”</span>`).join(" "):null,1]].filter(x=>x[1]);
+    const top=(WPS.top_properties||[]).length?`<div class="cp-chips">${WPS.top_properties.map(x=>`<a class="cp-chip" data-p="${esc(x.ref)}">${esc(x.ref)} <span class="muted sm">${esc(x.city||"")} · ${eur(x.price)}</span></a>`).join("")}</div>`:"";
+    return `<div class="pk-grp">${L2("Gedrag op de site","Behaviour on the site")}${WP.at?` <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">· ${L2("bijgewerkt","updated")} ${ago(WP.at)}</span>`:""}</div>${kv(rows)}${top}`};
 
   /* Aankoop: koop in behandeling/afgerond, daarna pas het zoekgedrag */
   const buyBlock=()=>{
     const done=bought.length>0;
-    const prof=searchProf();
+    const prof=spRows();
     const act=[[L2("Woningaanvragen","Property enquiries"),reqProp.length],[L2("Overige vragen","Other enquiries"),reqOther.length],[L2("Woningen bekeken","Properties viewed"),ip.distinct_properties_viewed||ints.length||0],[L2("Bezichtigingen","Viewings"),views.length],[L2("Matches verstuurd","Matches sent"),m.sent||0]];
     const anyAct=act.some(x=>x[1]>0);
     let body="";
     if(done)body+=`<div class="cp-prs">${bought.map(p=>cpPropRow(p,"buy")).join("")}</div>`;
     if(anyAct)body+=`<div class="cp-tiles${done?" cp-dim":""}">${act.filter(x=>x[1]>0||!done).map(x=>cpTile(x[0],num(x[1]))).join("")}${Number(ip.engagement_score)>0?cpTile(L2("Engagement","Engagement"),Number(ip.engagement_score).toFixed(0),ip.data_confidence?L2("betrouwbaarheid ","confidence ")+esc(ip.data_confidence):""):""}</div>`;
-    if(!done||prof.length){body+=`<div class="pk-grp">${t("h.search")}${done?` <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">· ${L2("vóór de aankoop","before the purchase")}</span>`:""}</div>`+(prof.length?kv(prof):spEmpty)}
+    if(!done||prof.length){body+=`<div class="pk-grp">${t("h.search")}${done?` <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">· ${L2("vóór de aankoop","before the purchase")}</span>`:""}</div>`+(prof.length?kv(prof):spEmpty)+webBlock()}
     if(ip.first_request_at)body+=`<div class="cp-foot">${L2("Zoekt actief van","Searching from")} ${fdate(ip.first_request_at)} ${L2("tot","to")} ${fdate(ip.last_request_at)}</div>`;
     return cpSec("buy",done?L2("Aankoop","Purchase"):L2("Zoekt een woning","Looking for a home"),body,{wide:!!done||anyAct,edit:!done})};
 
@@ -580,8 +599,8 @@ function ctProfile(c,raw){
   const leadBlock=()=>{
     const src=D.referred_by;
     const tiles=`<div class="cp-tiles">${cpTile(L2("Woningaanvragen","Property enquiries"),num(reqProp.length),nPropAsked?L2(`over ${nPropAsked} woning${nPropAsked>1?"en":""}`,`about ${nPropAsked} propert${nPropAsked>1?"ies":"y"}`):"")}${reqOther.length?cpTile(L2("Overige vragen","Other enquiries"),num(reqOther.length),L2("algemeen, zonder woning","general, no property")):""}${views.length?cpTile(L2("Bezichtigingen","Viewings"),num(views.length)):""}${cpTile(L2("Eerste contact","First contact"),firstTouch?fdate(firstTouch):"—",src?L2("via ","via ")+esc(src):"")}${cpTile(L2("Laatst actief","Last active"),lastTouch?ago(lastTouch):"—",lastTouch?fdate(lastTouch):"")}${m.sent?cpTile(L2("Matches verstuurd","Matches sent"),num(m.sent),m.last?L2("laatste ","last ")+fdate(m.last):""):""}</div>`;
-    const prof=searchProf();
-    const left=`<div class="cp-col"><div class="pk-grp">${t("h.search")} <a class="cp-add cp-grp-ed" data-cedit="1" title="${L2("Zoekprofiel bewerken","Edit search profile")}">✎</a></div>${prof.length?kv(prof):spEmpty}</div>`;
+    const prof=spRows();
+    const left=`<div class="cp-col"><div class="pk-grp">${t("h.search")} <a class="cp-add cp-grp-ed" data-cedit="1" title="${L2("Zoekprofiel bewerken","Edit search profile")}">✎</a></div>${prof.length?kv(prof):spEmpty}${webBlock()}</div>`;
     const top=ints.slice(0,5);
     const right=`<div class="cp-col"><div class="pk-grp">${L2("Interesse in","Interested in")}${ints.length>5?` <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">· ${L2("top 5 van","top 5 of")} ${ints.length}</span>`:""}</div>${top.length?`<div class="cp-int">${top.map(p=>`<a class="cp-int-r" data-p="${esc(p.key||p.reference)}">${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="">`:'<span class="ph"></span>'}<span class="cp-int-b"><b>${esc(p.reference)}</b> <span class="muted sm">${esc(p.town||"")}</span>${p.core_status&&p.core_status!=="available"?` <span class="cp-st st-${esc(p.core_status)}">${esc(stLabel(p.core_status))}</span>`:""}<br><span class="cp-int-p">${eur(p.price)}</span> <span class="muted sm">· ${p.n}× · ${p.last?ago(p.last):""}</span></span></a>`).join("")}</div>`:`<div class="cp-empty">${L2("Nog niet op een woning gereageerd.","Has not enquired about a property yet.")}</div>`}</div>`;
     return cpSec("lead",L2("Lead","Lead"),tiles+`<div class="cp-2col">${left}${right}</div>`,{wide:1,edit:1})};

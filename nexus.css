@@ -1479,3 +1479,5 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .dh-ct .cpill a.wa{padding:3px 6px;font-size:calc(10px*var(--fs,1));font-weight:800}
 .dh-ct .introbar{margin-top:6px}
 @media (max-width:700px){.dh.dh-ct{padding:12px}.dh-ct .big{width:40px;height:40px}}
+/* Gedrag op de site (25-10-2026) */
+.cp-q{display:inline-block;margin:0 6px 2px 0;font-style:italic;color:var(--tx2)}
