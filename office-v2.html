@@ -1332,7 +1332,7 @@
   function cardInner(d) {
     var W = cardWidth(d), H = cardHeight(d), rows = panelRows(d), ft = panelFoot(d);
     var L = -W / 2, T = -H, h = "";
-    h += '<g class="pcard">'
+    h += '<g class="csc" transform="scale(' + cardScale().toFixed(3) + ')"><g class="pcard">'
       + '<rect class="bg" x="' + f1(L) + '" y="' + f1(T) + '" width="' + f1(W) + '" height="' + f1(H) + '" rx="11"/>'
       + '<rect class="edge" x="' + f1(L + 0.6) + '" y="' + f1(T + 0.6) + '" width="' + f1(W - 1.2) + '" height="' + f1(H - 1.2) + '" rx="10.6"/>'
       /* kop: stip + naam */
@@ -1359,7 +1359,7 @@
         + (v === null ? "\u2014" : v) + "</text>";
       fx += names[i].length * 5.4 + 5 + String(v === null ? 1 : v).length * 6.2 + 12;
     });
-    return h + "</g>";
+    return h + "</g></g>";
   }
   function stColor(k) { return { working: "#00d4ff", ok: "#3ee08f", error: "#ff5d5d", silent: "#ffb547", paused: "#8aa0b5", idle: "#3a4a5c" }[k] || "#8aa0b5"; }
 
@@ -2498,12 +2498,25 @@
 
   /* ---------------------------------------------------------------- camera */
   function computeFit() {
-    /* bounding box uit de geometrie zelf (platforms + kaartjes + Brain-pilaar), niet uit de vloer */
+    /* bounding box uit de geometrie zelf (platforms + kaartjes + Brain-pilaar), niet uit de vloer.
+       25-10: kaartjes schalen mee met uitzoomen (cardScale), dus twee rondes: eerst op schaal 1, dan
+       met de schaal die bij die uitsnede hoort, zodat het vergrote kaartje bovenaan niet wegvalt. */
+    var ks = 1;
+    for (var pass = 0; pass < 2; pass++) {
+      fitPass(ks);
+      var vw = elScene && elScene.clientWidth ? Math.max(S.fitBox[2] / elScene.clientWidth, S.fitBox[3] / elScene.clientHeight) : 0;
+      var nk = vw ? cardScaleAt(vw) : 1;
+      if (Math.abs(nk - ks) < 0.05) break;
+      ks = nk;
+    }
+    var bs = $("brainSub"); if (bs) bs.textContent = brainSub();
+  }
+  function fitPass(ks) {
     var xs = [], ys = [];
     S.depts.forEach(function (d) {
       [iso(d.x, d.y, SLAB), iso(d.x + d.w, d.y, SLAB), iso(d.x + d.w, d.y + d.d, 0), iso(d.x, d.y + d.d, 0)].forEach(function (p) { xs.push(p[0]); ys.push(p[1]); });
-      var tp = iso(d.x, d.y, SLAB), cw = cardWidth(d) / 2 + 6;
-      xs.push(tp[0] - cw, tp[0] + cw); ys.push(tp[1] - CARD_LIFT - cardHeight(d) - 8);
+      var tp = iso(d.x, d.y, SLAB), cw = cardWidth(d) * ks / 2 + 6;
+      xs.push(tp[0] - cw, tp[0] + cw); ys.push(tp[1] - CARD_LIFT - cardHeight(d) * ks - 8);
     });
     var C = S.canteen;
     if (C) [iso(C.x, C.y, SLAB + WALL_H), iso(C.x + C.w, C.y, SLAB + WALL_H), iso(C.x + C.w, C.y + C.d, 0), iso(C.x, C.y + C.d, 0), iso(C.x, C.y + C.d, SLAB + WALL_H)]
@@ -2511,7 +2524,6 @@
     ys.push(iso(0, 0, 0)[1] - LIVE_LIFT - LIVE_H - 10);   /* bovenkant van het zwevende brein */
     var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
     S.fitBox = boxFor([[x0 - 24, y0 - 20], [x1 + 24, y1 + 24]], 0);
-    var bs = $("brainSub"); if (bs) bs.textContent = brainSub();
   }
   function viewScale() { /* viewBox-eenheden per schermpixel (meet) */
     var c = S.cam; return Math.max(c[2] / elScene.clientWidth, c[3] / elScene.clientHeight);
@@ -2532,7 +2544,7 @@
   }
   function applyCam() {
     elFloor.setAttribute("viewBox", S.cam.map(function (n) { return n.toFixed(2); }).join(" "));
-    hideTip(); drawWires(); placeBrainLive(); rescaleBubbles();
+    hideTip(); drawWires(); placeBrainLive(); rescaleBubbles(); rescaleCards();
   }
   /* Video volgt de .live-anchor: alleen transform (translate + scale), geen layout per frame. */
   var elBrainLive = $("brainLive");
@@ -2643,6 +2655,18 @@
       var c = b.querySelectorAll(".dots circle");
       for (var i = 0; i < c.length; i++) c[i].setAttribute("cx", f1(L + 9 + i * 4.5));
     });
+  }
+  /* 25-10: afdelingskaartjes groeien mee bij uitzoomen zodat ze ook in het overzicht leesbaar blijven
+     (titel ~7px op het scherm). Ingezoomd blijft schaal 1; de kaart groeit vanaf de steel omhoog. */
+  var CARD_PX = 0.55, CARD_MAX = 3.5;
+  function cardScaleAt(vs) { return Math.max(1, Math.min(CARD_MAX, vs * CARD_PX)); }
+  function cardScale() {
+    if (!S.cam || !elScene || !elScene.clientWidth) return 1;
+    return cardScaleAt(viewScale());
+  }
+  function rescaleCards() {
+    var t = "scale(" + cardScale().toFixed(3) + ")";
+    elFloor.querySelectorAll(".card > .csc").forEach(function (n) { if (n.getAttribute("transform") !== t) n.setAttribute("transform", t); });
   }
   function rescaleBubbles() {
     var t = "scale(" + bubScale().toFixed(3) + ")";
