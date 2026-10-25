@@ -1295,7 +1295,7 @@ function acReset(tb){const st=acS[tb];if(!st)return;if(st.filter!=="all"){st.dat
   const f=acPane(tb)&&acPane(tb).querySelector(".feed");if(f)f.scrollTop=0}
 const acPane=tb=>$("#p-"+tb);
 /* Indeling sinds 25-10-2026 (Rick): links alle aanvragen als formulierflow (nieuw naar oud), rechts het contactvenster.
-   Hover licht een flowkaart op; klik op de kaart opent rechts het contact op Contactmomenten met die aanvraag bovenaan.
+   Hover licht een flowkaart op; klik op de kaart opent rechts het contact op Profiel (de flow staat links al; Rick 25-10-2026). Op tab Aanvragen staat die aanvraag bovenaan.
    Klik op een stap blijft de uitleg-popup openen; klik op de woningref opent de woning. */
 function acClose(tb){tb=tb||curTab;const P=acPane(tb),st=acS[tb];if(!P)return;
   P.querySelectorAll(".feed .fl-card.on").forEach(r=>r.classList.remove("on"));if(st)st.sel=null;ctDetailHome();
@@ -1303,7 +1303,7 @@ function acClose(tb){tb=tb||curTab;const P=acPane(tb),st=acS[tb];if(!P)return;
 function acPick(card){if(!card||!card.dataset.fc)return;
   const pane=card.closest(".pane"),tb=pane?pane.id.slice(2):curTab,st=acS[tb];if(!st)return;
   pane.querySelectorAll(".feed .fl-card").forEach(r=>r.classList.toggle("on",r===card));
-  st.sel=acSel=card.dataset.rid;ctSub="tijdlijn";FLREQ=card.dataset.rid||null;
+  st.sel=acSel=card.dataset.rid;ctSub="profiel";FLREQ=card.dataset.rid||null;
   const slot=pane.querySelector(".ac-slot"),d=$("#ctDetail"),ph=slot.querySelector(".ac-ph");if(ph)ph.classList.add("hidden");
   if(d&&d.parentNode!==slot){if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};slot.appendChild(d)}
   if(ctSel===String(card.dataset.fc)&&CT)renderContact();else openContact(card.dataset.fc,{noScroll:true})}
