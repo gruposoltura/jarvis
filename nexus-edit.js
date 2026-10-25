@@ -514,6 +514,9 @@ async function openContact(key,ctx){X=ctx;
   const RL=[["suspect","Suspect"],["seller","Seller"],["buyer","Buyer"],["suspect_seller","Suspect-Seller"],["agent","Agent"]];
   const r0=new Set((C.contact.roles||[]).map(x=>String(x).replace(/-/g,"_")).filter(x=>RL.some(r=>r[0]===x)));
   const rs=new Set(r0); let mkProp=false;
+  /* Tarievenkaart (Rick 25-10-2026): label Buyer of Suspect aan = paneel Tarievenkaart erbij, invullen en meesparen met Opslaan */
+  const TS={}, tfOn=()=>!!window.NEXUS_TARIFF&&(rs.has("buyer")||rs.has("suspect")), tfChanged=()=>tfOn()&&NEXUS_TARIFF.dirty(TS);
+  const tfEur=x=>x==null||x===""?"—":"€ "+Number(x).toLocaleString(X.lang&&X.lang()==="en"?"en-GB":"nl-NL",{maximumFractionDigits:0});
   /* e-mails, telefoons en verantwoordelijk teamlid */
   const ch0=C.channels||{emails:(C.details&&C.details.emails||[]).map((e,i)=>({email:e.value,kind:e.label||"",is_primary:i===0})),phones:(C.details&&C.details.phones||[]).map((p,i)=>({phone:p.value,kind:p.label||"",is_primary:i===0}))};
   const EM=JSON.parse(JSON.stringify(ch0.emails||[])), PH=JSON.parse(JSON.stringify(ch0.phones||[]));
@@ -568,8 +571,8 @@ async function openContact(key,ctx){X=ctx;
       :hint+seg+(PT.mode==="new"?fNew:PT.mode==="link"?fLink:`<small class="muted">${esc(tr(["Heeft dit contact een partner die mede-eigenaar of mede-koper is? Leg die vast als eigen contact, niet als tweede naam in dit record.","Does this contact have a partner who co-owns or co-buys? Record them as a contact of their own, not as a second name in this record."]))}</small>`));
   };
   /* linkerkolom met paneelnamen, net als bij Woning bewerken (Rick 21-10-2026) */
-  const CNAV=()=>[["c-labels",["Labels","Labels"]],["c-person",["Persoon en identiteit","Person and identity"]],["c-partner",["Partner gegevens","Partner details"]],
-    ["c-contact",["Contactgegevens","Contact details"]],["c-addr",["Adres en overig","Address and other"]],["c-search",["Zoekprofiel","Search profile"]],["c-mail",["Mailings","Mailings"]]]
+  const CNAV=()=>[["c-labels",["Labels","Labels"]]].concat(tfOn()?[["c-tariff",["Tarievenkaart","Rate card"]]]:[]).concat([["c-person",["Persoon en identiteit","Person and identity"]],["c-partner",["Partner gegevens","Partner details"]],
+    ["c-contact",["Contactgegevens","Contact details"]],["c-addr",["Adres en overig","Address and other"]],["c-search",["Zoekprofiel","Search profile"]],["c-mail",["Mailings","Mailings"]]])
     .concat((C.team||[]).length?[["c-owner",["Verantwoordelijk","Responsible"]]]:[]).concat([["c-note",["Interne notitie","Internal note"]]]);
   const draw=()=>{const sc=ROOT.querySelector(".pe-main");const top=sc?sc.scrollTop:0;ROOT.innerHTML=`<div class="pe-box pe-small pe-cnav"><header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(C.contact.full_name||"—")}</div><div class="pe-tt">${esc(tr(["Contactgegevens bewerken","Edit contact details"]))}</div></div>
      <button class="pe-x" data-act="cclose">×</button></header>
@@ -577,6 +580,7 @@ async function openContact(key,ctx){X=ctx;
      <div class="pe-main"><div id="peErr"></div>${window.NEXUS_AGENCIES?NEXUS_AGENCIES.datalist("peAgList"):""}
      <section class="ad-sec" id="pe-c-labels" style="--sc:#ec4899"><h4>${esc(tr(["Labels","Labels"]))}</h4><div class="pe-roles">${RL.map(r=>`<button type="button" class="pe-role ${rs.has(r[0])?"on":""}" data-role="${r[0]}" style="--rc:var(--r-${r[0].replace("_","-")})">${r[1]}</button>`).join("")}</div>
        <small class="muted">${esc(tr(["Een contact kan op elk moment een ander label krijgen. Minstens één label.","A contact can get another label at any time. At least one label."]))}</small><div id="peProp">${propOpt()}</div></section>
+     ${tfOn()?`<section class="ad-sec cp-tariff" id="pe-c-tariff" style="--sc:#0ea5e9"><h4>${esc(tr(["Tarievenkaart · bestaande bouw","Rate card · resale"]))}</h4><div id="peTariff"></div></section>`:""}
      <section class="ad-sec" id="pe-c-person" style="--sc:#3b82f6"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
        <div class="ad-row">${CPERSON.map(cfIn).join("")}</div>
 </section>
@@ -605,8 +609,8 @@ async function openContact(key,ctx){X=ctx;
      <footer class="pe-ft">${X.me&&X.me()&&X.me().role==="admin"?`<button class="btn pe-del" data-act="cdelete" title="${esc(tr(["Contact definitief verwijderen (alleen beheerder)","Delete contact permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
     const diff=()=>{const d={};for(const k of CEDIT){if(!(k in v))continue;const a=v[k]===""?null:v[k],b=o[k]===""?null:o[k];if(String(a??"")!==String(b??""))d[k]=a}return d};
-    const anyDirty=()=>Object.keys(diff()).length||rolesChanged()||chChanged()||spChanged()||msChanged()||ptChanged();
-    const up=()=>{const h=ROOT.querySelector("#peAgHint");if(h)h.innerHTML=agHint();const n=Object.keys(diff()).length+(rolesChanged()?1:0)+(chChanged()?1:0)+(spChanged()?1:0)+(msChanged()?1:0)+(ptChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
+    const anyDirty=()=>Object.keys(diff()).length||rolesChanged()||chChanged()||spChanged()||msChanged()||ptChanged()||tfChanged();
+    const up=()=>{const h=ROOT.querySelector("#peAgHint");if(h)h.innerHTML=agHint();const n=Object.keys(diff()).length+(rolesChanged()?1:0)+(chChanged()?1:0)+(spChanged()?1:0)+(msChanged()?1:0)+(ptChanged()?1:0)+(tfChanged()?1:0);ROOT.querySelector("#peDirty").textContent=n?tr([`${n} wijziging(en)`,`${n} change(s)`]):tr(["Geen wijzigingen","No changes"]);ROOT.querySelector("#peSave").disabled=!n};
     const wireMail=()=>{ROOT.querySelectorAll("#peMail [data-cf],[data-cf]").forEach(el=>el.oninput=el.onchange=()=>{v[el.dataset.cf]=el.type==="checkbox"?el.checked:el.value;
         if(el.dataset.cf==="mailing_optin"){if(!el.checked)CMAILS.forEach(([sl])=>MS[sl]=false);else if(!CMAILS.some(([sl])=>MS[sl]))CMAIL_DEF.forEach(sl=>MS[sl]=true);
           ROOT.querySelector("#peMail").innerHTML=mailRows();wireMail()}up()});
@@ -646,8 +650,11 @@ async function openContact(key,ctx){X=ctx;
     wirePt();
     const wireProp=()=>{const cb=ROOT.querySelector("#peMkProp");if(cb)cb.onchange=()=>{mkProp=cb.checked};
       const bt=ROOT.querySelector("#peMkPropBtn");if(bt)bt.onclick=()=>{closeC();goNewProp()}};
-    ROOT.querySelectorAll("[data-role]").forEach(b=>b.onclick=()=>{const r=b.dataset.role;
+    const tfEl=ROOT.querySelector("#peTariff");
+    if(tfEl)NEXUS_TARIFF.mount(tfEl,o.id,{rpc:X.rpc,esc,eur:tfEur,lang:()=>X.lang?X.lang():"nl",form:1,state:TS,onChange:()=>up()});
+    ROOT.querySelectorAll("[data-role]").forEach(b=>b.onclick=()=>{const r=b.dataset.role, tf0=tfOn();
       if(rs.has(r)){if(rs.size===1)return;rs.delete(r)}else rs.add(r);
+      if(tfOn()!==tf0){draw();if(tfOn()){const sec=ROOT.querySelector("#pe-c-tariff");if(sec)sec.scrollIntoView({behavior:"smooth",block:"start"})}return}
       b.classList.toggle("on",rs.has(r));if(!isSell(rs))mkProp=false;
       ROOT.querySelector("#peProp").innerHTML=propOpt();wireProp();up()});
     wireProp();
@@ -665,6 +672,7 @@ async function openContact(key,ctx){X=ctx;
       if(PT.mode==="new"&&HINT&&!ptOn()){ROOT.querySelector("#peErr").innerHTML=`<div class="pe-errbox">${esc(tr(["Vul de naam van de partner in, of kies ‘Geen partner’.","Enter the partner's name, or choose ‘No partner’."]))}</div>`;return}const b=ROOT.querySelector("#peSave");b.disabled=true;b.textContent=tr(["Opslaan…","Saving…"]);
       try{if(Object.keys(d).length)await X.rpc("nexus_contact_save",{p_id:o.id,p_patch:d});
         if(rolesChanged())await X.rpc("nexus_contact_roles_set",{p_id:o.id,p_roles:[...rs]});
+        if(tfChanged())await NEXUS_TARIFF.save(X.rpc,o.id,TS);
         if(chChanged())await X.rpc("nexus_contact_channels_set",{p_id:o.id,p_emails:EM.filter(x=>(x.email||"").trim()),p_phones:PH.filter(x=>(x.phone||"").trim())});
         for(const id of UNL)await X.rpc("nexus_partner_unlink",{p_a:o.id,p_b:id});
         if(PT.mode==="new"&&ptOn()){const f=Object.fromEntries(Object.entries({title:PT.title,first_name:PT.first_name.trim(),last_name:PT.last_name.trim()}).filter(([,x])=>x));
