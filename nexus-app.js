@@ -1290,44 +1290,23 @@ const AC_TABS={ac:{scope:"web",key:"nexus-ac-filter"},po:{scope:"portal",key:"ne
 const isAcTab=t_=>!!AC_TABS[t_];
 /* bij openen van Aanvragen/Portalen altijd filter Alle en de nieuwste aanvraag bovenaan gekozen; geen onthouden filter meer (Rick, 25-10-2026) */
 const acS={};Object.keys(AC_TABS).forEach(k=>{try{localStorage.removeItem(AC_TABS[k].key)}catch(e){}acS[k]={filter:"all",data:null,off:0,seq:0,sel:null,keep:false,focus:null}});
-function acReset(tb){const st=acS[tb];if(!st)return;if(st.filter!=="all"){st.data=null;st.flows=null}st.filter="all";st.focus=null;if(!st.keep)st.sel=null;st.keep=false;
+function acReset(tb){const st=acS[tb];if(!st)return;if(st.filter!=="all"){st.data=null;st.flows=null}st.filter="all";if(!st.keep)st.sel=null;st.keep=false;
   const f=acPane(tb)&&acPane(tb).querySelector(".feed");if(f)f.scrollTop=0}
 const acPane=tb=>$("#p-"+tb);
-/* Indeling sinds 25-10-2026 (Rick): links de contacten (een regel per contact, laatste aanvraag bovenaan), rechts alle aanvragen
-   van alle contacten van nieuw naar oud. Klik op een contact: zijn aanvragen lichten rechts op, de rest dimt, de lijst scrolt ernaartoe.
-   Klik op een aanvraag: het contactscherm (#ctDetail, op Contactmomenten met deze aanvraag bovenaan) schuift als paneel over de lijst. */
-function acSrcColor(g){g=String(g||"");return g.startsWith("p:")&&window.NEXUS_SRC?NEXUS_SRC.color(g):g==="old"?"#64748b":"var(--c-ac)"}
-function acSrcName(g){g=String(g||"");return g.startsWith("p:")&&window.NEXUS_SRC?NEXUS_SRC.name(g):g==="old"?L2("Oude site","Old site"):L2("Website","Website")}
-function acContacts(rows){const M=new Map();(rows||[]).forEach(a=>{const k=a.contact_wp_id;if(!k)return;let c=M.get(k);
-    if(!c){c={k,name:a.name,rep:a.rep,ts:a.ts,n:0,grps:[]};M.set(k,c)}c.n++;if(a.grp&&!c.grps.includes(a.grp))c.grps.push(a.grp)});
-  return[...M.values()]}
-function acCtHtml(st){const D=st.data;if(!D)return`<div class="loader">${t("loading")}</div>`;
-  const C=acContacts(D.rows);if(!C.length)return`<div class="empty">${esc(t("nocontacts"))}</div>`;
-  return C.map(c=>`<div class="row ac-ct${st.focus===c.k?" sel":""}" data-acc="${esc(c.k)}">
-     <div class="ini" style="background:${hue(c.name)}">${esc(initials(c.name))}</div>
-     <div style="min-width:0"><div class="nm">${esc(c.name||t("noname"))}</div>
-       <div class="sub">${c.grps.map(g=>`<span class="ac-dot" style="--sc:${acSrcColor(g)}" title="${esc(acSrcName(g))}"></span>`).join("")} ${esc(L2(c.n===1?"1 aanvraag":`${c.n} aanvragen`,c.n===1?"1 request":`${c.n} requests`))}</div></div>
-     <div style="text-align:right"><div class="sm" style="color:${REPC[c.rep]||"#64748b"}">${esc(rep(c.rep||""))}</div><div class="sm muted">${ago(c.ts)}</div></div></div>`).join("")}
-function acFocus(tb,k,scroll){const st=acS[tb],P=acPane(tb);if(!st||!P)return;st.focus=k||null;
-  P.querySelectorAll(".ac-cts .ac-ct").forEach(r=>r.classList.toggle("sel",r.dataset.acc===st.focus));
-  const its=[...P.querySelectorAll(".feed .fl-card")];
-  its.forEach(r=>{const m=!!st.focus&&r.dataset.fc===st.focus;r.classList.toggle("hit",m);r.classList.toggle("dim",!!st.focus&&!m)});
-  P.querySelector(".ac-split").classList.toggle("focused",!!st.focus);
-  const f=st.focus&&its.find(r=>r.dataset.fc===st.focus);if(scroll!==false&&f&&f.scrollIntoView)try{f.scrollIntoView({block:"center",behavior:"smooth"})}catch(e){}
-  const n=P.querySelector(".ac-fhint");if(n)n.innerHTML=st.focus?`${esc(L2(`Aanvragen van ${(acContacts(st.data&&st.data.rows).find(c=>c.k===st.focus)||{}).name||""} gemarkeerd`,`Requests of ${(acContacts(st.data&&st.data.rows).find(c=>c.k===st.focus)||{}).name||""} highlighted`))} <button class="btn" data-acunf="1">${esc(L2("Alles tonen","Show all"))}</button>`:"";
-  const u=n&&n.querySelector("[data-acunf]");if(u)u.onclick=()=>acFocus(tb,null,false)}
-function acClose(tb){const P=acPane(tb||curTab);if(!P)return;const sl=P.querySelector(".ac-slot");if(sl)sl.classList.add("hidden");
-  P.querySelectorAll(".feed .it.sel").forEach(r=>r.classList.remove("sel"));const st=acS[tb||curTab];if(st)st.sel=null;ctDetailHome()}
-function acPick(row){if(!row)return;
-  const pane=row.closest(".pane"),tb=pane?pane.id.slice(2):curTab,st=acS[tb];if(!st)return;
-  $$(`#p-${tb} .feed .it`).forEach(r=>r.classList.toggle("sel",r===row));
-  st.sel=acSel=row.dataset.fr||row.dataset.c;ctSub="tijdlijn";FLREQ=row.dataset.fr||null;
-  if(st.focus!==row.dataset.c)acFocus(tb,row.dataset.c,false);
-  const slot=pane.querySelector(".ac-slot"),d=$("#ctDetail");slot.classList.remove("hidden");
-  if(slot&&d&&d.parentNode!==slot){if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};slot.appendChild(d)}
-  if(ctSel===String(row.dataset.c)&&CT)renderContact();else openContact(row.dataset.c,{noScroll:true})}
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&isAcTab(curTab)){const sl=acPane(curTab)&&acPane(curTab).querySelector(".ac-slot");
-  if(sl&&!sl.classList.contains("hidden")&&!document.getElementById("flPop")&&!document.querySelector(".modal:not(.hidden),.ov-modal"))acClose(curTab)}});
+/* Indeling sinds 25-10-2026 (Rick): links alle aanvragen als formulierflow (nieuw naar oud), rechts het contactvenster.
+   Hover licht een flowkaart op; klik op de kaart opent rechts het contact op Contactmomenten met die aanvraag bovenaan.
+   Klik op een stap blijft de uitleg-popup openen; klik op de woningref opent de woning. */
+function acClose(tb){tb=tb||curTab;const P=acPane(tb),st=acS[tb];if(!P)return;
+  P.querySelectorAll(".feed .fl-card.on").forEach(r=>r.classList.remove("on"));if(st)st.sel=null;ctDetailHome();
+  const ph=P.querySelector(".ac-ph");if(ph)ph.classList.remove("hidden")}
+function acPick(card){if(!card||!card.dataset.fc)return;
+  const pane=card.closest(".pane"),tb=pane?pane.id.slice(2):curTab,st=acS[tb];if(!st)return;
+  pane.querySelectorAll(".feed .fl-card").forEach(r=>r.classList.toggle("on",r===card));
+  st.sel=acSel=card.dataset.rid;ctSub="tijdlijn";FLREQ=card.dataset.rid||null;
+  const slot=pane.querySelector(".ac-slot"),d=$("#ctDetail"),ph=slot.querySelector(".ac-ph");if(ph)ph.classList.add("hidden");
+  if(d&&d.parentNode!==slot){if(!CTHOME)CTHOME={parent:d.parentNode,next:d.nextSibling};slot.appendChild(d)}
+  if(ctSel===String(card.dataset.fc)&&CT)renderContact();else openContact(card.dataset.fc,{noScroll:true})}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&isAcTab(curTab)&&acS[curTab]&&acS[curTab].sel&&!document.getElementById("flPop")&&!document.querySelector(".modal:not(.hidden),.ov-modal"))acClose(curTab)});
 function acChips(st){
   const D=st.data;if(!D||!D.filters)return"";
   const all=D.filters.reduce((a,f)=>a+Number(f.n||0),0);
@@ -1345,18 +1324,15 @@ const acFlowCtx=()=>({rpc,rq,lang:()=>LANG,openMail});
 async function acFlows(rows){const ids=(rows||[]).filter(a=>a.kind==="request"&&a.id).map(a=>a.id);if(!ids.length)return[];
   const r=await rpc("nexus_request_flows",{p_ids:ids});return(r&&r.flows)||[]}
 function acPaint(tb){const st=acS[tb],P=acPane(tb);
-  P.querySelector(".ac-cts").innerHTML=acCtHtml(st);
-  P.querySelector(".ac-ccnt").textContent=st.data?L2(`${num(acContacts(st.data.rows).length)} contacten`,`${num(acContacts(st.data.rows).length)} contacts`):"";
   const box=P.querySelector(".feed");
   if(!st.data||!st.flows)box.innerHTML=`<div class="loader">${t("loading")}</div>`;
   else{if(window.NEXUS_FLOWS)NEXUS_FLOWS.list(box,st.flows,acFlowCtx(),{empty:L2(tb==="po"?"Geen portaalaanvragen voor dit filter":"Geen aanvragen voor dit filter",tb==="po"?"No portal requests for this filter":"No requests for this filter")});
     if(st.data.total>st.off)box.insertAdjacentHTML("beforeend",`<div class="more ac-more"><button class="btn" data-acmore="1">${esc(L2(`Meer laden (${num(st.data.total-st.off)} over)`,`Load more (${num(st.data.total-st.off)} left)`))}</button></div>`)}
-  acBind(tb);acFocus(tb,st.focus,false);
-  P.querySelectorAll(".feed .fl-card").forEach(x=>x.classList.toggle("on",!!st.sel&&x.dataset.rid===st.sel))}
+  acBind(tb);
+  P.querySelectorAll(".feed .fl-card").forEach(x=>{x.classList.toggle("on",!!st.sel&&x.dataset.rid===st.sel);
+    x.onclick=e=>{if(e.target.closest(".fl-n,[data-p],button,a"))return;acPick(x)}})}
 function acBind(tb){const st=acS[tb],P=acPane(tb);
-  P.querySelectorAll("[data-acf]").forEach(c=>c.onclick=()=>{if(st.filter===c.dataset.acf)return;st.filter=c.dataset.acf;st.sel=null;st.focus=null;acClose(tb);loadActivity(tb)});
-  P.querySelectorAll(".ac-cts [data-acc]").forEach(r=>r.onclick=()=>acFocus(tb,st.focus===r.dataset.acc?null:r.dataset.acc));
-  const x=P.querySelector("[data-acx]");if(x)x.onclick=()=>acClose(tb);
+  P.querySelectorAll("[data-acf]").forEach(c=>c.onclick=()=>{if(st.filter===c.dataset.acf)return;st.filter=c.dataset.acf;acClose(tb);loadActivity(tb)});
   const m=P.querySelector("[data-acmore]");if(m)m.onclick=async()=>{m.disabled=true;const my=st.seq;
     let r,fl;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:50,p_offset:st.off,p_scope:AC_TABS[tb].scope});fl=await acFlows(r.rows)}catch(e){m.disabled=false;alert(e.message);return}
     if(my!==st.seq)return;st.data.rows=st.data.rows.concat(r.rows||[]);st.flows=(st.flows||[]).concat(fl);st.off+=(r.rows||[]).length;acPaint(tb)};
@@ -1366,15 +1342,11 @@ async function loadActivity(tb){
   ctDetailHome();
   const st=acS[tb],P=acPane(tb),my=++st.seq;if(!P)return;
   if(st.data&&st.data.filter!==st.filter)st.data=null;
-  if(!P.querySelector(".ac-split"))P.innerHTML=`<div class="split ac-split">
-    <div class="card list"><div class="hd"><h3>${esc(L2("Contacten","Contacts"))}</h3><span class="sm muted ac-ccnt"></span></div>
-      <div class="rows scroll ac-cts"></div></div>
-    <div class="ac-main">
-      <div class="card list ac-reqs"><div class="hd"><h3>${t(tb==="po"?"po.req":"ac.req")}</h3><span class="sm muted ac-cnt"></span></div>
-        <div class="toolbar ac-filter"></div><div class="ac-fhint sm"></div><div class="rows scroll feed"></div></div>
-      <div class="ac-slot hidden"><div class="ac-dr-hd"><span class="sm muted">${esc(L2("Contact bij deze aanvraag · Esc sluit","Contact for this request · Esc closes"))}</span><button type="button" class="fl-x" data-acx="1" aria-label="${esc(L2("Sluiten","Close"))}">×</button></div></div>
-    </div></div>`;
-  P.querySelector(".ac-slot").classList.add("hidden");
+  if(!P.querySelector(".ac-split"))P.innerHTML=`<div class="ac-split">
+    <div class="card list ac-reqs"><div class="hd"><h3>${t(tb==="po"?"po.req":"ac.req")}</h3><span class="sm muted ac-cnt"></span></div>
+      <div class="toolbar ac-filter"></div><div class="rows scroll feed"></div></div>
+    <div class="ac-slot"><div class="card ac-ph"><div class="empty">${esc(L2("Klik op een aanvraag om het contact te openen","Click a request to open the contact"))}</div></div></div></div>`;
+  if(!acS[tb].sel){const ph=P.querySelector(".ac-ph");if(ph)ph.classList.remove("hidden")}
   acPaint(tb);
   let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:50,p_offset:0,p_scope:AC_TABS[tb].scope})}
   catch(e){if(my===st.seq)P.querySelector(".feed").innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
@@ -1389,7 +1361,8 @@ async function loadActivity(tb){
   P.querySelector(".ac-cnt").textContent=t("ac.7d",{n:num(r.total_7d||0)});
   acPaint(tb);
   /* vanuit Overzicht: die aanvraag direct openen */
-  if(st.sel){const card=P.querySelector(`.feed .fl-card[data-rid="${CSS.escape(st.sel)}"]`);if(card){acFocus(tb,card.dataset.fc,false);try{card.scrollIntoView({block:"center"})}catch(e){}}}
+  /* vanuit Overzicht of na herladen: die aanvraag direct openen */
+  if(st.sel){const card=P.querySelector(`.feed .fl-card[data-rid="${CSS.escape(st.sel)}"]`);if(card){acPick(card);try{card.scrollIntoView({block:"center"})}catch(e){}}else acClose(tb)}
 }
 
 })();
