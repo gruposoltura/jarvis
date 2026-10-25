@@ -1458,3 +1458,19 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .tc-defbtn{cursor:pointer;font-size:calc(12px*var(--fs,1));font-weight:600;color:var(--sc);padding:2px 8px;border-radius:7px;border:1px solid transparent}
 .tc-defbtn:hover,.tc-defbtn.on{border-color:var(--sc)}
 .tc-warn{margin:10px 14px 0;padding:8px 12px;border-radius:10px;border:1px dashed rgba(245,158,11,.55);background:rgba(245,158,11,.08);font-size:calc(12.5px*var(--fs,1))}
+
+/* Contactkop compact (Rick 25-10-2026): naam + rollen naast de avatar, knoppen rechts; telefoons, WA en e-mail
+   als één rij kleine pillen over de volle breedte eronder in plaats van een smalle kolom onder elkaar. */
+.dh.dh-ct{flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 16px}
+.dh-ct .big{width:44px;height:44px;border-radius:12px;font-size:calc(16px*var(--fs,1))}
+.dh-ct h2{font-size:calc(19px*var(--fs,1))}
+.dh-ct .roles{margin-top:4px}
+.dh-ct .acts{align-self:flex-start;gap:5px}
+.dh-ct .acts a{padding:5px 9px}
+.dh.dh-ct > .dh-wide{flex:1 1 100%;min-width:0;order:5}
+.dh-ct .cstrip{margin-top:0;gap:6px}
+.dh-ct .cpill{border-radius:8px}
+.dh-ct .cpill a{padding:3px 8px;gap:4px;font-size:calc(12.5px*var(--fs,1));font-weight:600}
+.dh-ct .cpill a.wa{padding:3px 6px;font-size:calc(10px*var(--fs,1));font-weight:800}
+.dh-ct .introbar{margin-top:6px}
+@media (max-width:700px){.dh.dh-ct{padding:12px}.dh-ct .big{width:40px;height:40px}}
