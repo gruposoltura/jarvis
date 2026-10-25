@@ -1,4 +1,4 @@
-/* v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
+/* v8 (25-10-2026): interne mails (JARVIS, New Lead, ook met emoji vooraf) niet als losse mailflow. v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
 /* NEXUS · Contact › Contactmomenten — formulierflows per contact (Rick, 22-10-2026).
    Klik in Binnenkomend op een aanvraag: het contact opent altijd op Contactmomenten, met bovenaan alle aanvragen van dat contact
    als compacte flow onder elkaar, van het formulier (links) tot afgerond (rechts); de aangeklikte aanvraag is gemarkeerd. Kleur = kwalificatie van de lead (Hot / Warm / Cold / geen lead).
@@ -59,7 +59,7 @@ const origin=f=>f.source==="cpr_import"?"old":(f.web||f.source==="website"||f.so
 const CHAN={idealista:{n:"Idealista",wf:"IdealistaLeadIntake"},"idealista-message":{n:"Idealista",wf:"IdealistaLeadIntake"},thinkspain:{n:"thinkSPAIN",wf:"ThinkSpainLeadIntake"}};
 
 /* ---------- mailnode-status ---------- */
-const INTERNAL_SUBJ=/^\s*(New Lead\b|JARVIS\b|\[Website\]|Lead ?card\b)/i;
+const INTERNAL_SUBJ=/^[^A-Za-z0-9\[]*(New Lead\b|JARVIS\b|\[Website\]|Lead ?card\b)/i; /* emoji/teken vooraf toegestaan: '🔵 New Lead — …' (25-10-2026) */
 /* Brevo-events leesbaar, in volgorde van de reis van de mail */
 const EVN={request:["verstuurd","sent"],delivered:["afgeleverd","delivered"],unique_opened:["geopend","opened"],opened:["geopend","opened"],click:["geklikt","clicked"],
   soft_bounce:["soft bounce","soft bounce"],hard_bounce:["hard bounce","hard bounce"],blocked:["geblokkeerd","blocked"],invalid_email:["ongeldig adres","invalid address"],spam:["als spam gemeld","reported as spam"],deferred:["uitgesteld","deferred"],error:["fout","error"]};
@@ -283,8 +283,12 @@ function fold(list,data){
      wat aan of uit staat staat in het tabblad Opt-ins / opt-outs. */
   (list||[]).forEach(e=>{if(e.kind!=="mailing")return;const f=origin(e);if(f)f._sends.push(e)});
   const M={};
+  /* interne mails aan het team (JARVIS-meldingen, leadcard 'New Lead') zijn geen contactmoment met de klant: ook als losse mail
+     niet tonen, met alle Brevo-events van dezelfde uuid. Ze verschenen bij contacten die zelf teamlid zijn (rick@) (Rick, 25-10-2026). */
+  const intU=new Set((list||[]).filter(e=>e.kind==="mail"&&e.uuid&&INTERNAL_SUBJ.test(String(e.text||""))).map(e=>e.uuid));
   const rest=(list||[]).filter(e=>{
     if(e.kind==="mailing")return false;
+    if(e.kind==="mail"&&(INTERNAL_SUBJ.test(String(e.text||""))||(e.uuid&&intU.has(e.uuid))))return false;
     /* opens en clicks op een mailing (Brevo-event met het mailingtype als tekst) tellen al mee in die mailing */
     if(e.kind==="mail"&&/^[a-z_]+$/.test(String(e.text||"")))return false;
     if(e.kind==="request")return !ids.has(String(e.id));
