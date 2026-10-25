@@ -153,7 +153,9 @@ function secLayout(){const l=LS(), n=(k,lab)=>inp(k,lab,{type:"number",min:0});
     <div><h5>${esc(tr(["Overig","Other"]))}</h5>${n("floors",["Verdiepingen","Floors"])}${inp("floor_level",["Etage","Level"])}${n("balconies",["Balkons","Balconies"])}${n("terraces",["Terrassen","Terraces"])}${n("patios",["Patio's","Patios"])}${n("garages",["Garages","Garages"])}${n("carports","Carports")}${n("parking_spaces",["Open parkeerplekken","Open parking spaces"])}</div></div>`)}
 const featModel=()=>({get:()=>({features:P.features||[],opts:P.feature_options||{}}),set:(f,o)=>{set("features",f);set("feature_options",o)}});
 function secFeatures(){
-  return sec("ken",["Kenmerken","Features"],`<div data-fxbase="edit">${window.NEXUS_FEAT?NEXUS_FEAT.html(featModel(),{tr,category:P.category}):""}</div>`)}
+  return sec("ken",["Kenmerken","Features"],`<div data-fxbase="edit">${window.NEXUS_FEAT?NEXUS_FEAT.html(featModel(),{tr,category:P.category}):""}</div>
+    ${row(inp("pool_note",["Zwembad - opmerking","Pool - note"],{w:4,ph:["bijv. gedeeld met 4 woningen, 8 x 4 m, type onbekend","e.g. shared by 4 homes, 8 x 4 m, type unknown"],
+      hint:["Algemeen commentaar. Teksten noemen een zwembad met deze keuze nooit privé.","General remark. Texts never call a pool with this choice private."]}))}`)}
 function secTexts(){const t=T[txL]||{};
   const f=(k,lab,o={})=>o.area?`<label class="ad-f w4"><span>${esc(tr(lab))}</span><textarea data-tx="${txL}.${k}" rows="${o.rows||4}">${esc(t[k]||"")}</textarea>${o.hint?`<small>${esc(tr(o.hint))}</small>`:""}</label>`
     :`<label class="ad-f ${o.w?"w"+o.w:"w4"}"><span>${esc(tr(lab))}</span><input data-tx="${txL}.${k}" value="${esc(t[k]||"")}">${o.hint?`<small>${esc(tr(o.hint))}</small>`:""}</label>`;

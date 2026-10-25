@@ -1,4 +1,6 @@
-/* NEXUS · kenmerken van een woning (nieuwe indeling, akkoord Rick 19-10-2026).
+/* 25-10-2026 (Rick): derde zwembadkeuze "Zwembad (zie opmerking)" = feature pool_unspecified: er is een zwembad, maar privé of
+   gemeenschappelijk is niet bekend. Opmerking (type, gedeeld met ...) in core.properties.pool_note. Teksten claimen dan nooit privé.
+   NEXUS · kenmerken van een woning (nieuwe indeling, akkoord Rick 19-10-2026).
    Eén begrip op één plek, in 8 panelen. Opslag blijft ongewijzigd: core.properties.features (text[]) en feature_options (jsonb {groep:[waarden]}),
    zodat de website, Idealista en de partnerfeeds dezelfde waarden blijven krijgen. Een keuze ("radio") zet precies één set waarden en wist de andere.
    Gebruikt door nexus-admin.js (invoer) en nexus-edit.js (bewerken). Waarden die niet meer in de lijst staan, blijven zichtbaar onder "Uit de oude lijst"
@@ -14,7 +16,7 @@ const r=(id,nl,en,options)=>({t:"radio",id,label:[nl,en],options});
 /* panelen; kleur = achtergrondtint van het paneel */
 const PANELS=[
  {id:"pool",title:["Zwembad","Pool"],color:"#0ea5e9",items:[
-   r("pool","Zwembad","Pool",[opt("none","Geen","None"),opt("private","Privé","Private",[F("pool")]),opt("communal","Gemeenschappelijk","Communal",[F("communal_pool")])]),
+   r("pool","Zwembad","Pool",[opt("none","Geen","None"),opt("private","Privé","Private",[F("pool")]),opt("communal","Gemeenschappelijk","Communal",[F("communal_pool")]),opt("unspecified","Zwembad (overig)","Pool (other)",[F("pool_unspecified")])]),
    c("pool_heated","Verwarmd","Heated",O("pool","heated")),c("pool_salted","Zoutwater","Salt water",O("pool","salted")),c("pool_covered","Overdekt","Covered",O("pool","covered")),
    c("pool_infinity","Infinity","Infinity",O("pool","infinity")),c("pool_counter","Tegenstroominstallatie","Counter-current system",O("pool","countercurrent swimming system"))]},
  {id:"outdoor",title:["Buiten","Outdoor"],color:"#22c55e",items:[
