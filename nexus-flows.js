@@ -1,4 +1,4 @@
-/* v8 (25-10-2026): interne mails (JARVIS, New Lead, ook met emoji vooraf) niet als losse mailflow. v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
+/* v9 (25-10-2026): aangeklikte aanvraag bovenaan met label en accentrand; portaalbron in eigen kleur (NEXUS_SRC). v8 (25-10-2026): interne mails (JARVIS, New Lead, ook met emoji vooraf) niet als losse mailflow. v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
 /* NEXUS · Contact › Contactmomenten — formulierflows per contact (Rick, 22-10-2026).
    Klik in Binnenkomend op een aanvraag: het contact opent altijd op Contactmomenten, met bovenaan alle aanvragen van dat contact
    als compacte flow onder elkaar, van het formulier (links) tot afgerond (rechts); de aangeklikte aanvraag is gemarkeerd. Kleur = kwalificatie van de lead (Hot / Warm / Cold / geen lead).
@@ -56,6 +56,12 @@ function route(f){
 const origin=f=>f.source==="cpr_import"?"old":(f.web||f.source==="website"||f.source==="website-new")?"web":"other";
 
 /* portaalkanalen: naam zoals het team hem kent + de intake-agent die de portaalmail leest */
+/* kleur per portaal/bron (Rick, 25-10-2026): elk portaal een eigen kleur in de lijst, chips en flows; nieuw portaal krijgt een vaste kleur uit de reserve */
+const SRCC={idealista:"#84cc16","idealista-message":"#84cc16",thinkspain:"#f97316"};
+const SRCN={idealista:"Idealista","idealista-message":"Idealista",thinkspain:"thinkSPAIN"};
+const SRCX=["#06b6d4","#eab308","#14b8a6","#f43f5e","#6366f1","#d946ef"];
+const srcColor=k=>{k=String(k||"").toLowerCase().replace(/^p:/,"");if(SRCC[k])return SRCC[k];let h=0;for(const c of k)h=(h*31+c.charCodeAt(0))>>>0;return SRCX[h%SRCX.length]};
+window.NEXUS_SRC={color:srcColor,name:k=>{k=String(k||"").toLowerCase().replace(/^p:/,"");return SRCN[k]||k},isPortal:k=>{k=String(k||"").toLowerCase();return k.startsWith("p:")||!!SRCC[k]}};
 const CHAN={idealista:{n:"Idealista",wf:"IdealistaLeadIntake"},"idealista-message":{n:"Idealista",wf:"IdealistaLeadIntake"},thinkspain:{n:"thinkSPAIN",wf:"ThinkSpainLeadIntake"}};
 
 /* ---------- mailnode-status ---------- */
@@ -197,9 +203,11 @@ function flowHtml(f,i){
   const PORT={idealista:"Idealista",thinkspain:"thinkSPAIN","agent-portal":"Makelaarsportaal (Sola)","appointment-agent":"viewing@ (e-mail)"};
   const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],mail:["Automatische mail","Automatic email"],other:[PORT[f.source]||f.source||"Overig",PORT[f.source]||f.source||"Other"]};
   const title=f._mail?(f.subject||tr(["Mail","Email"])):f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):fTitle(f);
-  return `<div class="fl-card q-${q}${f.id===RID?" on":""}" data-fi="${i}">
+  const on=!!RID&&f.id===RID, pc=o==="other"&&SRCC[String(f.source||"").toLowerCase()]?srcColor(f.source):"";
+  return `<div class="fl-card q-${q}${on?" on":""}" data-fi="${i}">
+    ${on?`<div class="fl-here">${esc(tr(["Aangeklikte aanvraag","Selected request"]))}</div>`:""}
     <div class="fl-hd"><span class="fl-q">${esc(tr(QL[q]))}</span><b class="fl-t">${esc(title)}</b>${f.ref?`<span class="fl-ref" data-p="${esc(f.ref)}">${esc(f.ref)}</span>`:""}
-      <span class="fl-o">${esc(tr(ORIG[o]))}</span><span class="fl-ts" title="${esc(dmyt(f.ts))}">${esc(dmyt(f.ts))}</span></div>
+      <span class="fl-o${pc?" src":""}"${pc?` style="--sc:${pc}"`:""}>${esc(tr(ORIG[o]))}</span><span class="fl-ts" title="${esc(dmyt(f.ts))}">${esc(dmyt(f.ts))}</span></div>
     ${f.message?`<div class="fl-msg" title="${esc(f.message)}">${esc(f.message)}</div>`:""}
     <div class="fl-track">${S.map((s,j)=>`<button type="button" class="fl-n ${s.st}" data-s="${j}" data-id="${s.id}"><i aria-hidden="true">${ICON[s.st]}</i><b>${esc(s.t)}${s.eye?`<span class="fl-eye" style="display:inline-flex;vertical-align:-1px;margin-left:4px;color:${s.eye.click?"#38bdf8":"#22c55e"}" title="${esc(s.eye.title)}" aria-label="${esc(s.eye.title)}"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M1.5 12S5.5 4.5 12 4.5 22.5 12 22.5 12 18.5 19.5 12 19.5 1.5 12 1.5 12Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></span>`:""}</b><small>${esc(s.s||"")}</small></button>`).join("")}${G.map((g,gi)=>`<button type="button" class="fl-n done send" data-g="${gi}"><i aria-hidden="true">✉</i><b>${esc(g.t)} ${g.items.length}×</b><small>${esc(tr([`${g.o} geopend · ${g.c} geklikt · ${dm(g.last)}`,`${g.o} opened · ${g.c} clicked · ${dm(g.last)}`]))}</small></button>`).join("")}</div></div>`;
 }
@@ -211,7 +219,7 @@ function render(){
   ROOT.innerHTML=`<div class="fl-wrap">
     <div class="fl-top"><h4>${esc(tr(["Formulieren","Forms"]))} <span class="cnt">${D.total||fl.filter(f=>!f._synthetic).length}</span>${fl.some(f=>f._mail)?` · ${esc(tr(["Mails","Emails"]))} <span class="cnt">${fl.filter(f=>f._mail).length}</span>`:""}</h4>
       <div class="fl-leg">${["hot","warm","cold","none"].map(q=>`<span class="fl-lg q-${q}">${esc(tr(QL[q]))}</span>`).join("")}</div></div>
-    <div class="fl-list">${fl.map(flowHtml).join("")}
+    <div class="fl-list">${(()=>{const ix=fl.map((f,i)=>i),r=RID?fl.findIndex(f=>f.id===RID):-1;if(r>0){ix.splice(r,1);ix.unshift(r)}return ix.map(i=>flowHtml(fl[i],i)).join("")})()}
       ${D.total>fl.filter(f=>!f._synthetic).length?`<div class="sm muted" style="padding:2px 4px">${esc(tr([`en ${D.total-fl.filter(f=>!f._synthetic).length} oudere aanvragen, zie de tijdlijn hieronder`,`and ${D.total-fl.filter(f=>!f._synthetic).length} older requests, see the timeline below`]))}</div>`:""}</div></div>`;
   ROOT.querySelectorAll(".fl-n").forEach(b=>b.onclick=e=>{e.stopPropagation();const card=b.closest(".fl-card"),f=fl[+card.dataset.fi];
     if(b.dataset.g!=null)popSends(f,sendGroups(f)[+b.dataset.g]);else popup(f,b.dataset.id,b.className.split(" ")[1])});

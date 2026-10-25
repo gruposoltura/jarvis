@@ -172,7 +172,7 @@ let curTab="ov";
 /* Geen Admin-tab meer in het menu: de invoerpagina (#ad) opent alleen via "+ Nieuw contact" / "+ Nieuwe woning";
    zolang die open staat licht de tab op waar je vandaan kwam (Contacten of Woningen). */
 let adFrom="ct";
-function setTab(t_,ref){curTab=t_;if(!isAcTab(t_))ctDetailHome();const onT=t_==="ad"?adFrom:t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===onT));
+function setTab(t_,ref){if(isAcTab(t_)&&curTab!==t_)acReset(t_);curTab=t_;if(!isAcTab(t_))ctDetailHome();const onT=t_==="ad"?adFrom:t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===onT));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
   document.documentElement.style.setProperty("--acc",`var(${TABC[t_]})`);
   if(t_==="ov"&&!ovLoaded)loadOverview();
@@ -188,7 +188,8 @@ function setTab(t_,ref){curTab=t_;if(!isAcTab(t_))ctDetailHome();const onT=t_===
   /* Facturen en Contracten: eigen onderdelen in NEXUS (nexus-parts.js), zelfde login en stijl */
   if((t_==="fa"||t_==="cn")&&window.NEXUS_PARTS)NEXUS_PARTS.open(t_,$("#p-"+t_),ref);
 }
-$$(".tab").forEach(b=>b.onclick=()=>{location.hash=b.dataset.tab});
+/* nogmaals op Aanvragen/Portalen klikken zet de lijst terug op Alle met de nieuwste bovenaan (Rick, 25-10-2026) */
+$$(".tab").forEach(b=>b.onclick=()=>{const t_=b.dataset.tab;if(isAcTab(t_)&&curTab===t_&&location.hash.replace(/^#/,"")===t_){acReset(t_);loadActivity(t_);return}location.hash=t_});
 window.addEventListener("hashchange",route);
 function route(){
   if(!booted)return;const h=location.hash.replace(/^#/,"");
@@ -239,7 +240,7 @@ document.addEventListener("click",e=>{if(e.target.closest("a[href]"))return;
     /* in Binnenkomend opent een aanvraag het contact rechts in hetzelfde venster, op Contactmomenten (Rick, 22-10-2026) */
     if(c.closest("#p-ac .feed, #p-po .feed")){acPick(c);return}
     /* een aanvraag op Overzicht opent die aanvraag in de tab Aanvragen, niet het losse contact (Rick, 22-10-2026) */
-    if(c.closest(".ov-act .feed")){acSel=c.dataset.fr||c.dataset.c;const tb=c.dataset.grp&&String(c.dataset.grp).startsWith("p:")?"po":"ac";acS[tb].sel=acSel;goHash(tb);return}
+    if(c.closest(".ov-act .feed")){acSel=c.dataset.fr||c.dataset.c;const tb=c.dataset.grp&&String(c.dataset.grp).startsWith("p:")?"po":"ac";acS[tb].sel=acSel;acS[tb].keep=true;goHash(tb);return}
     FLREQ=null;go.c(c.dataset.c);return}
   if(p){
     /* een woning opent altijd volledig scherm; vanuit de lijst onthouden we de scrollpositie voor 'Terug' */
@@ -348,9 +349,11 @@ async function delActivity(k,id){
 function feedHtml(list){
   const IC={request:["#ec4899","✉"],lead:["#f59e0b","★"],viewing:["#22c55e","◉"]};
   if(!list||!list.length)return`<div class="empty">${t("noactivity")}</div>`;
-  return list.map(a=>{const ic=IC[a.kind]||IC.request;return `<div class="it" ${a.contact_wp_id?`data-c="${a.contact_wp_id}"`:""}${a.kind==="request"&&a.id?` data-fr="${esc(a.id)}"`:""}${a.grp?` data-grp="${esc(a.grp)}"`:""}>
+  const SRC=window.NEXUS_SRC,isP=a=>a.kind==="request"&&SRC&&String(a.grp||"").startsWith("p:");
+  /* portaalaanvraag: icoon en bronlabel in de kleur van het portaal (Rick, 25-10-2026) */
+  return list.map(a=>{const pc=isP(a)?SRC.color(a.grp):"",ic=pc?[pc,"✉"]:(IC[a.kind]||IC.request);return `<div class="it" ${a.contact_wp_id?`data-c="${a.contact_wp_id}"`:""}${a.kind==="request"&&a.id?` data-fr="${esc(a.id)}"`:""}${a.grp?` data-grp="${esc(a.grp)}"`:""}>
     <div class="ic" style="--ic:${ic[0]}">${ic[1]}</div>
-    <div style="min-width:0"><div class="t">${esc(a.name||t("unknown"))}</div><div class="d">${esc(a.kind==="request"?rq(a.type):a.type)}${a.kind==="request"&&Array.isArray(a.docs)&&a.docs.length?" · "+esc(a.docs.map(x=>x==="brochure"?L2("Brochure","Brochure"):x==="costs"?L2("Kosten","Costs"):x).join(" + ")):""}${a.ref?" · "+esc(a.ref):""} · <span style="color:${REPC[a.rep]||"#64748b"}">${esc(rep(a.rep||""))}</span></div></div>
+    <div style="min-width:0"><div class="t">${esc(a.name||t("unknown"))}</div><div class="d">${pc?`<span class="src-tag" style="--sc:${pc}">${esc(SRC.name(a.grp))}</span> · `:""}${esc(a.kind==="request"?rq(a.type):a.type)}${a.kind==="request"&&Array.isArray(a.docs)&&a.docs.length?" · "+esc(a.docs.map(x=>x==="brochure"?L2("Brochure","Brochure"):x==="costs"?L2("Kosten","Costs"):x).join(" + ")):""}${a.ref?" · "+esc(a.ref):""} · <span style="color:${REPC[a.rep]||"#64748b"}">${esc(rep(a.rep||""))}</span></div></div>
     <span class="sm muted" style="display:flex;align-items:center;gap:6px">${ago(a.ts)}${a.kind==="request"?delBtn("request",a.id):""}</span></div>`}).join("")}
 
 /* ================= CONTACTEN ================= */
@@ -1285,7 +1288,10 @@ function ctDetailHome(){const d=$("#ctDetail");if(!d)return;if(!CTHOME)CTHOME={p
    Bron: RPC nexus_requests_feed(p_scope) (migratie 069). Filter en selectie blijven per pagina onthouden. */
 const AC_TABS={ac:{scope:"web",key:"nexus-ac-filter"},po:{scope:"portal",key:"nexus-po-filter"}};
 const isAcTab=t_=>!!AC_TABS[t_];
-const acS={};Object.keys(AC_TABS).forEach(k=>{let f="all";try{f=localStorage.getItem(AC_TABS[k].key)||"all"}catch(e){}acS[k]={filter:f,data:null,off:0,seq:0,sel:null}});
+/* bij openen van Aanvragen/Portalen altijd filter Alle en de nieuwste aanvraag bovenaan gekozen; geen onthouden filter meer (Rick, 25-10-2026) */
+const acS={};Object.keys(AC_TABS).forEach(k=>{try{localStorage.removeItem(AC_TABS[k].key)}catch(e){}acS[k]={filter:"all",data:null,off:0,seq:0,sel:null,keep:false}});
+function acReset(tb){const st=acS[tb];if(!st)return;if(st.filter!=="all")st.data=null;st.filter="all";if(!st.keep)st.sel=null;st.keep=false;
+  const f=acPane(tb)&&acPane(tb).querySelector(".feed");if(f)f.scrollTop=0}
 const acPane=tb=>$("#p-"+tb);
 function acPick(row){if(!row)return;
   const pane=row.closest(".pane"),tb=pane?pane.id.slice(2):curTab,st=acS[tb];if(!st)return;
@@ -1300,7 +1306,7 @@ function acChips(st){
   /* geen groepskoppen meer: alle chips lopen door naast elkaar en vullen de rijen (Rick, 22-10-2026) */
   let h=chip("all",L2("Alle","All"),all,"var(--acc)");
   D.filters.forEach(f=>{
-    const c=f.grp==="portal"?"var(--c-po)":f.grp==="old"?"#64748b":"var(--c-ac)";
+    const c=f.grp==="portal"?(window.NEXUS_SRC?NEXUS_SRC.color(f.key):"var(--c-po)"):f.grp==="old"?"#64748b":"var(--c-ac)";
     h+=chip(f.key,LANG==="en"?f.en:f.nl,f.n,c,!Number(f.n));
   });
   return h;
@@ -1312,7 +1318,7 @@ function acListHtml(st){const D=st.data;
 }
 function acBind(tb){const st=acS[tb],P=acPane(tb);
   P.querySelectorAll("[data-acf]").forEach(c=>c.onclick=()=>{if(st.filter===c.dataset.acf)return;st.filter=c.dataset.acf;
-    try{localStorage.setItem(AC_TABS[tb].key,st.filter)}catch(e){}st.sel=null;loadActivity(tb)});
+    st.sel=null;loadActivity(tb)});
   const m=P.querySelector("[data-acmore]");if(m)m.onclick=async()=>{m.disabled=true;const my=st.seq;
     let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:50,p_offset:st.off,p_scope:AC_TABS[tb].scope})}catch(e){m.disabled=false;alert(e.message);return}
     if(my!==st.seq)return;st.data.rows=st.data.rows.concat(r.rows||[]);st.off+=(r.rows||[]).length;
@@ -1332,7 +1338,7 @@ async function loadActivity(tb){
   let r;try{r=await rpc("nexus_requests_feed",{p_filter:st.filter,p_limit:50,p_offset:0,p_scope:AC_TABS[tb].scope})}
   catch(e){if(my===st.seq)P.querySelector(".feed").innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   if(my!==st.seq||curTab!==tb)return;
-  if(st.filter!=="all"&&!(r.filters||[]).some(f=>f.key===st.filter)){st.filter="all";try{localStorage.setItem(AC_TABS[tb].key,"all")}catch(e){}return loadActivity(tb)}
+  if(st.filter!=="all"&&!(r.filters||[]).some(f=>f.key===st.filter)){st.filter="all";return loadActivity(tb)}
   st.data=r;st.off=(r.rows||[]).length;
   P.querySelector(".ac-filter").innerHTML=acChips(st);
   P.querySelector(".ac-cnt").textContent=t("ac.7d",{n:num(r.total_7d||0)});
