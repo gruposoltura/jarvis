@@ -1,4 +1,4 @@
-/* v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
+/* v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
 /* NEXUS · Contact › Contactmomenten — formulierflows per contact (Rick, 22-10-2026).
    Klik in Binnenkomend op een aanvraag: het contact opent altijd op Contactmomenten, met bovenaan alle aanvragen van dat contact
    als compacte flow onder elkaar, van het formulier (links) tot afgerond (rechts); de aangeklikte aanvraag is gemarkeerd. Kleur = kwalificatie van de lead (Hot / Warm / Cold / geen lead).
@@ -59,6 +59,11 @@ const origin=f=>f.source==="cpr_import"?"old":(f.web||f.source==="website"||f.so
 const CHAN={idealista:{n:"Idealista",wf:"IdealistaLeadIntake"},"idealista-message":{n:"Idealista",wf:"IdealistaLeadIntake"},thinkspain:{n:"thinkSPAIN",wf:"ThinkSpainLeadIntake"}};
 
 /* ---------- mailnode-status ---------- */
+const INTERNAL_SUBJ=/^\s*(New Lead\b|JARVIS\b|\[Website\]|Lead ?card\b)/i;
+/* Brevo-events leesbaar, in volgorde van de reis van de mail */
+const EVN={request:["verstuurd","sent"],delivered:["afgeleverd","delivered"],unique_opened:["geopend","opened"],opened:["geopend","opened"],click:["geklikt","clicked"],
+  soft_bounce:["soft bounce","soft bounce"],hard_bounce:["hard bounce","hard bounce"],blocked:["geblokkeerd","blocked"],invalid_email:["ongeldig adres","invalid address"],spam:["als spam gemeld","reported as spam"],deferred:["uitgesteld","deferred"],error:["fout","error"]};
+const evTxt=ev=>{const o=[];(ev||[]).forEach(e=>{const t=tr(EVN[e]||[e,e]);if(!o.includes(t))o.push(t)});const ord=Object.values(EVN).map(x=>tr(x));return o.sort((a,b)=>(ord.indexOf(a)+99)%99-(ord.indexOf(b)+99)%99).join(" → ")};
 const mailSt=m=>!m?null:(m.events||[]).some(e=>/hard|soft|block|invalid|spam|error/.test(e))?"fail":"done";
 const mailSub=m=>{const ev=m.events||[];return ev.some(e=>/click/.test(e))?tr(["geklikt","clicked"]):ev.some(e=>/open/.test(e))?tr(["geopend","opened"]):ev.some(e=>/deliver/.test(e))?tr(["afgeleverd","delivered"]):(ev[0]||"")};
 /* oogje op de mailnode (Rick, 23-10-2026): de klant opende (of klikte in) de mail, ook als dat dagen later was (migratie 071) */
@@ -170,8 +175,8 @@ const INFO={
   bom:f=>({h:["BackOnMarket","BackOnMarket"],p:[["De aanvraag blijft open tot de gereserveerde woning weer beschikbaar is. Dan mailt BackOnMarket de bezoeker en sluit de aanvraag.",
     "The request stays open until the reserved property is available again. Then BackOnMarket emails the visitor and closes the request."]],facts:[[tr(["Woning","Property"]),f.ref],["Status",f.status]]}),
   mail:f=>({h:["Mail aan de klant","Email to the client"],p:[["Transactionele mail via Brevo, met de rep als reply-to. Hieronder de status zoals Brevo die terugmeldt.","Transactional email via Brevo, with the rep as reply-to. Below is the status as reported back by Brevo."]],
-    facts:[[tr(["Aangevraagd","Requested"]),docsTxt(f)],[tr(["Verstuurd","Sent"]),docsSent(f)]].concat((f.mails||[]).flatMap(m=>[[hm(m.at)+" · "+(m.subject||""),(m.events||[]).join(", ")],
-      [tr(["Geopend","Opened"]),m.opened_at?dmyt(m.opened_at):null],[tr(["Geklikt","Clicked"]),m.clicked_at?dmyt(m.clicked_at):null]]))}),
+    facts:[[tr(["Aangevraagd","Requested"]),docsTxt(f)],[tr(["Verstuurd","Sent"]),docsSent(f)]].concat((f.mails||[]).flatMap(m=>[[tr(["Mail","Email"])+" "+hm(m.at),m.subject||""],
+      [tr(["Status","Status"]),evTxt(m.events)],[tr(["Geopend","Opened"]),m.opened_at?dmyt(m.opened_at):null],[tr(["Geklikt","Clicked"]),m.clicked_at?dmyt(m.clicked_at):null]]))}),
   call:f=>({h:["Bellen of WhatsApp","Call or WhatsApp"],p:[["Deze lead kwam via een portaal zonder e-mailadres van de klant. JARVIS stuurt dus geen mail; de leadcard vraagt de rep om te bellen of te whatsappen. Reageert de klant via het portaal, dan wordt daar geantwoord.",
     "This lead came through a portal without the client's email address. JARVIS therefore sends no email; the lead card asks the rep to call or WhatsApp. If the client replies through the portal, the answer goes there."]],facts:[[tr(["Bron","Source"]),f.source],[tr(["Rep","Rep"]),f.lp&&repName(f.lp.rep)]]}),
   hot:f=>({h:["Hot: agenda en cc Rick","Hot: calendar and cc Rick"],p:[["Bij een Hot lead staat Rick in cc op de leadcard en komt er een afspraak in de agenda van de rep: bij terugbellen 2 uur na binnenkomst, anders 10:00 op de eerstvolgende werkdag.",
@@ -268,7 +273,9 @@ const isOptin=f=>[f.kind,f.type,f.key].some(k=>OPTIN.test(String(k||"").toLowerC
 function fold(list,data){
   if(data&&data.flows)data.flows=data.flows.filter(f=>!f._synthetic);
   const fl=(data&&data.flows)||[], ids=new Set(fl.map(f=>String(f.id))), T=x=>new Date(x).getTime();
-  fl.forEach(f=>{f._mailUuids=[];f._sends=[]});
+  /* interne mails (leadcard 'New Lead', JARVIS-meldingen) horen niet bij 'Mail klant'; ze kwamen erbij als de klant zelf
+     een teamlid is (test op rick@) en in hetzelfde tijdvenster viel (Rick, 25-10-2026) */
+  fl.forEach(f=>{f._mailUuids=[];f._sends=[];if(Array.isArray(f.mails))f.mails=f.mails.filter(m=>!INTERNAL_SUBJ.test(String(m.subject||"")))});
   const byTs=fl.slice().sort((a,b)=>T(a.ts)-T(b.ts));
   const origin=m=>{const t=T(m.ts),before=byTs.filter(f=>T(f.ts)<=t);
     return before.filter(isOptin).pop()||before.pop()||null};

@@ -1295,7 +1295,7 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .fl-bh h3{margin:2px 0 0;font-size:calc(16px*var(--fs,1))}
 .fl-bb{padding:12px 16px 16px;display:flex;flex-direction:column;gap:10px;font-size:calc(13px*var(--fs,1))}
 .fl-bb p{margin:0;color:var(--tx2);line-height:1.5}
-.fl-bb dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:5px 12px;border-top:1px dashed var(--line2);padding-top:10px}
+.fl-bb dl{margin:0;display:grid;grid-template-columns:fit-content(38%) minmax(0,1fr);gap:5px 12px;border-top:1px dashed var(--line2);padding-top:10px}
 .fl-bb dt{color:var(--tx3)}.fl-bb dd{margin:0;overflow-wrap:anywhere;white-space:pre-line}
 .fl-st{align-self:flex-start;font-size:calc(11.5px*var(--fs,1));font-weight:600;padding:2px 9px;border-radius:999px;background:var(--card2);color:var(--tx2)}
 .fl-st.done{color:var(--qc);background:color-mix(in srgb,var(--qc) 14%,transparent)}.fl-st.fail{color:#ef4444;background:rgba(239,68,68,.12)}
