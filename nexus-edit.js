@@ -571,16 +571,15 @@ async function openContact(key,ctx){X=ctx;
       :hint+seg+(PT.mode==="new"?fNew:PT.mode==="link"?fLink:`<small class="muted">${esc(tr(["Heeft dit contact een partner die mede-eigenaar of mede-koper is? Leg die vast als eigen contact, niet als tweede naam in dit record.","Does this contact have a partner who co-owns or co-buys? Record them as a contact of their own, not as a second name in this record."]))}</small>`));
   };
   /* linkerkolom met paneelnamen, net als bij Woning bewerken (Rick 21-10-2026) */
-  const CNAV=()=>[["c-labels",["Labels","Labels"]]].concat(tfOn()?[["c-tariff",["Tarievenkaart","Rate card"]]]:[]).concat([["c-person",["Persoon en identiteit","Person and identity"]],["c-partner",["Partner gegevens","Partner details"]],
+  const CNAV=()=>[["c-labels",["Labels","Labels"]]].concat([["c-person",["Persoon en identiteit","Person and identity"]],["c-partner",["Partner gegevens","Partner details"]],
     ["c-contact",["Contactgegevens","Contact details"]],["c-addr",["Adres en overig","Address and other"]],["c-search",["Zoekprofiel","Search profile"]],["c-mail",["Mailings","Mailings"]]])
-    .concat((C.team||[]).length?[["c-owner",["Verantwoordelijk","Responsible"]]]:[]).concat([["c-note",["Interne notitie","Internal note"]]]);
+    .concat((C.team||[]).length?[["c-owner",["Verantwoordelijk","Responsible"]]]:[]).concat([["c-note",["Interne notitie","Internal note"]]]).concat(tfOn()?[["c-tariff",["Tarievenkaart","Rate card"]]]:[]);
   const draw=()=>{const sc=ROOT.querySelector(".pe-main");const top=sc?sc.scrollTop:0;ROOT.innerHTML=`<div class="pe-box pe-small pe-cnav"><header class="pe-hd"><div style="min-width:0"><div class="pe-ref">${esc(C.contact.full_name||"—")}</div><div class="pe-tt">${esc(tr(["Contactgegevens bewerken","Edit contact details"]))}</div></div>
      <button class="pe-x" data-act="cclose">×</button></header>
      <div class="pe-body"><nav class="pe-nav">${CNAV().map(n=>`<a data-cjump="${n[0]}">${esc(tr(n[1]))}</a>`).join("")}</nav>
      <div class="pe-main"><div id="peErr"></div>${window.NEXUS_AGENCIES?NEXUS_AGENCIES.datalist("peAgList"):""}
      <section class="ad-sec" id="pe-c-labels" style="--sc:#ec4899"><h4>${esc(tr(["Labels","Labels"]))}</h4><div class="pe-roles">${RL.map(r=>`<button type="button" class="pe-role ${rs.has(r[0])?"on":""}" data-role="${r[0]}" style="--rc:var(--r-${r[0].replace("_","-")})">${r[1]}</button>`).join("")}</div>
        <small class="muted">${esc(tr(["Een contact kan op elk moment een ander label krijgen. Minstens één label.","A contact can get another label at any time. At least one label."]))}</small><div id="peProp">${propOpt()}</div></section>
-     ${tfOn()?`<section class="ad-sec cp-tariff" id="pe-c-tariff" style="--sc:#0ea5e9"><h4>${esc(tr(["Tarievenkaart · bestaande bouw","Rate card · resale"]))}</h4><div id="peTariff"></div></section>`:""}
      <section class="ad-sec" id="pe-c-person" style="--sc:#3b82f6"><h4>${esc(tr(["Persoon en identiteit","Person and identity"]))}</h4>
        <div class="ad-row">${CPERSON.map(cfIn).join("")}</div>
 </section>
@@ -605,6 +604,7 @@ async function openContact(key,ctx){X=ctx;
      ${(C.team||[]).length?`<section class="ad-sec" id="pe-c-owner" style="--sc:#f97316"><h4>${esc(tr(["Verantwoordelijk","Responsible"]))}</h4><label class="ad-f" style="max-width:320px"><span>${esc(tr(["Teamlid","Team member"]))}</span><select data-cf="owner_id"><option value="">—</option>${C.team.map(t=>`<option value="${t.id}" ${o.owner_id===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label></section>`:""}
      <section class="ad-sec" id="pe-c-note" style="--sc:#6366f1"><h4>${esc(tr(["Interne notitie","Internal note"]))}</h4>
        <label class="ad-f w4"><textarea data-cf="internal_comments" rows="5" placeholder="${esc(tr(["Alleen zichtbaar voor het team","Only visible to the team"]))}">${esc(v.internal_comments||"")}</textarea></label></section>
+     ${tfOn()?`<section class="ad-sec cp-tariff" id="pe-c-tariff" style="--sc:#0ea5e9"><h4>${esc(tr(["Tarievenkaart · bestaande bouw","Rate card · resale"]))}</h4><div id="peTariff"></div></section>`:""}
      </div></div>
      <footer class="pe-ft">${X.me&&X.me()&&X.me().role==="admin"?`<button class="btn pe-del" data-act="cdelete" title="${esc(tr(["Contact definitief verwijderen (alleen beheerder)","Delete contact permanently (admin only)"]))}">🗑 ${esc(tr(["Verwijderen","Delete"]))}</button>`:""}<span class="sm muted" id="peDirty"></span><span style="flex:1"></span><button class="btn" data-act="cclose">${esc(tr(["Annuleren","Cancel"]))}</button>
        <button class="btn ad-next" data-act="csave" id="peSave">${esc(tr(["Opslaan","Save"]))}</button></footer></div>`;
