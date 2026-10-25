@@ -410,7 +410,7 @@ function renderContact(){
   d.querySelectorAll("[data-cedit]").forEach(ce=>ce.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.openContact(c.key||c.id||c.wp_id,{sb,rpc,lang:()=>LANG,me:()=>ME,onSaved:()=>{openContact(ctSel);loadContacts(true)}}));
   const cdel=d.querySelector("[data-cdel]");if(cdel)cdel.onclick=()=>delContact(c,name);
   const B=$("#ctBody");
-  if(ctSub==="profiel")B.innerHTML=ctProfile(c,raw);
+  if(ctSub==="profiel"){B.innerHTML=ctProfile(c,raw);const tc=$("#ctTariff");if(tc)NEXUS_TARIFF.mount(tc,CT.core.id,{rpc,esc,eur,lang:()=>LANG})}
   if(ctSub==="woningen")B.innerHTML=ctProps();
   if(ctSub==="tijdlijn"){
     /* Contactmomenten (Rick, 22-10-2026): bovenaan elk formulier als flow; wat bij een flow hoort (aanvraag, lead, mail aan de klant)
@@ -590,6 +590,8 @@ function ctProfile(c,raw){
   if((!isSeller&&!isBuyer&&!isAgent)||(has("suspect")&&!isBuyer))blocks.push([isSeller||isAgent?1:0,leadBlock]);
   let halves=0;
   blocks.sort((a,b)=>a[0]-b[0]).forEach(b=>{const h=b[1]();if(!/cp-wide/.test(h.slice(0,80)))halves++;out.push(h)});
+  /* Tarievenkaart (Rick 25-10-2026): bij Buyer of Suspect (koper) de kosten koper All-in vs A-la-carte; gevuld door nexus-tariff.js */
+  if((has("buyer")||has("suspect")||bought.length)&&CT.core&&CT.core.id&&window.NEXUS_TARIFF)out.push(`<div class="card pk-sec cp-sec cp-wide cp-tariff" style="--sc:#0ea5e9" id="ctTariff"></div>`);
 
   /* Persoonsgegevens: alleen wat de kop niet al toont */
   const addr=[D.street,[D.postcode,D.city].filter(Boolean).join(" "),D.suburb,D.state,D.country].filter(Boolean).map(esc).join("<br>");
