@@ -1,4 +1,4 @@
-/* v5 (23-10-2026): losse automatische mails als flow met één node. */
+/* v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
 /* NEXUS · Contact › Contactmomenten — formulierflows per contact (Rick, 22-10-2026).
    Klik in Binnenkomend op een aanvraag: het contact opent altijd op Contactmomenten, met bovenaan alle aanvragen van dat contact
    als compacte flow onder elkaar, van het formulier (links) tot afgerond (rechts); de aangeklikte aanvraag is gemarkeerd. Kleur = kwalificatie van de lead (Hot / Warm / Cold / geen lead).
@@ -88,7 +88,10 @@ function steps(f){
     const w=f.web;
     S.push({id:"edge",st:w?"done":"skip",t:tr(["Ontvangst","Received"]),s:w?hm(w.at):tr(["geen webrij","no web row"])});
     const ierr=(w&&w.error)||(f.intake&&f.intake.error);
-    S.push({id:"intake",st:ierr?"fail":(w&&w.processed_at)||f.intake?"done":(late?"fail":"wait"),t:"Intake",
+    /* geen webrij en geen intake-run: de aanvraag kwam niet via web-contact binnen (bv. rechtstreeks in LeadProcessor).
+       Dan is er ook niets om op te wachten: overgeslagen, niet 'wacht' (Rick, 25-10-2026). */
+    if(!w&&!f.intake)S.push({id:"intake",st:"skip",t:"Intake",s:tr(["niet via intake","not via intake"])});
+    else S.push({id:"intake",st:ierr?"fail":(w&&w.processed_at)||f.intake?"done":(late?"fail":"wait"),t:"Intake",
       s:ierr?tr(["fout","error"]):w&&w.processed_at?dur(mins(w.at,w.processed_at)):tr(["wacht","waiting"])});
   } else {
     S.push({id:"bridge",st:f.intake?"done":"skip",t:tr(["Doorgifte","Hand-over"]),s:f.intake?hm(f.intake.at):((CHAN[f.source]&&CHAN[f.source].n)||f.source||"")});
