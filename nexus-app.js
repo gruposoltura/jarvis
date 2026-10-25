@@ -547,6 +547,7 @@ function ctProfile(c,raw){
       [t("f.beds"),(SPv.bedrooms_min||raw.sd_beds||ip.declared_bedrooms_min)?"≥ "+(SPv.bedrooms_min||raw.sd_beds||ip.declared_bedrooms_min):null],
       [t("f.musthaves"),SPv.must_haves||raw.sd_musthaves||(ip.declared_must_haves?[].concat(ip.declared_must_haves).join(", "):null)],
       [L2("Wanneer kopen","When to buy"),(SPv.period||raw.sd_period)?esc(PER[SPv.period||raw.sd_period]||SPv.period||raw.sd_period):ip.declared_period],
+      [L2("Wie verhuist","Who is moving"),SPv.household||null],
       [t("f.feedback"),Object.keys(fb).length?Object.entries(fb).map(([k,v])=>k+": "+v).join(" · "):null]].filter(x=>x[1]);
   const spEmpty=`<div class="cp-empty">${L2("Nog geen zoekprofiel vastgelegd.","No search profile yet.")} <a class="cp-add" data-cedit="1">+ ${L2("Invullen","Add")}</a></div>`;
   /* Gedrag op de site (Rick 25-10-2026): core.contact_web_profile, berekend uit web_events van de vid(s) die met een aanvraag meekwamen.
