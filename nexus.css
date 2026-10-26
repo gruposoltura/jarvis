@@ -1501,3 +1501,7 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .brx-pop .brx-l{display:flex;gap:6px}
 .brx-pop button{font:inherit;font-size:calc(12px*var(--fs,1));font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);color:var(--tx);cursor:pointer}
 .brx-pop button.on,.brx-pop button:hover{border-color:var(--c-pr);color:var(--hi)}
+
+/* aanvraag verwijderen op de flowkaart (26-10-2026) */
+.fl-hd .fl-del{margin-left:2px;flex:0 0 auto}
+.fl-card:hover .fl-del{opacity:.8}

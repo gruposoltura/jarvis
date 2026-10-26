@@ -198,6 +198,9 @@ function sendGroups(f){const G={};(f._sends||[]).forEach(m=>{const k=m.title||"m
     G[k].o+=Number(m.opens||0)>0?1:0;G[k].c+=Number(m.clicks||0)>0?1:0;if(!G[k].last||new Date(m.ts)>new Date(G[k].last))G[k].last=m.ts});
   return Object.values(G).sort((a,b)=>new Date(b.last)-new Date(a.last))}
 const dm=ts=>{if(!ts)return"";const d=new Date(ts);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")};
+/* losse aanvraag verwijderen vanaf de flowkaart, alleen beheerder; alleen echte aanvragen (geen losse mail of opt-in) (Rick, 26-10-2026) */
+const canDel=f=>!!(X&&X.canDel&&X.canDel()&&X.delReq&&f&&f.id&&!f._synthetic&&!f._mail&&!String(f.id).startsWith("_"));
+const bindDel=root=>root.querySelectorAll(".fl-del").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();X.delReq(b.dataset.del)});
 function flowHtml(f,i,lst){
   const q=qual(f), S=steps(f), o=f._mail?"mail":f._synthetic?"optin":origin(f), G=sendGroups(f);
   const PORT={idealista:"Idealista",thinkspain:"thinkSPAIN","agent-portal":"Makelaarsportaal (Sola)","appointment-agent":"viewing@ (e-mail)"};
@@ -208,7 +211,7 @@ function flowHtml(f,i,lst){
     ${lst?`<div class="fl-who"><b>${esc(f.contact_name||tr(["Onbekend contact","Unknown contact"]))}</b>${f.rep?`<span class="fl-rep">${esc(f.rep)}</span>`:""}</div>`:""}
     ${on?`<div class="fl-here">${esc(tr(["Aangeklikte aanvraag","Selected request"]))}</div>`:""}
     <div class="fl-hd"><span class="fl-q">${esc(tr(QL[q]))}</span><b class="fl-t">${esc(title)}</b>${f.ref?`<span class="fl-ref" data-p="${esc(f.ref)}">${esc(f.ref)}</span>`:""}
-      <span class="fl-o${pc?" src":""}"${pc?` style="--sc:${pc}"`:""}>${esc(tr(ORIG[o]))}</span><span class="fl-ts" title="${esc(dmyt(f.ts))}">${esc(dmyt(f.ts))}</span></div>
+      <span class="fl-o${pc?" src":""}"${pc?` style="--sc:${pc}"`:""}>${esc(tr(ORIG[o]))}</span><span class="fl-ts" title="${esc(dmyt(f.ts))}">${esc(dmyt(f.ts))}</span>${canDel(f)?`<button type="button" class="act-del fl-del" data-del="${esc(f.id)}" title="${esc(tr(["Aanvraag verwijderen","Delete request"]))}" aria-label="${esc(tr(["Aanvraag verwijderen","Delete request"]))}">🗑</button>`:""}</div>
     ${f.message?`<div class="fl-msg" title="${esc(f.message)}">${esc(f.message)}</div>`:""}
     <div class="fl-track">${S.map((s,j)=>`<button type="button" class="fl-n ${s.st}" data-s="${j}" data-id="${s.id}"><i aria-hidden="true">${ICON[s.st]}</i><b>${esc(s.t)}${s.eye?`<span class="fl-eye" style="display:inline-flex;vertical-align:-1px;margin-left:4px;color:${s.eye.click?"#38bdf8":"#22c55e"}" title="${esc(s.eye.title)}" aria-label="${esc(s.eye.title)}"><svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M1.5 12S5.5 4.5 12 4.5 22.5 12 22.5 12 18.5 19.5 12 19.5 1.5 12 1.5 12Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg></span>`:""}</b><small>${esc(s.s||"")}</small></button>`).join("")}${G.map((g,gi)=>`<button type="button" class="fl-n done send" data-g="${gi}"><i aria-hidden="true">✉</i><b>${esc(g.t)} ${g.items.length}×</b><small>${esc(tr([`${g.o} geopend · ${g.c} geklikt · ${dm(g.last)}`,`${g.o} opened · ${g.c} clicked · ${dm(g.last)}`]))}</small></button>`).join("")}</div></div>`;
 }
@@ -224,6 +227,7 @@ function render(){
       ${D.total>fl.filter(f=>!f._synthetic).length?`<div class="sm muted" style="padding:2px 4px">${esc(tr([`en ${D.total-fl.filter(f=>!f._synthetic).length} oudere aanvragen, zie de tijdlijn hieronder`,`and ${D.total-fl.filter(f=>!f._synthetic).length} older requests, see the timeline below`]))}</div>`:""}</div></div>`;
   ROOT.querySelectorAll(".fl-n").forEach(b=>b.onclick=e=>{e.stopPropagation();const card=b.closest(".fl-card"),f=fl[+card.dataset.fi];
     if(b.dataset.g!=null)popSends(f,sendGroups(f)[+b.dataset.g]);else popup(f,b.dataset.id,b.className.split(" ")[1])});
+  bindDel(ROOT);
   const on=ROOT.querySelector(".fl-card.on");if(on&&on.scrollIntoView)try{on.scrollIntoView({block:"nearest"})}catch(e){}
 }
 function popup(f,id,st){
@@ -327,6 +331,7 @@ function list(root,flows,ctx,opt){X=ctx;const fl=flows||[];opt=opt||{};
     <div class="fl-list">${fl.map((f,i)=>flowHtml(f,i,true)).join("")}</div></div>`;
   root.querySelectorAll(".fl-n").forEach(b=>b.onclick=e=>{e.stopPropagation();const card=b.closest(".fl-card"),f=fl[+card.dataset.fi];
     if(b.dataset.g!=null)popSends(f,sendGroups(f)[+b.dataset.g]);else popup(f,b.dataset.id,b.className.split(" ")[1])});
+  bindDel(root);
 }
 window.NEXUS_FLOWS={open,close,fold,list,rerender:render,current:()=>CID};
 })();

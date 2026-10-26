@@ -348,6 +348,17 @@ async function delActivity(k,id){
   if(isAcTab(curTab))loadActivity(curTab);
   if(curTab==="ct"&&ctSel)openContact(ctSel);
 }
+/* aanvraag verwijderen vanaf een flowkaart (Aanvragen, Portalen, contact > Aanvragen); daarna lijst en contact opnieuw laden (Rick, 26-10-2026) */
+async function delRequest(id){
+  if(!id||!confirm(L2("Deze aanvraag definitief verwijderen? Dit kan niet ongedaan worden gemaakt. Er blijft alleen een kopie in het auditlog.","Delete this request permanently? This cannot be undone. Only a copy stays in the audit log.")))return;
+  try{await rpc("nexus_activity_delete",{p_kind:"request",p_id:String(id)})}catch(e){alert(e.message||String(e));return}
+  if(FLREQ===String(id))FLREQ=null;
+  Object.values(acS).forEach(x=>{x.data=null;x.flows=null;if(x.sel===String(id))x.sel=null});
+  OV=null;ovLoaded=false;CT=null;
+  if(isAcTab(curTab)){const sel=acS[curTab].sel;if(!sel)acClose(curTab);loadActivity(curTab)}
+  else if(curTab==="ov")loadOverview();
+  if(curTab==="ct"&&ctSel)openContact(ctSel);
+}
 function feedHtml(list){
   const IC={request:["#ec4899","✉"],lead:["#f59e0b","★"],viewing:["#22c55e","◉"]};
   if(!list||!list.length)return`<div class="empty">${t("noactivity")}</div>`;
@@ -424,7 +435,7 @@ function renderContact(){
     B.innerHTML=`<div id="ctFlows"></div><div id="ctTl"></div>`;
     const tlRest=data=>{const el=$("#ctTl");if(!el)return;const rest=data?NEXUS_FLOWS.fold(CT.timeline,data):CT.timeline;
       el.innerHTML=!rest.length?"":(data&&(data.flows||[]).length?`<div class="fl-rest">${esc(L2("Overige contactmomenten","Other contact moments"))}</div>`:"")+timeline(rest)};
-    if(window.NEXUS_FLOWS)NEXUS_FLOWS.open($("#ctFlows"),c.key||c.id,FLREQ,{rpc,rq,lang:()=>LANG,openMail,onData:tlRest,onError:()=>tlRest(null)});
+    if(window.NEXUS_FLOWS)NEXUS_FLOWS.open($("#ctFlows"),c.key||c.id,FLREQ,{rpc,rq,lang:()=>LANG,openMail,canDel:isAdmin,delReq:delRequest,onData:tlRest,onError:()=>tlRest(null)});
     else tlRest(null)}
   if(ctSub==="relaties")B.innerHTML=ctRelations(c);
   if(ctSub==="mailings")B.innerHTML=ctMailings(c);
@@ -1344,7 +1355,7 @@ function acChips(st){
   return h;
 }
 /* rechts: alle aanvragen als formulierflow (zoals op Contactmomenten), nieuw naar oud (Rick, 25-10-2026) */
-const acFlowCtx=()=>({rpc,rq,lang:()=>LANG,openMail});
+const acFlowCtx=()=>({rpc,rq,lang:()=>LANG,openMail,canDel:isAdmin,delReq:delRequest});
 async function acFlows(rows){const ids=(rows||[]).filter(a=>a.kind==="request"&&a.id).map(a=>a.id);if(!ids.length)return[];
   const r=await rpc("nexus_request_flows",{p_ids:ids});return(r&&r.flows)||[]}
 function acPaint(tb){const st=acS[tb],P=acPane(tb);
