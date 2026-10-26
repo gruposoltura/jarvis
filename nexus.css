@@ -1481,3 +1481,11 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 @media (max-width:700px){.dh.dh-ct{padding:12px}.dh-ct .big{width:40px;height:40px}}
 /* Gedrag op de site (25-10-2026) */
 .cp-q{display:inline-block;margin:0 6px 2px 0;font-style:italic;color:var(--tx2)}
+
+/* knop Brochure printen (nexus-brochure.js, 26-10-2026) */
+.dh .acts a.act-brochure{cursor:pointer}
+.brx-pop{position:absolute;z-index:9999;background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:8px 10px;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.brx-pop .brx-h{font-size:calc(11px*var(--fs,1));color:var(--tx2);margin-bottom:6px}
+.brx-pop .brx-l{display:flex;gap:6px}
+.brx-pop button{font:inherit;font-size:calc(12px*var(--fs,1));font-weight:700;padding:5px 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);color:var(--tx);cursor:pointer}
+.brx-pop button.on,.brx-pop button:hover{border-color:var(--c-pr);color:var(--hi)}
