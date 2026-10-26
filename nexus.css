@@ -1507,11 +1507,10 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .fl-hd .fl-del:hover,.fl-hd .fl-del:focus-visible{color:#fff;background:#dc2626;border-color:#dc2626}
 
 /* XML-feed in de contactkop van een makelaar (26-10-2026) */
-.dh .acts a.act-xml{cursor:pointer;font-weight:600;border-color:color-mix(in srgb,var(--c-xm) 55%,transparent);background:color-mix(in srgb,var(--c-xm) 14%,transparent);color:var(--hi)}
-.dh .acts a.act-xml b{font-weight:800}
-.dh .acts a.act-xml.off{border-color:var(--line2);background:var(--bg2);color:var(--tx2)}
-.dh .acts a.act-xml.err{border-color:rgba(239,68,68,.6);background:rgba(239,68,68,.12)}
-.dh .acts a.act-xml:hover{border-color:var(--c-xm);filter:brightness(1.1)}
+.dh .acts a.act-xml{cursor:pointer;font-weight:800;letter-spacing:.06em;background:#06b6d4;border-color:#06b6d4;color:#04121a;box-shadow:0 0 0 3px rgba(6,182,212,.25),0 0 14px rgba(6,182,212,.45)}
+.dh .acts a.act-xml:hover{color:#000;filter:brightness(1.12)}
+.dh .acts a.act-xml.off{background:#64748b;border-color:#64748b;color:#fff;box-shadow:none}
+.dh .acts a.act-xml.err{box-shadow:0 0 0 2px #ef4444,0 0 14px rgba(239,68,68,.5)}
 .mvp.xfp .mvp-box{height:auto;max-height:100%}
 .mvp-tag.xf-off{border-color:var(--line2);background:var(--card2)}
 .mvp-tag.xf-err{border-color:#ef4444;background:rgba(239,68,68,.15)}

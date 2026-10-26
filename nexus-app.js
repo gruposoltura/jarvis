@@ -464,7 +464,7 @@ async function ctXmlChip(id,name){
     el.outerHTML=`<a class="act-xml off" data-ctxml="1" title="${esc(L2("Geen XML-feed gekoppeld; wel woningen met deze makelaar als aanbieder","No XML feed linked; properties offered by this agent"))}">🏠 ${L2("Woningen","Properties")} <b>${props.length}</b></a>`;}
   else{const on=imp.some(f=>f.active), err=imp.some(f=>f.active&&f.last_error), live=imp.reduce((a,f)=>a+(f.live_count||0),0);
     const tip=imp.map(f=>`${f.code} (${f.ref_prefix||"—"}) · ${f.active?L2("actief","active"):L2("uit","off")} · ${f.last_run_at?L2("laatste import ","last import ")+fdate(f.last_run_at):L2("nog nooit geïmporteerd","never imported")}${f.last_error?" · "+L2("fout: ","error: ")+f.last_error:""}`).join("\n");
-    el.outerHTML=`<a class="act-xml ${err?"err":on?"on":"off"}" data-ctxml="1" title="${esc(tip+"\n"+L2("Klik: woningen van deze makelaar","Click: this agent's properties"))}">⇄ XML <b>${esc(imp.map(f=>f.code).join(", "))}</b> · ${live}</a>`;}
+    el.outerHTML=`<a class="act-xml ${err?"err":on?"on":"off"}" data-ctxml="1" title="${esc(tip+"\n"+live+" "+L2("woningen in aanbod","properties live")+"\n"+L2("Klik: woningen van deze makelaar","Click: this agent's properties"))}">XML</a>`;}
   const b=$("#ctDetail [data-ctxml]");if(b)b.onclick=()=>openCtXml()}
 function openCtXml(){
   if(!CTXML)return;const {name,r}=CTXML, imp=r.imports||[], props=r.properties||[];
