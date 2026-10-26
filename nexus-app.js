@@ -1033,7 +1033,7 @@ function statusBar(p){const S=["available","under_offer","sold","withdrawn","dra
   return `<div class="stbar">${S.map(s=>`<button data-qs="${s}" class="${p.core_status===s?"on":""}" style="--sc:${STC[s]}">${esc(stLabel(s))}</button>`).join("")}${["off_market","reserved"].includes(p.core_status)?`<button class="on" style="--sc:${STC[p.core_status]}">${esc(stLabel(p.core_status))}</button>`:""}</div>`}
 function editCtx(jump){return {sb,rpc,lang:()=>LANG,me:()=>ME,jump,onSaved:ref=>{if(String(prSel).toUpperCase()===String(ref).toUpperCase()||prSel===String(PR&&PR.property&&PR.property.wp_id))openProp(ref);loadProps(true);ovLoaded=false;mpData=null}}}
 function wirePropEdit(d,p){
-  const br=d.querySelector("[data-brochure]");if(br)br.onclick=e=>{e.preventDefault();e.stopPropagation();NEXUS_BROCHURE.menu(br,p.reference)};
+  const br=d.querySelector("[data-brochure]");if(br)br.onclick=e=>{e.preventDefault();e.stopPropagation();NEXUS_BROCHURE.menu(br,p.reference,{rpc,lang:()=>LANG})};
   const pdel=d.querySelector("[data-pdel]");if(pdel)pdel.onclick=()=>delProperty(p);
   const e=d.querySelector("[data-edit]");if(e)e.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.open(p.reference,editCtx());
   d.querySelectorAll("[data-qs]").forEach(b=>b.onclick=async()=>{const s=b.dataset.qs;if(s===p.core_status)return;

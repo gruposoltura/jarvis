@@ -355,17 +355,19 @@ h2{font-family:var(--serif);font-weight:600;font-size:20pt;line-height:1.08;lett
 
 const ASSETS={logoSquare:"https://gruposoltura.com/img/brand/logo-square.png",logoWide:"https://gruposoltura.com/img/brand/logo-wide.png"};
 const LANGS=[["nl","NL"],["en","EN"],["es","ES"],["sv","SV"]];
-const ui=()=>(typeof LANG!=="undefined"&&LANG==="en")?"en":"nl";
+let CTX=null; /* {rpc,lang} uit nexus-app.js (sb/rpc/LANG zitten in de IIFE van nexus-app) */
+const ui=()=>(CTX&&CTX.lang&&CTX.lang()==="en")?"en":"nl";
 const tx=(nl,en)=>ui()==="en"?en:nl;
 const SCREEN_CSS='@media screen{html{background:#525659}body{padding:12mm 0}.page{margin:0 auto 10mm;box-shadow:0 4px 24px rgba(0,0,0,.45)}}';
 
 /* Opent het venster direct in de klik (popup-blokker), haalt de data, bouwt de HTML en print na het laden van fonts en foto's. */
-async function print(ref,lang){
+async function print(ref,lang,ctx){
+  if(ctx)CTX=ctx;
   const w=window.open("","_blank");
   if(!w){alert(tx("Pop-up geblokkeerd: sta pop-ups toe voor dash.gruposoltura.com","Pop-up blocked: allow pop-ups for dash.gruposoltura.com"));return}
   w.document.write('<!DOCTYPE html><title>Brochure '+String(ref).replace(/[<&]/g,"")+'</title><body style="font:15px system-ui;padding:40px;color:#334">'+tx("Brochure wordt gemaakt…","Building brochure…")+'</body>');
   let data;
-  try{const r=await sb.rpc("nexus_brochure_data",{p_ref:ref});if(r.error)throw r.error;data=r.data}
+  try{if(!CTX||!CTX.rpc)throw new Error("NEXUS-context ontbreekt");data=await CTX.rpc("nexus_brochure_data",{p_ref:ref})}
   catch(e){w.document.body.textContent=tx("Fout: ","Error: ")+(e.message||e);return}
   if(!data||!data.p){w.document.body.textContent=tx("Woning "+ref+" staat niet op de nieuwe site; er is geen brochure.","Property "+ref+" is not on the new site; there is no brochure.");return}
   const html=buildBrochure(data,lang,ASSETS).replace("</style>",SCREEN_CSS+"</style>");
@@ -382,7 +384,8 @@ async function print(ref,lang){
 }
 
 /* Taalkeuze onder de knop; standaard de taal van NEXUS */
-function menu(anchor,ref){
+function menu(anchor,ref,ctx){
+  if(ctx)CTX=ctx;
   document.querySelectorAll(".brx-pop").forEach(x=>x.remove());
   const pop=document.createElement("div");pop.className="brx-pop";
   pop.innerHTML='<div class="brx-h">'+tx("Brochure printen","Print brochure")+'</div><div class="brx-l">'+LANGS.map(([c,l])=>'<button data-l="'+c+'"'+(c===ui()?' class="on"':'')+'>'+l+'</button>').join("")+'</div>';
