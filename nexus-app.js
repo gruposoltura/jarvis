@@ -148,7 +148,12 @@ async function boot(){
   if(window.NEXUS_PARTS)NEXUS_PARTS.init({sb,me:()=>ME,lang:()=>LANG,esc,t});
   route();
   loadTabBadges();
+  loadCounts();
 }
+/* Tellingen in de tabbladen (Contacten, Woningen) en de rolchips komen uit nexus_overview. Die liep alleen bij het openen van Overzicht,
+   dus wie direct op een contact- of woninglink binnenkwam zag geen aantallen (Rick 26-10-2026). Nu altijd bij het opstarten, op de achtergrond. */
+async function loadCounts(){if(ovLoaded||OV)return;let o;try{o=await rpc("nexus_overview")}catch(e){return}
+  if(OV)return;OV=o;const pr=o.props||{};$("#cntCt").textContent=num(o.contacts_total);$("#cntPr").textContent=num(pr.current);buildRoleChips()}
 
 /* Rode teller op Aanvragen en Portalen: aantal binnengekomen in de laatste 12 uur (Rick, 22-10-2026);
    op Bezichtiging: aantal open aanvragen (Rick, 24-10-2026).
