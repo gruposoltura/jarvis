@@ -1503,5 +1503,5 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 .brx-pop button.on,.brx-pop button:hover{border-color:var(--c-pr);color:var(--hi)}
 
 /* aanvraag verwijderen op de flowkaart (26-10-2026) */
-.fl-hd .fl-del{margin-left:2px;flex:0 0 auto}
-.fl-card:hover .fl-del{opacity:.8}
+.fl-hd .fl-del{margin-left:2px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;padding:3px 5px;opacity:1;color:#ef4444;border-color:rgba(239,68,68,.55);background:rgba(239,68,68,.10);filter:none}
+.fl-hd .fl-del:hover,.fl-hd .fl-del:focus-visible{color:#fff;background:#dc2626;border-color:#dc2626}
