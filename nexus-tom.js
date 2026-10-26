@@ -1,7 +1,9 @@
 /* NEXUS Overzicht - kaart "Tijd op de markt per woningtype" (Rick 26-10-2026), onder Rollen in NEXUS.
+   Tijd op de markt = huidig aanbod (status available/under_offer), dagen van opname (listed_at) tot vandaag.
+   Filter: Beide (standaard) / Eigen woningen / Partnerwoningen. Geen verkochte woningen.
    Data: rpc nexus_time_on_market() achter nexus_gate = bridge_src.bridge_time_on_market (een rij per woningtype).
-   Kolom = gemiddeld aantal dagen, wit streepje = mediaan (alleen verkocht). Elke soort houdt in elke meting
-   dezelfde kleur. Schaal volgt alleen soorten met n>=5; een hogere kolom wordt afgekapt met een zaagrand. */
+   Kolom = gemiddelde, wit streepje = mediaan. Elke soort houdt dezelfde kleur. Schaal volgt soorten met n>=5;
+   een hogere kolom wordt afgekapt met een zaagrand. */
 (function(){
 const TYPES = {
   villa:{ nl:'Villa', en:'Villa', c:'#3b82f6' },
@@ -14,11 +16,10 @@ const TYPES = {
   duplex:{ nl:'Duplex', en:'Duplex', c:'#84cc16' },
   finca:{ nl:'Finca', en:'Finca', c:'#b45309' } };
 const MODES = {
-  sold5:{ n:'sold5_n', avg:'sold5_avg_days', med:'sold5_median_days', nl:['Verkocht · 5 jr','verkocht in de laatste 5 jaar','dagen van online tot verkocht (eigen woningen)'], en:['Sold · 5 yrs','sold in the last 5 years','days from listed to sold (own listings)'] },
-  sold:{ n:'sold_n', avg:'sold_avg_days', med:'sold_median_days', nl:['Verkocht · alles','verkocht, alle jaren','dagen van online tot verkocht (eigen woningen)'], en:['Sold · all','sold, all years','days from listed to sold (own listings)'] },
-  own:{ n:'own_avail_n', avg:'own_avail_avg_days', med:null, nl:['Te koop · eigen','eigen woningen nu te koop','dagen dat ze nu online staan'], en:['For sale · own','own listings for sale now','days they have been online'] },
-  partner:{ n:'partner_avail_n', avg:'partner_avail_avg_days', med:null, nl:['Te koop · partners','partnerwoningen nu te koop','dagen sinds de feed ze aanbood'], en:['For sale · partners','partner listings for sale now','days since the feed offered them'] } };
-let ROWS = null, mode = (()=>{ try{ const m = localStorage.getItem('nexus-tom-mode'); return MODES[m] ? m : 'sold5'; }catch(e){ return 'sold5'; } })();
+  all:{ n:'all_avail_n', avg:'all_avail_avg_days', med:'all_avail_median_days', nl:['Beide','eigen + partnerwoningen te koop'], en:['Both','own + partner listings for sale'] },
+  own:{ n:'own_avail_n', avg:'own_avail_avg_days', med:'own_avail_median_days', nl:['Eigen woningen','eigen woningen te koop'], en:['Own listings','own listings for sale'] },
+  partner:{ n:'partner_avail_n', avg:'partner_avail_avg_days', med:'partner_avail_median_days', nl:['Partnerwoningen','partnerwoningen te koop'], en:['Partner listings','partner listings for sale'] } };
+let ROWS = null, mode = (()=>{ try{ const m = localStorage.getItem('nexus-tom-filter'); return MODES[m] ? m : 'all'; }catch(e){ return 'all'; } })();
 let box = null, ctx = null, rsz = null;
 const isEn = () => ctx && ctx.lang() === 'en';
 const L = (nl, en) => isEn() ? en : nl;
@@ -59,7 +60,8 @@ function chart(rows, m, narrow){
         const my = Y(r[m.med]).toFixed(1);
         s += `<line x1="${(x + 4).toFixed(1)}" y1="${my}" x2="${(x + bw - 4).toFixed(1)}" y2="${my}" stroke="#fff" stroke-width="2" opacity="0.9"/>`;
       }
-      s += `<text x="${cx.toFixed(1)}" y="${(y - 6).toFixed(1)}" text-anchor="middle" font-size="11.5" font-weight="700" style="fill:var(--tx)">${nf(v)}</text>`;
+      const ty = Math.min(y, m.med && r[m.med] != null && r[m.med] <= max ? Y(r[m.med]) : y) - 6;
+      s += `<text x="${cx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" font-size="11.5" font-weight="700" style="fill:var(--tx)">${nf(v)}</text>`;
     } else {
       s += `<text x="${cx.toFixed(1)}" y="${padT + iH - 5}" text-anchor="middle" font-size="11" style="fill:var(--tx3)">—</text>`;
     }
@@ -89,9 +91,9 @@ function render(){
     <div class="tom-body">
       <div class="seg sm tom-seg">${Object.keys(MODES).map(k => `<button data-m="${k}" class="${k === mode ? 'on' : ''}">${MODES[k][isEn() ? 'en' : 'nl'][0]}</button>`).join('')}</div>
       <div class="tom-chart">${rows.length ? chart(rows, m, narrow) : `<div class="empty sm">${L('Geen data', 'No data')}</div>`}<div class="tom-tip"></div></div>
-      <div class="tom-note">${L('Kolom', 'Bar')} = ${L('gemiddeld aantal', 'average')} ${T[2]}${m.med ? L('; wit streepje = mediaan', '; white tick = median') : ''}. ${L('Gestreept = minder dan 5 woningen; een te hoge kolom is afgekapt.', 'Dashed = fewer than 5 homes; a bar that is too tall is cut off.')}</div>
+      <div class="tom-note">${L('Huidig aanbod te koop. Kolom = gemiddeld aantal dagen sinds opname tot vandaag; wit streepje = mediaan.', 'Current stock for sale. Bar = average days from intake until today; white tick = median.')} ${L('Gestreept = minder dan 5 woningen; een te hoge kolom is afgekapt.', 'Dashed = fewer than 5 homes; a bar that is too tall is cut off.')}</div>
     </div>`;
-  box.querySelectorAll('.tom-seg button').forEach(b => b.onclick = () => { mode = b.dataset.m; try{ localStorage.setItem('nexus-tom-mode', mode); }catch(e){} render(); });
+  box.querySelectorAll('.tom-seg button').forEach(b => b.onclick = () => { mode = b.dataset.m; try{ localStorage.setItem('nexus-tom-filter', mode); }catch(e){} render(); });
   const ch = box.querySelector('.tom-chart'), tip = box.querySelector('.tom-tip');
   if(!ch || !tip) return;
   ch.onpointermove = ch.onpointerdown = e => {
