@@ -18,10 +18,10 @@ const SITE="https://gruposoltura.com/downloads/";
 const API="https://api.github.com/repos/gruposoltura/soltura-web/contents/downloads?ref=main";
 const CACHE_KEY="nexus-print-list";
 const LANGS=["nl","en","es","sv"];
-/* Bekende documenten: herkend op bestandsnaam (jaartal mag wisselen). hide: talen die niet getoond worden
-   (geen Zweedse koopgids: Zweden krijgen de Engelse, regel 25-10-2026). */
+/* Bekende documenten: herkend op bestandsnaam (jaartal mag wisselen). Optioneel hide: [talen] om een taal te verbergen.
+   De koopgids bestaat in NL/EN/ES/SV (Rick 26-10-2026). */
 const DOCS=[
-  {k:"guide",ico:"📘",t:["Woon- en koopgids","Living & buying guide"],d:["De complete gids voor kopers","The complete guide for buyers"],hide:["sv"],
+  {k:"guide",ico:"📘",t:["Woon- en koopgids","Living & buying guide"],d:["De complete gids voor kopers","The complete guide for buyers"],
    m:[[/woon-en-koopgids/i,"nl"],[/buying-guide/i,"en"],[/guia-de-compra/i,"es"],[/kopguide/i,"sv"]]},
   {k:"cost",ico:"🧾",t:["Kostenoverzicht koper","Buyer cost overview"],d:["Kosten bij aankoop, zonder bedragen per woning","Purchase costs, without per-property amounts"],
    m:[[/kostenoverzicht/i,"nl"],[/cost-overview/i,"en"],[/resumen-de-gastos/i,"es"],[/kostnadsoversikt/i,"sv"]]},
