@@ -278,15 +278,14 @@ function renderOverview(){
     ${kp(num(o.viewings_upcoming),t("kpi.view"),t("kpi.view.s",{n:num(o.hot_pending)}),"--c-ac",null)}
    </div>
    <div class="card ov-web" id="ovWeb"><div class="loader sm">${L2("Websitecijfers laden…","Loading website figures…")}</div></div>
-   <div class="ov-col"><div class="card ov-roles"><div class="hd"><h3>${t("ov.roles")}</h3><span class="sm muted">${t("ov.clickfilter")}</span></div>
+   <div class="ov-col"><div class="card ov-tom" id="ovTom"></div><div class="card ov-roles"><div class="hd"><h3>${t("ov.roles")}</h3><span class="sm muted">${t("ov.clickfilter")}</span></div>
      <div class="scroll" style="flex:1;padding:6px 0">${order.map(r=>`<div class="rolebar" data-role="${r}" style="--rc:var(${(ROLE[r]||[])[1]})">
        <span>${roleTag(r)}</span><div class="bar"><span style="width:${((roles[r]||0)/maxR*100).toFixed(1)}%"></span></div><span class="n">${num(roles[r]||0)}</span></div>`).join("")}
      <div class="hd" style="border-top:1px solid var(--line);margin-top:6px"><h3>${t("ov.req30")}</h3><span class="sm muted">${t("ov.max",{n:mx})}</span></div>
      <div class="spark"><svg viewBox="0 0 300 70" preserveAspectRatio="none"><defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ec4899" stop-opacity=".45"/><stop offset="1" stop-color="#ec4899" stop-opacity="0"/></linearGradient></defs>
        <polygon points="0,70 ${pts} 300,70" fill="url(#sg)"/><polyline points="${pts}" fill="none" stroke="#ec4899" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${(o.req_types_30d||[]).map(x=>`<span class="tag">${esc(rq(x.t))} · ${x.n}</span>`).join("")}</div></div>
-     </div></div>
-     <div class="card ov-tom" id="ovTom"></div></div>
+     </div></div></div>
    <div class="card ov-act"><div class="hd"><h3>${t("ov.activity")}</h3><a class="sm muted" href="#ac">${t("ov.all")}</a></div>
      <div class="scroll feed" style="flex:1">${feedHtml(o.activity)}</div></div>
    <div class="ov-side">
