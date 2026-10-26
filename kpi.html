@@ -74,11 +74,6 @@
   .fun-rng{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .fun-rng button{background:transparent;color:var(--muted);border:0;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer}
   .fun-rng button[aria-pressed="true"]{background:rgba(42,147,214,.18);color:var(--text)}
-  /* tijd op de markt per woningtype (bridge_time_on_market) */
-  .tom-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
-  .tom-note{font-size:11.5px;color:var(--muted);margin:6px 0 0;line-height:1.45}
-  #tom-chart rect.hit{fill:transparent;cursor:default}
-  #tom-chart g.col:hover rect.bar{filter:brightness(1.18)}
   .fun-chart svg{display:block;max-width:100%}
   #fun-legend{margin:2px 0 10px}
   .fun-chart rect.hit{fill:transparent;cursor:default}
@@ -405,19 +400,6 @@
       <div id="utm-health" style="font-size:11px;color:var(--muted);margin-top:10px"></div>
     </div>
 
-    <div class="card" style="margin-top:14px" id="tom-card">
-      <h2><span class="dot" style="background:var(--orange)"></span>Tijd op de markt per woningtype
-        <span class="when" id="tom-when"></span></h2>
-      <div class="tom-hd">
-        <div class="nums" id="tom-nums" style="margin-bottom:0"></div>
-        <div class="fun-rng" id="tom-rng" role="group" aria-label="Meting">
-          <button type="button" data-tom="sold5">Verkocht &middot; 5 jaar</button><button type="button" data-tom="sold">Verkocht &middot; alles</button><button type="button" data-tom="own">Te koop &middot; eigen</button><button type="button" data-tom="partner">Te koop &middot; partners</button>
-        </div>
-      </div>
-      <div class="chart" id="tom-chart"></div>
-      <div class="tom-note" id="tom-note"></div>
-    </div>
-
       </div>
     </section>
 
@@ -515,7 +497,6 @@
   var sb = supabase.createClient(SB_URL, SB_KEY);
   var $ = function(id){ return document.getElementById(id); };
   var fmt = function(n){ return Number(n).toLocaleString('nl-NL'); };
-  var CLR_TXT = '#dfe8f5';
   var CLR = { cyan:'#00d4ff', blue:'#3da5ff', green:'#4fd1a1', red:'#ff5d5d',
               yellow:'#ffd400', orange:'#e67e22', muted:'#7d8ca3', grid:'#1c2940',
               trans:'#b18cff' };
@@ -1355,117 +1336,6 @@
     }
   }
 
-  /* ================= tijd op de markt per woningtype ================= */
-  // Bron: view bridge_time_on_market (een rij per woningtype). Elke soort houdt in alle
-  // metingen dezelfde kleur. Balk = gemiddelde in dagen, wit streepje = mediaan.
-  var TOM_TYPES = {
-    villa:{ l:'Villa', c:'#3da5ff' }, apartment:{ l:'Appartement', c:'#4fd1a1' },
-    'semi-detached':{ l:'Halfvrijstaand', c:'#ffd400' }, townhouse:{ l:'Geschakelde woning', c:'#ff8c3a' },
-    bungalow:{ l:'Bungalow', c:'#ff5d9e' }, quadrant:{ l:'Quad', c:'#b18cff' },
-    penthouse:{ l:'Penthouse', c:'#2fe0e0' }, duplex:{ l:'Duplex', c:'#c0ff4d' }, finca:{ l:'Finca', c:'#c8a26b' } };
-  var TOM_MODES = {
-    sold5:{ n:'sold5_n', avg:'sold5_avg_days', med:'sold5_median_days', what:'verkocht in de laatste 5 jaar', tail:'dagen van online tot verkocht (eigen woningen)' },
-    sold:{ n:'sold_n', avg:'sold_avg_days', med:'sold_median_days', what:'verkocht, alle jaren', tail:'dagen van online tot verkocht (eigen woningen)' },
-    own:{ n:'own_avail_n', avg:'own_avail_avg_days', med:null, what:'eigen woningen nu te koop', tail:'dagen dat ze nu online staan' },
-    partner:{ n:'partner_avail_n', avg:'partner_avail_avg_days', med:null, what:'partnerwoningen nu te koop', tail:'dagen sinds de feed ze aanbood' } };
-  var tomRows = [], tomMode = 'sold5';
-  try{ var tm = localStorage.getItem('bridge_tom_mode'); if(tm && TOM_MODES[tm]) tomMode = tm; }catch(e){}
-  function tomDays(v){ if(v == null) return '\u2014'; return fmt(v) + ' d' + (v >= 60 ? ' (' + (v / 30.44).toFixed(1).replace('.', ',') + ' mnd)' : ''); }
-  function renderTom(){
-    var m = TOM_MODES[tomMode], el = $('tom-chart'); if(!el) return;
-    Array.prototype.forEach.call(document.querySelectorAll('#tom-rng button'), function(b){ b.setAttribute('aria-pressed', b.dataset.tom === tomMode ? 'true' : 'false'); });
-    var rows = tomRows.filter(function(r){ return TOM_TYPES[r.category]; });
-    if(!rows.length){ el.innerHTML = '<p style="color:var(--muted);font-size:12px;margin:20px 0">Geen data.</p>'; $('tom-nums').innerHTML = ''; return; }
-    // smal scherm: kleinere tekenbreedte (tekst blijft leesbaar) en schuine labels
-    var narrow = (el.clientWidth || 900) < 600;
-    var w = narrow ? 520 : 900, h = narrow ? 330 : 270, padL = 46, padR = 10, padT = 26, padB = narrow ? 78 : 44, iW = w - padL - padR, iH = h - padT - padB;
-    // schaal op de betrouwbare soorten (n>=5), zodat een enkele uitschieter de rest niet platdrukt;
-    // een hogere balk wordt afgekapt met een zaagrand, de waarde staat er wel boven
-    var max = 1, anyReliable = rows.some(function(r){ return (r[m.n] || 0) >= 5; });
-    rows.forEach(function(r){ if(anyReliable && (r[m.n] || 0) < 5) return; var v = r[m.avg] || 0; if(v > max) max = v; if(m.med && (r[m.med] || 0) > max) max = r[m.med]; });
-    max = niceMax(max * 1.08);
-    var Y = function(v){ return padT + iH - (v / max) * iH; };
-    var n = rows.length, slot = iW / n, bw = Math.min(64, slot * 0.62);
-    var svg = '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet">';
-    for(var g = 0; g <= 4; g++){
-      var gv = max * g / 4, gy = Y(gv);
-      svg += '<line x1="'+padL+'" y1="'+gy.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+gy.toFixed(1)+'" stroke="'+CLR.grid+'" stroke-width="1"/>'
-        + '<text x="'+(padL-8)+'" y="'+(gy+4).toFixed(1)+'" text-anchor="end" font-size="11" fill="'+CLR.muted+'">'+fmt(Math.round(gv))+'</text>';
-    }
-    rows.forEach(function(r, i){
-      var t = TOM_TYPES[r.category], cx = padL + i*slot + slot/2, x = cx - bw/2;
-      var cnt = r[m.n] || 0, v = r[m.avg], few = cnt > 0 && cnt < 5;
-      svg += '<g class="col" data-i="'+i+'">';
-      if(cnt > 0 && v != null){
-        var cut = v > max, y = cut ? padT : Y(v), bh = Math.max(1, padT + iH - y);
-        svg += '<rect class="bar" x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="3" fill="'+t.c+'"'+(few ? ' fill-opacity="0.45" stroke="'+t.c+'" stroke-dasharray="3 3"' : '')+'/>';
-        if(cut){
-          var zz = 'M'+x.toFixed(1)+' '+(padT+10), k = 6, sw = bw / k;
-          for(var z = 1; z <= k; z++) zz += ' L'+(x + z*sw).toFixed(1)+' '+(padT + (z % 2 ? 4 : 10));
-          svg += '<path d="'+zz+' L'+(x+bw).toFixed(1)+' '+(padT-2)+' L'+x.toFixed(1)+' '+(padT-2)+' Z" fill="#0b1119"/>';
-        }
-        if(m.med && r[m.med] != null && r[m.med] <= max){
-          var my = Y(r[m.med]);
-          svg += '<line x1="'+(x+4).toFixed(1)+'" y1="'+my.toFixed(1)+'" x2="'+(x+bw-4).toFixed(1)+'" y2="'+my.toFixed(1)+'" stroke="#fff" stroke-width="2" opacity="0.85"/>';
-        }
-        svg += '<text x="'+cx.toFixed(1)+'" y="'+(y-7).toFixed(1)+'" text-anchor="middle" font-size="12.5" font-weight="700" fill="'+CLR_TXT+'">'+fmt(v)+'</text>';
-      } else {
-        svg += '<text x="'+cx.toFixed(1)+'" y="'+(padT+iH-6)+'" text-anchor="middle" font-size="12" fill="'+CLR.muted+'">\u2014</text>';
-      }
-      if(narrow){
-        var ly = padT + iH + 14;
-        svg += '<text x="'+cx.toFixed(1)+'" y="'+ly+'" text-anchor="middle" font-size="10" fill="'+CLR.muted+'">n='+cnt+'</text>'
-          + '<text x="'+(cx+4).toFixed(1)+'" y="'+(ly+12)+'" text-anchor="end" font-size="12" fill="'+t.c+'" font-weight="600" transform="rotate(-38 '+(cx+4).toFixed(1)+' '+(ly+12)+')">'+t.l+'</text>';
-      } else {
-        var parts = t.l.split(' ');
-        svg += '<text x="'+cx.toFixed(1)+'" y="'+(h-padB+16)+'" text-anchor="middle" font-size="11.5" fill="'+t.c+'" font-weight="600">'+parts[0]+'</text>';
-        if(parts[1]) svg += '<text x="'+cx.toFixed(1)+'" y="'+(h-padB+29)+'" text-anchor="middle" font-size="11.5" fill="'+t.c+'" font-weight="600">'+parts.slice(1).join(' ')+'</text>';
-        svg += '<text x="'+cx.toFixed(1)+'" y="'+(h-padB+(parts[1] ? 41 : 29))+'" text-anchor="middle" font-size="10" fill="'+CLR.muted+'">n='+cnt+'</text>';
-      }
-      svg += '<rect class="hit" x="'+(padL + i*slot).toFixed(1)+'" y="'+padT+'" width="'+slot.toFixed(1)+'" height="'+(h-padT)+'"/></g>';
-    });
-    el.innerHTML = svg + '</svg>';
-    var tip = document.createElement('div'); tip.className = 'tip'; el.appendChild(tip);
-    el.onpointermove = el.onpointerdown = function(e){
-      var gEl = e.target.closest && e.target.closest('g.col'); if(!gEl){ tip.style.display = 'none'; return; }
-      var r = rows[+gEl.dataset.i], t = TOM_TYPES[r.category], cnt = r[m.n] || 0;
-      var html = '<b>' + t.l + '</b><br><span style="color:#7d8ca3">' + m.what + '</span>'
-        + '<br><i style="background:'+t.c+'"></i>Gemiddeld: <b style="color:#dfe8f5">' + tomDays(cnt ? r[m.avg] : null) + '</b>';
-      if(m.med) html += '<br><i style="background:#fff"></i>Mediaan: <b style="color:#dfe8f5">' + tomDays(cnt ? r[m.med] : null) + '</b>';
-      html += '<br>Aantal woningen: <b style="color:#dfe8f5">' + fmt(cnt) + '</b>' + (cnt > 0 && cnt < 5 ? ' <span style="color:var(--orange)">(te weinig voor een betrouwbaar gemiddelde)</span>' : '');
-      tip.innerHTML = html; tip.style.display = 'block';
-      var rect = el.getBoundingClientRect(), px = e.clientX - rect.left, tw = tip.offsetWidth;
-      tip.style.left = Math.max(0, (px + 14 + tw > el.clientWidth) ? px - tw - 14 : px + 14) + 'px'; tip.style.top = '6px';
-    };
-    el.onpointerleave = function(e){ if(!e || e.pointerType === 'mouse') tip.style.display = 'none'; };
-    var tot = 0, sum = 0; rows.forEach(function(r){ var c = r[m.n] || 0; if(c && r[m.avg] != null){ tot += c; sum += c * r[m.avg]; } });
-    var fast = rows.filter(function(r){ return (r[m.n] || 0) >= 5 && r[m.avg] != null; }).sort(function(a, b){ return a[m.avg] - b[m.avg]; });
-    $('tom-nums').innerHTML = num('Gemiddeld alle types', tot ? fmt(Math.round(sum / tot)) + ' d' : '\u2014')
-      + num('Woningen', fmt(tot))
-      + (fast.length ? num('Snelst (n\u22655)', TOM_TYPES[fast[0].category].l + ' \u00B7 ' + fmt(fast[0][m.avg]) + ' d') : '');
-    $('tom-note').innerHTML = 'Balk = gemiddeld aantal ' + m.tail + (m.med ? '; wit streepje = mediaan (minder gevoelig voor uitschieters)' : '')
-      + '. Gestreepte balk = minder dan 5 woningen; de schaal volgt de soorten met minstens 5, een hogere balk is afgekapt (zaagrand).' + (m.med ? ' Verkochte woningen zonder geldige online- of verkoopdatum tellen niet mee.' : '');
-  }
-  document.addEventListener('click', function(e){
-    var b = e.target.closest && e.target.closest('#tom-rng button'); if(!b) return;
-    tomMode = b.dataset.tom; try{ localStorage.setItem('bridge_tom_mode', tomMode); }catch(err){}
-    renderTom();
-  });
-  var tomRsz = null;
-  window.addEventListener('resize', function(){ clearTimeout(tomRsz); tomRsz = setTimeout(function(){ if(tomRows.length) renderTom(); }, 150); });
-  document.addEventListener('click', function(e){ if(e.target.closest && e.target.closest('.fold, .zone-head') && tomRows.length) setTimeout(renderTom, 60); });
-  async function loadTom(){
-    try{
-      var r = await sb.from('bridge_time_on_market').select('*').order('sort', { ascending:true });
-      if(r.error) throw r.error;
-      tomRows = r.data || [];
-      $('tom-when').textContent = '\u2014 eigen verkopen + huidig aanbod';
-      renderTom();
-    }catch(e){
-      $('tom-chart').innerHTML = '<p style="color:var(--muted);font-size:12px">Data niet beschikbaar.</p>';
-    }
-  }
-
   /* ================= data laden ================= */
   async function load(){
     var errEl = $('err'); errEl.textContent = '';
@@ -1983,10 +1853,10 @@
       var btn = ev.target.closest('button[data-kind]');
       if(btn){ propDispatch(btn.dataset.kind, btn.dataset.id, btn.dataset.action); return; }
     });
-    load(); loadChannels(); loadTom();
-    setInterval(function(){ load(); loadChannels(); loadTom(); }, 5 * 60 * 1000);
+    load(); loadChannels();
+    setInterval(function(){ load(); loadChannels(); }, 5 * 60 * 1000);
     document.addEventListener('visibilitychange', function(){
-      if(document.visibilityState === 'visible') { load(); loadChannels(); loadTom(); }
+      if(document.visibilityState === 'visible') { load(); loadChannels(); }
     });
   }
   init();
