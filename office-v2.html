@@ -69,6 +69,9 @@
   minstens 11 s (langer zolang er een 'working' is, max 4 min) en lopen terug. Zit het paar in een terugkoppellus
   (sterk samenhangende component van >= 3 agents, loopGroups()), dan schuiven tot 2 lus-buren aan (max 4 per
   tafel). Test: office-v2.html?overleg=1 start direct een overleg van de grootste lus.
+  26-10: kantinekaartje (zelfde vorm als de afdelingskaartjes) boven de achterhoek: in overleg, statafels vrij,
+  overlegpaden, terugkoppellussen; klik = inzoomen + kantinepaneel (focus type 'canteen'). Deuren hebben een
+  trap van STEP_N grijze treden over de volle deurbreedte (stepsSvg).
   22-10: alle run-tellingen ('runs 24 u', pijpsnelheid, replay) tellen alleen runs MET WERK (jarvis_run_has_work;
   lege polls zoals 'vertaald 0' of 'Geen nieuwe ...' tellen niet mee; patronen in jarvis_run_idle_patterns).
   Replay (21-10): knop '24 u' in de kop speelt de runs van de afgelopen 24 uur af (bridge_agent_runs) met een
@@ -283,6 +286,9 @@
   @media (max-width:880px){.replay{right:14px;flex-wrap:wrap}.rp-track{flex-basis:100%;order:5}.rp-count{display:none}}
   /* 21-10 kantine + looppad vanaf het brein */
   .canteen{--c:#ffb547;pointer-events:none}
+  .canteen .card{pointer-events:auto}
+  .canteen.cur .card .pcard{transform:translateY(-4px)}
+  .canteen.cur .card .edge{stroke-opacity:.95;stroke-width:1.5}
   #floor.intro .canteen{animation:rise .55s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i)*55ms)}
   .canteen .slab-top{fill:#1c1a16;stroke:color-mix(in srgb,var(--c) 55%,transparent);stroke-width:1.1;stroke-linejoin:round}
   .canteen .ct-tile{stroke:#2c2820;stroke-width:.8}
@@ -1307,6 +1313,7 @@
      gegevens die de pagina toch al heeft. */
   var P_PAD = 12, P_ROW = 13.6, P_HEAD = 17, P_BIG = 47;
   function panelRows(d) {
+    if (d.canteen) return canteenRows();
     var r = S.panels[d.name];
     if (!r || !r.labels) return [];
     return r.labels.map(function (lb, i) {
@@ -1315,6 +1322,7 @@
     }).slice(0, 3);
   }
   function panelFoot(d) {
+    if (d.canteen) return canteenFoot();
     var r = S.panels[d.name], c = counts(d.agents);
     if (r) return [Number(r.doing) || 0, Number(r.next) || 0, Number(r.done) || 0];
     var runs = 0; d.agents.forEach(function (a) { runs += Number(a.runs_24h) || 0; });
@@ -1329,8 +1337,34 @@
     var nrows = panelRows(d).length;
     return P_BIG + (nrows ? nrows * P_ROW + 6 : 2) + 22;
   }
+  /* ---- Kantinekaartje (26-10): zelfde vorm als de afdelingskaartjes, klikbaar, zoomt in en opent het
+     kantinepaneel. Waarden komen uit wat de pagina al weet: lopende overleggen (S.subs meet), statafels,
+     koppelingen (v_office_links) en terugkoppellussen (loopGroups). KLAAR telt overleggen sinds het laden. */
+  function canteenNow() {
+    var m = S.subs.filter(function (x) { return x.live && x.meet; }), n = 0;
+    m.forEach(function (x) { n += x.ids.length; });
+    return { meets: m, agents: n };
+  }
+  function canteenLoops() {
+    var L = loopGroups(), seen = [], out = [];
+    Object.keys(L.comp).forEach(function (id) { var c = L.comp[id]; if (seen.indexOf(c) < 0) { seen.push(c); out.push(c); } });
+    return out.sort(function (a, b) { return b.length - a.length; });
+  }
+  function canteenTables() { return S.canteen && S.canteen.tables ? S.canteen.tables.length : 4; }
+  function canteenRows() {
+    var nw = canteenNow();
+    return [["STATAFELS VRIJ", (canteenTables() - nw.meets.length) + "/" + canteenTables()],
+            ["OVERLEGPADEN", String(S.links.length)], ["TERUGKOPPELLUSSEN", String(canteenLoops().length)]];
+  }
+  function canteenFoot() { var nw = canteenNow(); return [nw.meets.length, S.meetsDone || 0, canteenTables() - nw.meets.length]; }
+  function canteenCardSvg(c) {
+    var tp = iso(c.x, c.y, SLAB);
+    return '<g class="card pfC" data-canteen="1" tabindex="0" role="button" aria-label="Kantine" transform="translate(' + f1(tp[0]) + "," + f1(tp[1] - CARD_LIFT) + ')">'
+      + '<line class="stem" x1="0" y1="0" x2="0" y2="26"/><circle class="pin" r="2" cy="26"/>' + cardInner(c) + "</g>";
+  }
   function cardInner(d) {
     var W = cardWidth(d), H = cardHeight(d), rows = panelRows(d), ft = panelFoot(d);
+    var big = d.canteen ? canteenNow().agents : d.agents.length, bigL = d.canteen ? "IN OVERLEG" : "AGENTS";
     var L = -W / 2, T = -H, h = "";
     h += '<g class="csc" transform="scale(' + cardScale().toFixed(3) + ')"><g class="pcard">'
       + '<rect class="bg" x="' + f1(L) + '" y="' + f1(T) + '" width="' + f1(W) + '" height="' + f1(H) + '" rx="11"/>'
@@ -1339,8 +1373,8 @@
       + '<circle class="dot2" cx="' + f1(L + P_PAD + 3.5) + '" cy="' + f1(T + P_HEAD - 3.2) + '" r="3.5"/>'
       + '<text class="tt" x="' + f1(L + P_PAD + 13) + '" y="' + f1(T + P_HEAD) + '">' + esc(String(d.name).toUpperCase()) + "</text>"
       /* aantal agents groot */
-      + '<text class="num" x="' + f1(L + P_PAD) + '" y="' + f1(T + P_BIG - 6) + '">' + d.agents.length + "</text>"
-      + '<text class="numl" x="' + f1(L + P_PAD + String(d.agents.length).length * 15 + 6) + '" y="' + f1(T + P_BIG - 7) + '">AGENTS</text>';
+      + '<text class="num" x="' + f1(L + P_PAD) + '" y="' + f1(T + P_BIG - 6) + '">' + big + "</text>"
+      + '<text class="numl" x="' + f1(L + P_PAD + String(big).length * 15 + 6) + '" y="' + f1(T + P_BIG - 7) + '">' + bigL + "</text>";
     /* resultaatregels met stippellijn ertussen */
     rows.forEach(function (r, i) {
       var y = T + P_BIG + 10 + i * P_ROW;
@@ -1352,7 +1386,7 @@
     /* voet: doing / next / done */
     var fy = T + H - 20;
     h += '<line class="sep" x1="' + f1(L + P_PAD) + '" y1="' + f1(fy) + '" x2="' + f1(-L - P_PAD) + '" y2="' + f1(fy) + '"/>';
-    var fx = L + P_PAD, names = ["DOING", "NEXT", "DONE"];
+    var fx = L + P_PAD, names = d.canteen ? ["NU", "KLAAR", "VRIJ"] : ["DOING", "NEXT", "DONE"];
     ft.forEach(function (v, i) {
       h += '<text class="fl" x="' + f1(fx) + '" y="' + f1(fy + 13) + '">' + names[i] + "</text>"
         + '<text class="fv' + (i === 0 ? " d" : "") + '" x="' + f1(fx + names[i].length * 5.4 + 5) + '" y="' + f1(fy + 13.4) + '">'
@@ -1977,17 +2011,24 @@
     s += '<polygon points="' + pts([wpt(d, ax, ia, iz0), wpt(d, ax, ia + (ib - ia) * 0.42, iz0 + (iz1 - iz0) * 0.7), wpt(d, ax, ib, iz0 + (iz1 - iz0) * 0.25), wpt(d, ax, ib, iz0)]) + '" fill="' + it.c2 + '"/>';
     return s;
   }
-  /* opstapje van een deur naar de vloer: n = buitenwaartse normaal, t = richting langs de wand */
-  function stepsSvg(p, n, t, col) {
-    function blk(o0, o1, h) {
-      var q = function (o, s, z) { return iso(p[0] + n[0] * o + t[0] * s, p[1] + n[1] * o + t[1] * s, z); }, hw = 0.42;
-      var top = [q(o0, -hw, h), q(o0, hw, h), q(o1, hw, h), q(o1, -hw, h)];
-      var fr = [q(o1, -hw, h), q(o1, hw, h), q(o1, hw, 0), q(o1, -hw, 0)];
-      var sd = [q(o0, hw, h), q(o1, hw, h), q(o1, hw, 0), q(o0, hw, 0)];
-      var sd2 = [q(o0, -hw, h), q(o1, -hw, h), q(o1, -hw, 0), q(o0, -hw, 0)];
-      return poly(sd, shade(col, 0.6)) + poly(sd2, shade(col, 0.6)) + poly(fr, shade(col, 0.8)) + poly(top, shade(col, 1.12));
+  /* trap van een deur naar het looppad (26-10): STEP_N grijze treden over de volle deurbreedte, de bovenste
+     tegen de vloer aan, de onderste het verst naar buiten. n = buitenwaartse normaal, t = richting langs de wand.
+     Elke trede is een eigen schijf (z van de trede eronder tot zijn eigen hoogte), van onder naar boven getekend. */
+  var STEP_N = 4, STEP_D = 0.17, STEP_HW = DOOR / 2 + 0.06;
+  var STEP_TOP = "#a3abb5", STEP_RISE = "#6f7782", STEP_SIDE = "#555c66", STEP_NOSE = "#c9d0d8";
+  function stepsSvg(p, n, t) {
+    var s = "", k;
+    function q(o, u, z) { return iso(p[0] + n[0] * o + t[0] * u, p[1] + n[1] * o + t[1] * u, z); }
+    for (k = 1; k <= STEP_N; k++) {
+      var z0 = SLAB * (k - 1) / (STEP_N + 1), z1 = SLAB * k / (STEP_N + 1), o1 = (STEP_N + 1 - k) * STEP_D, hw = STEP_HW;
+      s += poly([q(0, -hw, z1), q(o1, -hw, z1), q(o1, -hw, z0), q(0, -hw, z0)], STEP_SIDE)
+        + poly([q(0, hw, z1), q(o1, hw, z1), q(o1, hw, z0), q(0, hw, z0)], STEP_SIDE)
+        + poly([q(o1, -hw, z1), q(o1, hw, z1), q(o1, hw, z0), q(o1, -hw, z0)], STEP_RISE)
+        + poly([q(0, -hw, z1), q(0, hw, z1), q(o1, hw, z1), q(o1, -hw, z1)], STEP_TOP);
+      var a = q(o1 - 0.02, -hw, z1), b = q(o1 - 0.02, hw, z1);
+      s += '<line x1="' + f1(a[0]) + '" y1="' + f1(a[1]) + '" x2="' + f1(b[0]) + '" y2="' + f1(b[1]) + '" stroke="' + STEP_NOSE + '" stroke-width=".9"/>';
     }
-    return blk(0, 0.5, SLAB / 3) + blk(0, 0.25, SLAB * 2 / 3);
+    return '<g class="steps">' + s + "</g>";
   }
   function wallsInner(d) {
     var plan = wallPlan(d), s = "", col = mixHex(d.color || "#8aa0b5", "#2a3546", 0.14);
@@ -2002,7 +2043,7 @@
         return;
       }
       /* opstapje achter de deur (naar buiten, achter de wand) */
-      s += ax === "x" ? stepsSvg([g, d.y], [0, -1], [1, 0], col) : stepsSvg([d.x, g], [-1, 0], [0, 1], col);
+      s += ax === "x" ? stepsSvg([g, d.y], [0, -1], [1, 0]) : stepsSvg([d.x, g], [-1, 0], [0, 1]);
       [[A, ga], [gb, B]].forEach(function (seg) {
         s += wquad(d, ax, seg[0], seg[1], 0, WALL_H, "wall wall-" + ax);
         s += wquad(d, ax, seg[0], seg[1], 0, 4, "wall-base", 0.01);
@@ -2049,14 +2090,14 @@
       box(fx - DOOR / 2 - 0.08, y1 - T, 0.08, T, 0, DOOR_H, fc) + box(fx + DOOR / 2, y1 - T, 0.08, T, 0, DOOR_H, fc)
       + box(fx - DOOR / 2 - 0.08, y1 - T, DOOR + 0.16, T, DOOR_H, 5, fc)
       + poly([iso(fx - DOOR * 0.3, y1, SLAB + DOOR_H + 1.5), iso(fx + DOOR * 0.3, y1, SLAB + DOOR_H + 1.5), iso(fx + DOOR * 0.3, y1, SLAB + DOOR_H + 3.5), iso(fx - DOOR * 0.3, y1, SLAB + DOOR_H + 3.5)], "none", ' class="door-sign"')
-      + stepsSvg([fx, y1], [0, 1], [1, 0], col));
+      + stepsSvg([fx, y1], [0, 1], [1, 0]));
     /* zijdeur in x1 */
     push(x1 - 0.85, gy - DOOR / 2 + 0.1,
       poly([iso(x1 - 0.05, gy - DOOR / 2, SLAB + DOOR_H - 2), iso(x1 - 0.86, gy - DOOR / 2 + 0.16, SLAB + DOOR_H - 2), iso(x1 - 0.86, gy - DOOR / 2 + 0.16, SLAB), iso(x1 - 0.05, gy - DOOR / 2, SLAB)], "none", ' class="door-glass"'));
     push(x1 + 0.02, gy,
       box(x1 - T, gy - DOOR / 2 - 0.08, T, 0.08, 0, DOOR_H, fc) + box(x1 - T, gy + DOOR / 2, T, 0.08, 0, DOOR_H, fc)
       + box(x1 - T, gy - DOOR / 2 - 0.08, T, DOOR + 0.16, DOOR_H, 5, fc)
-      + stepsSvg([x1, gy], [1, 0], [0, 1], col));
+      + stepsSvg([x1, gy], [1, 0], [0, 1]));
   }
 
   function propList(d) {
@@ -2381,7 +2422,7 @@
     items.forEach(function (it) {
       if (it.canteen) {
         var c = it.canteen;
-        h += '<g class="canteen" data-r="' + [c.x, c.y, c.x + c.w, c.y + c.d].map(function (v) { return v.toFixed(3); }).join(",") + '" style="--c:' + CANTEEN_C + ";--i:" + (di++) + '">' + canteenInner(c) + "</g>";
+        h += '<g class="canteen" data-r="' + [c.x, c.y, c.x + c.w, c.y + c.d].map(function (v) { return v.toFixed(3); }).join(",") + '" style="--c:' + CANTEEN_C + ";--i:" + (di++) + '">' + canteenInner(c) + canteenCardSvg(c) + "</g>";
         return;
       }
       if (it.brain) { h += '<g class="brain" data-r="' + [-BRAIN / 2, -BRAIN / 2, BRAIN / 2, BRAIN / 2].join(",") + '" style="--i:' + (di++) + '">' + brainInner() + "</g>"; return; }
@@ -2456,6 +2497,11 @@
       css += ".pf" + i + " .pcard{filter:url(#fG" + i + ")}"
         + ".pf" + i + ":hover .pcard,.pf" + i + ":focus-visible .pcard,.dept.cur .pf" + i + " .pcard{filter:url(#fGu" + i + ")}";
     });
+    defs += '<filter id="fGC" x="-65%" y="-65%" width="230%" height="230%"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity=".55"/>'
+      + '<feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="' + CANTEEN_C + '" flood-opacity=".34"/></filter>'
+      + '<filter id="fGCu" x="-85%" y="-85%" width="270%" height="270%"><feDropShadow dx="0" dy="9" stdDeviation="8" flood-color="#000" flood-opacity=".6"/>'
+      + '<feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="' + CANTEEN_C + '" flood-opacity=".8"/></filter>';
+    css += ".pfC .pcard{filter:url(#fGC)}.pfC:hover .pcard,.pfC:focus-visible .pcard,.canteen.cur .pfC .pcard{filter:url(#fGCu)}";
     $("glowDefs").innerHTML = defs;
     $("glowCss").textContent = css;
   }
@@ -2492,6 +2538,8 @@
       var g = elWorld.querySelector('.card[data-card="' + CSS.escape(d.name) + '"]'); if (!g) return;
       g.innerHTML = '<line class="stem" x1="0" y1="0" x2="0" y2="26"/><circle class="pin" r="2" cy="26"/>' + cardInner(d);
     });
+    var cg = elWorld.querySelector('.card[data-canteen]');
+    if (cg && S.canteen) cg.innerHTML = '<line class="stem" x1="0" y1="0" x2="0" y2="26"/><circle class="pin" r="2" cy="26"/>' + cardInner(S.canteen);
     var bs = $("brainSub"); if (bs) bs.textContent = brainSub();
   }
   function agentEl(id) { return elWorld.querySelector('.ag[data-id="' + CSS.escape(id) + '"]'); }
@@ -2521,6 +2569,7 @@
     var C = S.canteen;
     if (C) [iso(C.x, C.y, SLAB + WALL_H), iso(C.x + C.w, C.y, SLAB + WALL_H), iso(C.x + C.w, C.y + C.d, 0), iso(C.x, C.y + C.d, 0), iso(C.x, C.y + C.d, SLAB + WALL_H)]
       .forEach(function (p) { xs.push(p[0]); ys.push(p[1]); });
+    if (C) { var ctp = iso(C.x, C.y, SLAB), ccw = cardWidth(C) * ks / 2 + 6; xs.push(ctp[0] - ccw, ctp[0] + ccw); ys.push(ctp[1] - CARD_LIFT - cardHeight(C) * ks - 8); }
     ys.push(iso(0, 0, 0)[1] - LIVE_LIFT - LIVE_H - 10);   /* bovenkant van het zwevende brein */
     var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
     S.fitBox = boxFor([[x0 - 24, y0 - 20], [x1 + 24, y1 + 24]], 0);
@@ -3049,6 +3098,10 @@
     var dx = to[0] - from[0], dy = to[1] - from[1];
     W.face(dx + dy < 0 ? 1 : 0, dx - dy < 0 ? -1 : 1);
   }
+  function canteenChanged() {
+    patchCards();
+    if (S.focus && S.focus.type === "canteen") { renderPanel(); applyFocus(); }
+  }
   function runMeet(ids, working, tries) {
     if (document.hidden || REDUCED || !S.canteen) return;
     var C = S.canteen; tries = tries || 0;
@@ -3060,7 +3113,7 @@
       .filter(function (a) { return canDesk(a) && !S.pose[a.agent_id] && !busyAgent(a.agent_id); })).slice(0, 4);
     var tb = freeTable(); if (tb < 0) return again();
     var T = C.tables[tb], tc = [C.x + T.c[0], C.y + T.c[1]];
-    var ses = { meet: true, ids: mem.map(function (a) { return a.agent_id; }), table: tb, live: true }; S.subs.push(ses);
+    var ses = { meet: true, ids: mem.map(function (a) { return a.agent_id; }), table: tb, live: true }; S.subs.push(ses); canteenChanged();
     var ep = S.epoch; function alive() { return S.epoch === ep && ses.live; }
     var bub = null;
     var legs = mem.map(function (a, i) {
@@ -3072,6 +3125,7 @@
       legs.forEach(function (L) { L.W.el.remove(); home(L); });
       if (bub) bub.remove();
       ses.live = false; S.subs = S.subs.filter(function (s) { return s.live; });
+      S.meetsDone = (S.meetsDone || 0) + 1; canteenChanged();
       renderBubbles();
     }
     /* heen: opstaan, naar de kantine lopen, aan de statafel gaan staan (iets na elkaar) */
@@ -3353,6 +3407,13 @@
     p.push([tp[0] - cw, tp[1] - CARD_LIFT - cardHeight(d) - 10], [tp[0] + cw, tp[1] - CARD_LIFT - cardHeight(d) - 10]);
     setCam(boxFor(p, 40), !instant);
   }
+  function zoomToCanteen(instant) {
+    var C = S.canteen; if (!C) return;
+    var p = [iso(C.x, C.y, SLAB + WALL_H), iso(C.x + C.w, C.y, SLAB + WALL_H), iso(C.x + C.w, C.y + C.d, 0), iso(C.x, C.y + C.d, 0)];
+    var tp = iso(C.x, C.y, SLAB), cw = cardWidth(C) / 2 + 6;
+    p.push([tp[0] - cw, tp[1] - CARD_LIFT - cardHeight(C) - 10], [tp[0] + cw, tp[1] - CARD_LIFT - cardHeight(C) - 10]);
+    setCam(boxFor(p, 40), !instant);
+  }
   function zoomToAgent(a, instant) {
     /* subworkflow: naar de afdeling waar hij nu een werkplek heeft (anders de laatste aanroeper) */
     if (a._sub) { var ss = S.subs.filter(function (s) { return s.live && s.to === a.agent_id; })[0], c = ss ? S.byId[ss.from] : callerOf(a); if (c && deptOf(c)) a = c; }
@@ -3534,6 +3595,7 @@
     if (f && f.type === "agent") { loadRuns(S.byId[f.id]); }
     if (!noZoom) {
       if (f && f.type === "dept") { var d = deptByName(f.name); if (d) zoomToDept(d); }
+      else if (f && f.type === "canteen") zoomToCanteen();
       else if (!f) setCam(S.fitBox, true);
     }
   }
@@ -3543,7 +3605,8 @@
     refreshLinks();
     var f = S.focus, hl = null, pairs = [], toolName = S.hoverTool || (f && f.type === "tool" ? f.name : null);
     Array.prototype.forEach.call(elWorld.querySelectorAll(".ag.sel,.ag.hl"), function (e) { e.classList.remove("sel", "hl"); });
-    Array.prototype.forEach.call(elWorld.querySelectorAll(".dept.hl-d,.dept.cur"), function (e) { e.classList.remove("hl-d", "cur"); });
+    Array.prototype.forEach.call(elWorld.querySelectorAll(".dept.hl-d,.dept.cur,.canteen.cur"), function (e) { e.classList.remove("hl-d", "cur"); });
+    if (f && f.type === "canteen") { var cgc = elWorld.querySelector(".canteen"); if (cgc) cgc.classList.add("cur"); }
     Array.prototype.forEach.call(elTools.querySelectorAll(".tool"), function (e) { e.classList.remove("on", "has", "pre"); e.setAttribute("aria-pressed", "false"); });
 
     if (toolName) {
@@ -3556,6 +3619,10 @@
       }
     } else if (f && f.type === "dept") {
       hl = S.agents.filter(function (a) { return a.dept_name === f.name; }).map(function (a) { return a.agent_id; });
+    } else if (f && f.type === "canteen") {
+      var ci = []; canteenNow().meets.forEach(function (m) { ci = ci.concat(m.ids); });
+      canteenLoops().forEach(function (c) { ci = ci.concat(c); });
+      hl = ci.length ? ci : null;
     } else if (f && f.type === "state") {
       hl = S.agents.filter(function (a) { return st(a) === f.key; }).map(function (a) { return a.agent_id; });
     }
@@ -3675,6 +3742,31 @@
     });
     return h + "</div>";
   }
+  function panelCanteen() {
+    var nw = canteenNow(), lp = canteenLoops(), T = canteenTables();
+    var h = '<button type="button" class="back" data-back>← Overzicht</button><div style="--c:' + CANTEEN_C + '">'
+      + "<h2>☕ Kantine</h2>"
+      + '<p class="muted">Hier overleggen agents. Draait een agent kort na een agent die hem levert (koppeling in v_office_links), '
+      + "dan lopen beiden naar een vrije statafel, staan daar minstens 11 seconden (langer zolang een van hen bezig is, max 4 minuten) "
+      + "en lopen terug. Zit het paar in een terugkoppellus van 3 of meer agents, dan schuiven tot 2 lus-buren aan.</p>";
+    h += '<div class="kv"><div class="w"><b>' + nw.agents + "</b><span>in overleg</span></div><div><b>" + (T - nw.meets.length) + "/" + T + "</b><span>statafels vrij</span></div>"
+      + "<div><b>" + S.links.length + "</b><span>overlegpaden</span></div><div><b>" + (S.meetsDone || 0) + "</b><span>klaar</span></div></div>";
+    h += "<h3>Nu in overleg" + (nw.meets.length ? '<span class="n">' + nw.meets.length + "</span>" : "") + "</h3>";
+    if (!nw.meets.length) h += '<p class="muted">Niemand aan de statafels.</p>';
+    nw.meets.forEach(function (m, i) {
+      h += '<div class="lanehd">STATAFEL ' + (m.table + 1) + '</div><ul class="list">';
+      m.ids.forEach(function (id) { var a = S.byId[id]; if (a) h += agentRow(a, a.dept_name); });
+      h += "</ul>";
+    });
+    h += "<h3>Terugkoppellussen" + (lp.length ? '<span class="n">' + lp.length + "</span>" : "") + "</h3>";
+    if (!lp.length) h += '<p class="muted">Geen lussen van 3 of meer agents.</p>';
+    lp.forEach(function (c, i) {
+      h += '<div class="lanehd">LUS ' + (i + 1) + " · " + c.length + ' AGENTS</div><ul class="list">';
+      c.forEach(function (id) { var a = S.byId[id]; if (a) h += agentRow(a, a.dept_name); });
+      h += "</ul>";
+    });
+    return h + "</div>";
+  }
   function panelState(k) {
     var list = S.agents.filter(function (a) { return st(a) === k; });
     var h = '<button type="button" class="back" data-back>← Overzicht</button><h2>' + STATES[k].l + '</h2><p class="muted">' + list.length + " agents</p>";
@@ -3769,6 +3861,7 @@
     else if (f && f.type === "dept") { var d = deptByName(f.name); h = d ? panelDept(d) : panelOverview(); }
     else if (f && f.type === "tool" && toolByName(f.name)) h = panelTool(toolByName(f.name));
     else if (f && f.type === "state") h = panelState(f.key);
+    else if (f && f.type === "canteen" && S.canteen) h = panelCanteen();
     else h = panelOverview();
     elPanel.innerHTML = h;
     elPanel.scrollTop = key === S.panelKey ? keep : 0;
@@ -3794,6 +3887,7 @@
     if (suppressClick) return;
     var ag = closest(e.target, ".ag");
     if (ag) { if (!window.matchMedia("(hover: hover)").matches) hideTip(); var id = ag.getAttribute("data-id"); setFocus(same(S.focus, "agent", id) ? null : { type: "agent", id: id }, true); return; }
+    if (closest(e.target, ".card[data-canteen]")) { setFocus(S.focus && S.focus.type === "canteen" ? null : { type: "canteen" }); return; }
     var sl = closest(e.target, ".slab,.card");
     if (sl) { var n = sl.parentNode.getAttribute("data-dept"); setFocus(same(S.focus, "dept", n) ? null : { type: "dept", name: n }); return; }
     var sd = closest(e.target, ".subdept");
