@@ -395,6 +395,7 @@ async function openContact(id,opt){
   id=String(id);ctSel=id;$$("#ctRows .row").forEach(r=>r.classList.toggle("sel",r.dataset.c===id));
   if(!ctLoaded)loadContacts(true);
   const d=$("#ctDetail");d.innerHTML=`<div class="loader">${t("loading.ct")}</div>`;
+  CTXML=null;
   try{CT=await rpc("nexus_contact_by_key",{p_key:id})}catch(e){d.innerHTML=`<div class="empty">${esc(e.message)}</div>`;return}
   /* MySoltura bestaat niet meer: wachtwoord-resets van het oude klantaccount zijn geen contactmoment (Rick, 20-10-2026) */
   if(CT&&CT.timeline)CT.timeline=CT.timeline.filter(e=>!(e.kind==="request"&&(e.title==="cprreset"||e.title==="dashboard")));
@@ -416,7 +417,7 @@ function renderContact(){
   d.innerHTML=`<div class="dh dh-ct"><div class="ini big" style="background:${hue(name)}">${esc(initials(name))}</div>
     <div style="min-width:0;flex:1"><h2>${esc(name)}${(c.roles||[]).includes("agent")&&D.company?`<span class="h2co"> · ${esc(D.company)}</span>`:""}</h2>
       <div class="roles">${(c.roles||[]).map(roleTag).join("")}<span class="sm muted" style="margin-left:6px">👤 <b style="color:${REPC[c.rep]||"#94a3b8"}">${esc(rep(c.rep))}</b>${D.referred_by?` · <span title="${esc(t("f.referred"))}">${esc(L2("Verwezen door","Referred by"))} <b>${esc(D.referred_by)}</b></span>`:""} ${c.wp_id?" · #"+c.wp_id:""}${c.language?" · 🌐 "+esc(c.language):""}</span></div></div>
-    <div class="acts"><a class="act-edit" data-cedit="1">✎ ${t("act.pedit")}</a>${ME&&ME.role==="admin"?`<a class="act-del" data-cdel="1" title="${esc(L2("Contact definitief verwijderen, met al zijn contactmomenten","Delete contact permanently, with all its contact moments"))}">🗑 ${L2("Verwijderen","Delete")}</a>`:""}</div>
+    <div class="acts"><span id="ctXml"></span><a class="act-edit" data-cedit="1">✎ ${t("act.pedit")}</a>${ME&&ME.role==="admin"?`<a class="act-del" data-cdel="1" title="${esc(L2("Contact definitief verwijderen, met al zijn contactmomenten","Delete contact permanently, with all its contact moments"))}">🗑 ${L2("Verwijderen","Delete")}</a>`:""}</div>
     <div class="dh-wide">
       <div class="cstrip">${phones.map(p=>`<span class="cpill"><a href="tel:${esc(cleanTel(p))}">☎ ${esc(p)}</a><a class="wa" href="https://wa.me/${esc(waNum(p))}" target="_blank" rel="noopener" title="WhatsApp">WA</a></span>`).join("")}${!phones.length?`<span class="cpill nophone"><a data-cedit="1" title="${esc(t("addphone"))}">☎ ${t("nophone")} · <b>+ ${t("addphone")}</b></a></span>`:""}${emails.map(e=>`<span class="cpill"><a href="mailto:${esc(e)}">✉ ${esc(e)}</a></span>`).join("")}${!emails.length?`<span class="cpill nophone"><a data-cedit="1">✉ ${t("noemail")} · <b>+ ${t("addemail")}</b></a></span>`:""}</div>
       ${(CT.partners||[]).map(pt=>`<div class="introbar ptbar" data-c="${esc(pt.id)}">💑 ${t("pt.label")} <b>${esc(pt.name||pt.email||"—")}</b>${pt.phone?` · ${esc(pt.phone)}`:""}${pt.email?` · ${esc(pt.email)}`:""}<span class="go">${t("pt.open")}</span></div>`).join("")}
@@ -426,6 +427,7 @@ function renderContact(){
   d.querySelectorAll(".st").forEach(b=>b.onclick=()=>{ctSub=b.dataset.s;renderContact()});
   d.querySelectorAll("[data-cedit]").forEach(ce=>ce.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.openContact(c.key||c.id||c.wp_id,{sb,rpc,lang:()=>LANG,me:()=>ME,onSaved:()=>{openContact(ctSel);loadContacts(true)}}));
   const cdel=d.querySelector("[data-cdel]");if(cdel)cdel.onclick=()=>delContact(c,name);
+  if((c.roles||[]).includes("agent")&&c.id)ctXmlChip(c.id,name);
   const B=$("#ctBody");
   if(ctSub==="profiel"){B.innerHTML=ctProfile(c,raw);const tc=$("#ctTariff");if(tc)NEXUS_TARIFF.mount(tc,CT.core.id,{rpc,esc,eur,lang:()=>LANG})}
   if(ctSub==="woningen")B.innerHTML=ctProps();
@@ -441,6 +443,38 @@ function renderContact(){
   if(ctSub==="mailings")B.innerHTML=ctMailings(c);
   B.querySelectorAll("[data-cedit]").forEach(ce=>ce.onclick=()=>window.NEXUS_EDIT&&NEXUS_EDIT.openContact(c.key||c.id||c.wp_id,{sb,rpc,lang:()=>LANG,me:()=>ME,onSaved:()=>{openContact(ctSel);loadContacts(true)}}));
 }
+/* ---------- XML-feed in de kop van een makelaar (Rick, 26-10-2026) ----------
+   Links van Bewerken: of er een XML-importfeed aan dit contact hangt (groen = actief, grijs = uit, rood = laatste run fout).
+   Klik opent een venster met alle woningen van deze makelaar (via de feed of als aanbiedend makelaar); klik op een woning opent hem. */
+let CTXML=null;
+async function ctXmlChip(id,name){
+  let r=CTXML&&CTXML.id===id?CTXML.r:null;if(!r){try{r=await rpc("nexus_contact_feed",{p_id:id})}catch(e){return}}
+  const el=$("#ctXml");if(!el||!CT||!CT.contact||CT.contact.id!==id)return;
+  CTXML={id,name,r};
+  const imp=r.imports||[], props=r.properties||[];
+  if(!imp.length){if(!props.length)return;
+    el.outerHTML=`<a class="act-xml off" data-ctxml="1" title="${esc(L2("Geen XML-feed gekoppeld; wel woningen met deze makelaar als aanbieder","No XML feed linked; properties offered by this agent"))}">🏠 ${L2("Woningen","Properties")} <b>${props.length}</b></a>`;}
+  else{const on=imp.some(f=>f.active), err=imp.some(f=>f.active&&f.last_error), live=imp.reduce((a,f)=>a+(f.live_count||0),0);
+    const tip=imp.map(f=>`${f.code} (${f.ref_prefix||"—"}) · ${f.active?L2("actief","active"):L2("uit","off")} · ${f.last_run_at?L2("laatste import ","last import ")+fdate(f.last_run_at):L2("nog nooit geïmporteerd","never imported")}${f.last_error?" · "+L2("fout: ","error: ")+f.last_error:""}`).join("\n");
+    el.outerHTML=`<a class="act-xml ${err?"err":on?"on":"off"}" data-ctxml="1" title="${esc(tip+"\n"+L2("Klik: woningen van deze makelaar","Click: this agent's properties"))}">⇄ XML <b>${esc(imp.map(f=>f.code).join(", "))}</b> · ${live}</a>`;}
+  const b=$("#ctDetail [data-ctxml]");if(b)b.onclick=()=>openCtXml()}
+function openCtXml(){
+  if(!CTXML)return;const {name,r}=CTXML, imp=r.imports||[], props=r.properties||[];
+  closeMail();document.body.classList.add("pe-open");
+  const live=props.filter(p=>p.status==="available"||p.status==="under_offer").length;
+  const feeds=imp.map(f=>`<span class="mvp-tag xf-${f.last_error&&f.active?"err":f.active?"on":"off"}">⇄ ${esc(f.code)} · ${esc(f.ref_prefix||"—")} · ${f.active?L2("actief","active"):L2("uit","off")} · ${f.last_run_at?L2("import ","import ")+fdate(f.last_run_at):L2("nog nooit geïmporteerd","never imported")}</span>`).join("");
+  const rows=props.length?props.map(p=>`<div class="xfp-r" data-p="${esc(p.reference)}">${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="">`:'<span class="ph"></span>'}
+      <span class="xfp-b"><b>${esc(p.reference)}</b>${p.ext_ref?` <span class="muted sm mono">${esc(p.ext_ref)}</span>`:""}<br><span class="muted sm">${esc([p.city,p.bedrooms?p.bedrooms+" "+L2("slpk","bed"):""].filter(Boolean).join(" · "))}</span></span>
+      <span class="xfp-p">${eur(p.price)}</span><span class="cp-st st-${esc(p.status||"")}">${esc(stLabel(p.status||"—"))}</span></div>`).join("")
+    :`<div class="empty">${imp.length?(imp.some(f=>!f.last_run_at)?L2("De feed is nog nooit geïmporteerd: nog geen woningen.","The feed has never been imported: no properties yet."):L2("Geen woningen uit deze feed.","No properties from this feed.")):L2("Geen woningen gekoppeld.","No properties linked.")}</div>`;
+  const o=document.createElement("div");o.className="mvp xfp";
+  o.innerHTML=`<div class="mvp-box"><div class="mvp-hd"><div style="min-width:0;flex:1"><div class="mvp-sj">${esc(name)} · ${L2("woningen","properties")}</div>
+    <div class="mvp-meta">${feeds||`<span>${L2("Geen XML-feed gekoppeld","No XML feed linked")}</span>`}<span>${props.length} ${L2("totaal","total")} · ${live} ${L2("in aanbod","live")}</span>${imp.length?`<a class="xm-link" data-goxm="1">${L2("Open in XML","Open in XML")} →</a>`:""}</div></div>
+    <button class="pe-x" aria-label="${esc(t("mv.close"))}">×</button></div><div class="mvp-bd xfp-bd">${rows}</div></div>`;
+  document.body.appendChild(o);document.addEventListener("keydown",mailEsc);
+  o.addEventListener("click",e=>{if(e.target===o||e.target.closest(".pe-x")){closeMail();return}
+    if(e.target.closest("[data-goxm]")){closeMail();goHash("xm");return}
+    if(e.target.closest("[data-p]"))setTimeout(closeMail,0)})}
 /* ---------- Verwijderen vanuit de kop (Rick, 20-10-2026) ----------
    Contact: eerst controleren of er een woning aan hangt; zo ja alleen een waarschuwing, niets verwijderen.
    Anders gaan alle contactmomenten (aanvragen, bezichtigingen, mails, notities) en overige gekoppelde rijen mee. */
