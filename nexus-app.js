@@ -54,6 +54,7 @@ function rerender(){
   if(window.NEXUS_TOM)NEXUS_TOM.rerender();
   if(window.NEXUS_FEEDS&&curTab==="xm")NEXUS_FEEDS.rerender();
   if(window.NEXUS_REPORTS&&curTab==="rp")NEXUS_REPORTS.rerender();
+  if(window.NEXUS_PRINT&&curTab==="dr")NEXUS_PRINT.rerender();
   if(window.NEXUS_VIEWINGS&&curTab==="vw")NEXUS_VIEWINGS.rerender();
 }
 
@@ -168,7 +169,7 @@ async function loadTabBadges(){
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&booted)loadTabBadges()});
 
 /* ================= TABS / ROUTING ================= */
-const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",po:"--c-po",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp",vw:"--c-vw",fa:"--c-fa",cn:"--c-cn"};
+const TABC={ov:"--c-ov",ct:"--c-ct",pr:"--c-pr",mp:"--c-mp",ac:"--c-ac",po:"--c-po",xm:"--c-xm",ad:"--c-ad",rp:"--c-rp",dr:"--c-dr",vw:"--c-vw",fa:"--c-fa",cn:"--c-cn"};
 let curTab="ov";
 /* Geen Admin-tab meer in het menu: de invoerpagina (#ad) opent alleen via "+ Nieuw contact" / "+ Nieuwe woning";
    zolang die open staat licht de tab op waar je vandaan kwam (Contacten of Woningen). */
@@ -185,6 +186,8 @@ function setTab(t_,ref){if(isAcTab(t_)&&curTab!==t_)acReset(t_);curTab=t_;if(!is
   if(t_==="xm"&&window.NEXUS_FEEDS)NEXUS_FEEDS.open($("#p-xm"),{rpc,t,sb,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="ad"&&window.NEXUS_ADMIN)NEXUS_ADMIN.open($("#p-ad"),{sb,rpc,t,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="vw"&&window.NEXUS_VIEWINGS)NEXUS_VIEWINGS.open($("#p-vw"),{rpc,t,lang:()=>LANG,me:()=>ME,esc});
+  /* Afdrukken: woningbrochure op referentie + PDF's uit de downloads van de site (nexus-print.js), alle rollen */
+  if(t_==="dr"&&window.NEXUS_PRINT)NEXUS_PRINT.open($("#p-dr"),{rpc,sb,t,lang:()=>LANG,me:()=>ME,esc});
   if(t_==="rp"&&window.NEXUS_REPORTS)NEXUS_REPORTS.open($("#p-rp"),{rpc,t,lang:()=>LANG,me:()=>ME,esc});
   /* Facturen en Contracten: eigen onderdelen in NEXUS (nexus-parts.js), zelfde login en stijl */
   if((t_==="fa"||t_==="cn")&&window.NEXUS_PARTS)NEXUS_PARTS.open(t_,$("#p-"+t_),ref);
