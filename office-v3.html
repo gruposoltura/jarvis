@@ -18,7 +18,7 @@
   Lopen: Manhattan-route bureau -> gangpad -> deur(en) -> gangpad -> doel; de route door de zalen
   is een BFS over de deuren.
   Tekenen: een canvas (2:1 isometrisch, HW 26 / HH 13 zoals v2), sprites uit office-v2-assets
-  (desk-v3 / desk-empty-v3 / walker-v4 + *-map, ingekleurd per afdelingskleur x haarkleur).
+  (office-v3-assets/agents: desk-seat / walker + *-map, desk-empty-v3, ingekleurd per afdelingskleur x haarkleur).
   Test: ?overleg=1 start direct een kort en een gezamenlijk overleg; ?demo=1 speelt activiteit na.
   Deeplink: office-v3.html?agent=<agent_id>. Testhaak: window.OFFICE_TEST = {view: rows} vervangt de REST-laag.
 -->
@@ -541,7 +541,7 @@
   /* ---------------------------------------------------------------- assets */
   var IMG = {}, TC = {}, AVOK = false;
   function loadImg(k, f) { return new Promise(function (res) { var i = new Image(); i.onload = function () { IMG[k] = i; res(i); }; i.onerror = function () { res(null); }; i.src = ASSETS + f; }); }
-  Promise.all([loadImg("desk", "desk-v3.webp"), loadImg("deskMap", "desk-v3-map.webp"), loadImg("empty", "desk-empty-v3.webp"), loadImg("walk", "walker-v4.webp"), loadImg("walkMap", "walker-v4-map.webp"),
+  Promise.all([loadImg("desk", "../office-v3-assets/agents/desk-seat.webp"), loadImg("deskMap", "../office-v3-assets/agents/desk-seat-map.webp"), loadImg("empty", "desk-empty-v3.webp"), loadImg("walk", "../office-v3-assets/agents/walker.webp"), loadImg("walkMap", "../office-v3-assets/agents/walker-map.webp"),
     loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp"), loadImg("coolerZW", "../office-v3-assets/props/cooler_classic_ZW.webp"), loadImg("coolerZO", "../office-v3-assets/props/cooler_classic_ZO.webp"), loadImg("pl_monstera", "../office-v3-assets/props/plant_monstera.webp"), loadImg("pl_ficus", "../office-v3-assets/props/plant_ficus.webp"), loadImg("pl_kentia", "../office-v3-assets/props/plant_kentia.webp"), loadImg("pl_sansevieria", "../office-v3-assets/props/plant_sansevieria.webp"), loadImg("pl_succulent", "../office-v3-assets/props/plant_succulent.webp"), loadImg("pr_mfp", "../office-v3-assets/props/printer_mfp.webp"), loadImg("pr_laser", "../office-v3-assets/props/printer_laser.webp"), loadImg("pr_plotter", "../office-v3-assets/props/printer_plotter.webp"), loadImg("rk_closed", "../office-v3-assets/props/rack_closed.webp"), loadImg("rk_open", "../office-v3-assets/props/rack_open.webp")].concat(["mug_green", "mug_orange", "cup_cappu", "cup_espresso"].map(function (w) { return loadImg(w, "../office-v3-assets/props/" + w + ".webp"); })).concat(["white", "sticky", "bar", "line", "blank"].map(function (w) { return loadImg("flip_" + w, "../office-v3-assets/props/flip_" + w + ".webp"); })).concat(["ZW", "ZO"].map(function (w) { return loadImg("pou" + w, "../office-v3-assets/props/cooler_pou_" + w + ".webp"); })).concat(["white", "oak", "square"].map(function (w) { return loadImg("tb_" + w, "../office-v3-assets/props/tb_" + w + ".webp"); })).concat(["kettle", "grinder", "filter", "auto", "espresso"].map(function (w) { return loadImg("cm_" + w, "../office-v3-assets/props/cm_" + w + ".webp"); })).concat(["stack", "carafe", "mugs", "cappu", "glasses"].map(function (w) { return loadImg("ware_" + w, "../office-v3-assets/props/ware_" + w + ".webp"); })).concat(["white", "binders", "bookcase", "lockers", "sideboard"].reduce(function (l, c) { return l.concat([loadImg("cab_" + c, "../office-v3-assets/props/cab_" + c + ".webp"), loadImg("cab_" + c + "_m", "../office-v3-assets/props/cab_" + c + "_m.webp")]); }, []))).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
   var VID = $("brainVid"), vidOk = false;
   if (!REDUCED) { VID.src = ASSETS + "brain-core.mp4"; VID.addEventListener("canplay", function () { vidOk = true; }); var pp = VID.play(); if (pp && pp.catch) pp.catch(function () {}); }
@@ -549,18 +549,18 @@
      toetsenbord, grootste vlek, gaten gevuld, 1 px verbreed); een variant zonder handen per afdeling x haar,
      daarover de twee handen die om en om tikken (typeL / typeR uit v2). Vakken in pixels van de 757 x 904-bron. */
   var HANDS = { ready: false, cache: {}, layers: null, mask: null };
-  var HAND_BOX = [[295, 318, 398, 402], [380, 276, 478, 352]];
+  var HAND_BOX = [[338, 352, 418, 412], [402, 326, 500, 388]];   /* gerenderde zitter (Rick 27-10), in 757x904-maat */
   var TYPE_L = [[0, 0, 0], [.10, 0, -.85], [.20, 0, 0], [.38, .12, -.6], [.48, 0, 0], [.70, 0, -.95], [.80, 0, 0], [1, 0, 0]];
   var TYPE_R = [[0, 0, 0], [.14, -.1, -.8], [.26, 0, 0], [.52, 0, -.7], [.62, 0, 0], [.84, 0, -.9], [.92, 0, 0], [1, 0, 0]];
   function kf(fr, t) { for (var i = 1; i < fr.length; i++) if (t <= fr[i][0]) { var a = fr[i - 1], b = fr[i], f = (t - a[0]) / (b[0] - a[0] || 1); return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; } return [0, 0]; }
-  function deskPixels() { var w = 384, h = 459; function g(img) { var c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h); return x.getImageData(0, 0, w, h).data; } return { w: w, h: h, d: g(IMG.desk), m: g(IMG.deskMap) }; }
+  function deskPixels() { var w = 568, h = 678; function g(img) { var c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h); return x.getImageData(0, 0, w, h).data; } return { w: w, h: h, d: g(IMG.desk), m: g(IMG.deskMap) }; }
   function buildHands() {
     var P0 = deskPixels(), w = P0.w, h = P0.h, d = P0.d, m = P0.m, k = w / 757, all = new Uint8Array(w * h);
     HANDS.px = P0;
     HANDS.layers = HAND_BOX.map(function (bx) {
       var x0 = Math.floor(bx[0] * k), y0 = Math.floor(bx[1] * k), x1 = Math.ceil(bx[2] * k), y1 = Math.ceil(bx[3] * k), sk = new Uint8Array(w * h), x, y, i;
       for (y = y0; y < y1; y++) for (x = x0; x < x1; x++) { i = (y * w + x) * 4; var r = d[i], g = d[i + 1], b = d[i + 2];
-        if (d[i + 3] > 100 && r > 60 && r - b > 14 && r - b > 0.17 * r && r >= g && g >= b - 4 && m[i + 1] < 80 && m[i + 2] < 80) sk[y * w + x] = 1; }
+        if (d[i + 3] > 100 && r > 60 && r - b > 14 && r - b > 0.17 * r && r >= g && g >= b - 4 && m[i + 1] < 80 && m[i + 2] < 80 && m[i + 3] > 100) sk[y * w + x] = 1; }
       var lab = new Int32Array(w * h), best = 0, bestN = 0, id = 0;
       for (y = y0; y < y1; y++) for (x = x0; x < x1; x++) { var p0 = y * w + x; if (!sk[p0] || lab[p0]) continue; id++; var stk = [p0], n = 0; lab[p0] = id;
         while (stk.length) { var q = stk.pop(), qx = q % w; n++; [q - 1, q + 1, q - w, q + w].forEach(function (z) { if (z >= 0 && z < w * h && Math.abs((z % w) - qx) <= 1 && sk[z] && !lab[z]) { lab[z] = id; stk.push(z); } }); }
@@ -590,7 +590,7 @@
   }
   function tint(kind, color, hair) {
     var key = kind + color + hair; if (TC[key]) return TC[key];
-    var desk = kind === "desk", bi = desk ? IMG.desk : IMG.walk, mi = desk ? IMG.deskMap : IMG.walkMap, w = desk ? 384 : 640, h = desk ? 459 : 480;
+    var desk = kind === "desk", bi = desk ? IMG.desk : IMG.walk, mi = desk ? IMG.deskMap : IMG.walkMap, w = desk ? 568 : 1280, h = desk ? 678 : 1440;
     function g(img) { var c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h); return x.getImageData(0, 0, w, h).data; }
     var b = g(bi), m = g(mi), c = document.createElement("canvas"); c.width = w; c.height = h;
     var x = c.getContext("2d"), out = x.createImageData(w, h), o = out.data, C = rgbOf(color), Hh = rgbOf(hair);
@@ -737,14 +737,14 @@
         ctx.drawImage(HANDS.layers[0], p[0] - w * .5 + tl[0] * u, p[1] - h * .86 + tl[1] * u, w, h); ctx.drawImage(HANDS.layers[1], p[0] - w * .5 + tr[0] * u, p[1] - h * .86 + tr[1] * u, w, h); }
       if (s === "error" && !ag._walk) { var ex = p[0] + w * .1, ey = p[1] - h * .98; ctx.fillStyle = "#ff5d5d"; ctx.beginPath(); ctx.arc(ex, ey, Math.max(5, 7 * k), 0, 7); ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = "700 " + Math.max(7, 10 * k) + "px " + "system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("!", ex, ey + .5); ctx.textAlign = "start"; ctx.textBaseline = "alphabetic"; }
       HITS.push({ x: p[0] - w * .4, y: p[1] - h * .8, w: w * .8, h: h * .8, a: ag });
-      if (!ag._walk) ag._head = [p[0] + w * .08, p[1] - h * .72];
+      if (!ag._walk) ag._head = [p[0] + w * .24, p[1] - h * .70];
       return;
     }
     if (it.t === "walker") {
       var aw = it.a, ws = it.s, wp = Sx(ws.p[0], ws.p[1]), WH = 84 * k, WW = WH * 2 / 3;
       ctx.fillStyle = "rgba(10,14,20,.35)"; ctx.beginPath(); ctx.ellipse(wp[0], wp[1], 14 * k, 5.5 * k, 0, 0, 7); ctx.fill();
       if (AVOK) { var sheet = tint("walk", aw._room.color, aw._hair), row = ws.dy < 0 ? 1 : 0, fr = ws.moving ? Math.floor(now / 125) % 4 : 0;
-        ctx.save(); ctx.translate(wp[0], wp[1]); if (ws.dx < 0) ctx.scale(-1, 1); ctx.drawImage(sheet, fr * 160, row * 240, 160, 240, -WW / 2, -WH * .96, WW, WH); ctx.restore(); }
+        ctx.save(); ctx.translate(wp[0], wp[1]); if (ws.dx < 0) ctx.scale(-1, 1); if (!ws.moving) { fr = row; row = 2; } ctx.drawImage(sheet, fr * 320, row * 480, 320, 480, -WW / 2, -WH * .96, WW, WH); ctx.restore(); }
       HITS.push({ x: wp[0] - WW / 2, y: wp[1] - WH, w: WW, h: WH, a: aw }); aw._head = [wp[0], wp[1] - WH * .98];
     }
   }
