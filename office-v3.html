@@ -447,8 +447,9 @@
       /* hoek achter-rechts */
       var rx = d.x + d.w - 1.15;
       if (okAt(d, false, rx + .5)) {
-        if (/MARKETING|SALES/i.test(d.name)) items.push({ k: rx + d.y + .7, t: "prop", kind: "flip", x: rx, y: d.y + .35, color: d.color, seed: di });
+        if (/MARKETING|SALES/i.test(d.name)) items.push({ k: rx + d.y + .7, t: "prop", kind: "flip", x: rx, y: d.y + .35, color: d.color, seed: di, dept: d.name });
         else if (/INFRA/i.test(d.name)) { items.push({ k: rx + .45 + d.y + .5, t: "prop", kind: "rack", variant: "closed", x: rx + .1, y: d.y + .15 }); if (okAt(d, false, rx - .45)) items.push({ k: rx - .45 + d.y + .5, t: "prop", kind: "rack", variant: "open", x: rx - .8, y: d.y + .15 }); }
+        else if (big && di % 3 === 0) items.push({ k: rx + d.y + .7, t: "prop", kind: "flip", x: rx, y: d.y + .35, color: d.color, seed: di, dept: d.name });
         else if (big) items.push({ k: rx + .5 + d.y + .5, t: "prop", kind: di % 2 ? "printer" : "cooler", x: rx + .1, y: d.y + .2, dept: d.name, slot: 1 });
       }
       /* kastjes langs de achterwand */
@@ -542,7 +543,7 @@
   var IMG = {}, TC = {}, AVOK = false;
   function loadImg(k, f) { return new Promise(function (res) { var i = new Image(); i.onload = function () { IMG[k] = i; res(i); }; i.onerror = function () { res(null); }; i.src = ASSETS + f; }); }
   Promise.all([loadImg("desk", "desk-v3.webp"), loadImg("deskMap", "desk-v3-map.webp"), loadImg("empty", "desk-empty-v3.webp"), loadImg("walk", "walker-v4.webp"), loadImg("walkMap", "walker-v4-map.webp"),
-    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp"), loadImg("coolerZW", "../office-v3-assets/props/cooler_classic_ZW.webp"), loadImg("coolerZO", "../office-v3-assets/props/cooler_classic_ZO.webp"), loadImg("pl_monstera", "../office-v3-assets/props/plant_monstera.webp"), loadImg("pl_ficus", "../office-v3-assets/props/plant_ficus.webp"), loadImg("pl_kentia", "../office-v3-assets/props/plant_kentia.webp"), loadImg("pl_sansevieria", "../office-v3-assets/props/plant_sansevieria.webp"), loadImg("pl_succulent", "../office-v3-assets/props/plant_succulent.webp"), loadImg("pr_mfp", "../office-v3-assets/props/printer_mfp.webp"), loadImg("pr_laser", "../office-v3-assets/props/printer_laser.webp"), loadImg("pr_plotter", "../office-v3-assets/props/printer_plotter.webp"), loadImg("rk_closed", "../office-v3-assets/props/rack_closed.webp"), loadImg("rk_open", "../office-v3-assets/props/rack_open.webp")].concat(["white", "oak", "square"].map(function (w) { return loadImg("tb_" + w, "../office-v3-assets/props/tb_" + w + ".webp"); })).concat(["kettle", "grinder", "filter", "auto", "espresso"].map(function (w) { return loadImg("cm_" + w, "../office-v3-assets/props/cm_" + w + ".webp"); })).concat(["stack", "carafe", "mugs", "cappu", "glasses"].map(function (w) { return loadImg("ware_" + w, "../office-v3-assets/props/ware_" + w + ".webp"); })).concat(["white", "binders", "bookcase", "lockers", "sideboard"].reduce(function (l, c) { return l.concat([loadImg("cab_" + c, "../office-v3-assets/props/cab_" + c + ".webp"), loadImg("cab_" + c + "_m", "../office-v3-assets/props/cab_" + c + "_m.webp")]); }, []))).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
+    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp"), loadImg("coolerZW", "../office-v3-assets/props/cooler_classic_ZW.webp"), loadImg("coolerZO", "../office-v3-assets/props/cooler_classic_ZO.webp"), loadImg("pl_monstera", "../office-v3-assets/props/plant_monstera.webp"), loadImg("pl_ficus", "../office-v3-assets/props/plant_ficus.webp"), loadImg("pl_kentia", "../office-v3-assets/props/plant_kentia.webp"), loadImg("pl_sansevieria", "../office-v3-assets/props/plant_sansevieria.webp"), loadImg("pl_succulent", "../office-v3-assets/props/plant_succulent.webp"), loadImg("pr_mfp", "../office-v3-assets/props/printer_mfp.webp"), loadImg("pr_laser", "../office-v3-assets/props/printer_laser.webp"), loadImg("pr_plotter", "../office-v3-assets/props/printer_plotter.webp"), loadImg("rk_closed", "../office-v3-assets/props/rack_closed.webp"), loadImg("rk_open", "../office-v3-assets/props/rack_open.webp")].concat(["white", "sticky", "bar", "line", "blank"].map(function (w) { return loadImg("flip_" + w, "../office-v3-assets/props/flip_" + w + ".webp"); })).concat(["ZW", "ZO"].map(function (w) { return loadImg("pou" + w, "../office-v3-assets/props/cooler_pou_" + w + ".webp"); })).concat(["white", "oak", "square"].map(function (w) { return loadImg("tb_" + w, "../office-v3-assets/props/tb_" + w + ".webp"); })).concat(["kettle", "grinder", "filter", "auto", "espresso"].map(function (w) { return loadImg("cm_" + w, "../office-v3-assets/props/cm_" + w + ".webp"); })).concat(["stack", "carafe", "mugs", "cappu", "glasses"].map(function (w) { return loadImg("ware_" + w, "../office-v3-assets/props/ware_" + w + ".webp"); })).concat(["white", "binders", "bookcase", "lockers", "sideboard"].reduce(function (l, c) { return l.concat([loadImg("cab_" + c, "../office-v3-assets/props/cab_" + c + ".webp"), loadImg("cab_" + c + "_m", "../office-v3-assets/props/cab_" + c + "_m.webp")]); }, []))).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
   var VID = $("brainVid"), vidOk = false;
   if (!REDUCED) { VID.src = ASSETS + "brain-core.mp4"; VID.addEventListener("canplay", function () { vidOk = true; }); var pp = VID.play(); if (pp && pp.catch) pp.catch(function () {}); }
   /* typende handen (zoals v2, 24-10): handen uit de bureausprite knippen (huidskleur in twee vakken boven het
@@ -817,7 +818,8 @@
         led(x + .75, y + .58, 24, (Math.floor(now / 900) % 2) ? "#5fe08f" : "#2f7a52"); return;
       }
       case "cooler": {
-        var cim = IMG[o.face === "ZO" ? "coolerZO" : "coolerZW"];
+        var pou = o.dept && hash(o.dept) % 2, cim = IMG[(pou ? "pou" : "cooler") + (o.face === "ZO" ? "ZO" : "ZW")];
+        if (cim && pou) { var fp = Sx(x + .42, y + .42), ph = 58 * k, pw = ph * cim.width / cim.height; ctx.drawImage(cim, fp[0] - pw / 2, fp[1] - ph, pw, ph); return; }
         if (cim) { /* gerenderde sprite (office-v3-assets/props): onderste punt = voorhoek van de voetafdruk */
           var fv = Sx(x + .42, y + .42), ch = 66 * k, cw = ch * cim.width / cim.height; ctx.drawImage(cim, fv[0] - cw / 2, fv[1] - ch, cw, ch); return; }
         box({ x: x, y: y, w: .42, d: .42, h: 32 }, "#e6e9ee", "#c9ced6", "#a9b0ba");
@@ -826,6 +828,9 @@
         cyl(x + .21, y + .21, 32, .17, 20, "rgba(170,215,255,.85)", "rgba(110,175,240,.55)"); return;
       }
       case "flip": {
+        /* gerenderde flipovers: MARKETING lijndiagram, SALES staafdiagram, elders whiteboard / post-its / blanco */
+        var fk = /MARKETING/i.test(o.dept || "") ? "line" : /SALES/i.test(o.dept || "") ? "bar" : ["white", "sticky", "blank"][hash("f" + (o.dept || "")) % 3], fim = IMG["flip_" + fk];
+        if (fim) { var fb = Sx(x + .5, y + .42), fh = (fk === "white" ? 78 : 86) * k, fw = fh * fim.width / fim.height; ctx.drawImage(fim, fb[0] - fw / 2, fb[1] - fh * .97, fw, fh); return; }
         var x0 = x, y0 = y, X1 = x + 1.0, zt = 62, zb = 24, legs = [[x0 + .08, y0 + .35], [X1 - .08, y0 + .35], [x0 + .5, y0 - .1]];
         ctx.strokeStyle = "#3a404a"; ctx.lineWidth = Math.max(1, 2 * k);
         legs.forEach(function (l) { var a = Sx(l[0], l[1], 0), b = Sx(l[0] < x0 + .3 ? x0 + .1 : l[0] > X1 - .3 ? X1 - .1 : x0 + .5, y0, zt - 4); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); });
