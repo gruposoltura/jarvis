@@ -485,7 +485,31 @@
       if (acc + sl >= d && sl > 0) { var f = (d - acc) / sl, sd = P(p1[0] - p0[0], p1[1] - p0[1]); return { p: [p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f], moving: true, dx: sd[0] * dir, dy: sd[1] * dir }; } acc += sl; }
     return { p: w.pts[w.pts.length - 1], moving: false, dx: 0, dy: 1 };
   }
-  var SCREEN_Q = [[.262, .19], [.548, .03], [.548, .215], [.262, .335]];
+  /* schermvlak van desk-v3 (bronpixels 757x904, zelfde maat als v2): linksboven (173,136), rechtsboven (406,11), linksonder (172,307) */
+  var SCR_TL = [173 / 757, 136 / 904], SCR_U = [(406 - 173) / 757, (11 - 136) / 904], SCR_V = [(172 - 173) / 757, (307 - 136) / 904];
+  var SCREEN_Q = [SCR_TL, [SCR_TL[0] + SCR_U[0], SCR_TL[1] + SCR_U[1]], [SCR_TL[0] + SCR_U[0] + SCR_V[0], SCR_TL[1] + SCR_U[1] + SCR_V[1]], [SCR_TL[0] + SCR_V[0], SCR_TL[1] + SCR_V[1]]];
+  /* draaiende agent: regels 'code' die over het scherm omhoog lopen (zoals codeScreen in v2) */
+  var CODE_ROWS = 11, CODE = {};
+  function codeTile(a) {
+    var key = a.agent_id; if (CODE[key]) return CODE[key];
+    var hsh = hash(a.agent_id || a.agent_name), rows = [];
+    for (var i = 0; i < CODE_ROWS; i++) {
+      var r = ((hsh >>> (i % 11)) ^ (i * 2654435761)) >>> 0, y = i / CODE_ROWS, x = 0.04 + ((r >>> 3) % 7) * 0.012, w = 0.22 + ((r >>> 9) % 60) / 100;
+      if (x + w > 0.95) w = 0.95 - x;
+      rows.push([x, y + 0.022, w, 0, ((r >>> 17) % 3 === 0) ? Math.max(0.03, Math.min(0.15, 0.93 - x - w)) : 0]);
+    }
+    return (CODE[key] = { rows: rows, dur: 4200 + (hsh % 23) * 100 });
+  }
+  function drawCode(a, x0, y0, w, h, now) {
+    var t = codeTile(a), k = .05, ux = SCR_U[0] * w, uy = SCR_U[1] * h, vx = SCR_V[0] * w, vy = SCR_V[1] * h;
+    var ox = x0 + SCR_TL[0] * w + (ux + vx) * k, oy = y0 + SCR_TL[1] * h + (uy + vy) * k, off = (now % t.dur) / t.dur;
+    ctx.save(); ctx.transform(ux * (1 - 2 * k), uy * (1 - 2 * k), vx * (1 - 2 * k), vy * (1 - 2 * k), ox, oy);
+    ctx.beginPath(); ctx.rect(0, 0, 1, 1); ctx.clip();
+    for (var rep = 0; rep < 2; rep++) t.rows.forEach(function (r) { var y = r[1] - off + rep;
+      ctx.fillStyle = "rgba(4,34,46,.78)"; ctx.fillRect(r[0], y, r[2], 0.034);
+      if (r[4]) { ctx.fillStyle = "rgba(216,251,255,.9)"; ctx.fillRect(r[0] + r[2] + 0.035, y, r[4], 0.034); } });
+    ctx.restore();
+  }
   function drawItem(it, now) {
     var k = cam.k;
     if (it.t === "glass") { var a = it.a, b = it.b; poly([Sx(a[0], a[1], 0), Sx(b[0], b[1], 0), Sx(b[0], b[1], GLASS_H), Sx(a[0], a[1], GLASS_H)], "rgba(140,190,240,.10)");
@@ -504,11 +528,12 @@
       var typing = !away && s === "working" && HANDS.ready && AVOK && !REDUCED;
       var img = away || !AVOK ? IMG.empty : typing ? noHands(r.color, ag._hair) : tint("desk", r.color, ag._hair);
       if (img) { ctx.globalAlpha = s === "paused" ? .55 : 1; ctx.drawImage(img, p[0] - w * .5, p[1] - h * .86, w, h); ctx.globalAlpha = 1; }
-      if (typing) { var dl = (hash(ag.agent_id) % 100) / 100, u = k * 1.5, tl = kf(TYPE_L, ((now / 820) + dl) % 1), tr = kf(TYPE_R, ((now / 740) + dl + .5) % 1);
-        ctx.drawImage(HANDS.layers[0], p[0] - w * .5 + tl[0] * u, p[1] - h * .86 + tl[1] * u, w, h); ctx.drawImage(HANDS.layers[1], p[0] - w * .5 + tr[0] * u, p[1] - h * .86 + tr[1] * u, w, h); }
       var sc = { working: "#5fd4ff", error: "#ff4d4d", silent: "#ffb547", ok: "#4f86b8" }[s];
       if (sc && !ag._walk) { var al = s === "working" ? .55 + .3 * Math.sin(now / 200 + ag.x) : s === "error" ? .5 + .4 * Math.sin(now / 260) : s === "silent" ? .45 : .22;
         var q = SCREEN_Q.map(function (f) { return [p[0] - w * .5 + f[0] * w, p[1] - h * .86 + f[1] * h]; }); ctx.save(); ctx.globalCompositeOperation = "screen"; poly(q, rgba(sc, al)); ctx.restore(); }
+      if (typing) drawCode(ag, p[0] - w * .5, p[1] - h * .86, w, h, now);
+      if (typing) { var dl = (hash(ag.agent_id) % 100) / 100, u = k * 1.5, tl = kf(TYPE_L, ((now / 820) + dl) % 1), tr = kf(TYPE_R, ((now / 740) + dl + .5) % 1);
+        ctx.drawImage(HANDS.layers[0], p[0] - w * .5 + tl[0] * u, p[1] - h * .86 + tl[1] * u, w, h); ctx.drawImage(HANDS.layers[1], p[0] - w * .5 + tr[0] * u, p[1] - h * .86 + tr[1] * u, w, h); }
       if (s === "error" && !ag._walk) { var ex = p[0] + w * .1, ey = p[1] - h * .98; ctx.fillStyle = "#ff5d5d"; ctx.beginPath(); ctx.arc(ex, ey, Math.max(5, 7 * k), 0, 7); ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = "700 " + Math.max(7, 10 * k) + "px " + "system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("!", ex, ey + .5); ctx.textAlign = "start"; ctx.textBaseline = "alphabetic"; }
       HITS.push({ x: p[0] - w * .4, y: p[1] - h * .8, w: w * .8, h: h * .8, a: ag });
       if (!ag._walk) ag._head = [p[0] + w * .08, p[1] - h * .72];
