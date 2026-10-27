@@ -306,9 +306,9 @@
     ds.forEach(function (d) { d.agents = agents.filter(function (a) { return a.dept_name === d.name && !a._sub; }).sort(function (x, y) { return (x.agent_sort || 0) - (y.agent_sort || 0) || String(x.agent_name).localeCompare(String(y.agent_name)); }); });
     S.toolsByWf = {}; S.tools = tools.map(function (t) { var ids = []; (t.workflows || []).forEach(function (wf) { var a = S.byWf[wf]; if (!a) return; ids.push(a.agent_id); (S.toolsByWf[wf] = S.toolsByWf[wf] || []).push(t.tool); }); return { tool: t.tool, ids: ids }; });
     S.links = links.filter(function (l) { return S.byId[l.from_agent] && S.byId[l.to_agent] && l.from_agent !== l.to_agent; });
-    var sig = agents.map(function (a) { return [a.agent_id, a.dept_name, a.agent_sort, a._sub].join("|"); }).sort().join(";") + "#" + ds.map(function (d) { return d.name + d.color; }).join(";");
+    var sig = agents.map(function (a) { return [a.agent_id, a.dept_name, a.agent_sort, a._sub, a.cluster_label || ""].join("|"); }).sort().join(";") + "#" + ds.map(function (d) { return d.name + d.color; }).join(";");
     if (sig !== S.sig) { S.sig = sig; S.depts = ds.filter(function (d) { return d.agents.length; }); layout(); fitCam(true); }
-    else { var byName = {}; S.depts.forEach(function (d) { byName[d.name] = d; }); ds.forEach(function (d) { var o = byName[d.name]; if (o) { d.agents.forEach(function (a, i) { var oa = o.agents[i]; if (oa && oa.agent_id === a.agent_id) { a.x = oa.x; a.y = oa.y; a._aisle = oa._aisle; a._room = o; } }); o.agents = d.agents; o.color = d.color; } }); }
+    else { var byName = {}; S.depts.forEach(function (d) { byName[d.name] = d; }); ds.forEach(function (d) { var o = byName[d.name]; if (o) { d.agents.forEach(function (a, i) { var oa = o.agents[i]; if (oa && oa.agent_id === a.agent_id) { a.x = oa.x; a.y = oa.y; a._far = oa._far; a._isl = oa._isl; a._room = o; } }); o.agents = d.agents; o.color = d.color; } }); }
     S._lg = null;
     S.loadedAt = new Date();
     if (!DEMO && !RP.on) { queueBalls(prevRun); queueMeets(prevRun); queueVia(prevRun); }
@@ -339,12 +339,19 @@
       rest = rest.slice(i);
     }
   }
+  /* rolclusters (27-10, Rick): elk cluster (cluster_label, volgorde agent_sort) begint op een eigen eiland van 4;
+     een eiland wordt nooit met een ander cluster gedeeld. Geeft de stoelvolgorde terug (null = lege plek). */
+  function clusterSlots(list) {
+    var out = [], prev;
+    list.forEach(function (a) { var c = a.cluster_label || ""; if (out.length && c !== prev) while (out.length % 4) out.push(null); out.push(a); prev = c; });
+    return out;
+  }
   function layout() {
     var rooms = S.depts.slice();
     var canteen = { name: "KANTINE", color: CANTEEN_COLOR, agents: [], canteen: true, tables: [] };
     rooms.push(canteen);
     var maxN = Math.max.apply(null, S.depts.map(function (d) { return d.agents.length; }).concat([1]));
-    rooms.forEach(function (r) { r.area = r.canteen ? Math.max(64, maxN * 2.8) + 18 : r.agents.length * 12.5 + 30; r.area += 2.2 * Math.sqrt(r.area) + 4; });
+    rooms.forEach(function (r) { r.area = r.canteen ? Math.max(64, maxN * 2.8) + 18 : clusterSlots(r.agents).length * 11.2 + 30; r.area += 2.2 * Math.sqrt(r.area) + 4; });
     rooms.sort(function (a, b) { return b.area - a.area; });
     var tot = rooms.reduce(function (t, r) { return t + r.area; }, 0);
     L.W = Math.sqrt(tot * 1.25); L.H = tot / L.W; L.rooms = rooms; L.canteen = canteen;
@@ -364,16 +371,18 @@
     rooms.forEach(function (r) {
       r.aisles = []; r.mats = [];
       if (r.canteen) { r.aisles.push([r.x + .3, r.y + 1.1, r.x + r.w - .3, r.y + r.h - .3]); return; }
-      var n = r.agents.length, ni = Math.max(1, Math.ceil(n / 4)), ax = r.x + 1.1, ay = r.y + 1.35, aw = r.w - 1.6, ah = r.h - 1.85, best = null;
+      var slots = clusterSlots(r.agents), n = slots.length, ni = Math.max(1, Math.ceil(n / 4)), ax = r.x + 1.1, ay = r.y + 1.35, aw = r.w - 1.6, ah = r.h - 1.85, best = null;
       for (var ic = 1; ic <= ni; ic++) { var ir = Math.ceil(ni / ic), px = ic > 1 ? Math.min(ISX + AG, (aw - ISX) / (ic - 1)) : 0, py = ir > 1 ? Math.min(ISY + AG, (ah - ISY) / (ir - 1)) : 0;
         var slack = Math.min(ic > 1 ? px - ISX : aw - ISX, ir > 1 ? py - ISY : ah - ISY); if (!best || slack > best.slack + 1e-6) best = { ic: ic, ir: ir, px: px, py: py, slack: slack }; }
       var gw = ISX + (best.ic - 1) * best.px, gh = ISY + (best.ir - 1) * best.py, ox = ax + Math.max(0, (aw - gw) / 2), oy = ay + Math.max(0, (ah - gh) / 2);
       var isX = function (c) { return ox + c * best.px; }, isY = function (q) { return oy + q * best.py; };
       /* volgorde in een eiland: voor-links, voor-rechts, achter-links, achter-rechts */
       var SEAT = [[0, 0, false], [0, 2.0, false], [-FARDX, 0, true], [-FARDX, 2.0, true]];
-      r.agents.forEach(function (a, i) { var isl = Math.floor(i / 4), c = isl % best.ic, q = Math.floor(isl / best.ic), sd = SEAT[i % 4];
+      slots.forEach(function (a, i) { if (!a) return; var isl = Math.floor(i / 4), c = isl % best.ic, q = Math.floor(isl / best.ic), sd = SEAT[i % 4];
         a.x = isX(c) + ISX - .8 + sd[0]; a.y = isY(q) + 1.5 + sd[1]; a._far = sd[2]; a._room = r; a._row = q; a._isl = [isX(c), isY(q)]; });
-      for (var isl = 0; isl < ni; isl++) { var c0 = isl % best.ic, q0 = Math.floor(isl / best.ic); r.mats.push([isX(c0) - .1, isY(q0) + .05, isX(c0) + ISX + .1, isY(q0) + ISY - .05]); }
+      for (var isl = 0; isl < ni; isl++) { var c0 = isl % best.ic, q0 = Math.floor(isl / best.ic), first = slots[isl * 4], prevA = isl ? slots[isl * 4 - 4] : null,
+          lab = first && first.cluster_label && (!prevA || prevA.cluster_label !== first.cluster_label) ? first.cluster_label : "";
+        r.mats.push([isX(c0) - .1, isY(q0) + .05, isX(c0) + ISX + .1, isY(q0) + ISY - .05, lab]); }
       /* gangpaden (loper-rechthoeken): rondom en tussen de eilanden */
       var xl = r.x + .55, xr = r.x + r.w - .3, top = r.y + .62, bot = r.y + r.h - .25, AW = .7;
       function band(a, b) { var c = (a + b) / 2, w = Math.min(AW, Math.max(.3, b - a)); return [c - w / 2, c + w / 2]; }
@@ -658,7 +667,8 @@
         ctx.stroke();
       }
       (r.aisles || []).forEach(function (A) { poly([Sx(A[0], A[1]), Sx(A[2], A[1]), Sx(A[2], A[3]), Sx(A[0], A[3])], r.canteen ? "#262119" : mix(r.color, "#2b3546", .1)); });
-      (r.mats || []).forEach(function (m) { poly([Sx(m[0], m[1]), Sx(m[2], m[1]), Sx(m[2], m[3]), Sx(m[0], m[3])], rgba(r.color, .13), rgba(r.color, .22), .8); });
+      (r.mats || []).forEach(function (m) { poly([Sx(m[0], m[1]), Sx(m[2], m[1]), Sx(m[2], m[3]), Sx(m[0], m[3])], rgba(r.color, .13), rgba(r.color, .22), .8);
+});
     });
     if (GRIDDBG && G.blk) { ctx.fillStyle = "rgba(255,60,60,.35)"; for (var j = 0; j < G.ny; j++) for (var i = 0; i < G.nx; i++) if (G.blk[j * G.nx + i]) poly([Sx(i * G.res, j * G.res), Sx((i + 1) * G.res, j * G.res), Sx((i + 1) * G.res, (j + 1) * G.res), Sx(i * G.res, (j + 1) * G.res)], "rgba(255,60,60,.35)"); }
     L.doors.forEach(function (d) { var o = DOOR_W / 2, e = .22, q = d.v ? [[d.x - e, d.y - o], [d.x + e, d.y - o], [d.x + e, d.y + o], [d.x - e, d.y + o]] : [[d.x - o, d.y - e], [d.x + o, d.y - e], [d.x + o, d.y + e], [d.x - o, d.y + e]]; poly(q.map(function (p) { return Sx(p[0], p[1]); }), "#2a3446"); });
@@ -908,6 +918,12 @@
   function rrect(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
   function drawCards() {
     CARDS = [];
+    /* rolcluster-labels: klein, aan de voorhoek van het eerste eiland van elk cluster, alleen ingezoomd */
+    if (cam.k > fitV.k * 1.35) L.rooms.forEach(function (r) { (r.mats || []).forEach(function (m) { if (!m[4]) return;
+      var p = Sx(m[2] - .1, m[3] - .1, 0), fz = Math.max(9, Math.min(13, 3.8 * cam.k)); ctx.font = "700 " + fz + "px ui-monospace,Consolas,monospace";
+      var t = String(m[4]).toUpperCase(), w = ctx.measureText(t).width + 14, h = fz * 1.8, x = p[0] - w / 2, y = p[1] + 4;
+      ctx.fillStyle = "rgba(17,26,41,.82)"; rrect(x, y, w, h, h / 2); ctx.fill(); ctx.strokeStyle = rgba(r.color, .55); ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = rgba(r.color, .95); ctx.textBaseline = "middle"; ctx.fillText(t, x + 7, y + h / 2); }); });
     var fs = Math.max(8, Math.min(13, 30 * cam.k)), small = fs < 8.6;
     L.rooms.forEach(function (r) {
       var back = r.y < EPS || r.x < EPS, anc = Sx(r.x + .55, r.y + .55, back ? WALL_H + 16 : GLASS_H + 22);
@@ -971,6 +987,17 @@
     Object.keys(adj).forEach(function (v) { if (ix[v] == null) scc(v); });
     return (S._lg = { comp: comp });
   }
+  var CHAIN_PREV = { "Builders": "BIBLE", "Publishers": "Builders", "Reviewers": "Publishers" };
+  var BIBLE_SEG = { MAIL: "mail-bible", SOCIAL: "social-playbook", MARKETING: "research-curator" };
+  function chainPrev(to) {
+    var c = to.cluster_label, d = to.dept_name; if (!c) return [];
+    if (c === "The Bible") { /* bij de Bible melden zich scouts en reviewers van de afdeling van dat segment */
+      var segDept = Object.keys(BIBLE_SEG).filter(function (k) { return BIBLE_SEG[k] === to.agent_id; })[0];
+      return S.agents.filter(function (a) { return (a.cluster_label === "Scouts & Harvesters" || a.cluster_label === "Reviewers") && (!segDept || a.dept_name === segDept); }); }
+    var pc = CHAIN_PREV[c]; if (!pc) return [];
+    if (pc === "BIBLE") { var seg = S.byId[BIBLE_SEG[d] || "bible"] || S.byId.bible; return seg ? [seg] : []; }
+    return S.agents.filter(function (a) { return a.dept_name === d && a.cluster_label === pc; });
+  }
   var meetTimers = [];
   function queueMeets(prevRun) {
     if (REDUCED || !prevRun) return;
@@ -983,6 +1010,15 @@
       var gap = ms(to.last_run_at) - ms(fr.last_run_at);
       if (!(st(fr) === "working" || (gap >= -60000 && gap <= 20 * 60000))) return;
       if (!best[to.agent_id] || Math.abs(gap) < best[to.agent_id].gap) best[to.agent_id] = { fr: fr, to: to, gap: Math.abs(gap), working: working };
+    });
+    /* rolketen Scouts -> Bible -> Builders -> Publishers -> Reviewers -> Bible (BD-070): aanvulling op v_office_links */
+    S.agents.forEach(function (to) {
+      if (best[to.agent_id] || to._sub || to.x == null || isNoop(to)) return;
+      var fresh = to.last_run_at && to.last_run_at !== (prevRun[to.agent_id] || ""), working = st(to) === "working"; if (!fresh && !working) return;
+      var cand = chainPrev(to); if (!cand.length) return; var bestF = null, bg = 1e12;
+      cand.forEach(function (fr) { if (fr._sub || fr.x == null || isNoop(fr)) return; var gap = ms(to.last_run_at) - ms(fr.last_run_at);
+        if (!(st(fr) === "working" || (gap >= -60000 && gap <= 20 * 60000))) return; if (Math.abs(gap) < bg) { bg = Math.abs(gap); bestF = fr; } });
+      if (bestF) best[to.agent_id] = { fr: bestF, to: to, gap: bg, working: working };
     });
     var claimed = {};
     Object.keys(best).forEach(function (k) {
