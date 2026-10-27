@@ -443,13 +443,13 @@
     S.depts.forEach(function (d, di) {
       var big = d.agents.length >= 6, mk = /MARKETING|SALES|META/i.test(d.name) && !/META/i.test(d.name) || /MARKETING|SALES/i.test(d.name);
       /* hoek achter-links */
-      if (okAt(d, false, d.x + .6) && okAt(d, true, d.y + .6)) items.push({ k: d.x + .6 + d.y + .6, t: "prop", kind: di % 2 ? "cooler" : "printer", x: d.x + .2, y: d.y + .2 });
+      if (okAt(d, false, d.x + .6) && okAt(d, true, d.y + .6)) items.push({ k: d.x + .6 + d.y + .6, t: "prop", kind: /MARKETING/i.test(d.name) ? "printer" : di % 2 ? "cooler" : "printer", x: d.x + .2, y: d.y + .2, dept: d.name, slot: 0 });
       /* hoek achter-rechts */
       var rx = d.x + d.w - 1.15;
       if (okAt(d, false, rx + .5)) {
         if (/MARKETING|SALES/i.test(d.name)) items.push({ k: rx + d.y + .7, t: "prop", kind: "flip", x: rx, y: d.y + .35, color: d.color, seed: di });
         else if (/INFRA/i.test(d.name)) items.push({ k: rx + .5 + d.y + .5, t: "sprite", img: "rack", x: rx + .5, y: d.y + .45, w: 30 });
-        else if (big) items.push({ k: rx + .5 + d.y + .5, t: "prop", kind: di % 2 ? "printer" : "cooler", x: rx + .1, y: d.y + .2 });
+        else if (big) items.push({ k: rx + .5 + d.y + .5, t: "prop", kind: di % 2 ? "printer" : "cooler", x: rx + .1, y: d.y + .2, dept: d.name, slot: 1 });
       }
       /* kastjes langs de achterwand */
       free(d, false, d.x + 1.45, d.x + d.w - 1.45).forEach(function (iv) {
@@ -541,7 +541,7 @@
   var IMG = {}, TC = {}, AVOK = false;
   function loadImg(k, f) { return new Promise(function (res) { var i = new Image(); i.onload = function () { IMG[k] = i; res(i); }; i.onerror = function () { res(null); }; i.src = ASSETS + f; }); }
   Promise.all([loadImg("desk", "desk-v3.webp"), loadImg("deskMap", "desk-v3-map.webp"), loadImg("empty", "desk-empty-v3.webp"), loadImg("walk", "walker-v4.webp"), loadImg("walkMap", "walker-v4-map.webp"),
-    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp"), loadImg("coolerZW", "../office-v3-assets/props/cooler_classic_ZW.webp"), loadImg("coolerZO", "../office-v3-assets/props/cooler_classic_ZO.webp"), loadImg("pl_monstera", "../office-v3-assets/props/plant_monstera.webp"), loadImg("pl_ficus", "../office-v3-assets/props/plant_ficus.webp"), loadImg("pl_kentia", "../office-v3-assets/props/plant_kentia.webp"), loadImg("pl_sansevieria", "../office-v3-assets/props/plant_sansevieria.webp"), loadImg("pl_succulent", "../office-v3-assets/props/plant_succulent.webp")]).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
+    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp"), loadImg("coolerZW", "../office-v3-assets/props/cooler_classic_ZW.webp"), loadImg("coolerZO", "../office-v3-assets/props/cooler_classic_ZO.webp"), loadImg("pl_monstera", "../office-v3-assets/props/plant_monstera.webp"), loadImg("pl_ficus", "../office-v3-assets/props/plant_ficus.webp"), loadImg("pl_kentia", "../office-v3-assets/props/plant_kentia.webp"), loadImg("pl_sansevieria", "../office-v3-assets/props/plant_sansevieria.webp"), loadImg("pl_succulent", "../office-v3-assets/props/plant_succulent.webp"), loadImg("pr_mfp", "../office-v3-assets/props/printer_mfp.webp"), loadImg("pr_laser", "../office-v3-assets/props/printer_laser.webp"), loadImg("pr_plotter", "../office-v3-assets/props/printer_plotter.webp")]).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
   var VID = $("brainVid"), vidOk = false;
   if (!REDUCED) { VID.src = ASSETS + "brain-core.mp4"; VID.addEventListener("canplay", function () { vidOk = true; }); var pp = VID.play(); if (pp && pp.catch) pp.catch(function () {}); }
   /* typende handen (zoals v2, 24-10): handen uit de bureausprite knippen (huidskleur in twee vakken boven het
@@ -776,6 +776,12 @@
         return;
       }
       case "printer": {
+        /* gerenderde printers (Rick 27-10): plotter bij MARKETING, anders om en om multifunctional / laser op een laag kastje */
+        var pv = /MARKETING/i.test(o.dept || "") && !o.slot ? "plotter" : (hash((o.dept || "") + o.slot) % 2 ? "mfp" : "laser"), pim = IMG["pr_" + pv];
+        if (pim) {
+          if (pv === "laser") { box({ x: x, y: y, w: .85, d: .6, h: 14 }, "#7a654f", "#5b4a3a", "#4a3c2f"); var lf = Sx(x + .8, y + .58, 14), lh = 22 * k, lw = lh * pim.width / pim.height; ctx.drawImage(pim, lf[0] - lw * .5, lf[1] - lh, lw, lh); return; }
+          var ph = pv === "mfp" ? 58 : 50, pf = Sx(x + .8, y + .6), phk = ph * k, pwk = phk * pim.width / pim.height; ctx.drawImage(pim, pf[0] - pwk * .5, pf[1] - phk, pwk, phk); return;
+        }
         box({ x: x, y: y, w: .85, d: .6, h: 13 }, "#2b313b", "#20252d", "#191d24");
         box({ x: x + .02, y: y + .02, w: .81, d: .56, z: 13, h: 14 }, "#d5dae0", "#b3bac3", "#959da7");
         poly([Sx(x + .15, y + .1, 27.1), Sx(x + .7, y + .1, 27.1), Sx(x + .7, y + .38, 27.1), Sx(x + .15, y + .38, 27.1)], "#3b424d");
