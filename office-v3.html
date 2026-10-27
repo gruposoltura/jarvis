@@ -604,7 +604,7 @@
   }
   function tint(kind, color, hair) {
     var key = kind + color + hair; if (TC[key]) return TC[key];
-    var D = DSPR[kind], bi = D ? IMG[kind] : IMG.walk, mi = D ? IMG[D.map] : IMG.walkMap, w = D ? D.pw : 1280, h = D ? D.ph : 1440;
+    var D = DSPR[kind], bi = D ? IMG[kind] : IMG.walk, mi = D ? IMG[D.map] : IMG.walkMap, w = D ? D.pw : 2560, h = D ? D.ph : 1440;
     function g(img) { var c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h); return x.getImageData(0, 0, w, h).data; }
     var b = g(bi), m = g(mi), c = document.createElement("canvas"); c.width = w; c.height = h;
     var x = c.getContext("2d"), out = x.createImageData(w, h), o = out.data, C = rgbOf(color), Hh = rgbOf(hair);
@@ -758,7 +758,7 @@
     if (it.t === "walker") {
       var aw = it.a, ws = it.s, wp = Sx(ws.p[0], ws.p[1]), WH = 84 * k, WW = WH * 2 / 3;
       ctx.fillStyle = "rgba(10,14,20,.35)"; ctx.beginPath(); ctx.ellipse(wp[0], wp[1], 14 * k, 5.5 * k, 0, 0, 7); ctx.fill();
-      if (AVOK) { var sheet = tint("walk", aw._room.color, aw._hair), row = ws.dy < 0 ? 1 : 0, fr = ws.moving ? Math.floor(now / 125) % 4 : 0;
+      if (AVOK) { var sheet = tint("walk", aw._room.color, aw._hair), row = ws.dy < 0 ? 1 : 0, fr = ws.moving ? Math.floor(now / 105) % 8 : 0;   /* 8 frames: volledige stap links + rechts */
         ctx.save(); ctx.translate(wp[0], wp[1]); if (ws.dx < 0) ctx.scale(-1, 1); if (!ws.moving) { fr = row; row = 2; } ctx.drawImage(sheet, fr * 320, row * 480, 320, 480, -WW / 2, -WH * .96, WW, WH); ctx.restore(); }
       HITS.push({ x: wp[0] - WW / 2, y: wp[1] - WH, w: WW, h: WH, a: aw }); aw._head = [wp[0], wp[1] - WH * .98];
     }
