@@ -1142,7 +1142,7 @@
       var lg = loopGroups(), loops = {}; Object.keys(lg.comp).forEach(function (k) { loops[lg.comp[k].slice().sort().join(",")] = lg.comp[k]; });
       var inMeet = S.agents.filter(function (a) { return a._walk; });
       h += '<button class="back" data-back="1">← overzicht</button><h2 style="color:' + CANTEEN_COLOR + '">KANTINE</h2>';
-      h += '<p class="muted">Hier komt een terugkoppellus samen. Draait een agent kort na een agent die hem levert (koppeling in v_office_links), dan loopt de leverancier naar zijn collega. Draaien drie of meer leden van zo'n lus kort na elkaar, dan schuiven tot vier van hen aan een statafel in de kantine; met z'n tweeën blijft het 1-op-1 aan het bureau.</p>';
+      h += '<p class="muted">Hier komt een terugkoppellus samen. Draait een agent kort na een agent die hem levert (koppeling in v_office_links), dan loopt de leverancier naar zijn collega. Draaien drie of meer leden van zo’n lus kort na elkaar, dan schuiven tot vier van hen aan een statafel in de kantine; met z’n tweeën blijft het 1-op-1 aan het bureau.</p>';
       h += '<div class="kv"><div><b>' + S.links.length + '</b><span>koppelingen</span></div><div><b>' + Object.keys(loops).length + '</b><span>lussen</span></div><div class="w"><b>' + inMeet.length + '</b><span>onderweg</span></div></div>';
       if (inMeet.length) h += '<h3>Nu in overleg</h3>' + inMeet.map(function (a) { return agentRow(a, a._walk.label || "aan tafel"); }).join("");
       Object.keys(loops).forEach(function (k, i) { h += '<h3>Lus ' + (i + 1) + '</h3>' + loops[k].map(function (id) { return S.byId[id] ? agentRow(S.byId[id]) : ""; }).join(""); });
