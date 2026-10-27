@@ -344,11 +344,19 @@
     var canteen = { name: "KANTINE", color: CANTEEN_COLOR, agents: [], canteen: true, tables: [] };
     rooms.push(canteen);
     var maxN = Math.max.apply(null, S.depts.map(function (d) { return d.agents.length; }).concat([1]));
-    rooms.forEach(function (r) { r.area = r.canteen ? Math.max(64, maxN * 2.8) + 18 : r.agents.length * 9.4 + 24; });
+    rooms.forEach(function (r) { r.area = r.canteen ? Math.max(64, maxN * 2.8) + 18 : r.agents.length * 9.4 + 24; r.area += 2.2 * Math.sqrt(r.area) + 4; });
     rooms.sort(function (a, b) { return b.area - a.area; });
     var tot = rooms.reduce(function (t, r) { return t + r.area; }, 0);
     L.W = Math.sqrt(tot * 1.25); L.H = tot / L.W; L.rooms = rooms; L.canteen = canteen;
     squarify(rooms, 0, 0, L.W, L.H);
+    /* gangen tussen de afdelingen (27-10, Rick): elke zaal wijkt aan de binnenkanten HALL/2 terug, zodat er
+       tussen alle zalen een gang van HALL breed loopt; deuren gaan van de zaal naar de gang. Buitenranden blijven. */
+    var HALL = 2.0;
+    rooms.forEach(function (r) {
+      r.ob = { l: r.x < EPS, t: r.y < EPS, r: r.x + r.w > L.W - EPS, b: r.y + r.h > L.H - EPS };
+      if (!r.ob.l) { r.x += HALL / 2; r.w -= HALL / 2; } if (!r.ob.r) r.w -= HALL / 2;
+      if (!r.ob.t) { r.y += HALL / 2; r.h -= HALL / 2; } if (!r.ob.b) r.h -= HALL / 2;
+    });
     /* bureaus: eilanden van 3 langs x (gangpad IG ertussen), rijen langs y met een gangpad voor elke rij.
        Bureau-voetafdruk incl. stoel t.o.v. het anker: x -0,9..+0,5, y -0,8..+0,7 (DESK_FP). */
     var IG = 1.05;
@@ -379,25 +387,30 @@
       r.agents.forEach(function (a) { a._aisle = rowAisle[a._row]; });
       r.aisleY = rowAisle[rowAisle.length - 1];
     });
-    /* deuren */
+    /* deuren: op elke binnenkant van een zaal (naar de gang), 1 per kant, 2 bij een kant langer dan 13 */
     L.doors = [];
-    rooms.forEach(function (A) { rooms.forEach(function (B) {
-      if (A === B) return;
-      if (Math.abs(A.x + A.w - B.x) < EPS) { var y0 = Math.max(A.y, B.y), y1 = Math.min(A.y + A.h, B.y + B.h); if (y1 - y0 > 2.4) L.doors.push({ v: true, x: B.x, y: (y0 + y1) / 2, a: A, b: B }); }
-      if (Math.abs(A.y + A.h - B.y) < EPS) { var x0 = Math.max(A.x, B.x), x1 = Math.min(A.x + A.w, B.x + B.w); if (x1 - x0 > 2.4) L.doors.push({ v: false, x: (x0 + x1) / 2, y: B.y, a: A, b: B }); }
-    }); });
-    /* loper van elke deur naar het gangpad aan weerszijden */
-    L.doors.forEach(function (d) { [d.a, d.b].forEach(function (r) { var o = .35;
-      if (d.v) { var inR = r.x >= d.x - EPS; r.aisles.push(inR ? [d.x, d.y - o, d.x + 1.4, d.y + o] : [d.x - 1.4, d.y - o, d.x, d.y + o]); }
-      else { var inB = r.y >= d.y - EPS; r.aisles.push(inB ? [d.x - o, d.y, d.x + o, d.y + 1.3] : [d.x - o, d.y - 1.3, d.x + o, d.y]); } }); });
+    rooms.forEach(function (r) {
+      [["l", true], ["r", true], ["t", false], ["b", false]].forEach(function (sd) {
+        var side = sd[0], v = sd[1]; if (r.ob[side]) return;
+        var len = v ? r.h : r.w, n = len > 13 ? 2 : 1;
+        for (var i = 1; i <= n; i++) { var f = i / (n + 1), pos = v ? r.y + r.h * f : r.x + r.w * f;
+          L.doors.push({ v: v, side: side, a: r, b: null, x: v ? (side === "l" ? r.x : r.x + r.w) : pos, y: v ? pos : (side === "t" ? r.y : r.y + r.h) }); }
+      });
+    });
+    /* loper van elke deur de zaal in, tot het gangpad langs de wand */
+    L.doors.forEach(function (d) { var r = d.a, o = .35;
+      if (d.side === "l") r.aisles.push([d.x, d.y - o, d.x + 1.4, d.y + o]); else if (d.side === "r") r.aisles.push([d.x - 1.4, d.y - o, d.x, d.y + o]);
+      else if (d.side === "t") r.aisles.push([d.x - o, d.y, d.x + o, d.y + 1.3]); else r.aisles.push([d.x - o, d.y - 1.3, d.x + o, d.y]); });
     /* items: glazen wandstukken, deurposten, bureaus, kantine, props */
     var items = [];
     rooms.forEach(function (r) {
       var segs = [];
-      if (r.x + r.w < L.W - EPS) segs.push({ v: true, c: r.x + r.w, a: r.y, b: r.y + r.h });
-      if (r.y + r.h < L.H - EPS) segs.push({ v: false, c: r.y + r.h, a: r.x, b: r.x + r.w });
+      if (!r.ob.l) segs.push({ v: true, c: r.x, a: r.y, b: r.y + r.h });
+      if (!r.ob.r) segs.push({ v: true, c: r.x + r.w, a: r.y, b: r.y + r.h });
+      if (!r.ob.t) segs.push({ v: false, c: r.y, a: r.x, b: r.x + r.w });
+      if (!r.ob.b) segs.push({ v: false, c: r.y + r.h, a: r.x, b: r.x + r.w });
       segs.forEach(function (s) {
-        var cuts = L.doors.filter(function (d) { return d.v === s.v && Math.abs((s.v ? d.x : d.y) - s.c) < EPS && (s.v ? d.y : d.x) > s.a && (s.v ? d.y : d.x) < s.b; }).map(function (d) { return s.v ? d.y : d.x; }).sort(function (p, q) { return p - q; });
+        var cuts = L.doors.filter(function (d) { return d.a === r && d.v === s.v && Math.abs((s.v ? d.x : d.y) - s.c) < EPS && (s.v ? d.y : d.x) > s.a && (s.v ? d.y : d.x) < s.b; }).map(function (d) { return s.v ? d.y : d.x; }).sort(function (p, q) { return p - q; });
         var parts = [], from = s.a; cuts.forEach(function (m) { parts.push([from, m - DOOR_W / 2]); from = m + DOOR_W / 2; }); parts.push([from, s.b]);
         parts.forEach(function (p) { for (var u = p[0]; u < p[1] - 1e-3; u += .5) { var u1 = Math.min(p[1], u + .5), a = s.v ? [s.c, u] : [u, s.c], b = s.v ? [s.c, u1] : [u1, s.c]; items.push({ k: (a[0] + b[0]) / 2 + (a[1] + b[1]) / 2, t: "glass", a: a, b: b }); } });
       });
@@ -466,7 +479,8 @@
     var R = G.res, nx = Math.ceil(L.W / R), ny = Math.ceil(L.H / R), blk = new Uint8Array(nx * ny), cost = new Float32Array(nx * ny);
     function rect(x0, y0, x1, y1, v, arr) { var i0 = Math.max(0, Math.floor(x0 / R)), i1 = Math.min(nx - 1, Math.floor((x1 - 1e-6) / R)), j0 = Math.max(0, Math.floor(y0 / R)), j1 = Math.min(ny - 1, Math.floor((y1 - 1e-6) / R));
       for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) arr[j * nx + i] = v; }
-    for (var q = 0; q < nx * ny; q++) cost[q] = 3;
+    for (var q = 0; q < nx * ny; q++) cost[q] = 1;   /* gang = loopruimte */
+    L.rooms.forEach(function (r) { rect(r.x, r.y, r.x + r.w, r.y + r.h, 3, cost); });
     L.rooms.forEach(function (r) { r.aisles.forEach(function (A) { rect(A[0], A[1], A[2], A[3], 1, cost); }); });
     rect(0, 0, L.W, .3, 1, blk); rect(0, 0, .3, L.H, 1, blk); rect(0, L.H - .2, L.W, L.H, 1, blk); rect(L.W - .2, 0, L.W, L.H, 1, blk);
     L.items.forEach(function (it) {
@@ -626,7 +640,7 @@
   function drawFloor() {
     var W = L.W, H = L.H, th = 24;
     poly([Sx(0, H, 0), Sx(W, H, 0), Sx(W, H, -th), Sx(0, H, -th)], "#0d131d"); poly([Sx(W, 0, 0), Sx(W, H, 0), Sx(W, H, -th), Sx(W, 0, -th)], "#090e16");
-    poly([Sx(0, 0), Sx(W, 0), Sx(W, H), Sx(0, H)], "#141b28");
+    poly([Sx(0, 0), Sx(W, 0), Sx(W, H), Sx(0, H)], "#222b3a");
     var fid = TOUR.cur || (S.focus && S.focus.type === "dept" ? S.focus.name : S.focus && S.focus.type === "canteen" ? "KANTINE" : null);
     L.rooms.forEach(function (r) {
       var on = fid === r.name;
@@ -645,6 +659,9 @@
     var s = Sx(L.W / 2, L.H / 2), R = 150 * cam.k; ctx.save(); ctx.translate(s[0], s[1]); ctx.scale(1, .5); var g = ctx.createRadialGradient(0, 0, 0, 0, 0, R); g.addColorStop(0, "rgba(0,0,0,.26)"); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.fill(); ctx.restore();
   }
   function drawBackWalls() {
+    /* hele achterwanden eerst neutraal (ook waar een gang op de wand uitkomt), daarna per zaal in zijn kleur */
+    poly([Sx(0, 0, 0), Sx(L.W, 0, 0), Sx(L.W, 0, WALL_H), Sx(0, 0, WALL_H)], "#1a2230"); poly([Sx(0, 0, WALL_H), Sx(L.W, 0, WALL_H), Sx(L.W, -.25, WALL_H), Sx(0, -.25, WALL_H)], "#2a3446");
+    poly([Sx(0, 0, 0), Sx(0, L.H, 0), Sx(0, L.H, WALL_H), Sx(0, 0, WALL_H)], "#141b26"); poly([Sx(0, 0, WALL_H), Sx(0, L.H, WALL_H), Sx(-.25, L.H, WALL_H), Sx(-.25, 0, WALL_H)], "#2a3446");
     L.rooms.forEach(function (r) {
       if (r.y < EPS) { var x0 = r.x, x1 = r.x + r.w; poly([Sx(x0, 0, 0), Sx(x1, 0, 0), Sx(x1, 0, WALL_H), Sx(x0, 0, WALL_H)], mix(r.color, "#1c2534", .1));
         for (var wx = x0 + .9; wx + 1.4 < x1 - .4; wx += 2.6) poly([Sx(wx, 0, 26), Sx(wx + 1.4, 0, 26), Sx(wx + 1.4, 0, 58), Sx(wx, 0, 58)], "#17384f", rgba(r.color, .35), .8);
