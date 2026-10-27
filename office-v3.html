@@ -424,7 +424,7 @@
     for (var bi = 0; slot < bx1 - .5; bi++) { var kind = bar[bi % bar.length]; items.push({ k: slot + r.y + 1.0 + .01, t: "prop", kind: kind, x: slot, y: r.y + .3 }); slot += kind === "espresso" ? .85 : .6; }
     if (r.y < EPS) for (var sx = bx0 + .2; sx < bx1 - .9; sx += 1.9) items.push({ k: sx + r.y + .05, t: "prop", kind: "shelf", x: sx, y: r.y });
     items.push({ k: r.x + r.w - 1.1 + r.y + 1.2, t: "box", b: { x: r.x + r.w - 1.2, y: r.y + .2, w: .9, d: .85, h: 72 }, top: "#cfd6de", l: "#aeb6c0", r: "#8d96a1" });
-    items.push({ k: r.x + .5 + r.y + 1.9, t: "prop", kind: "cooler", x: r.x + .3, y: r.y + 1.6 });
+    items.push({ k: r.x + .5 + r.y + 1.9, t: "prop", kind: "cooler", x: r.x + .3, y: r.y + 1.6, face: "ZO" });
     r.tables = [];
     var tn = Math.max(4, Math.min(6, Math.floor(r.w * r.h / 16))), tc = tn > 4 ? 3 : 2, tr = Math.ceil(tn / tc);
     for (var t = 0; t < tn; t++) { var c = t % tc, rw = Math.floor(t / tc), tx = r.x + 1.2 + (r.w - 2) * ((c + .5) / tc), ty = r.y + 2.3 + (r.h - 3.1) * ((rw + .5) / tr); r.tables.push({ x: tx, y: ty, used: 0 }); items.push({ k: tx + ty, t: "table", x: tx, y: ty }); }
@@ -541,7 +541,7 @@
   var IMG = {}, TC = {}, AVOK = false;
   function loadImg(k, f) { return new Promise(function (res) { var i = new Image(); i.onload = function () { IMG[k] = i; res(i); }; i.onerror = function () { res(null); }; i.src = ASSETS + f; }); }
   Promise.all([loadImg("desk", "desk-v3.webp"), loadImg("deskMap", "desk-v3-map.webp"), loadImg("empty", "desk-empty-v3.webp"), loadImg("walk", "walker-v4.webp"), loadImg("walkMap", "walker-v4-map.webp"),
-    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp")]).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
+    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp"), loadImg("coolerZW", "../office-v3-assets/props/cooler_classic_ZW.webp"), loadImg("coolerZO", "../office-v3-assets/props/cooler_classic_ZO.webp")]).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
   var VID = $("brainVid"), vidOk = false;
   if (!REDUCED) { VID.src = ASSETS + "brain-core.mp4"; VID.addEventListener("canplay", function () { vidOk = true; }); var pp = VID.play(); if (pp && pp.catch) pp.catch(function () {}); }
   /* typende handen (zoals v2, 24-10): handen uit de bureausprite knippen (huidskleur in twee vakken boven het
@@ -774,6 +774,9 @@
         led(x + .75, y + .58, 24, (Math.floor(now / 900) % 2) ? "#5fe08f" : "#2f7a52"); return;
       }
       case "cooler": {
+        var cim = IMG[o.face === "ZO" ? "coolerZO" : "coolerZW"];
+        if (cim) { /* gerenderde sprite (office-v3-assets/props): onderste punt = voorhoek van de voetafdruk */
+          var fv = Sx(x + .42, y + .42), ch = 66 * k, cw = ch * cim.width / cim.height; ctx.drawImage(cim, fv[0] - cw / 2, fv[1] - ch, cw, ch); return; }
         box({ x: x, y: y, w: .42, d: .42, h: 32 }, "#e6e9ee", "#c9ced6", "#a9b0ba");
         poly([Sx(x + .1, y + .42, 14), Sx(x + .32, y + .42, 14), Sx(x + .32, y + .42, 20), Sx(x + .1, y + .42, 20)], "#30363f");
         led(x + .14, y + .42, 24, "#4da3ff", 1.2); led(x + .28, y + .42, 24, "#ff5d5d", 1.2);
