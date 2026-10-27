@@ -34,7 +34,7 @@
   :root{
     --bg:#06090f; --line:#1c2636; --panel:#0b1019; --panel2:#0f1623;
     --text:#cfe2ec; --dim:#7590a3; --cyan:#00d4ff; --green:#3ee08f; --amber:#ffb547; --red:#ff5d5d;
-    --violet:#b58cff; --gold:#ffd166; --pw:380px; --pm:14px;
+    --violet:#b58cff; --gold:#ffd166; --pw:400px; --pm:14px; --pz:1.15;
     --font:'Segoe UI',system-ui,-apple-system,sans-serif;
     --mono:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,monospace;
   }
@@ -61,12 +61,59 @@
   .metric span{font-size:11px;color:var(--dim)}
   .metric.m-error b{color:var(--red)} .metric.m-silent b{color:var(--amber)} .metric.m-working b{color:var(--cyan)} .metric.zero b{color:var(--dim)}
   .upd{color:var(--dim);font-size:11.5px;font-variant-numeric:tabular-nums;min-width:112px;text-align:right}
+  .motion{appearance:none;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 11px;border-radius:999px;cursor:pointer;
+    border:1px solid var(--line);background:rgba(7,11,18,.9);color:var(--dim);font:700 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase}
+  .motion i{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
+  .motion:hover{border-color:var(--cyan);color:var(--text)}
+  .motion.on{color:var(--cyan);border-color:rgba(0,212,255,.55)}
+  .motion.on i{background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:pulse 1.8s ease-in-out infinite}
+  .motion.rp-btn.on{color:var(--gold);border-color:rgba(255,209,102,.6)} .motion.rp-btn.on i{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+  @keyframes pulse{50%{opacity:.35}}
+  .pz{display:flex;align-items:center;gap:4px}
+  .pz .lb{font:700 10px var(--mono);letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin-right:4px}
+  .pz button{appearance:none;min-width:30px;height:28px;padding:0 7px;border-radius:7px;border:1px solid var(--line);background:rgba(7,11,18,.9);cursor:pointer;font:700 12px var(--mono);color:var(--text)}
+  .pz button:hover{border-color:var(--cyan);color:var(--cyan)} .pz button.big{font-size:16px}
+  .pz .pv{font:600 11.5px var(--mono);color:var(--dim);min-width:40px;text-align:center;font-variant-numeric:tabular-nums}
+  .panel{zoom:var(--pz,1.15)}
+  .tourmsg{position:absolute;left:16px;top:14px;z-index:5;display:flex;align-items:center;gap:9px;max-width:calc(100% - var(--pw) - var(--pm) * 2 - 40px);
+    background:rgba(7,11,18,.92);border:1px solid var(--c,var(--cyan));border-radius:999px;padding:5px 13px 5px 10px;font:600 12px var(--font);color:var(--text);
+    box-shadow:0 0 18px -6px var(--c,var(--cyan));pointer-events:none;opacity:0;transform:translateY(-6px);transition:opacity .35s,transform .35s}
+  .tourmsg.on{opacity:1;transform:none}
+  .tourmsg b{font:800 10px var(--mono);letter-spacing:.16em;color:var(--c,var(--cyan));text-transform:uppercase;white-space:nowrap}
+  .tourmsg span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tourmsg .bar{position:absolute;left:14px;right:14px;bottom:-1px;height:2px;border-radius:2px;background:var(--c,var(--cyan));transform-origin:left;transform:scaleX(0)}
+  .tourmsg.on .bar{animation:tourbar 10s linear forwards}
+  @keyframes tourbar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+  .replay{position:absolute;left:14px;right:calc(var(--pw) + var(--pm) * 2 + 120px);bottom:12px;z-index:6;display:flex;align-items:center;gap:12px;
+    padding:8px 12px;border-radius:14px;background:rgba(7,11,18,.94);border:1px solid rgba(255,209,102,.45);box-shadow:0 8px 28px -10px #000,0 0 22px -12px var(--gold);backdrop-filter:blur(6px)}
+  .replay[hidden]{display:none}
+  .replay button{appearance:none;cursor:pointer;border:1px solid var(--line);background:#0c121c;color:var(--text);border-radius:8px}
+  .replay button:hover{border-color:var(--gold);color:var(--gold)}
+  .rp-play{width:36px;height:36px;font:700 14px var(--mono);flex:none}
+  .rp-clock{display:flex;flex-direction:column;line-height:1.05;min-width:62px;flex:none}
+  .rp-clock b{font:700 19px var(--mono);color:var(--gold);font-variant-numeric:tabular-nums}
+  .rp-clock span{font:600 9.5px var(--mono);letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+  .rp-track{position:relative;flex:1;min-width:160px;height:40px;cursor:pointer;border-radius:6px;background:#0a1019;outline:none}
+  .rp-track:focus-visible{box-shadow:0 0 0 2px var(--gold)}
+  .rp-hist{position:absolute;left:0;top:3px;width:100%;height:24px}
+  .rp-hist .h-ok{fill:var(--cyan);opacity:.55} .rp-hist .h-err{fill:var(--red);opacity:.9}
+  .rp-done{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,rgba(255,209,102,.05),rgba(255,209,102,.16));border-radius:6px 0 0 6px;pointer-events:none}
+  .rp-head{position:absolute;top:-4px;bottom:-4px;left:0;width:2px;margin-left:-1px;background:var(--gold);box-shadow:0 0 8px var(--gold);pointer-events:none}
+  .rp-head::before{content:"";position:absolute;top:-3px;left:-4px;width:10px;height:10px;border-radius:50%;background:var(--gold)}
+  .rp-ticks{position:absolute;left:0;right:0;bottom:1px;height:11px;pointer-events:none}
+  .rp-ticks span{position:absolute;transform:translateX(-50%);font:600 8.5px var(--mono);color:var(--dim)} .rp-ticks span.d{color:var(--gold)}
+  .rp-speed{display:flex;gap:3px;flex:none}
+  .rp-speed button{height:26px;padding:0 7px;font:700 9.5px var(--mono);letter-spacing:.06em;color:var(--dim)}
+  .rp-speed button.on{color:var(--gold);border-color:rgba(255,209,102,.6)}
+  .rp-count{font:600 10px var(--mono);color:var(--dim);white-space:nowrap;min-width:74px;flex:none}
+  .rp-x{width:28px;height:28px;font:700 12px var(--mono);flex:none}
+  body.replaying .hint{display:none}
   main{flex:1;min-height:0;position:relative}
   .stage{position:absolute;inset:0;overflow:hidden}
   #cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
   #cv.drag{cursor:grabbing} #cv.pt{cursor:pointer}
   .hint{position:absolute;left:16px;bottom:12px;font:600 10.5px var(--mono);letter-spacing:.08em;color:var(--dim);background:rgba(7,11,18,.8);border:1px solid var(--line);border-radius:6px;padding:4px 9px;pointer-events:none}
-  .cam{position:absolute;right:calc(var(--pw) + var(--pm) * 2);bottom:12px;display:flex;gap:6px}
+  .cam{position:absolute;right:calc(var(--pw) + var(--pm) * 2);bottom:12px;display:flex;gap:6px;z-index:6}
   .cam button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:rgba(7,11,18,.9);cursor:pointer;font-weight:700}
   .cam button:hover{border-color:var(--cyan)}
   #tip{position:absolute;pointer-events:none;background:#0b0f14f2;border:1px solid var(--line);border-radius:6px;padding:6px 9px;font:12px var(--mono);white-space:nowrap;z-index:6;display:none}
@@ -105,6 +152,7 @@
   .back{appearance:none;background:none;border:0;color:var(--dim);cursor:pointer;padding:0;margin:0 0 10px;font:600 11px var(--mono);letter-spacing:.08em}
   .back:hover{color:var(--text)}
   @media (max-width:880px){
+    .replay{right:14px;flex-wrap:wrap}.rp-track{flex-basis:100%;order:5}.rp-count{display:none} .pz{display:none} .tourmsg{max-width:calc(100% - 32px)}
     body{overflow:auto} #app{height:auto;min-height:100%} main{flex:none}
     .stage{position:relative;height:68vh;min-height:400px}
     .pwrap{position:static;width:auto;border-radius:0;border:0;border-top:1px solid var(--line);box-shadow:none;background:var(--panel)}
@@ -118,6 +166,16 @@
     <div class="brand"><span class="dot" id="live"></span><span class="ttl">BRIDGE</span><span class="sub">Office</span><span class="ver">V3</span></div>
     <div class="spacer"></div>
     <span class="tag" id="modeTag" hidden></span>
+    <button type="button" class="motion rp-btn" id="rpBtn" aria-pressed="false" title="Speel de afgelopen 24 uur versneld af"><i></i>24 u</button>
+    <button type="button" class="motion" id="motion" aria-pressed="false" title="Automatisch inzoomen op een afdeling zodra daar een agent aan het werk gaat (10 s)"><i></i>Motion</button>
+    <div class="pz" id="pz" role="group" aria-label="Paneel leesbaarheid">
+      <span class="lb">Paneel</span>
+      <button type="button" data-pz="-" title="Tekst kleiner" aria-label="Tekst kleiner">A−</button>
+      <span class="pv" id="pzv" aria-live="polite">115%</span>
+      <button type="button" data-pz="+" class="big" title="Tekst groter" aria-label="Tekst groter">A+</button>
+      <button type="button" data-pz="w" title="Paneel breder / smaller" aria-label="Paneel breder of smaller">⇔</button>
+      <button type="button" data-pz="0" title="Standaard leesbaarheid" aria-label="Standaard">↺</button>
+    </div>
     <a class="v2link" href="office-v2.html">Office v2</a>
     <div class="metrics" id="metrics"></div>
     <div class="upd" id="upd"></div>
@@ -127,6 +185,21 @@
       <canvas id="cv" aria-label="Isometrische verdieping met alle afdelingen, de kantine en het JARVIS-brein"></canvas>
       <div class="hint">scroll = zoom · sleep = verschuif · klik = details · dubbelklik = alles</div>
       <div class="cam"><button type="button" id="zIn" aria-label="Inzoomen">+</button><button type="button" id="zOut" aria-label="Uitzoomen">−</button><button type="button" id="zFit" aria-label="Alles in beeld">⤢</button></div>
+      <div class="tourmsg" id="tourMsg"><b id="tourDept"></b><span id="tourTxt"></span><i class="bar"></i></div>
+      <div class="replay" id="replay" role="group" aria-label="Replay afgelopen 24 uur" hidden>
+        <button type="button" class="rp-play" id="rpPlay" aria-label="Afspelen / pauze">▶</button>
+        <div class="rp-clock"><b id="rpTime">--:--</b><span id="rpDay"></span></div>
+        <div class="rp-track" id="rpTrack" tabindex="0" role="slider" aria-label="Tijdstip" aria-valuemin="0" aria-valuemax="1440">
+          <svg class="rp-hist" id="rpHist" preserveAspectRatio="none"></svg>
+          <div class="rp-done" id="rpDone"></div><div class="rp-head" id="rpHead"></div>
+          <div class="rp-ticks" id="rpTicks"></div>
+        </div>
+        <div class="rp-speed" id="rpSpeed" role="group" aria-label="Duur van de replay">
+          <button type="button" data-sp="60">1 min</button><button type="button" data-sp="120" class="on">2 min</button><button type="button" data-sp="300">5 min</button><button type="button" data-sp="900">15 min</button>
+        </div>
+        <span class="rp-count" id="rpCount"></span>
+        <button type="button" class="rp-x" id="rpClose" aria-label="Replay sluiten (terug naar live)" title="Terug naar live">✕</button>
+      </div>
       <div id="tip" role="tooltip"></div>
       <div id="msg" role="alert"></div>
       <div id="loading">Office laden…</div>
@@ -159,6 +232,8 @@
   var HAIR = ["#231c18", "#3a281d", "#5e3f2b", "#8a6240", "#c99b55", "#e3c482", "#8c3a1e", "#9c9c9c", "#d8d8d8"];
   var CANTEEN_COLOR = "#d6b071";
 
+  var RP = { on: false, walk: 3, playing: false, state: {}, sum: {}, runs: [], per: {}, dur: 120, t: 0, t0: 0, t1: 0 };
+  var GRIDDBG = Q.get("grid") === "1";
   var S = { agents: [], byId: {}, byWf: {}, depts: [], links: [], tools: [], toolsByWf: {}, panels: {}, focus: null, first: true, sig: "", prevRun: null };
 
   /* --------------------------------------------------------------- helpers */
@@ -166,6 +241,7 @@
   function isNoop(a) { return NOOP_RE.test(String(a.last_summary || "")); }
   function isSubflow(a) { return SUBFLOW_RE.test(String(a.schedule_human || "")); }
   function st(a) {
+    if (RP.on && RP.state[a.agent_id]) return RP.state[a.agent_id];
     if (DEMO && a._demo && a.state !== "paused") return "working";
     var s = STATES[a.state] ? a.state : "ok";
     return s === "working" && isNoop(a) ? "ok" : s;
@@ -235,7 +311,8 @@
     else { var byName = {}; S.depts.forEach(function (d) { byName[d.name] = d; }); ds.forEach(function (d) { var o = byName[d.name]; if (o) { d.agents.forEach(function (a, i) { var oa = o.agents[i]; if (oa && oa.agent_id === a.agent_id) { a.x = oa.x; a.y = oa.y; a._aisle = oa._aisle; a._room = o; } }); o.agents = d.agents; o.color = d.color; } }); }
     S._lg = null;
     S.loadedAt = new Date();
-    if (!DEMO) { queueBalls(prevRun); queueMeets(prevRun); queueVia(prevRun); }
+    if (!DEMO && !RP.on) { queueBalls(prevRun); queueMeets(prevRun); queueVia(prevRun); }
+    queueTour(prevRun);
     renderHeader(); renderPanel();
     if (S.focus && S.focus.type === "agent") loadRuns(S.byId[S.focus.id]);
     if (S.first) {
@@ -267,24 +344,40 @@
     var canteen = { name: "KANTINE", color: CANTEEN_COLOR, agents: [], canteen: true, tables: [] };
     rooms.push(canteen);
     var maxN = Math.max.apply(null, S.depts.map(function (d) { return d.agents.length; }).concat([1]));
-    rooms.forEach(function (r) { r.area = r.canteen ? Math.max(60, maxN * 2.6) + 16 : r.agents.length * 8.2 + 18; });
+    rooms.forEach(function (r) { r.area = r.canteen ? Math.max(64, maxN * 2.8) + 18 : r.agents.length * 9.4 + 24; });
     rooms.sort(function (a, b) { return b.area - a.area; });
     var tot = rooms.reduce(function (t, r) { return t + r.area; }, 0);
     L.W = Math.sqrt(tot * 1.25); L.H = tot / L.W; L.rooms = rooms; L.canteen = canteen;
     squarify(rooms, 0, 0, L.W, L.H);
-    /* bureaus: eilanden van 3 langs x, rijen langs y */
+    /* bureaus: eilanden van 3 langs x (gangpad IG ertussen), rijen langs y met een gangpad voor elke rij.
+       Bureau-voetafdruk incl. stoel t.o.v. het anker: x -0,9..+0,5, y -0,8..+0,7 (DESK_FP). */
+    var IG = 1.05;
     rooms.forEach(function (r) {
-      if (r.canteen) return;
-      var n = r.agents.length, ax = r.x + .8, ay = r.y + 1.25, aw = r.w - 1.5, ah = r.h - 1.85, best = null;
-      for (var cols = 1; cols <= n; cols++) { var rows = Math.ceil(n / cols), isl = Math.ceil(cols / 3) - 1, s = Math.min(1, (aw - isl * .7) / (cols * 2.3), ah / (rows * 2.35)); if (!best || s > best.s) best = { cols: cols, rows: rows, s: s }; }
-      var sx = 2.3 * best.s, sy = 2.35 * best.s, isl2 = Math.ceil(best.cols / 3) - 1, gw = best.cols * sx + isl2 * .7 * best.s, gh = best.rows * sy, ox = ax + (aw - gw) / 2, oy = ay + (ah - gh) / 2;
+      r.aisles = [];
+      if (r.canteen) { r.aisles.push([r.x + .3, r.y + 1.1, r.x + r.w - .3, r.y + r.h - .3]); return; }
+      var n = r.agents.length, ax = r.x + 1.35, ay = r.y + 1.5, aw = r.w - 2.15, ah = r.h - 1.75, best = null;
+      for (var cols = 1; cols <= n; cols++) { var rows = Math.ceil(n / cols), isl = Math.ceil(cols / 3) - 1, s = Math.min(1, (aw - isl * IG) / (cols * 2.0), ah / (rows * 2.45)); if (!best || s > best.s) best = { cols: cols, rows: rows, s: s }; }
+      var sx = 2.0 * best.s, sy = 2.45 * best.s, isl2 = Math.ceil(best.cols / 3) - 1, gw = best.cols * sx + isl2 * IG, gh = best.rows * sy, ox = ax + (aw - gw) / 2, oy = ay + (ah - gh) / 2;
+      var colX = function (c) { return ox + (c + .5) * sx + Math.floor(c / 3) * IG; }, rowY = function (rr) { return oy + (rr + .5) * sy; };
       r.mats = [];
-      r.agents.forEach(function (a, i) { var c = i % best.cols, rr = Math.floor(i / best.cols); a.x = ox + (c + .5) * sx + Math.floor(c / 3) * .7 * best.s; a.y = oy + (rr + .5) * sy; a._room = r; a._aisle = oy + (rr + 1) * sy - .25 * best.s; });
+      r.agents.forEach(function (a, i) { var c = i % best.cols, rr = Math.floor(i / best.cols); a.x = colX(c); a.y = rowY(rr); a._room = r; a._row = rr; });
       for (var rr = 0; rr < best.rows; rr++) for (var c0 = 0; c0 < best.cols; c0 += 3) {
-        if (rr * best.cols + c0 >= n) continue; var c1 = Math.min(best.cols, c0 + 3), off = Math.floor(c0 / 3) * .7 * best.s;
-        r.mats.push([ox + c0 * sx + off - .15, oy + rr * sy + .1, ox + c1 * sx + off + .15, oy + (rr + 1) * sy - .3]);
+        if (rr * best.cols + c0 >= n) continue; var c1 = Math.min(best.cols, c0 + 3) - 1;
+        r.mats.push([colX(c0) - 1.0, rowY(rr) - .85, colX(c1) + .6, rowY(rr) + .75]);
       }
-      r.aisleY = oy + gh - .1;
+      /* gangpaden (loper-rechthoeken): achter, links, rechts, voor elke rij, tussen de eilanden */
+      var top = r.y + .62, xl = r.x + .6, xr = r.x + r.w - .3, left0 = colX(0) - .9, right0 = colX(best.cols - 1) + .5, bot = r.y + r.h - .25, lastFront = rowY(best.rows - 1) + .7;
+      var AW = .7;
+      function band(a, b) { var c = (a + b) / 2, w = Math.min(AW, b - a); return [c - w / 2, c + w / 2]; }
+      var yb = band(top, rowY(0) - .8); r.aisles.push([xl, yb[0], xr, yb[1]]);
+      var rowAisle = [];
+      for (var q = 0; q < best.rows; q++) { var ya = band(rowY(q) + .7, q < best.rows - 1 ? rowY(q + 1) - .8 : bot); rowAisle.push((ya[0] + ya[1]) / 2); r.aisles.push([xl, ya[0], xr, ya[1]]); }
+      var yTop = yb[0], yBot = r.aisles[r.aisles.length - 1][3];
+      var xa = band(xl, left0); r.aisles.push([xa[0], yTop, xa[1], yBot]);
+      var xz = band(right0, xr); r.aisles.push([xz[0], yTop, xz[1], yBot]);
+      for (var g = 3; g < best.cols; g += 3) { var xg = band(colX(g - 1) + .5, colX(g) - .9); r.aisles.push([xg[0], yTop, xg[1], yBot]); }
+      r.agents.forEach(function (a) { a._aisle = rowAisle[a._row]; });
+      r.aisleY = rowAisle[rowAisle.length - 1];
     });
     /* deuren */
     L.doors = [];
@@ -293,6 +386,10 @@
       if (Math.abs(A.x + A.w - B.x) < EPS) { var y0 = Math.max(A.y, B.y), y1 = Math.min(A.y + A.h, B.y + B.h); if (y1 - y0 > 2.4) L.doors.push({ v: true, x: B.x, y: (y0 + y1) / 2, a: A, b: B }); }
       if (Math.abs(A.y + A.h - B.y) < EPS) { var x0 = Math.max(A.x, B.x), x1 = Math.min(A.x + A.w, B.x + B.w); if (x1 - x0 > 2.4) L.doors.push({ v: false, x: (x0 + x1) / 2, y: B.y, a: A, b: B }); }
     }); });
+    /* loper van elke deur naar het gangpad aan weerszijden */
+    L.doors.forEach(function (d) { [d.a, d.b].forEach(function (r) { var o = .35;
+      if (d.v) { var inR = r.x >= d.x - EPS; r.aisles.push(inR ? [d.x, d.y - o, d.x + 1.4, d.y + o] : [d.x - 1.4, d.y - o, d.x, d.y + o]); }
+      else { var inB = r.y >= d.y - EPS; r.aisles.push(inB ? [d.x - o, d.y, d.x + o, d.y + 1.3] : [d.x - o, d.y - 1.3, d.x + o, d.y]); } }); });
     /* items: glazen wandstukken, deurposten, bureaus, kantine, props */
     var items = [];
     rooms.forEach(function (r) {
@@ -307,20 +404,52 @@
     });
     L.doors.forEach(function (d) { [-DOOR_W / 2, DOOR_W / 2].forEach(function (o) { var x = d.v ? d.x : d.x + o, y = d.v ? d.y + o : d.y; items.push({ k: x + y + .01, t: "post", x: x, y: y }); }); });
     S.depts.forEach(function (d) { d.agents.forEach(function (a) { items.push({ k: a.x + a.y, t: "desk", id: a.agent_id }); }); });
-    var r = canteen;
-    items.push({ k: r.x + .5 + r.y + .9, t: "box", b: { x: r.x + .5, y: r.y + .25, w: r.w - 2.0, d: .75, h: 30 }, top: "#3b3530", l: "#2a2420", r: "#1f1a17" });
-    for (var i = 0; i < Math.floor((r.w - 2.4) / 1.6); i++) { var mx = r.x + .8 + i * 1.6; items.push({ k: mx + r.y + 1.05, t: "box", b: { x: mx, y: r.y + .35, w: .42, d: .38, z: 30, h: 17 }, top: "#2d3440", l: "#1c222c", r: "#151a22", led: true }); }
-    items.push({ k: r.x + r.w - 1.1 + r.y + 1.2, t: "box", b: { x: r.x + r.w - 1.2, y: r.y + .25, w: .9, d: .85, h: 72 }, top: "#cfd6de", l: "#aeb6c0", r: "#8d96a1" });
+    /* ---- kantine: koffiebar langs de achterwand, koelkast, waterdispenser, statafels, planten ---- */
+    var r = canteen, bx0 = r.x + .4, bx1 = r.x + r.w - 1.5;
+    items.push({ k: bx0 + r.y + .9, t: "box", b: { x: bx0, y: r.y + .2, w: bx1 - bx0, d: .8, h: 30 }, top: "#4a3f35", l: "#2f2620", r: "#241d18", edge: "#8a7258" });
+    var slot = bx0 + .35, bar = ["espresso", "espresso", "grinder", "cups", "kettle", "cups", "espresso", "cups"];
+    for (var bi = 0; slot < bx1 - .5; bi++) { var kind = bar[bi % bar.length]; items.push({ k: slot + r.y + 1.0 + .01, t: "prop", kind: kind, x: slot, y: r.y + .3 }); slot += kind === "espresso" ? .85 : .6; }
+    if (r.y < EPS) for (var sx = bx0 + .2; sx < bx1 - .9; sx += 1.9) items.push({ k: sx + r.y + .05, t: "prop", kind: "shelf", x: sx, y: r.y });
+    items.push({ k: r.x + r.w - 1.1 + r.y + 1.2, t: "box", b: { x: r.x + r.w - 1.2, y: r.y + .2, w: .9, d: .85, h: 72 }, top: "#cfd6de", l: "#aeb6c0", r: "#8d96a1" });
+    items.push({ k: r.x + .5 + r.y + 1.9, t: "prop", kind: "cooler", x: r.x + .3, y: r.y + 1.6 });
     r.tables = [];
     var tn = Math.max(4, Math.min(6, Math.floor(r.w * r.h / 16))), tc = tn > 4 ? 3 : 2, tr = Math.ceil(tn / tc);
-    for (var t = 0; t < tn; t++) { var c = t % tc, rw = Math.floor(t / tc), tx = r.x + r.w * ((c + .5) / tc) * .9 + r.w * .05, ty = r.y + 1.9 + (r.h - 2.7) * ((rw + .5) / tr); r.tables.push({ x: tx, y: ty, used: 0 }); items.push({ k: tx + ty, t: "table", x: tx, y: ty }); }
+    for (var t = 0; t < tn; t++) { var c = t % tc, rw = Math.floor(t / tc), tx = r.x + 1.2 + (r.w - 2) * ((c + .5) / tc), ty = r.y + 2.3 + (r.h - 3.1) * ((rw + .5) / tr); r.tables.push({ x: tx, y: ty, used: 0 }); items.push({ k: tx + ty, t: "table", x: tx, y: ty }); }
     items.push({ k: r.x + .6 + r.y + r.h - .6, t: "sprite", img: "plant", x: r.x + .6, y: r.y + r.h - .6, w: 38 });
     items.push({ k: r.x + r.w - .6 + r.y + r.h - .6, t: "sprite", img: "plant", x: r.x + r.w - .6, y: r.y + r.h - .6, w: 34 });
-    S.depts.forEach(function (d) {
-      if (d.agents.length >= 6) items.push({ k: d.x + .45 + d.y + .5, t: "sprite", img: "plant", x: d.x + .45, y: d.y + .5, w: 30 });
-      if (d.agents.length >= 10) { var rack = /INFRA/i.test(d.name); items.push({ k: d.x + d.w - .6 + d.y + .5, t: "sprite", img: rack ? "rack" : "board", x: d.x + d.w - .6, y: d.y + .45, w: rack ? 30 : 34 }); }
+    /* ---- afdelingen: kastjes met plant of ordners langs de wanden, printer of waterdispenser in de hoek,
+       flipover met lijndiagram bij MARKETING en SALES, patchkast bij INFRA; nooit voor een deur ---- */
+    function free(r2, v, a0, a1) {   /* vrije stukken langs achterwand (v=false, x) of linkerwand (v=true, y) */
+      var cuts = L.doors.filter(function (d) { return d.v === v && Math.abs((v ? d.x : d.y) - (v ? r2.x : r2.y)) < EPS; }).map(function (d) { return v ? d.y : d.x; });
+      L.doors.filter(function (d) { return d.v !== v && Math.abs((v ? d.y : d.x) - (v ? r2.y : r2.x)) < EPS; }).forEach(function () {});
+      var out = [[a0, a1]];
+      cuts.forEach(function (m) { var nx = []; out.forEach(function (iv) { if (m + 1.25 <= iv[0] || m - 1.25 >= iv[1]) nx.push(iv); else { if (m - 1.25 > iv[0]) nx.push([iv[0], m - 1.25]); if (m + 1.25 < iv[1]) nx.push([m + 1.25, iv[1]]); } }); out = nx; });
+      return out;
+    }
+    function okAt(r2, v, pos) { return free(r2, v, pos - .01, pos + .01).length > 0; }
+    S.depts.forEach(function (d, di) {
+      var big = d.agents.length >= 6, mk = /MARKETING|SALES|META/i.test(d.name) && !/META/i.test(d.name) || /MARKETING|SALES/i.test(d.name);
+      /* hoek achter-links */
+      if (okAt(d, false, d.x + .6) && okAt(d, true, d.y + .6)) items.push({ k: d.x + .6 + d.y + .6, t: "prop", kind: di % 2 ? "cooler" : "printer", x: d.x + .2, y: d.y + .2 });
+      /* hoek achter-rechts */
+      var rx = d.x + d.w - 1.15;
+      if (okAt(d, false, rx + .5)) {
+        if (/MARKETING|SALES/i.test(d.name)) items.push({ k: rx + d.y + .7, t: "prop", kind: "flip", x: rx, y: d.y + .35, color: d.color, seed: di });
+        else if (/INFRA/i.test(d.name)) items.push({ k: rx + .5 + d.y + .5, t: "sprite", img: "rack", x: rx + .5, y: d.y + .45, w: 30 });
+        else if (big) items.push({ k: rx + .5 + d.y + .5, t: "prop", kind: di % 2 ? "printer" : "cooler", x: rx + .1, y: d.y + .2 });
+      }
+      /* kastjes langs de achterwand */
+      free(d, false, d.x + 1.45, d.x + d.w - 1.45).forEach(function (iv) {
+        for (var x = iv[0]; x + 1.1 <= iv[1]; x += 1.75) { var n = Math.round(x * 7) % 3; items.push({ k: x + .55 + d.y + .45, t: "prop", kind: "cab", x: x, y: d.y + .12, w: 1.1, d: .45, top: n === 1 ? "binders" : "plant", wood: (di + n) % 2 === 0 }); }
+      });
+      /* kastjes langs de linkerwand (smalle strook) */
+      if (d.h > 4.5) free(d, true, d.y + 1.6, d.y + d.h - 1.2).forEach(function (iv) {
+        for (var y = iv[0]; y + 1.1 <= iv[1]; y += 2.3) items.push({ k: d.x + .35 + y + .55, t: "prop", kind: "cab", x: d.x + .1, y: y, w: .45, d: 1.1, top: Math.round(y * 5) % 2 ? "plant" : "binders", wood: di % 2 === 1 });
+      });
+      if (big) items.push({ k: d.x + .55 + d.y + d.h - .5, t: "sprite", img: "plant", x: d.x + .5, y: d.y + d.h - .45, w: 28 });
     });
     L.items = items;
+    buildGrid();
   }
 
   /* ---------------------------------------------------------------- routes */
@@ -331,20 +460,66 @@
     if (!prev.has(to)) return null;
     var out = [], cur = to; while (prev.get(cur)) { var p = prev.get(cur); out.unshift({ d: p.d, from: p.r }); cur = p.r; } return out;
   }
-  function standPt(a) { return [a.x + .85, (a._aisle || a.y + 1) ]; }
-  function doorIn(d, from) { var s = .75; if (d.v) { var dir = from.x < d.x ? 1 : -1; return [[d.x - dir * s, d.y], [d.x + dir * s, d.y]]; } var dir2 = from.y < d.y ? 1 : -1; return [[d.x, d.y - dir2 * s], [d.x, d.y + dir2 * s]]; }
-  /* bureau -> gangpad -> (x dan y) deur -> ... -> deur -> (y dan x) doel */
-  function pathFor(a, target, troom) {
-    var hops = route(a._room, troom); if (!hops) return null;
-    var p0 = [a.x + .85, a.y + .7], s = standPt(a), pts = [p0, s];
-    var cur = s;
-    hops.forEach(function (h, i) {
-      var dp = doorIn(h.d, h.from);
-      if (i === 0) pts.push([dp[0][0], cur[1]]); /* langs het gangpad */
-      pts.push(dp[0], dp[1]); cur = dp[1];
+  /* ---- looprooster: obstakels (wanden, bureaus+stoelen, props, tafels) op 0,25 cel; A* met voorkeur voor de lopers ---- */
+  var G = { res: .25 };
+  function buildGrid() {
+    var R = G.res, nx = Math.ceil(L.W / R), ny = Math.ceil(L.H / R), blk = new Uint8Array(nx * ny), cost = new Float32Array(nx * ny);
+    function rect(x0, y0, x1, y1, v, arr) { var i0 = Math.max(0, Math.floor(x0 / R)), i1 = Math.min(nx - 1, Math.floor((x1 - 1e-6) / R)), j0 = Math.max(0, Math.floor(y0 / R)), j1 = Math.min(ny - 1, Math.floor((y1 - 1e-6) / R));
+      for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) arr[j * nx + i] = v; }
+    for (var q = 0; q < nx * ny; q++) cost[q] = 3;
+    L.rooms.forEach(function (r) { r.aisles.forEach(function (A) { rect(A[0], A[1], A[2], A[3], 1, cost); }); });
+    rect(0, 0, L.W, .3, 1, blk); rect(0, 0, .3, L.H, 1, blk); rect(0, L.H - .2, L.W, L.H, 1, blk); rect(L.W - .2, 0, L.W, L.H, 1, blk);
+    L.items.forEach(function (it) {
+      if (it.t === "glass") { var x0 = Math.min(it.a[0], it.b[0]), x1 = Math.max(it.a[0], it.b[0]), y0 = Math.min(it.a[1], it.b[1]), y1 = Math.max(it.a[1], it.b[1]); rect(x0 - .14, y0 - .14, x1 + .14, y1 + .14, 1, blk); }
+      else if (it.t === "post") rect(it.x - .15, it.y - .15, it.x + .15, it.y + .15, 1, blk);
+      else if (it.t === "desk") { var ag = S.byId[it.id]; if (ag) rect(ag.x - .9, ag.y - .8, ag.x + .5, ag.y + .7, 1, blk); }
+      else if (it.t === "box") rect(it.b.x - .05, it.b.y - .05, it.b.x + it.b.w + .05, it.b.y + it.b.d + .05, 1, blk);
+      else if (it.t === "table") rect(it.x - .3, it.y - .3, it.x + .3, it.y + .3, 1, blk);
+      else if (it.t === "sprite") rect(it.x - .35, it.y - .35, it.x + .35, it.y + .35, 1, blk);
+      else if (it.t === "prop") { var w = it.kind === "cab" ? it.w : it.kind === "printer" ? .85 : it.kind === "flip" ? 1.0 : .45, d = it.kind === "cab" ? it.d : it.kind === "printer" ? .6 : it.kind === "flip" ? .45 : .45;
+        if (it.kind !== "shelf" && it.kind !== "espresso" && it.kind !== "grinder" && it.kind !== "kettle" && it.kind !== "cups") rect(it.x - .05, it.y - .1, it.x + w + .05, it.y + d + .05, 1, blk); }
     });
-    if (hops.length) pts.push([cur[0], target[1]]); else pts.push([target[0], cur[1]]);
-    pts.push(target);
+    G.nx = nx; G.ny = ny; G.blk = blk; G.cost = cost;
+  }
+  function cellOf(p) { return [Math.max(0, Math.min(G.nx - 1, Math.floor(p[0] / G.res))), Math.max(0, Math.min(G.ny - 1, Math.floor(p[1] / G.res)))]; }
+  function nearestFree(p, preferAisle) {
+    var c = cellOf(p), best = null, bd = 1e9;
+    for (var rad = 0; rad < 14 && !best; rad++) for (var j = c[1] - rad; j <= c[1] + rad; j++) for (var i = c[0] - rad; i <= c[0] + rad; i++) {
+      if (i < 0 || j < 0 || i >= G.nx || j >= G.ny || G.blk[j * G.nx + i]) continue; if (preferAisle && G.cost[j * G.nx + i] > 1 && rad < 6) continue;
+      var dd = Math.hypot(i - c[0], j - c[1]); if (dd < bd) { bd = dd; best = [i, j]; } }
+    return best || c;
+  }
+  function astar(s0, t0) {
+    var nx = G.nx, N = nx * G.ny, gS = new Float32Array(N).fill(1e9), from = new Int32Array(N).fill(-1), closed = new Uint8Array(N), heap = [];
+    var si = s0[1] * nx + s0[0], ti = t0[1] * nx + t0[0];
+    function h(i) { var dx = Math.abs(i % nx - t0[0]), dy = Math.abs(Math.floor(i / nx) - t0[1]); return (Math.max(dx, dy) + .414 * Math.min(dx, dy)); }
+    function push(i, f) { heap.push([f, i]); var k = heap.length - 1; while (k) { var p2 = (k - 1) >> 1; if (heap[p2][0] <= heap[k][0]) break; var t = heap[p2]; heap[p2] = heap[k]; heap[k] = t; k = p2; } }
+    function pop() { var top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; var k = 0; for (;;) { var l = 2 * k + 1, r = l + 1, m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; var t = heap[m]; heap[m] = heap[k]; heap[k] = t; k = m; } } return top; }
+    gS[si] = 0; push(si, h(si));
+    var D = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]];
+    while (heap.length) {
+      var cur = pop()[1]; if (closed[cur]) continue; closed[cur] = 1; if (cur === ti) break;
+      var cx = cur % nx, cy = Math.floor(cur / nx);
+      for (var k = 0; k < 8; k++) { var x = cx + D[k][0], y = cy + D[k][1]; if (x < 0 || y < 0 || x >= nx || y >= G.ny) continue; var ni = y * nx + x; if (G.blk[ni] || closed[ni]) continue;
+        if (D[k][2] > 1 && (G.blk[cy * nx + x] || G.blk[y * nx + cx])) continue;
+        var g2 = gS[cur] + D[k][2] * G.cost[ni]; if (g2 < gS[ni]) { gS[ni] = g2; from[ni] = cur; push(ni, g2 + h(ni)); } }
+    }
+    if (from[ti] < 0 && si !== ti) return null;
+    var path = [], c = ti; while (c >= 0) { path.push([(c % nx + .5) * G.res, (Math.floor(c / nx) + .5) * G.res]); if (c === si) break; c = from[c]; }
+    return path.reverse();
+  }
+  function los(a, b) { /* vrije zichtlijn over het rooster en niet duurder dan de route (blijft op de loper) */
+    var n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (G.res * .5)), ca = G.cost[cellOf(a)[1] * G.nx + cellOf(a)[0]];
+    for (var i = 1; i < n; i++) { var p = [a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n], c = cellOf(p), idx = c[1] * G.nx + c[0]; if (G.blk[idx] || G.cost[idx] > ca) return false; }
+    return true;
+  }
+  function smooth(pts) { if (pts.length < 3) return pts; var out = [pts[0]], i = 0; while (i < pts.length - 1) { var j = pts.length - 1; while (j > i + 1 && !los(pts[i], pts[j])) j--; out.push(pts[j]); i = j; } return out; }
+  /* bureau -> loper -> (deuren) -> loper -> doel; nooit door bureaus, wanden of meubels */
+  function pathFor(a, target) {
+    if (!G.blk) return null;
+    var s0 = nearestFree([a.x + .2, a._aisle || a.y + 1], true), t0 = nearestFree(target, false);
+    var raw = astar(s0, t0); if (!raw) return null;
+    var pts = smooth(raw); pts.unshift([a.x + .15, a.y + .75]); pts.push(target);
     return pts;
   }
 
@@ -427,12 +602,13 @@
   function zoomToAgent(a) { if (!a || a.x == null) return; var p = P(a.x, a.y, 40), fr = freeRect(), k = Math.max(cam.k, fitV.k * 3); camT = { k: k, ox: fr.w / 2 - p[0] * k, oy: fr.h / 2 - p[1] * k }; }
   function resize() { var r = stage.getBoundingClientRect(); DPR = Math.min(2, window.devicePixelRatio || 1); VW = r.width; VH = r.height; cv.width = Math.max(1, VW * DPR); cv.height = Math.max(1, VH * DPR); if (L.rooms.length) { var keep = Math.abs(cam.k - fitV.k) < 1e-3; fitV = boxFor(worldPts(), 22); if (keep || !userMoved) cam = { k: fitV.k, ox: fitV.ox, oy: fitV.oy }; } }
   if (window.ResizeObserver) new ResizeObserver(resize).observe(stage); else addEventListener("resize", resize);
-  function zoomAt(f, x, y) { camT = null; var nk = Math.max(fitV.k * .6, Math.min(fitV.k * 7, cam.k * f)), r = nk / cam.k; cam.ox = x - (x - cam.ox) * r; cam.oy = y - (y - cam.oy) * r; cam.k = nk; userMoved = Date.now(); }
+  function userAct() { lastUser = Date.now(); if (TOUR.busy) tourStop(); }
+  function zoomAt(f, x, y) { userAct(); camT = null; var nk = Math.max(fitV.k * .6, Math.min(fitV.k * 7, cam.k * f)), r = nk / cam.k; cam.ox = x - (x - cam.ox) * r; cam.oy = y - (y - cam.oy) * r; cam.k = nk; userMoved = Date.now(); }
   cv.addEventListener("wheel", function (e) { e.preventDefault(); var r = cv.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
   var drag = null;
   cv.addEventListener("pointerdown", function (e) { var r = cv.getBoundingClientRect(); drag = { x: e.clientX, y: e.clientY, ox: cam.ox, oy: cam.oy, moved: false, lx: e.clientX - r.left, ly: e.clientY - r.top }; cv.setPointerCapture(e.pointerId); });
   cv.addEventListener("pointermove", function (e) {
-    if (drag) { var dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; cv.classList.add("drag"); camT = null; } if (drag.moved) { cam.ox = drag.ox + dx; cam.oy = drag.oy + dy; userMoved = Date.now(); $("tip").style.display = "none"; } return; }
+    if (drag) { var dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; cv.classList.add("drag"); camT = null; } if (drag.moved) { userAct(); cam.ox = drag.ox + dx; cam.oy = drag.oy + dy; userMoved = Date.now(); $("tip").style.display = "none"; } return; }
     hover(e);
   });
   cv.addEventListener("pointerup", function (e) { if (drag && !drag.moved) click(drag.lx, drag.ly); drag = null; cv.classList.remove("drag"); });
@@ -444,14 +620,14 @@
 
   /* ---------------------------------------------------------------- tekenen */
   function poly(p, fill, stroke, lw) { ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]); for (var i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]); ctx.closePath(); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1; ctx.stroke(); } }
-  function box(b, top, l, r) { var x = b.x, y = b.y, w = b.w, d = b.d, z = b.z || 0, h = z + b.h;
-    poly([Sx(x + w, y, z), Sx(x + w, y + d, z), Sx(x + w, y + d, h), Sx(x + w, y, h)], r); poly([Sx(x, y + d, z), Sx(x + w, y + d, z), Sx(x + w, y + d, h), Sx(x, y + d, h)], l); poly([Sx(x, y, h), Sx(x + w, y, h), Sx(x + w, y + d, h), Sx(x, y + d, h)], top); }
+  function box(b, top, l, r, edge) { var x = b.x, y = b.y, w = b.w, d = b.d, z = b.z || 0, h = z + b.h;
+    poly([Sx(x + w, y, z), Sx(x + w, y + d, z), Sx(x + w, y + d, h), Sx(x + w, y, h)], r); poly([Sx(x, y + d, z), Sx(x + w, y + d, z), Sx(x + w, y + d, h), Sx(x, y + d, h)], l); poly([Sx(x, y, h), Sx(x + w, y, h), Sx(x + w, y + d, h), Sx(x, y + d, h)], top, edge || null, 1); }
   var HITS = [], CARDS = [];
   function drawFloor() {
     var W = L.W, H = L.H, th = 24;
     poly([Sx(0, H, 0), Sx(W, H, 0), Sx(W, H, -th), Sx(0, H, -th)], "#0d131d"); poly([Sx(W, 0, 0), Sx(W, H, 0), Sx(W, H, -th), Sx(W, 0, -th)], "#090e16");
     poly([Sx(0, 0), Sx(W, 0), Sx(W, H), Sx(0, H)], "#141b28");
-    var fid = S.focus && S.focus.type === "dept" ? S.focus.name : S.focus && S.focus.type === "canteen" ? "KANTINE" : null;
+    var fid = TOUR.cur || (S.focus && S.focus.type === "dept" ? S.focus.name : S.focus && S.focus.type === "canteen" ? "KANTINE" : null);
     L.rooms.forEach(function (r) {
       var on = fid === r.name;
       poly([Sx(r.x, r.y), Sx(r.x + r.w, r.y), Sx(r.x + r.w, r.y + r.h), Sx(r.x, r.y + r.h)], r.canteen ? "#1c1a16" : mix(r.color, "#121b2a", on ? .2 : .1), rgba(r.color, on ? .85 : .28), on ? 2 : 1);
@@ -461,8 +637,10 @@
         for (var gy = Math.ceil(r.y); gy < r.y + r.h; gy++) { var c = Sx(r.x, gy), d = Sx(r.x + r.w, gy); ctx.moveTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); }
         ctx.stroke();
       }
+      (r.aisles || []).forEach(function (A) { poly([Sx(A[0], A[1]), Sx(A[2], A[1]), Sx(A[2], A[3]), Sx(A[0], A[3])], r.canteen ? "#262119" : mix(r.color, "#2b3546", .1)); });
       (r.mats || []).forEach(function (m) { poly([Sx(m[0], m[1]), Sx(m[2], m[1]), Sx(m[2], m[3]), Sx(m[0], m[3])], rgba(r.color, .13), rgba(r.color, .22), .8); });
     });
+    if (GRIDDBG && G.blk) { ctx.fillStyle = "rgba(255,60,60,.35)"; for (var j = 0; j < G.ny; j++) for (var i = 0; i < G.nx; i++) if (G.blk[j * G.nx + i]) poly([Sx(i * G.res, j * G.res), Sx((i + 1) * G.res, j * G.res), Sx((i + 1) * G.res, (j + 1) * G.res), Sx(i * G.res, (j + 1) * G.res)], "rgba(255,60,60,.35)"); }
     L.doors.forEach(function (d) { var o = DOOR_W / 2, e = .22, q = d.v ? [[d.x - e, d.y - o], [d.x + e, d.y - o], [d.x + e, d.y + o], [d.x - e, d.y + o]] : [[d.x - o, d.y - e], [d.x + o, d.y - e], [d.x + o, d.y + e], [d.x - o, d.y + e]]; poly(q.map(function (p) { return Sx(p[0], p[1]); }), "#2a3446"); });
     var s = Sx(L.W / 2, L.H / 2), R = 150 * cam.k; ctx.save(); ctx.translate(s[0], s[1]); ctx.scale(1, .5); var g = ctx.createRadialGradient(0, 0, 0, 0, 0, R); g.addColorStop(0, "rgba(0,0,0,.26)"); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.fill(); ctx.restore();
   }
@@ -478,7 +656,7 @@
   }
   function walkerPos(a, now) {
     var w = a._walk, el = (now - w.t0) / 1000, tg = w.len / w.v, d, dir = 1;
-    if (el < tg) d = el * w.v; else if (el < tg + w.stay / 1000) return { p: w.pts[w.pts.length - 1], moving: false, dx: -1, dy: -1, arrived: true };
+    if (el < tg) d = el * w.v; else if (el < tg + w.stay / 1000) { var pe = w.pts[w.pts.length - 1], fd = w.face ? P(w.face[0] - pe[0], w.face[1] - pe[1]) : [-1, -1]; return { p: pe, moving: false, dx: fd[0], dy: fd[1], arrived: true }; }
     else { d = w.len - (el - tg - w.stay / 1000) * w.v; dir = -1; if (d <= 0) return null; }
     var acc = 0;
     for (var i = 1; i < w.pts.length; i++) { var p0 = w.pts[i - 1], p1 = w.pts[i], sl = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
@@ -515,10 +693,11 @@
     if (it.t === "glass") { var a = it.a, b = it.b; poly([Sx(a[0], a[1], 0), Sx(b[0], b[1], 0), Sx(b[0], b[1], GLASS_H), Sx(a[0], a[1], GLASS_H)], "rgba(140,190,240,.10)");
       var t1 = Sx(a[0], a[1], GLASS_H), t2 = Sx(b[0], b[1], GLASS_H); ctx.strokeStyle = "rgba(170,215,255,.5)"; ctx.lineWidth = Math.max(1, 1.4 * k); ctx.beginPath(); ctx.moveTo(t1[0], t1[1]); ctx.lineTo(t2[0], t2[1]); ctx.stroke(); return; }
     if (it.t === "post") { box({ x: it.x - .07, y: it.y - .07, w: .14, d: .14, h: 40 }, "#5a6a82", "#36425a", "#2a3448"); return; }
-    if (it.t === "box") { box(it.b, it.top, it.l, it.r); if (it.led) { var lp = Sx(it.b.x + .22, it.b.y + it.b.d, 40); ctx.fillStyle = (Math.floor(now / 600 + it.b.x) % 3) ? "#ff6b5f" : "#5fe08f"; ctx.beginPath(); ctx.arc(lp[0], lp[1], Math.max(1, 1.6 * k), 0, 7); ctx.fill(); } return; }
+    if (it.t === "box") { box(it.b, it.top, it.l, it.r, it.edge); if (it.led) { var lp = Sx(it.b.x + .22, it.b.y + it.b.d, 40); ctx.fillStyle = (Math.floor(now / 600 + it.b.x) % 3) ? "#ff6b5f" : "#5fe08f"; ctx.beginPath(); ctx.arc(lp[0], lp[1], Math.max(1, 1.6 * k), 0, 7); ctx.fill(); } return; }
     if (it.t === "table") { var b0 = Sx(it.x, it.y, 0), tt = Sx(it.x, it.y, 34); ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(b0[0], b0[1], 12 * k, 6 * k, 0, 0, 7); ctx.fill();
       ctx.strokeStyle = "#4a4f58"; ctx.lineWidth = 3 * k; ctx.beginPath(); ctx.moveTo(b0[0], b0[1]); ctx.lineTo(tt[0], tt[1]); ctx.stroke(); ctx.fillStyle = "#e8e2d6"; ctx.beginPath(); ctx.ellipse(tt[0], tt[1], 13 * k, 6.5 * k, 0, 0, 7); ctx.fill(); ctx.strokeStyle = "#b9b1a2"; ctx.lineWidth = 1; ctx.stroke(); return; }
-    if (it.t === "sprite") { var im = IMG[it.img]; if (!im) return; var sp = Sx(it.x, it.y), sw = it.w * k, sh = sw * im.height / im.width; ctx.drawImage(im, sp[0] - sw / 2, sp[1] - sh * .92, sw, sh); return; }
+    if (it.t === "prop") { drawProp(it, now); return; }
+    if (it.t === "sprite") { var im = IMG[it.img]; if (!im) return; var sp = Sx(it.x, it.y, it.z || 0), sw = it.w * k, sh = sw * im.height / im.width; ctx.drawImage(im, sp[0] - sw / 2, sp[1] - sh * .92, sw, sh); return; }
     if (it.t === "desk") {
       var ag = S.byId[it.id]; if (!ag || ag.x == null) return; var r = ag._room, s = st(ag), p = Sx(ag.x, ag.y), w = DESK_W * k, h = DESK_H * k;
       var away = ag._walk || s === "paused" || s === "idle";
@@ -543,11 +722,74 @@
       var aw = it.a, ws = it.s, wp = Sx(ws.p[0], ws.p[1]), WH = 84 * k, WW = WH * 2 / 3;
       ctx.fillStyle = "rgba(10,14,20,.35)"; ctx.beginPath(); ctx.ellipse(wp[0], wp[1], 14 * k, 5.5 * k, 0, 0, 7); ctx.fill();
       if (AVOK) { var sheet = tint("walk", aw._room.color, aw._hair), row = ws.dy < 0 ? 1 : 0, fr = ws.moving ? Math.floor(now / 125) % 4 : 0;
-        ctx.save(); ctx.translate(wp[0], wp[1]); if (ws.dx > 0) ctx.scale(-1, 1); ctx.drawImage(sheet, fr * 160, row * 240, 160, 240, -WW / 2, -WH * .96, WW, WH); ctx.restore(); }
+        ctx.save(); ctx.translate(wp[0], wp[1]); if (ws.dx < 0) ctx.scale(-1, 1); ctx.drawImage(sheet, fr * 160, row * 240, 160, 240, -WW / 2, -WH * .96, WW, WH); ctx.restore(); }
       HITS.push({ x: wp[0] - WW / 2, y: wp[1] - WH, w: WW, h: WH, a: aw }); aw._head = [wp[0], wp[1] - WH * .98];
     }
   }
 
+  /* ---- decoratie (canvas, in wereldmaat) ---- */
+  function cyl(x, y, z, rad, h, top, side) {
+    var k = cam.k, b = Sx(x, y, z), t = Sx(x, y, z + h), rx = rad * 1.414 * HW * k, ry = rad * 1.414 * HH * k;
+    ctx.fillStyle = side; ctx.beginPath(); ctx.ellipse(b[0], b[1], rx, ry, 0, 0, Math.PI); ctx.lineTo(t[0] - rx, t[1]); ctx.ellipse(t[0], t[1], rx, ry, 0, Math.PI, 0, true); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = top; ctx.beginPath(); ctx.ellipse(t[0], t[1], rx, ry, 0, 0, 7); ctx.fill();
+  }
+  function led(x, y, z, col, r) { var p = Sx(x, y, z); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(.8, (r || 1.4) * cam.k), 0, 7); ctx.fill(); }
+  var BINDER = ["#b8433a", "#2f6fa8", "#d9a441", "#3c8c5a", "#7a4fa0", "#e3ddcf"];
+  function drawProp(o, now) {
+    var x = o.x, y = o.y, k = cam.k;
+    switch (o.kind) {
+      case "cab": {
+        var wd = o.wood, b = { x: x, y: y, w: o.w, d: o.d, h: 20 };
+        box(b, wd ? "#7a654f" : "#465263", wd ? "#5b4a3a" : "#333d4b", wd ? "#4a3c2f" : "#2a323e");
+        /* handgrepen / deurnaad aan de voorkant */
+        var mid = o.w > o.d ? [x + o.w / 2, y + o.d] : [x + o.w, y + o.d / 2], a1 = o.w > o.d ? Sx(mid[0], mid[1], 3) : Sx(mid[0], mid[1], 3), a2 = Sx(mid[0], mid[1], 17);
+        ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = Math.max(.6, k); ctx.beginPath(); ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]); ctx.stroke();
+        if (o.top === "plant" && IMG.plant) { var cx = x + o.w / 2, cy = y + o.d / 2, sp = Sx(cx, cy, 20), sw = 20 * k, sh = sw * IMG.plant.height / IMG.plant.width; ctx.drawImage(IMG.plant, sp[0] - sw / 2, sp[1] - sh * .92, sw, sh); }
+        else { var n = 5, along = o.w > o.d; for (var i = 0; i < n; i++) { var bx = along ? x + .12 + i * (o.w - .3) / n : x + .08, by = along ? y + .1 : y + .12 + i * (o.d - .3) / n;
+          box({ x: bx, y: by, w: along ? .14 : .28, d: along ? .28 : .14, z: 20, h: 9 + (i % 2) * 2 }, BINDER[(i + Math.round(x)) % 6], BINDER[(i + Math.round(x)) % 6], "rgba(0,0,0,.4)"); } }
+        return;
+      }
+      case "printer": {
+        box({ x: x, y: y, w: .85, d: .6, h: 13 }, "#2b313b", "#20252d", "#191d24");
+        box({ x: x + .02, y: y + .02, w: .81, d: .56, z: 13, h: 14 }, "#d5dae0", "#b3bac3", "#959da7");
+        poly([Sx(x + .15, y + .1, 27.1), Sx(x + .7, y + .1, 27.1), Sx(x + .7, y + .38, 27.1), Sx(x + .15, y + .38, 27.1)], "#3b424d");
+        poly([Sx(x + .2, y + .4, 22), Sx(x + .65, y + .4, 22), Sx(x + .65, y + .62, 22), Sx(x + .2, y + .62, 22)], "#f6f6f2");
+        led(x + .75, y + .58, 24, (Math.floor(now / 900) % 2) ? "#5fe08f" : "#2f7a52"); return;
+      }
+      case "cooler": {
+        box({ x: x, y: y, w: .42, d: .42, h: 32 }, "#e6e9ee", "#c9ced6", "#a9b0ba");
+        poly([Sx(x + .1, y + .42, 14), Sx(x + .32, y + .42, 14), Sx(x + .32, y + .42, 20), Sx(x + .1, y + .42, 20)], "#30363f");
+        led(x + .14, y + .42, 24, "#4da3ff", 1.2); led(x + .28, y + .42, 24, "#ff5d5d", 1.2);
+        cyl(x + .21, y + .21, 32, .17, 20, "rgba(170,215,255,.85)", "rgba(110,175,240,.55)"); return;
+      }
+      case "flip": {
+        var x0 = x, y0 = y, X1 = x + 1.0, zt = 62, zb = 24, legs = [[x0 + .08, y0 + .35], [X1 - .08, y0 + .35], [x0 + .5, y0 - .1]];
+        ctx.strokeStyle = "#3a404a"; ctx.lineWidth = Math.max(1, 2 * k);
+        legs.forEach(function (l) { var a = Sx(l[0], l[1], 0), b = Sx(l[0] < x0 + .3 ? x0 + .1 : l[0] > X1 - .3 ? X1 - .1 : x0 + .5, y0, zt - 4); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); });
+        var TL = Sx(x0, y0, zt), TR = Sx(X1, y0, zt), BL = Sx(x0, y0, zb);
+        poly([TL, TR, Sx(X1, y0, zb), BL], "#f3f2ee", "#9aa1ab", 1);
+        poly([Sx(x0 - .03, y0, zt + 3), Sx(X1 + .03, y0, zt + 3), Sx(X1 + .03, y0, zt), Sx(x0 - .03, y0, zt)], "#2d333c");
+        ctx.save(); ctx.transform(TR[0] - TL[0], TR[1] - TL[1], BL[0] - TL[0], BL[1] - TL[1], TL[0], TL[1]);
+        var lw = 1 / Math.max(20, (zt - zb) * k); ctx.lineWidth = lw * 1.4;
+        ctx.strokeStyle = "#6b7280"; ctx.beginPath(); ctx.moveTo(.12, .12); ctx.lineTo(.12, .86); ctx.lineTo(.92, .86); ctx.stroke();
+        var sd = o.seed || 1, pts = [], pts2 = [];
+        for (var i = 0; i < 7; i++) { var f = i / 6; pts.push([.14 + f * .76, .8 - f * .55 - (((sd * 7 + i * 13) % 5) / 5) * .12]); pts2.push([.14 + f * .76, .78 - f * .3 + (((sd * 3 + i * 11) % 4) / 4) * .1]); }
+        ctx.lineWidth = lw * 3; ctx.strokeStyle = o.color; ctx.beginPath(); pts.forEach(function (p, j) { j ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.stroke();
+        ctx.strokeStyle = "#3ee08f"; ctx.beginPath(); pts2.forEach(function (p, j) { j ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.stroke();
+        ctx.fillStyle = o.color; ctx.fillRect(.14, .04, .4, .035); ctx.restore(); return;
+      }
+      case "espresso": {
+        box({ x: x, y: y, w: .6, d: .45, z: 30, h: 18 }, "#d3d8de", "#a8afb8", "#858c96");
+        poly([Sx(x + .08, y + .45, 34), Sx(x + .52, y + .45, 34), Sx(x + .52, y + .45, 44), Sx(x + .08, y + .45, 44)], "#1d232b");
+        led(x + .45, y + .45, 46, (Math.floor(now / 700 + x) % 2) ? "#ff6b5f" : "#ffb547", 1.2);
+        cyl(x + .2, y + .55, 30, .05, 3, "#f3f0ea", "#d8d2c6"); cyl(x + .4, y + .55, 30, .05, 3, "#f3f0ea", "#d8d2c6"); return;
+      }
+      case "grinder": cyl(x + .15, y + .22, 30, .12, 13, "#2a2f36", "#1a1e24"); cyl(x + .15, y + .22, 43, .1, 8, "rgba(120,80,50,.85)", "rgba(90,60,40,.7)"); return;
+      case "kettle": cyl(x + .15, y + .25, 30, .11, 10, "#c9ced6", "#9aa1ab"); led(x + .15, y + .36, 33, "#4da3ff", 1); return;
+      case "cups": for (var c = 0; c < 4; c++) cyl(x + .05 + (c % 2) * .16, y + .15 + Math.floor(c / 2) * .18, 30, .06, 4 + (c % 2), "#f6f3ec", "#d9d2c4"); return;
+      case "shelf": box({ x: x, y: y + .02, w: 1.6, d: .28, z: 50, h: 3 }, "#7a654f", "#5b4a3a", "#4a3c2f"); for (var j = 0; j < 6; j++) cyl(x + .15 + j * .25, y + .16, 53, .06, 5, j % 3 ? "#f6f3ec" : "#c2643a", j % 3 ? "#d9d2c4" : "#9c4e2d"); return;
+    }
+  }
   /* brein als UFO */
   var PORT = null;
   function drawBrain(now) {
@@ -623,24 +865,24 @@
   var WALK_V = 2.4;
   function busy(a) { return !!(a._walk || a._meet && a._meet > Date.now()); }
   function canWalk(a) { var s = st(a); return a && !a._sub && a.x != null && s !== "paused" && s !== "idle" && !busy(a); }
-  function trip(a, target, troom, stay, label) {
-    var pts = pathFor(a, target, troom); if (!pts) return false; var len = 0;
+  function trip(a, target, troom, stay, label, face) {
+    var pts = pathFor(a, target); if (!pts) return false; var len = 0;
     for (var i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-    a._walk = { pts: pts, len: len, v: WALK_V, t0: performance.now(), stay: stay, label: label }; return true;
+    a._walk = { pts: pts, len: len, v: WALK_V * (RP.on ? RP.walk : 1), t0: performance.now(), stay: stay / (RP.on ? RP.walk : 1), label: label, face: face || null }; return true;
   }
   function meetCount() { return S.agents.filter(function (a) { return a._walk && a._walk.team; }).length; }
   function kortOverleg(fr, to, working) {
     if (!fr || !to || to._sub || to.x == null || !canWalk(fr)) return;
     var stay = working ? 20000 : 11000;
-    if (trip(fr, [to.x + .85, to._aisle || to.y + 1], to._room, stay, "overleg met " + to.agent_name)) {
-      var tt = fr._walk.len / WALK_V * 1000; to._meet = Date.now() + tt + stay; to._meetWith = fr.agent_name;
+    if (trip(fr, [to.x + .75, to._aisle || to.y + 1], to._room, stay, "overleg met " + to.agent_name, [to.x, to.y])) {
+      var tt = fr._walk.len / fr._walk.v * 1000; to._meet = Date.now() + tt + fr._walk.stay; to._meetWith = fr.agent_name;
     }
   }
   function teamOverleg(ids, working) {
     var tb = L.canteen.tables.filter(function (t) { return !t.used; }); if (!tb.length) return;
     var t = tb[Math.floor(Math.random() * tb.length)], spots = [[-.55, .1], [.55, -.1], [0, .6], [0, -.55]], stay = working ? 20000 : 14000, maxEnd = 0, n = 0;
     ids.forEach(function (id) { var a = S.byId[id]; if (!a || !canWalk(a) || n >= 4) return; var s = spots[n];
-      if (trip(a, [t.x + s[0], t.y + s[1]], L.canteen, stay + n * 400, n === 0 ? "teamoverleg (" + Math.min(4, ids.length) + ")" : null)) { a._walk.team = true; maxEnd = Math.max(maxEnd, a._walk.len / WALK_V * 2000 + stay + n * 400); n++; } });
+      if (trip(a, [t.x + s[0], t.y + s[1]], L.canteen, stay + n * 400, n === 0 ? "teamoverleg (" + Math.min(4, ids.length) + ")" : null, [t.x, t.y])) { a._walk.team = true; maxEnd = Math.max(maxEnd, a._walk.len / a._walk.v * 2000 + a._walk.stay); n++; } });
     if (n) { t.used = 1; setTimeout(function () { t.used = 0; }, maxEnd + 500); }
   }
   function loopGroups() {
@@ -738,6 +980,7 @@
     tip.style.left = Math.min(VW - tip.offsetWidth - 8, x + 14) + "px"; tip.style.top = (y + 14) + "px";
   }
   function click(x, y) {
+    userAct();
     var h = hitAt(x, y);
     if (!h) { setFocus(null); return; }
     if (h.card) { if (h.card.canteen) setFocus({ type: "canteen" }); else setFocus({ type: "dept", name: h.card.name }); zoomToRoom(h.card); return; }
@@ -817,6 +1060,7 @@
   function frame(now) {
     requestAnimationFrame(frame);
     if (document.hidden || !L.rooms.length) return;
+    if (RP.on) rpTick(now);
     if (REDUCED && now - last < 500) return; last = now;
     if (camT) { var e = .14; cam.k += (camT.k - cam.k) * e; cam.ox += (camT.ox - cam.ox) * e; cam.oy += (camT.oy - cam.oy) * e; if (Math.abs(camT.k - cam.k) < 1e-4 && Math.abs(camT.ox - cam.ox) < .3 && Math.abs(camT.oy - cam.oy) < .3) { cam = { k: camT.k, ox: camT.ox, oy: camT.oy }; camT = null; } }
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -831,6 +1075,7 @@
     });
     list.sort(function (p, q) { return p.k - q.k; });
     list.forEach(function (it) { drawItem(it, now); });
+    if (GRIDDBG) S.agents.forEach(function (a) { if (!a._walk) return; ctx.strokeStyle = "#ffef5f"; ctx.lineWidth = 2; ctx.beginPath(); a._walk.pts.forEach(function (p, i) { var q = Sx(p[0], p[1]); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.stroke(); });
     drawBrain(now); drawBalls(now); drawCards();
     /* ballonnen: overleg, via-subworkflow, werkende agents (max 10, korte samenvatting) */
     var nb = 0;
@@ -838,12 +1083,166 @@
       if (a._sub || a.x == null || a._walk || !a._head) return;
       if (a._meet && a._meet > tnow) { bubbles.push([a, "overleg met " + (a._meetWith || "collega")]); return; }
       if (a._via && a._via.until > tnow && a._via.label) { bubbles.push([a, a._via.label]); return; }
-      if (st(a) === "working" && nb < 10 && a.last_summary && !DEMO) { nb++; bubbles.push([a, trim(a.last_summary, 38)]); }
+      var sm = RP.on ? RP.sum[a.agent_id] : a.last_summary; if (st(a) === "working" && nb < 10 && sm && !DEMO) { nb++; bubbles.push([a, trim(sm, 38)]); }
     });
     PLACED = [];
     var tiny = cam.k < .2;
     bubbles.forEach(function (b) { if (tiny && !b[0]._walk && !(b[0]._meet > tnow)) return; if (b[0]._head) bubble(b[0]._head[0], b[0]._head[1] - 4, b[1], b[0]._room ? b[0]._room.color : "#8aa0b5"); });
   }
+
+  /* ---------------------------------------------------------------- paneel leesbaarheid (zoals v2) */
+  (function () {
+    var root = document.documentElement, KEY = "bridge.office3.panel", DEF = { z: 1.15, w: 400 }, cur = { z: DEF.z, w: DEF.w };
+    try { var sv = JSON.parse(localStorage.getItem(KEY) || "null"); if (sv && sv.z) cur = { z: +sv.z, w: +sv.w || DEF.w }; } catch (e) {}
+    function apply(save) {
+      cur.z = Math.min(1.8, Math.max(.9, Math.round(cur.z * 20) / 20)); cur.w = Math.min(Math.max(320, Math.round(innerWidth * .6)), Math.max(300, Math.round(cur.w)));
+      root.style.setProperty("--pz", cur.z); root.style.setProperty("--pw", cur.w + "px"); $("pzv").textContent = Math.round(cur.z * 100) + "%";
+      if (save) { try { localStorage.setItem(KEY, JSON.stringify(cur)); } catch (e) {} }
+    }
+    $("pz").addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-pz]"); if (!b) return; var a = b.getAttribute("data-pz");
+      if (a === "+") { cur.z += .1; cur.w = Math.max(cur.w, Math.round(DEF.w * cur.z / DEF.z)); } else if (a === "-") cur.z -= .1; else if (a === "w") cur.w = cur.w < 520 ? 600 : DEF.w; else cur = { z: DEF.z, w: DEF.w };
+      apply(true); setTimeout(resize, 30);
+    });
+    apply(false);
+  })();
+
+  /* ---------------------------------------------------------------- Motion (zoals v2) */
+  var MOTION_KEY = "bridge.office3.motion", motionOn = false, lastUser = 0, TOUR_MAX = 4, TOUR_MS = 10000;
+  try { motionOn = localStorage.getItem(MOTION_KEY) === "1"; } catch (e) {}
+  var TOUR = { q: [], busy: false, cur: null, home: null, timer: null, timers: [] };
+  function paintMotion() { var b = $("motion"); b.classList.toggle("on", motionOn); b.setAttribute("aria-pressed", String(motionOn)); }
+  $("motion").addEventListener("click", function () { motionOn = !motionOn; try { localStorage.setItem(MOTION_KEY, motionOn ? "1" : "0"); } catch (e) {} if (!motionOn) tourStop(true); else lastUser = 0; paintMotion(); });
+  paintMotion();
+  function tourAllowed() { return motionOn && !S.focus && Date.now() - lastUser > 30000; }
+  function queueTour(prevRun) {
+    TOUR.timers.forEach(clearTimeout); TOUR.timers = [];
+    var was = S.prevWorking, now = {}; S.agents.forEach(function (a) { now[a.agent_id] = st(a) === "working"; }); S.prevWorking = now;
+    if (!motionOn || RP.on) return;
+    S.agents.forEach(function (a) {
+      if (a._sub || isNoop(a) || st(a) === "paused" || !a._room) return;
+      var fresh = prevRun && a.last_run_at && a.last_run_at !== (prevRun[a.agent_id] || ""), started = now[a.agent_id] && !(was && was[a.agent_id]);
+      if (!fresh && !started) return;
+      var t = now[a.agent_id] ? (prevRun ? 600 : 2500) + Math.random() * 1500 : Math.random() * (REFRESH_MS - 12000);
+      TOUR.timers.push(setTimeout(function () { tourPush(a.agent_id); }, t));
+    });
+  }
+  function tourPush(id) {
+    var a = S.byId[id]; if (!a || !a._room || !tourAllowed()) return;
+    var name = a._room.name; if (TOUR.cur === name || TOUR.q.some(function (x) { return x.room === name; }) || TOUR.q.length >= TOUR_MAX) return;
+    TOUR.q.push({ room: name, id: id }); if (!TOUR.busy) tourNext();
+  }
+  function tourNext() {
+    clearTimeout(TOUR.timer); var it = null;
+    while (TOUR.q.length && !it) { var x = TOUR.q.shift(); if (S.byId[x.id]) it = x; }
+    if (!it || !tourAllowed()) { var home = TOUR.home; TOUR.q = []; TOUR.busy = false; TOUR.cur = null; TOUR.home = null; $("tourMsg").classList.remove("on"); if (home && tourAllowed()) camT = home; return; }
+    var a = S.byId[it.id], r = a._room;
+    if (!TOUR.home) TOUR.home = { k: cam.k, ox: cam.ox, oy: cam.oy };
+    TOUR.busy = true; TOUR.cur = r.name; zoomToRoom(r);
+    var m = $("tourMsg"); m.style.setProperty("--c", r.color); $("tourDept").textContent = "MOTION · " + r.name; $("tourTxt").textContent = a.agent_name + (RP.on ? "" : " · " + trim(a.last_summary, 60));
+    m.classList.remove("on"); void m.offsetWidth; m.classList.add("on");
+    TOUR.timer = setTimeout(tourNext, TOUR_MS);
+  }
+  function tourStop(back) { clearTimeout(TOUR.timer); var home = TOUR.home; TOUR.q = []; TOUR.busy = false; TOUR.cur = null; TOUR.home = null; $("tourMsg").classList.remove("on"); if (back && home) camT = home; }
+
+  /* ---------------------------------------------------------------- replay 24 u (zoals v2, versneld lopen) */
+  var RP_MIN_REAL = 3500, WALK_BY_DUR = { 60: 4, 120: 3, 300: 2, 900: 1.4 };
+  function rpFetch() {
+    if (TEST) return Promise.resolve(TEST.bridge_agent_runs_24h || []);
+    var from = new Date(Date.now() - 24 * 3600000).toISOString(), all = [];
+    function page(off) { return rest("bridge_agent_runs?select=workflow,run_at,status,duration_ms,summary&has_work=is.true&run_at=gte." + encodeURIComponent(from) + "&order=run_at.asc&limit=1000&offset=" + off).then(function (rows) { all = all.concat(rows || []); return rows && rows.length === 1000 && off < 20000 ? page(off + 1000) : all; }); }
+    return page(0);
+  }
+  function rpIngest(rows) {
+    RP.t1 = Date.now(); RP.t0 = RP.t1 - 24 * 3600000; RP.per = {};
+    RP.runs = rows.map(function (r) { var a = S.byWf[r.workflow]; return { t: ms(r.run_at), id: a ? a.agent_id : null, st: String(r.status || "ok").toLowerCase(), dur: Number(r.duration_ms) || 0, sum: r.summary || "", noop: NOOP_RE.test(String(r.summary || "")) }; })
+      .filter(function (r) { return r.id && r.t >= RP.t0; }).sort(function (a, b) { return a.t - b.t; });
+    RP.runs.forEach(function (r) { (RP.per[r.id] = RP.per[r.id] || []).push(r); });
+    rpHist();
+  }
+  function rpLast(id, t) { var Ls = RP.per[id]; if (!Ls || !Ls.length || Ls[0].t > t) return null; var lo = 0, hi = Ls.length - 1; while (lo < hi) { var m = (lo + hi + 1) >> 1; if (Ls[m].t <= t) lo = m; else hi = m - 1; } return Ls[lo]; }
+  function rpStates() {
+    var win = Math.max(60000, RP_MIN_REAL * 86400000 / (RP.dur * 1000)), sig = []; RP.state = {}; RP.sum = {};
+    S.agents.forEach(function (a) {
+      var r = rpLast(a.agent_id, RP.t), live = STATES[a.state] ? a.state : "ok", s2;
+      if (!r) s2 = live === "paused" || live === "idle" ? live : "ok";
+      else { var err = r.st === "error" || r.st === "failed"; if (RP.t - r.t <= Math.max(win, r.dur)) s2 = err ? "error" : r.noop ? "ok" : "working"; else s2 = err ? "error" : (live === "paused" ? "paused" : "ok"); RP.sum[a.agent_id] = r.sum; }
+      RP.state[a.agent_id] = s2; sig.push(s2);
+    });
+    sig = sig.join(""); if (sig !== RP.sig) { RP.sig = sig; renderHeader(); }
+  }
+  function rpEvents(a0, a1) {
+    var n = 0, lg = loopGroups();
+    for (var i = 0; i < RP.runs.length; i++) {
+      var r = RP.runs[i]; if (r.t <= a0) continue; if (r.t > a1) break; if (r.noop || ++n > 12) continue;
+      var a = S.byId[r.id]; if (!a) continue;
+      if (usesBrain(a) && !a._sub) fireBall(a.agent_id);
+      if (motionOn) tourPush(a.agent_id);
+      S.links.forEach(function (l) {
+        if (l.to_agent !== r.id) return; var fr = S.byId[l.from_agent], to = S.byId[l.to_agent], lr = rpLast(l.from_agent, r.t);
+        if (!fr || !to || !lr || r.t - lr.t > 20 * 60000 || !canWalk(fr) || to._sub) return;
+        var comp = lg.comp[fr.agent_id];
+        if (comp && comp === lg.comp[to.agent_id]) teamOverleg([fr.agent_id, to.agent_id].concat(comp.filter(function (x) { return x !== fr.agent_id && x !== to.agent_id; }).slice(0, 2)), false);
+        else kortOverleg(fr, to, false);
+      });
+    }
+  }
+  var fmtRp = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit" });
+  var fmtRpDay = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Madrid", weekday: "short", day: "numeric" });
+  var fmtHour = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Madrid", hour: "2-digit", hour12: false });
+  function rpFrac(t) { return Math.max(0, Math.min(1, (t - RP.t0) / (RP.t1 - RP.t0))); }
+  function rpPaint() {
+    var f = rpFrac(RP.t), pc = (f * 100).toFixed(3) + "%"; $("rpHead").style.left = pc; $("rpDone").style.width = pc;
+    $("rpTime").textContent = fmtRp.format(RP.t); var ago = Math.round((RP.t1 - RP.t) / 3600000); $("rpDay").textContent = fmtRpDay.format(RP.t) + (ago ? " · −" + ago + " u" : " · nu");
+    var n = 0; for (var i = 0; i < RP.runs.length && RP.runs[i].t <= RP.t; i++) n++; $("rpCount").textContent = n + " / " + RP.runs.length + " runs";
+    $("rpTrack").setAttribute("aria-valuenow", String(Math.round(f * 1440))); $("rpTrack").setAttribute("aria-valuetext", fmtRp.format(RP.t));
+    $("rpPlay").textContent = RP.playing ? "❚❚" : "▶"; $("upd").textContent = "replay " + fmtRp.format(RP.t);
+  }
+  function rpHist() {
+    var B = 96, ok = [], er = [], mx = 1, i; for (i = 0; i < B; i++) { ok.push(0); er.push(0); }
+    RP.runs.forEach(function (r) { var b = Math.min(B - 1, Math.floor(rpFrac(r.t) * B)); if (r.st === "error" || r.st === "failed") er[b]++; else ok[b]++; });
+    for (i = 0; i < B; i++) mx = Math.max(mx, ok[i] + er[i]);
+    var h = ""; for (i = 0; i < B; i++) { var ho = ok[i] / mx * 24, he = er[i] / mx * 24;
+      if (ho) h += '<rect class="h-ok" x="' + (i + .12).toFixed(2) + '" y="' + (24 - ho - he).toFixed(2) + '" width=".76" height="' + ho.toFixed(2) + '"/>';
+      if (he) h += '<rect class="h-err" x="' + (i + .12).toFixed(2) + '" y="' + (24 - he).toFixed(2) + '" width=".76" height="' + Math.max(1.2, he).toFixed(2) + '"/>'; }
+    var hist = $("rpHist"); hist.setAttribute("viewBox", "0 0 " + B + " 24"); hist.innerHTML = h;
+    var t = "", first = Math.ceil(RP.t0 / 3600000) * 3600000;
+    for (var x = first; x < RP.t1; x += 3600000) { var hh = Number(fmtHour.format(x)) % 24; if (hh % 3) continue; t += '<span' + (hh === 0 ? ' class="d"' : "") + ' style="left:' + (rpFrac(x) * 100).toFixed(2) + '%">' + (hh === 0 ? fmtRpDay.format(x) : String(hh).padStart(2, "0") + ":00") + "</span>"; }
+    $("rpTicks").innerHTML = t;
+  }
+  function rpTick(now) {
+    if (!RP.playing) return; var dt = Math.min(250, now - (RP.last || now)); RP.last = now; var prev = RP.t;
+    RP.t = Math.min(RP.t1, RP.t + dt * 86400000 / (RP.dur * 1000)); rpEvents(prev, RP.t); rpStates(); rpPaint();
+    if (RP.t >= RP.t1) { RP.playing = false; rpPaint(); }
+  }
+  function rpPlay(on) { if (on && RP.t >= RP.t1 - 1000) RP.t = RP.t0; RP.playing = on; RP.last = 0; rpPaint(); }
+  function rpSeek(t) { RP.t = Math.max(RP.t0, Math.min(RP.t1, t)); rpStates(); rpPaint(); }
+  function rpStart() {
+    if (RP.on) return; var btn = $("rpBtn"); btn.classList.add("on"); btn.setAttribute("aria-pressed", "true"); btn.disabled = true;
+    rpFetch().then(function (rows) {
+      btn.disabled = false; tourStop(false); RP.on = true; RP.sig = ""; RP.walk = WALK_BY_DUR[RP.dur] || 3; rpIngest(rows);
+      document.body.classList.add("replaying"); $("replay").hidden = false; RP.t = RP.t0; rpStates(); rpPlay(true); renderPanel();
+    }, function (e) { btn.disabled = false; btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false"); showMsg("De runs van de afgelopen 24 uur konden niet geladen worden (" + (e.message || e) + ")."); });
+  }
+  function rpStop() {
+    if (!RP.on) return; rpPlay(false); RP.on = false; RP.state = {}; RP.sum = {}; RP.sig = ""; $("replay").hidden = true; document.body.classList.remove("replaying");
+    var btn = $("rpBtn"); btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false"); renderHeader(); renderPanel();
+  }
+  $("rpBtn").addEventListener("click", function () { if (RP.on) rpStop(); else rpStart(); });
+  $("rpClose").addEventListener("click", rpStop);
+  $("rpPlay").addEventListener("click", function () { rpPlay(!RP.playing); });
+  $("rpSpeed").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-sp]"); if (!b) return; RP.dur = Number(b.getAttribute("data-sp")) || 120; RP.walk = WALK_BY_DUR[RP.dur] || 3;
+    Array.prototype.forEach.call(this.querySelectorAll("button"), function (x) { x.classList.toggle("on", x === b); }); RP.sig = ""; rpStates();
+  });
+  var rpDrag = null, track = $("rpTrack");
+  function rpAt(e) { var r = track.getBoundingClientRect(); return RP.t0 + Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (RP.t1 - RP.t0); }
+  track.addEventListener("pointerdown", function (e) { rpDrag = { was: RP.playing }; rpPlay(false); track.setPointerCapture(e.pointerId); rpSeek(rpAt(e)); e.stopPropagation(); });
+  track.addEventListener("pointermove", function (e) { if (rpDrag) rpSeek(rpAt(e)); });
+  track.addEventListener("pointerup", function () { if (rpDrag && rpDrag.was) rpPlay(true); rpDrag = null; });
+  track.addEventListener("keydown", function (e) { var k = e.key, step = e.shiftKey ? 3600000 : 900000;
+    if (k === "ArrowRight") rpSeek(RP.t + step); else if (k === "ArrowLeft") rpSeek(RP.t - step); else if (k === "Home") rpSeek(RP.t0); else if (k === "End") rpSeek(RP.t1); else if (k === " " || k === "Enter") rpPlay(!RP.playing); else return; e.preventDefault(); });
+  $("replay").addEventListener("pointerdown", function (e) { e.stopPropagation(); });
 
   /* ---------------------------------------------------------------- start */
   function loggedOut() { $("loading").innerHTML = '<div class="gate"><b>Niet ingelogd</b><span>Dit paneel deelt de login van The Bridge. Log in op het hoofdscherm en dit paneel vult zich vanzelf.</span><a href="/" target="_top">Naar The Bridge</a></div>'; $("loading").style.display = "flex"; }
