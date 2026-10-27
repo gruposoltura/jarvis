@@ -998,6 +998,9 @@
     if (pc === "BIBLE") { var seg = S.byId[BIBLE_SEG[d] || "bible"] || S.byId.bible; return seg ? [seg] : []; }
     return S.agents.filter(function (a) { return a.dept_name === d && a.cluster_label === pc; });
   }
+  /* telt een agent mee als 'kort na elkaar actief' rond tijdstip t (20 min venster, of draait nu) */
+  function activeNear(a, t, runAt) { if (!a || a._sub || a.x == null || isNoop(a)) return false; if (!runAt && st(a) === "working") return true;
+    var lr = runAt != null ? runAt : ms(a.last_run_at); return lr > 0 && Math.abs(lr - t) <= 20 * 60000; }
   var meetTimers = [];
   function queueMeets(prevRun) {
     if (REDUCED || !prevRun) return;
@@ -1024,8 +1027,9 @@
     Object.keys(best).forEach(function (k) {
       var b = best[k]; if (claimed[b.fr.agent_id] || claimed[b.to.agent_id]) return;
       var delay = b.working ? 400 : Math.random() * (REFRESH_MS - 25000), comp = lg.comp[b.fr.agent_id];
-      if (comp && comp === lg.comp[b.to.agent_id]) {
-        var ids = [b.fr.agent_id, b.to.agent_id].concat(comp.filter(function (x) { return x !== b.fr.agent_id && x !== b.to.agent_id && !claimed[x]; }).slice(0, 2));
+      var act = comp && comp === lg.comp[b.to.agent_id] ? comp.filter(function (x) { return x !== b.fr.agent_id && x !== b.to.agent_id && !claimed[x] && activeNear(S.byId[x], ms(b.to.last_run_at)); }) : [];
+      if (act.length) {   /* 3+ lusleden draaiden kort na elkaar -> teamoverleg in de kantine; anders 1-op-1 (27-10, Rick) */
+        var ids = [b.fr.agent_id, b.to.agent_id].concat(act.slice(0, 2));
         ids.forEach(function (x) { claimed[x] = 1; }); meetTimers.push(setTimeout(function () { teamOverleg(ids, b.working); }, delay));
       } else { claimed[b.fr.agent_id] = claimed[b.to.agent_id] = 1; meetTimers.push(setTimeout(function () { kortOverleg(S.byId[b.fr.agent_id], S.byId[b.to.agent_id], b.working); }, delay)); }
     });
@@ -1138,7 +1142,7 @@
       var lg = loopGroups(), loops = {}; Object.keys(lg.comp).forEach(function (k) { loops[lg.comp[k].slice().sort().join(",")] = lg.comp[k]; });
       var inMeet = S.agents.filter(function (a) { return a._walk; });
       h += '<button class="back" data-back="1">← overzicht</button><h2 style="color:' + CANTEEN_COLOR + '">KANTINE</h2>';
-      h += '<p class="muted">Hier komt een terugkoppellus samen. Draait een agent kort na een agent die hem levert (koppeling in v_office_links), dan loopt de leverancier naar zijn collega. Zitten ze in een lus van drie of meer, dan schuiven tot vier lusleden aan een statafel.</p>';
+      h += '<p class="muted">Hier komt een terugkoppellus samen. Draait een agent kort na een agent die hem levert (koppeling in v_office_links), dan loopt de leverancier naar zijn collega. Draaien drie of meer leden van zo'n lus kort na elkaar, dan schuiven tot vier van hen aan een statafel in de kantine; met z'n tweeën blijft het 1-op-1 aan het bureau.</p>';
       h += '<div class="kv"><div><b>' + S.links.length + '</b><span>koppelingen</span></div><div><b>' + Object.keys(loops).length + '</b><span>lussen</span></div><div class="w"><b>' + inMeet.length + '</b><span>onderweg</span></div></div>';
       if (inMeet.length) h += '<h3>Nu in overleg</h3>' + inMeet.map(function (a) { return agentRow(a, a._walk.label || "aan tafel"); }).join("");
       Object.keys(loops).forEach(function (k, i) { h += '<h3>Lus ' + (i + 1) + '</h3>' + loops[k].map(function (id) { return S.byId[id] ? agentRow(S.byId[id]) : ""; }).join(""); });
@@ -1294,7 +1298,8 @@
         if (l.to_agent !== r.id) return; var fr = S.byId[l.from_agent], to = S.byId[l.to_agent], lr = rpLast(l.from_agent, r.t);
         if (!fr || !to || !lr || r.t - lr.t > 20 * 60000 || !canWalk(fr) || to._sub) return;
         var comp = lg.comp[fr.agent_id];
-        if (comp && comp === lg.comp[to.agent_id]) teamOverleg([fr.agent_id, to.agent_id].concat(comp.filter(function (x) { return x !== fr.agent_id && x !== to.agent_id; }).slice(0, 2)), false);
+        var act = comp && comp === lg.comp[to.agent_id] ? comp.filter(function (x) { var q = rpLast(x, r.t); return x !== fr.agent_id && x !== to.agent_id && q && activeNear(S.byId[x], r.t, q.t); }) : [];
+        if (act.length) teamOverleg([fr.agent_id, to.agent_id].concat(act.slice(0, 2)), false);
         else kortOverleg(fr, to, false);
       });
     }
