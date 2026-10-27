@@ -428,8 +428,8 @@
     r.tables = [];
     var tn = Math.max(4, Math.min(6, Math.floor(r.w * r.h / 16))), tc = tn > 4 ? 3 : 2, tr = Math.ceil(tn / tc);
     for (var t = 0; t < tn; t++) { var c = t % tc, rw = Math.floor(t / tc), tx = r.x + 1.2 + (r.w - 2) * ((c + .5) / tc), ty = r.y + 2.3 + (r.h - 3.1) * ((rw + .5) / tr); r.tables.push({ x: tx, y: ty, used: 0 }); items.push({ k: tx + ty, t: "table", x: tx, y: ty }); }
-    items.push({ k: r.x + .6 + r.y + r.h - .6, t: "sprite", img: "plant", x: r.x + .6, y: r.y + r.h - .6, w: 38 });
-    items.push({ k: r.x + r.w - .6 + r.y + r.h - .6, t: "sprite", img: "plant", x: r.x + r.w - .6, y: r.y + r.h - .6, w: 34 });
+    items.push({ k: r.x + .6 + r.y + r.h - .6, t: "plant", x: r.x + .6, y: r.y + r.h - .6, w: 38 });
+    items.push({ k: r.x + r.w - .6 + r.y + r.h - .6, t: "plant", x: r.x + r.w - .6, y: r.y + r.h - .6, w: 34 });
     /* ---- afdelingen: kastjes met plant of ordners langs de wanden, printer of waterdispenser in de hoek,
        flipover met lijndiagram bij MARKETING en SALES, patchkast bij INFRA; nooit voor een deur ---- */
     function free(r2, v, a0, a1) {   /* vrije stukken langs achterwand (v=false, x) of linkerwand (v=true, y) */
@@ -459,7 +459,7 @@
       if (d.h > 4.5) free(d, true, d.y + 1.6, d.y + d.h - 1.2).forEach(function (iv) {
         for (var y = iv[0]; y + 1.1 <= iv[1]; y += 2.3) items.push({ k: d.x + .35 + y + .55, t: "prop", kind: "cab", x: d.x + .1, y: y, w: .45, d: 1.1, top: Math.round(y * 5) % 2 ? "plant" : "binders", wood: di % 2 === 1 });
       });
-      if (big) items.push({ k: d.x + .55 + d.y + d.h - .5, t: "sprite", img: "plant", x: d.x + .5, y: d.y + d.h - .45, w: 28 });
+      if (big) items.push({ k: d.x + .55 + d.y + d.h - .5, t: "plant", x: d.x + .5, y: d.y + d.h - .45, w: 28 });
     });
     L.items = items;
     buildGrid();
@@ -489,7 +489,7 @@
       else if (it.t === "desk") { var ag = S.byId[it.id]; if (ag) rect(ag.x - .9, ag.y - .8, ag.x + .5, ag.y + .7, 1, blk); }
       else if (it.t === "box") rect(it.b.x - .05, it.b.y - .05, it.b.x + it.b.w + .05, it.b.y + it.b.d + .05, 1, blk);
       else if (it.t === "table") rect(it.x - .3, it.y - .3, it.x + .3, it.y + .3, 1, blk);
-      else if (it.t === "sprite") rect(it.x - .35, it.y - .35, it.x + .35, it.y + .35, 1, blk);
+      else if (it.t === "sprite" || it.t === "plant") rect(it.x - .35, it.y - .35, it.x + .35, it.y + .35, 1, blk);
       else if (it.t === "prop") { var w = it.kind === "cab" ? it.w : it.kind === "printer" ? .85 : it.kind === "flip" ? 1.0 : .45, d = it.kind === "cab" ? it.d : it.kind === "printer" ? .6 : it.kind === "flip" ? .45 : .45;
         if (it.kind !== "shelf" && it.kind !== "espresso" && it.kind !== "grinder" && it.kind !== "kettle" && it.kind !== "cups") rect(it.x - .05, it.y - .1, it.x + w + .05, it.y + d + .05, 1, blk); }
     });
@@ -541,7 +541,7 @@
   var IMG = {}, TC = {}, AVOK = false;
   function loadImg(k, f) { return new Promise(function (res) { var i = new Image(); i.onload = function () { IMG[k] = i; res(i); }; i.onerror = function () { res(null); }; i.src = ASSETS + f; }); }
   Promise.all([loadImg("desk", "desk-v3.webp"), loadImg("deskMap", "desk-v3-map.webp"), loadImg("empty", "desk-empty-v3.webp"), loadImg("walk", "walker-v4.webp"), loadImg("walkMap", "walker-v4-map.webp"),
-    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp"), loadImg("coolerZW", "../office-v3-assets/props/cooler_classic_ZW.webp"), loadImg("coolerZO", "../office-v3-assets/props/cooler_classic_ZO.webp")]).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
+    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp"), loadImg("coolerZW", "../office-v3-assets/props/cooler_classic_ZW.webp"), loadImg("coolerZO", "../office-v3-assets/props/cooler_classic_ZO.webp"), loadImg("pl_monstera", "../office-v3-assets/props/plant_monstera.webp"), loadImg("pl_ficus", "../office-v3-assets/props/plant_ficus.webp"), loadImg("pl_kentia", "../office-v3-assets/props/plant_kentia.webp"), loadImg("pl_sansevieria", "../office-v3-assets/props/plant_sansevieria.webp"), loadImg("pl_succulent", "../office-v3-assets/props/plant_succulent.webp")]).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
   var VID = $("brainVid"), vidOk = false;
   if (!REDUCED) { VID.src = ASSETS + "brain-core.mp4"; VID.addEventListener("canplay", function () { vidOk = true; }); var pp = VID.play(); if (pp && pp.catch) pp.catch(function () {}); }
   /* typende handen (zoals v2, 24-10): handen uit de bureausprite knippen (huidskleur in twee vakken boven het
@@ -714,6 +714,7 @@
     if (it.t === "table") { var b0 = Sx(it.x, it.y, 0), tt = Sx(it.x, it.y, 34); ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(b0[0], b0[1], 12 * k, 6 * k, 0, 0, 7); ctx.fill();
       ctx.strokeStyle = "#4a4f58"; ctx.lineWidth = 3 * k; ctx.beginPath(); ctx.moveTo(b0[0], b0[1]); ctx.lineTo(tt[0], tt[1]); ctx.stroke(); ctx.fillStyle = "#e8e2d6"; ctx.beginPath(); ctx.ellipse(tt[0], tt[1], 13 * k, 6.5 * k, 0, 0, 7); ctx.fill(); ctx.strokeStyle = "#b9b1a2"; ctx.lineWidth = 1; ctx.stroke(); return; }
     if (it.t === "prop") { drawProp(it, now); return; }
+    if (it.t === "plant") { drawPlant(PLANT_KINDS[hash(Math.round(it.x * 10) + ":" + Math.round(it.y * 10)) % PLANT_KINDS.length], it.x, it.y, 0, it.w > 32 ? 1.15 : 1); return; }
     if (it.t === "sprite") { var im = IMG[it.img]; if (!im) return; var sp = Sx(it.x, it.y, it.z || 0), sw = it.w * k, sh = sw * im.height / im.width; ctx.drawImage(im, sp[0] - sw / 2, sp[1] - sh * .92, sw, sh); return; }
     if (it.t === "desk") {
       var ag = S.byId[it.id]; if (!ag || ag.x == null) return; var r = ag._room, s = st(ag), p = Sx(ag.x, ag.y), w = DESK_W * k, h = DESK_H * k;
@@ -751,6 +752,14 @@
     ctx.fillStyle = top; ctx.beginPath(); ctx.ellipse(t[0], t[1], rx, ry, 0, 0, 7); ctx.fill();
   }
   function led(x, y, z, col, r) { var p = Sx(x, y, z); ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(.8, (r || 1.4) * cam.k), 0, 7); ctx.fill(); }
+  /* gerenderde planten (office-v3-assets/props, Rick 27-10): hoogte in wereld-px (loper 84 = 178 cm), ay = ankerpunt (midden pot op de vloer) als deel van de beeldhoogte */
+  var PLANTS = { monstera: { h: 46, ay: .919 }, ficus: { h: 74, ay: .927 }, kentia: { h: 68, ay: .943 }, sansevieria: { h: 40, ay: .929 }, succulent: { h: 13, ay: .808 } };
+  var PLANT_KINDS = ["monstera", "ficus", "kentia", "sansevieria"];
+  function drawPlant(kind, x, y, z, scale) {
+    var im = IMG["pl_" + kind], P0 = PLANTS[kind];
+    if (!im) { if (IMG.plant) { var sp = Sx(x, y, z), sw = 30 * cam.k, sh = sw * IMG.plant.height / IMG.plant.width; ctx.drawImage(IMG.plant, sp[0] - sw / 2, sp[1] - sh * .92, sw, sh); } return; }
+    var p = Sx(x, y, z), h = P0.h * (scale || 1) * cam.k, w = h * im.width / im.height; ctx.drawImage(im, p[0] - w / 2, p[1] - h * P0.ay, w, h);
+  }
   var BINDER = ["#b8433a", "#2f6fa8", "#d9a441", "#3c8c5a", "#7a4fa0", "#e3ddcf"];
   function drawProp(o, now) {
     var x = o.x, y = o.y, k = cam.k;
@@ -761,7 +770,7 @@
         /* handgrepen / deurnaad aan de voorkant */
         var mid = o.w > o.d ? [x + o.w / 2, y + o.d] : [x + o.w, y + o.d / 2], a1 = o.w > o.d ? Sx(mid[0], mid[1], 3) : Sx(mid[0], mid[1], 3), a2 = Sx(mid[0], mid[1], 17);
         ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = Math.max(.6, k); ctx.beginPath(); ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]); ctx.stroke();
-        if (o.top === "plant" && IMG.plant) { var cx = x + o.w / 2, cy = y + o.d / 2, sp = Sx(cx, cy, 20), sw = 20 * k, sh = sw * IMG.plant.height / IMG.plant.width; ctx.drawImage(IMG.plant, sp[0] - sw / 2, sp[1] - sh * .92, sw, sh); }
+        if (o.top === "plant") { var cx = x + o.w / 2, cy = y + o.d / 2; if (Math.round(x * 3 + y) % 3 === 2) drawPlant("sansevieria", cx, cy, 20, .55); else drawPlant("succulent", cx, cy, 20, 1); }
         else { var n = 5, along = o.w > o.d; for (var i = 0; i < n; i++) { var bx = along ? x + .12 + i * (o.w - .3) / n : x + .08, by = along ? y + .1 : y + .12 + i * (o.d - .3) / n;
           box({ x: bx, y: by, w: along ? .14 : .28, d: along ? .28 : .14, z: 20, h: 9 + (i % 2) * 2 }, BINDER[(i + Math.round(x)) % 6], BINDER[(i + Math.round(x)) % 6], "rgba(0,0,0,.4)"); } }
         return;
