@@ -475,14 +475,8 @@ const STATUS = { ok:{c:C.green,l:"Healthy"}, running:{c:C.cyan,l:"Running"}, idl
    Deze fallback alleen bijwerken bij een bewuste her-baseline.
    Laatste her-baseline: 2026-07-12 (registry-stand, 73 agents; + hot-lead-scout, hot-lead-publisher, match-feedback). */
 const FALLBACK_DEPTS = [
-  /* Gegenereerd uit Supabase bridge_layout op 2026-10-27 (actieve agents). Alleen vangnet (BD-001): */
+  /* Gegenereerd uit Supabase bridge_layout op 2026-10-27 (actieve agents; MANAGEMENT leeg sinds RollCall en Jack gearchiveerd zijn). Alleen vangnet (BD-001): */
   /* normaal komt de indeling live uit bridge_layout. Bijwerken = opnieuw genereren, niet met de hand. */
-  { id:"mgmt", name:"MANAGEMENT", color:"#ffd166", icon:"🧭",
-    agents:[
-      {id:"roll-call",name:"Morning Roll-Call",sched:"06:00 Daily",grp:"morning",step:2},
-      {id:"ops-supervisor",name:"Ops Supervisor (Jack)",sched:"06:15 Daily",grp:"morning",step:3}],
-    clusters:[
-      {id:"morning-report",label:"Morning Report",members:["roll-call", "ops-supervisor"]}]},
   { id:"ops", name:"OPERATIONS", color:"#00d4ff", icon:"🖥",
     agents:[
       {id:"seo-enrich",name:"Agent SEO",sched:"elk uur op :15, max 20 per run (sinds 19-10-2026 alleen Engels)"},
