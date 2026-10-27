@@ -344,7 +344,7 @@
     var canteen = { name: "KANTINE", color: CANTEEN_COLOR, agents: [], canteen: true, tables: [] };
     rooms.push(canteen);
     var maxN = Math.max.apply(null, S.depts.map(function (d) { return d.agents.length; }).concat([1]));
-    rooms.forEach(function (r) { r.area = r.canteen ? Math.max(64, maxN * 2.8) + 18 : r.agents.length * 9.4 + 24; r.area += 2.2 * Math.sqrt(r.area) + 4; });
+    rooms.forEach(function (r) { r.area = r.canteen ? Math.max(64, maxN * 2.8) + 18 : r.agents.length * 12.5 + 30; r.area += 2.2 * Math.sqrt(r.area) + 4; });
     rooms.sort(function (a, b) { return b.area - a.area; });
     var tot = rooms.reduce(function (t, r) { return t + r.area; }, 0);
     L.W = Math.sqrt(tot * 1.25); L.H = tot / L.W; L.rooms = rooms; L.canteen = canteen;
@@ -357,35 +357,32 @@
       if (!r.ob.l) { r.x += HALL / 2; r.w -= HALL / 2; } if (!r.ob.r) r.w -= HALL / 2;
       if (!r.ob.t) { r.y += HALL / 2; r.h -= HALL / 2; } if (!r.ob.b) r.h -= HALL / 2;
     });
-    /* bureaus: eilanden van 3 langs x (gangpad IG ertussen), rijen langs y met een gangpad voor elke rij.
-       Bureau-voetafdruk incl. stoel t.o.v. het anker: x -0,9..+0,5, y -0,8..+0,7 (DESK_FP). */
-    var IG = 1.05;
+    /* bureaus: eilanden van 4 (27-10, Rick) - twee bureaus naast elkaar (langs y), twee tegenover (langs x),
+       beeldschermen rug aan rug. Voorste rij (rug naar ons) anker = stoel aan de +x-kant, achterste rij (_far)
+       anker 2,2 verder in -x. Eiland incl. stoelen: ISX x ISY; gangpaden van AG ertussen. */
+    var ISX = 3.75, ISY = 4.1, AG = 1.05, FARDX = 2.2;
     rooms.forEach(function (r) {
-      r.aisles = [];
+      r.aisles = []; r.mats = [];
       if (r.canteen) { r.aisles.push([r.x + .3, r.y + 1.1, r.x + r.w - .3, r.y + r.h - .3]); return; }
-      var n = r.agents.length, ax = r.x + 1.35, ay = r.y + 1.5, aw = r.w - 2.15, ah = r.h - 1.75, best = null;
-      for (var cols = 1; cols <= n; cols++) { var rows = Math.ceil(n / cols), isl = Math.ceil(cols / 3) - 1, s = Math.min(1, (aw - isl * IG) / (cols * 2.0), ah / (rows * 2.45)); if (!best || s > best.s) best = { cols: cols, rows: rows, s: s }; }
-      var sx = 2.0 * best.s, sy = 2.45 * best.s, isl2 = Math.ceil(best.cols / 3) - 1, gw = best.cols * sx + isl2 * IG, gh = best.rows * sy, ox = ax + (aw - gw) / 2, oy = ay + (ah - gh) / 2;
-      var colX = function (c) { return ox + (c + .5) * sx + Math.floor(c / 3) * IG; }, rowY = function (rr) { return oy + (rr + .5) * sy; };
-      r.mats = [];
-      r.agents.forEach(function (a, i) { var c = i % best.cols, rr = Math.floor(i / best.cols); a.x = colX(c); a.y = rowY(rr); a._room = r; a._row = rr; });
-      for (var rr = 0; rr < best.rows; rr++) for (var c0 = 0; c0 < best.cols; c0 += 3) {
-        if (rr * best.cols + c0 >= n) continue; var c1 = Math.min(best.cols, c0 + 3) - 1;
-        r.mats.push([colX(c0) - 1.0, rowY(rr) - .85, colX(c1) + .6, rowY(rr) + .75]);
-      }
-      /* gangpaden (loper-rechthoeken): achter, links, rechts, voor elke rij, tussen de eilanden */
-      var top = r.y + .62, xl = r.x + .6, xr = r.x + r.w - .3, left0 = colX(0) - .9, right0 = colX(best.cols - 1) + .5, bot = r.y + r.h - .25, lastFront = rowY(best.rows - 1) + .7;
-      var AW = .7;
-      function band(a, b) { var c = (a + b) / 2, w = Math.min(AW, b - a); return [c - w / 2, c + w / 2]; }
-      var yb = band(top, rowY(0) - .8); r.aisles.push([xl, yb[0], xr, yb[1]]);
-      var rowAisle = [];
-      for (var q = 0; q < best.rows; q++) { var ya = band(rowY(q) + .7, q < best.rows - 1 ? rowY(q + 1) - .8 : bot); rowAisle.push((ya[0] + ya[1]) / 2); r.aisles.push([xl, ya[0], xr, ya[1]]); }
-      var yTop = yb[0], yBot = r.aisles[r.aisles.length - 1][3];
-      var xa = band(xl, left0); r.aisles.push([xa[0], yTop, xa[1], yBot]);
-      var xz = band(right0, xr); r.aisles.push([xz[0], yTop, xz[1], yBot]);
-      for (var g = 3; g < best.cols; g += 3) { var xg = band(colX(g - 1) + .5, colX(g) - .9); r.aisles.push([xg[0], yTop, xg[1], yBot]); }
-      r.agents.forEach(function (a) { a._aisle = rowAisle[a._row]; });
-      r.aisleY = rowAisle[rowAisle.length - 1];
+      var n = r.agents.length, ni = Math.max(1, Math.ceil(n / 4)), ax = r.x + 1.1, ay = r.y + 1.35, aw = r.w - 1.6, ah = r.h - 1.85, best = null;
+      for (var ic = 1; ic <= ni; ic++) { var ir = Math.ceil(ni / ic), px = ic > 1 ? Math.min(ISX + AG, (aw - ISX) / (ic - 1)) : 0, py = ir > 1 ? Math.min(ISY + AG, (ah - ISY) / (ir - 1)) : 0;
+        var slack = Math.min(ic > 1 ? px - ISX : aw - ISX, ir > 1 ? py - ISY : ah - ISY); if (!best || slack > best.slack + 1e-6) best = { ic: ic, ir: ir, px: px, py: py, slack: slack }; }
+      var gw = ISX + (best.ic - 1) * best.px, gh = ISY + (best.ir - 1) * best.py, ox = ax + Math.max(0, (aw - gw) / 2), oy = ay + Math.max(0, (ah - gh) / 2);
+      var isX = function (c) { return ox + c * best.px; }, isY = function (q) { return oy + q * best.py; };
+      /* volgorde in een eiland: voor-links, voor-rechts, achter-links, achter-rechts */
+      var SEAT = [[0, 0, false], [0, 2.0, false], [-FARDX, 0, true], [-FARDX, 2.0, true]];
+      r.agents.forEach(function (a, i) { var isl = Math.floor(i / 4), c = isl % best.ic, q = Math.floor(isl / best.ic), sd = SEAT[i % 4];
+        a.x = isX(c) + ISX - .8 + sd[0]; a.y = isY(q) + 1.5 + sd[1]; a._far = sd[2]; a._room = r; a._row = q; a._isl = [isX(c), isY(q)]; });
+      for (var isl = 0; isl < ni; isl++) { var c0 = isl % best.ic, q0 = Math.floor(isl / best.ic); r.mats.push([isX(c0) - .1, isY(q0) + .05, isX(c0) + ISX + .1, isY(q0) + ISY - .05]); }
+      /* gangpaden (loper-rechthoeken): rondom en tussen de eilanden */
+      var xl = r.x + .55, xr = r.x + r.w - .3, top = r.y + .62, bot = r.y + r.h - .25, AW = .7;
+      function band(a, b) { var c = (a + b) / 2, w = Math.min(AW, Math.max(.3, b - a)); return [c - w / 2, c + w / 2]; }
+      var hz = [band(top, isY(0))]; for (var q = 0; q < best.ir; q++) hz.push(band(isY(q) + ISY, q < best.ir - 1 ? isY(q + 1) : bot));
+      hz.forEach(function (b) { r.aisles.push([xl, b[0], xr, b[1]]); });
+      var yTop = hz[0][0], yBot = hz[hz.length - 1][1];
+      var vt = [band(xl, isX(0))]; for (var c = 0; c < best.ic; c++) vt.push(band(isX(c) + ISX, c < best.ic - 1 ? isX(c + 1) : xr));
+      vt.forEach(function (b) { r.aisles.push([b[0], yTop, b[1], yBot]); });
+      r.aisleY = (hz[hz.length - 1][0] + hz[hz.length - 1][1]) / 2;
     });
     /* deuren: op elke binnenkant van een zaal (naar de gang), 1 per kant, 2 bij een kant langer dan 13 */
     L.doors = [];
@@ -487,7 +484,7 @@
     L.items.forEach(function (it) {
       if (it.t === "glass") { var x0 = Math.min(it.a[0], it.b[0]), x1 = Math.max(it.a[0], it.b[0]), y0 = Math.min(it.a[1], it.b[1]), y1 = Math.max(it.a[1], it.b[1]); rect(x0 - .14, y0 - .14, x1 + .14, y1 + .14, 1, blk); }
       else if (it.t === "post") rect(it.x - .15, it.y - .15, it.x + .15, it.y + .15, 1, blk);
-      else if (it.t === "desk") { var ag = S.byId[it.id]; if (ag) rect(ag.x - .9, ag.y - .8, ag.x + .5, ag.y + .7, 1, blk); }
+      else if (it.t === "desk") { var ag = S.byId[it.id]; if (ag) { if (ag._far) rect(ag.x - .55, ag.y - 1.5, ag.x + 1.12, ag.y + .5, 1, blk); else rect(ag.x - 1.12, ag.y - 1.5, ag.x + .55, ag.y + .5, 1, blk); } }
       else if (it.t === "box") rect(it.b.x - .05, it.b.y - .05, it.b.x + it.b.w + .05, it.b.y + it.b.d + .05, 1, blk);
       else if (it.t === "table") rect(it.x - .3, it.y - .3, it.x + .3, it.y + .3, 1, blk);
       else if (it.t === "sprite" || it.t === "plant") rect(it.x - .35, it.y - .35, it.x + .35, it.y + .35, 1, blk);
@@ -530,34 +527,42 @@
   }
   function smooth(pts) { if (pts.length < 3) return pts; var out = [pts[0]], i = 0; while (i < pts.length - 1) { var j = pts.length - 1; while (j > i + 1 && !los(pts[i], pts[j])) j--; out.push(pts[j]); i = j; } return out; }
   /* bureau -> loper -> (deuren) -> loper -> doel; nooit door bureaus, wanden of meubels */
+  /* punt naast de stoel waar een agent opstaat of bezoek krijgt (voorste rij +x, achterste rij -x) */
+  function seatOut(a, far) { return a._far ? [a.x - .85, a.y - .1] : [a.x + .85, a.y - .1]; }
   function pathFor(a, target) {
     if (!G.blk) return null;
-    var s0 = nearestFree([a.x + .2, a._aisle || a.y + 1], true), t0 = nearestFree(target, false);
+    var out = seatOut(a), s0 = nearestFree(out, true), t0 = nearestFree(target, false);
     var raw = astar(s0, t0); if (!raw) return null;
-    var pts = smooth(raw); pts.unshift([a.x + .15, a.y + .75]); pts.push(target);
+    var pts = smooth(raw); pts.unshift(out); pts.push(target);
     return pts;
   }
 
   /* ---------------------------------------------------------------- assets */
   var IMG = {}, TC = {}, AVOK = false;
   function loadImg(k, f) { return new Promise(function (res) { var i = new Image(); i.onload = function () { IMG[k] = i; res(i); }; i.onerror = function () { res(null); }; i.src = ASSETS + f; }); }
-  Promise.all([loadImg("desk", "../office-v3-assets/agents/desk-seat.webp"), loadImg("deskMap", "../office-v3-assets/agents/desk-seat-map.webp"), loadImg("empty", "desk-empty-v3.webp"), loadImg("walk", "../office-v3-assets/agents/walker.webp"), loadImg("walkMap", "../office-v3-assets/agents/walker-map.webp"),
-    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp"), loadImg("coolerZW", "../office-v3-assets/props/cooler_classic_ZW.webp"), loadImg("coolerZO", "../office-v3-assets/props/cooler_classic_ZO.webp"), loadImg("pl_monstera", "../office-v3-assets/props/plant_monstera.webp"), loadImg("pl_ficus", "../office-v3-assets/props/plant_ficus.webp"), loadImg("pl_kentia", "../office-v3-assets/props/plant_kentia.webp"), loadImg("pl_sansevieria", "../office-v3-assets/props/plant_sansevieria.webp"), loadImg("pl_succulent", "../office-v3-assets/props/plant_succulent.webp"), loadImg("pr_mfp", "../office-v3-assets/props/printer_mfp.webp"), loadImg("pr_laser", "../office-v3-assets/props/printer_laser.webp"), loadImg("pr_plotter", "../office-v3-assets/props/printer_plotter.webp"), loadImg("rk_closed", "../office-v3-assets/props/rack_closed.webp"), loadImg("rk_open", "../office-v3-assets/props/rack_open.webp")].concat(["mug_green", "mug_orange", "cup_cappu", "cup_espresso"].map(function (w) { return loadImg(w, "../office-v3-assets/props/" + w + ".webp"); })).concat(["white", "sticky", "bar", "line", "blank"].map(function (w) { return loadImg("flip_" + w, "../office-v3-assets/props/flip_" + w + ".webp"); })).concat(["ZW", "ZO"].map(function (w) { return loadImg("pou" + w, "../office-v3-assets/props/cooler_pou_" + w + ".webp"); })).concat(["white", "oak", "square"].map(function (w) { return loadImg("tb_" + w, "../office-v3-assets/props/tb_" + w + ".webp"); })).concat(["kettle", "grinder", "filter", "auto", "espresso"].map(function (w) { return loadImg("cm_" + w, "../office-v3-assets/props/cm_" + w + ".webp"); })).concat(["stack", "carafe", "mugs", "cappu", "glasses"].map(function (w) { return loadImg("ware_" + w, "../office-v3-assets/props/ware_" + w + ".webp"); })).concat(["white", "binders", "bookcase", "lockers", "sideboard"].reduce(function (l, c) { return l.concat([loadImg("cab_" + c, "../office-v3-assets/props/cab_" + c + ".webp"), loadImg("cab_" + c + "_m", "../office-v3-assets/props/cab_" + c + "_m.webp")]); }, []))).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
+  Promise.all([loadImg("desk", "../office-v3-assets/agents/desk-seat.webp"), loadImg("deskMap", "../office-v3-assets/agents/desk-seat-map.webp"), loadImg("empty", "desk-empty-v3.webp"), loadImg("deskFar", "../office-v3-assets/agents/desk-far.webp"), loadImg("deskFarMap", "../office-v3-assets/agents/desk-far-map.webp"), loadImg("deskFarEmpty", "../office-v3-assets/agents/desk-far-empty.webp"), loadImg("walk", "../office-v3-assets/agents/walker.webp"), loadImg("walkMap", "../office-v3-assets/agents/walker-map.webp"),
+    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp"), loadImg("coolerZW", "../office-v3-assets/props/cooler_classic_ZW.webp"), loadImg("coolerZO", "../office-v3-assets/props/cooler_classic_ZO.webp"), loadImg("pl_monstera", "../office-v3-assets/props/plant_monstera.webp"), loadImg("pl_ficus", "../office-v3-assets/props/plant_ficus.webp"), loadImg("pl_kentia", "../office-v3-assets/props/plant_kentia.webp"), loadImg("pl_sansevieria", "../office-v3-assets/props/plant_sansevieria.webp"), loadImg("pl_succulent", "../office-v3-assets/props/plant_succulent.webp"), loadImg("pr_mfp", "../office-v3-assets/props/printer_mfp.webp"), loadImg("pr_laser", "../office-v3-assets/props/printer_laser.webp"), loadImg("pr_plotter", "../office-v3-assets/props/printer_plotter.webp"), loadImg("rk_closed", "../office-v3-assets/props/rack_closed.webp"), loadImg("rk_open", "../office-v3-assets/props/rack_open.webp")].concat(["mug_green", "mug_orange", "cup_cappu", "cup_espresso"].map(function (w) { return loadImg(w, "../office-v3-assets/props/" + w + ".webp"); })).concat(["white", "sticky", "bar", "line", "blank"].map(function (w) { return loadImg("flip_" + w, "../office-v3-assets/props/flip_" + w + ".webp"); })).concat(["ZW", "ZO"].map(function (w) { return loadImg("pou" + w, "../office-v3-assets/props/cooler_pou_" + w + ".webp"); })).concat(["white", "oak", "square"].map(function (w) { return loadImg("tb_" + w, "../office-v3-assets/props/tb_" + w + ".webp"); })).concat(["kettle", "grinder", "filter", "auto", "espresso"].map(function (w) { return loadImg("cm_" + w, "../office-v3-assets/props/cm_" + w + ".webp"); })).concat(["stack", "carafe", "mugs", "cappu", "glasses"].map(function (w) { return loadImg("ware_" + w, "../office-v3-assets/props/ware_" + w + ".webp"); })).concat(["white", "binders", "bookcase", "lockers", "sideboard"].reduce(function (l, c) { return l.concat([loadImg("cab_" + c, "../office-v3-assets/props/cab_" + c + ".webp"), loadImg("cab_" + c + "_m", "../office-v3-assets/props/cab_" + c + "_m.webp")]); }, []))).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); ["desk", "deskFar"].forEach(function (kd) { try { buildHands(kd); } catch (e) { HANDS[kd].ready = false; } }); });
   var VID = $("brainVid"), vidOk = false;
   if (!REDUCED) { VID.src = ASSETS + "brain-core.mp4"; VID.addEventListener("canplay", function () { vidOk = true; }); var pp = VID.play(); if (pp && pp.catch) pp.catch(function () {}); }
   /* typende handen (zoals v2, 24-10): handen uit de bureausprite knippen (huidskleur in twee vakken boven het
      toetsenbord, grootste vlek, gaten gevuld, 1 px verbreed); een variant zonder handen per afdeling x haar,
      daarover de twee handen die om en om tikken (typeL / typeR uit v2). Vakken in pixels van de 757 x 904-bron. */
-  var HANDS = { ready: false, cache: {}, layers: null, mask: null };
-  var HAND_BOX = [[338, 352, 418, 412], [402, 326, 500, 388]];   /* gerenderde zitter (Rick 27-10), in 757x904-maat */
+  /* bureausprites: desk = voorste rij (rug naar ons), deskFar = achterste rij (kijkt ons aan, eilanden van 4).
+     W/H = beeldmaat, pw/ph = rekenmaat, ax/ay = anker (stoel) als deel van het beeld, box = handen (in beeldmaat). */
+  var DSPR = {
+    desk: { map: "deskMap", W: 757, H: 904, pw: 568, ph: 678, ax: .5, ay: .86, box: [[338, 352, 418, 412], [402, 326, 500, 388]], head: [.746, .19], cup: [.19, .455] },
+    deskFar: { map: "deskFarMap", W: 1200, H: 1000, pw: 900, ph: 750, ax: 195.2 / 1200, ay: 798.4 / 1000, box: [[290, 400, 388, 462], [384, 375, 470, 445]], head: [.205, .12], cup: [.43, .53] }
+  };
+  var HANDS = { desk: { ready: false, cache: {} }, deskFar: { ready: false, cache: {} } };
   var TYPE_L = [[0, 0, 0], [.10, 0, -.85], [.20, 0, 0], [.38, .12, -.6], [.48, 0, 0], [.70, 0, -.95], [.80, 0, 0], [1, 0, 0]];
   var TYPE_R = [[0, 0, 0], [.14, -.1, -.8], [.26, 0, 0], [.52, 0, -.7], [.62, 0, 0], [.84, 0, -.9], [.92, 0, 0], [1, 0, 0]];
   function kf(fr, t) { for (var i = 1; i < fr.length; i++) if (t <= fr[i][0]) { var a = fr[i - 1], b = fr[i], f = (t - a[0]) / (b[0] - a[0] || 1); return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; } return [0, 0]; }
-  function deskPixels() { var w = 568, h = 678; function g(img) { var c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h); return x.getImageData(0, 0, w, h).data; } return { w: w, h: h, d: g(IMG.desk), m: g(IMG.deskMap) }; }
-  function buildHands() {
-    var P0 = deskPixels(), w = P0.w, h = P0.h, d = P0.d, m = P0.m, k = w / 757, all = new Uint8Array(w * h);
-    HANDS.px = P0;
-    HANDS.layers = HAND_BOX.map(function (bx) {
+  function deskPixels(kind) { var D = DSPR[kind], w = D.pw, h = D.ph; function g(img) { var c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h); return x.getImageData(0, 0, w, h).data; } return { w: w, h: h, d: g(IMG[kind]), m: g(IMG[D.map]) }; }
+  function buildHands(kind) {
+    var HS = HANDS[kind]; if (!IMG[kind] || !IMG[DSPR[kind].map]) return;
+    var P0 = deskPixels(kind), w = P0.w, h = P0.h, d = P0.d, m = P0.m, k = w / DSPR[kind].W, all = new Uint8Array(w * h);
+    HS.px = P0;
+    HS.layers = DSPR[kind].box.map(function (bx) {
       var x0 = Math.floor(bx[0] * k), y0 = Math.floor(bx[1] * k), x1 = Math.ceil(bx[2] * k), y1 = Math.ceil(bx[3] * k), sk = new Uint8Array(w * h), x, y, i;
       for (y = y0; y < y1; y++) for (x = x0; x < x1; x++) { i = (y * w + x) * 4; var r = d[i], g = d[i + 1], b = d[i + 2];
         if (d[i + 3] > 100 && r > 60 && r - b > 14 && r - b > 0.17 * r && r >= g && g >= b - 4 && m[i + 1] < 80 && m[i + 2] < 80 && m[i + 3] > 100) sk[y * w + x] = 1; }
@@ -572,11 +577,11 @@
       for (i = 0; i < w * h; i++) if (mk[i]) { od[i * 4] = d[i * 4]; od[i * 4 + 1] = d[i * 4 + 1]; od[i * 4 + 2] = d[i * 4 + 2]; od[i * 4 + 3] = d[i * 4 + 3]; }
       cx.putImageData(out, 0, 0); return c;
     });
-    HANDS.mask = all; HANDS.ready = true;
+    HS.mask = all; HS.ready = true;
   }
-  function noHands(cloth, hair) {
-    var key = cloth + hair; if (HANDS.cache[key]) return HANDS.cache[key];
-    var w = HANDS.px.w, h = HANDS.px.h, b = HANDS.px.d, M = HANDS.px.m, mk = HANDS.mask, c = document.createElement("canvas"); c.width = w; c.height = h;
+  function noHands(kind, cloth, hair) {
+    var HS = HANDS[kind], key = cloth + hair; if (HS.cache[key]) return HS.cache[key];
+    var w = HS.px.w, h = HS.px.h, b = HS.px.d, M = HS.px.m, mk = HS.mask, c = document.createElement("canvas"); c.width = w; c.height = h;
     var x = c.getContext("2d"), out = x.createImageData(w, h), o = out.data, C = rgbOf(cloth), Hh = rgbOf(hair);
     for (var i = 0; i < o.length; i += 4) { var sh = Math.min(1.25, M[i] / 255 * 1.12), wc = M[i + 1] / 255, wh = M[i + 2] / 255;
       for (var k = 0; k < 3; k++) { var v = b[i + k] * (1 - wc) + C[k] * sh * wc; o[i + k] = v * (1 - wh) + Hh[k] * sh * 1.1 * wh; } o[i + 3] = b[i + 3]; }
@@ -586,11 +591,11 @@
       var L = y * w + a - 1, R = y * w + xx, useL = !cl(L), useR = !cl(R); if (!useL && !useR) useL = true;
       for (var q = a; q < xx; q++) { var t = (q - a + 1) / (xx - a + 1), P = (y * w + q) * 4; for (var k2 = 0; k2 < 4; k2++) { var lv = o[L * 4 + k2], rv = o[R * 4 + k2]; o[P + k2] = useL && useR ? lv * (1 - t) + rv * t : useL ? lv : rv; } }
     }
-    x.putImageData(out, 0, 0); return (HANDS.cache[key] = c);
+    x.putImageData(out, 0, 0); return (HS.cache[key] = c);
   }
   function tint(kind, color, hair) {
     var key = kind + color + hair; if (TC[key]) return TC[key];
-    var desk = kind === "desk", bi = desk ? IMG.desk : IMG.walk, mi = desk ? IMG.deskMap : IMG.walkMap, w = desk ? 568 : 1280, h = desk ? 678 : 1440;
+    var D = DSPR[kind], bi = D ? IMG[kind] : IMG.walk, mi = D ? IMG[D.map] : IMG.walkMap, w = D ? D.pw : 1280, h = D ? D.ph : 1440;
     function g(img) { var c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h); return x.getImageData(0, 0, w, h).data; }
     var b = g(bi), m = g(mi), c = document.createElement("canvas"); c.width = w; c.height = h;
     var x = c.getContext("2d"), out = x.createImageData(w, h), o = out.data, C = rgbOf(color), Hh = rgbOf(hair);
@@ -719,25 +724,25 @@
     if (it.t === "plant") { drawPlant(PLANT_KINDS[hash(Math.round(it.x * 10) + ":" + Math.round(it.y * 10)) % PLANT_KINDS.length], it.x, it.y, 0, it.w > 32 ? 1.15 : 1); return; }
     if (it.t === "sprite") { var im = IMG[it.img]; if (!im) return; var sp = Sx(it.x, it.y, it.z || 0), sw = it.w * k, sh = sw * im.height / im.width; ctx.drawImage(im, sp[0] - sw / 2, sp[1] - sh * .92, sw, sh); return; }
     if (it.t === "desk") {
-      var ag = S.byId[it.id]; if (!ag || ag.x == null) return; var r = ag._room, s = st(ag), p = Sx(ag.x, ag.y), w = DESK_W * k, h = DESK_H * k;
+      var ag = S.byId[it.id]; if (!ag || ag.x == null) return; var r = ag._room, s = st(ag), p = Sx(ag.x, ag.y), dk = ag._far ? "deskFar" : "desk", DS = DSPR[dk], w = DESK_W * DS.W / 757 * k, h = w * DS.H / DS.W, X0 = p[0] - w * DS.ax, Y0 = p[1] - h * DS.ay;
       var away = ag._walk || s === "paused" || s === "idle";
       var foc = S.focus && S.focus.type === "agent" && S.focus.id === ag.agent_id;
       if ((s === "working" || s === "error") && !ag._walk) { var hc = s === "error" ? "#ff5d5d" : r.color, pul = s === "error" ? .55 + .35 * Math.sin(now / 260) : 1, g = ctx.createRadialGradient(p[0], p[1] - 4 * k, 0, p[0], p[1] - 4 * k, 44 * k); g.addColorStop(0, rgba(hc, .38 * pul)); g.addColorStop(1, rgba(hc, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(p[0], p[1] - 4 * k, 48 * k, 24 * k, 0, 0, 7); ctx.fill(); }
       if (foc) { ctx.strokeStyle = r.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p[0], p[1] - 2 * k, 40 * k, 20 * k, 0, 0, 7); ctx.stroke(); }
-      var typing = !away && s === "working" && HANDS.ready && AVOK && !REDUCED;
-      var img = away || !AVOK ? IMG.empty : typing ? noHands(r.color, ag._hair) : tint("desk", r.color, ag._hair);
-      if (img) { ctx.globalAlpha = s === "paused" ? .55 : 1; ctx.drawImage(img, p[0] - w * .5, p[1] - h * .86, w, h); ctx.globalAlpha = 1; }
+      var typing = !away && s === "working" && HANDS[dk].ready && AVOK && !REDUCED;
+      var img = away || !AVOK ? (ag._far ? IMG.deskFarEmpty : IMG.empty) : typing ? noHands(dk, r.color, ag._hair) : tint(dk, r.color, ag._hair);   /* achterste rij leeg: bureau zonder persoon */
+      if (img) { ctx.globalAlpha = s === "paused" ? .55 : 1; ctx.drawImage(img, X0, Y0, w, h); ctx.globalAlpha = 1; }
       /* koffie op ~40% van de bureaus, links voor op het blad; soort wisselt per agent */
-      var hq = Math.abs(hash("cup" + ag.agent_id)) >>> 0; if (hq % 5 < 2) { var cn = DESK_CUPS[(hq >>> 3) % 4], ci = IMG[cn[0]]; if (ci) { var chh = h * cn[1], cww = chh * ci.width / ci.height, cx0 = p[0] - w * .5 + w * (.19 + ((hq >>> 5) % 5) * .012), cy0 = p[1] - h * .86 + h * (.455 - ((hq >>> 5) % 5) * .006); ctx.drawImage(ci, cx0 - cww / 2, cy0 - chh, cww, chh); } }
+      var hq = Math.abs(hash("cup" + ag.agent_id)) >>> 0; if (hq % 5 < 2) { var cn = DESK_CUPS[(hq >>> 3) % 4], ci = IMG[cn[0]]; if (ci) { var chh = h * cn[1] * 904 / DS.H, cww = chh * ci.width / ci.height, cx0 = X0 + w * (DS.cup[0] + ((hq >>> 5) % 5) * .012 * DSPR.desk.W / DS.W), cy0 = Y0 + h * (DS.cup[1] - ((hq >>> 5) % 5) * .006 * DSPR.desk.H / DS.H); ctx.drawImage(ci, cx0 - cww / 2, cy0 - chh, cww, chh); } }
       var sc = { working: "#5fd4ff", error: "#ff4d4d", silent: "#ffb547", ok: "#4f86b8" }[s];
-      if (sc && !ag._walk) { var al = s === "working" ? .55 + .3 * Math.sin(now / 200 + ag.x) : s === "error" ? .5 + .4 * Math.sin(now / 260) : s === "silent" ? .45 : .22;
+      if (sc && !ag._walk && !ag._far) { var al = s === "working" ? .55 + .3 * Math.sin(now / 200 + ag.x) : s === "error" ? .5 + .4 * Math.sin(now / 260) : s === "silent" ? .45 : .22;
         var q = SCREEN_Q.map(function (f) { return [p[0] - w * .5 + f[0] * w, p[1] - h * .86 + f[1] * h]; }); ctx.save(); ctx.globalCompositeOperation = "screen"; poly(q, rgba(sc, al)); ctx.restore(); }
-      if (typing) drawCode(ag, p[0] - w * .5, p[1] - h * .86, w, h, now);
+      if (typing && !ag._far) drawCode(ag, X0, Y0, w, h, now);
       if (typing) { var dl = (hash(ag.agent_id) % 100) / 100, u = k * 1.5, tl = kf(TYPE_L, ((now / 820) + dl) % 1), tr = kf(TYPE_R, ((now / 740) + dl + .5) % 1);
-        ctx.drawImage(HANDS.layers[0], p[0] - w * .5 + tl[0] * u, p[1] - h * .86 + tl[1] * u, w, h); ctx.drawImage(HANDS.layers[1], p[0] - w * .5 + tr[0] * u, p[1] - h * .86 + tr[1] * u, w, h); }
+        ctx.drawImage(HANDS[dk].layers[0], X0 + tl[0] * u, Y0 + tl[1] * u, w, h); ctx.drawImage(HANDS[dk].layers[1], X0 + tr[0] * u, Y0 + tr[1] * u, w, h); }
       if (s === "error" && !ag._walk) { var ex = p[0] + w * .1, ey = p[1] - h * .98; ctx.fillStyle = "#ff5d5d"; ctx.beginPath(); ctx.arc(ex, ey, Math.max(5, 7 * k), 0, 7); ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = "700 " + Math.max(7, 10 * k) + "px " + "system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("!", ex, ey + .5); ctx.textAlign = "start"; ctx.textBaseline = "alphabetic"; }
-      HITS.push({ x: p[0] - w * .4, y: p[1] - h * .8, w: w * .8, h: h * .8, a: ag });
-      if (!ag._walk) ag._head = [p[0] + w * .24, p[1] - h * .70];
+      HITS.push({ x: X0 + w * .1, y: Y0 + h * .06, w: w * .8, h: h * .8, a: ag });
+      if (!ag._walk) ag._head = [X0 + w * DS.head[0], Y0 + h * DS.head[1]];
       return;
     }
     if (it.t === "walker") {
@@ -945,7 +950,7 @@
   function kortOverleg(fr, to, working) {
     if (!fr || !to || to._sub || to.x == null || !canWalk(fr)) return;
     var stay = working ? 20000 : 11000;
-    if (trip(fr, [to.x + .75, to._aisle || to.y + 1], to._room, stay, "overleg met " + to.agent_name, [to.x, to.y])) {
+    if (trip(fr, seatOut(to), to._room, stay, "overleg met " + to.agent_name, [to.x, to.y])) {
       var tt = fr._walk.len / fr._walk.v * 1000; to._meet = Date.now() + tt + fr._walk.stay; to._meetWith = fr.agent_name;
     }
   }
