@@ -417,13 +417,12 @@
     });
     L.doors.forEach(function (d) { [-DOOR_W / 2, DOOR_W / 2].forEach(function (o) { var x = d.v ? d.x : d.x + o, y = d.v ? d.y + o : d.y; items.push({ k: x + y + .01, t: "post", x: x, y: y }); }); });
     S.depts.forEach(function (d) { d.agents.forEach(function (a) { items.push({ k: a.x + a.y, t: "desk", id: a.agent_id }); }); });
-    /* ---- kantine: koffiebar langs de achterwand, koelkast, waterdispenser, statafels, planten ---- */
-    var r = canteen, bx0 = r.x + .4, bx1 = r.x + r.w - 1.5;
+    /* ---- kantine: koffiebar langs de achterwand, waterdispenser, statafels, planten ---- */
+    var r = canteen, bx0 = r.x + .4, bx1 = r.x + r.w - .4;
     items.push({ k: bx0 + r.y + .9, t: "box", b: { x: bx0, y: r.y + .2, w: bx1 - bx0, d: .8, h: 30 }, top: "#4a3f35", l: "#2f2620", r: "#241d18", edge: "#8a7258" });
     var slot = bx0 + .35, bar = ["espresso", "espresso", "grinder", "cups", "kettle", "cups", "espresso", "cups"];
     for (var bi = 0; slot < bx1 - .5; bi++) { var kind = bar[bi % bar.length]; items.push({ k: slot + r.y + 1.0 + .01, t: "prop", kind: kind, x: slot, y: r.y + .3 }); slot += kind === "espresso" ? .85 : .6; }
     if (r.y < EPS) for (var sx = bx0 + .2; sx < bx1 - .9; sx += 1.9) items.push({ k: sx + r.y + .05, t: "prop", kind: "shelf", x: sx, y: r.y });
-    items.push({ k: r.x + r.w - 1.1 + r.y + 1.2, t: "box", b: { x: r.x + r.w - 1.2, y: r.y + .2, w: .9, d: .85, h: 72 }, top: "#cfd6de", l: "#aeb6c0", r: "#8d96a1" });
     items.push({ k: r.x + .5 + r.y + 1.9, t: "prop", kind: "cooler", x: r.x + .3, y: r.y + 1.6, face: "ZO" });
     r.tables = [];
     var tn = Math.max(4, Math.min(6, Math.floor(r.w * r.h / 16))), tc = tn > 4 ? 3 : 2, tr = Math.ceil(tn / tc);
