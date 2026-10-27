@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<!--
+  THE BRIDGE - office-v3.html  (Office v3: een verdieping; naast office-v2.html tot Rick akkoord geeft)
+  Alle afdelingen liggen als zalen op een schermvullend plateau. Oppervlakte per zaal volgt het aantal
+  agents (squarified treemap), de kantine is een eigen zaal op dezelfde verdieping. Tussen zalen die een
+  wand delen staan glazen tussenwanden met een deur; geen looppaden of datapijpen meer. Het brein zweeft
+  als UFO hoog boven het plateau (brain-core.mp4 met 'lighter'-blend, poster bij reduced motion) en
+  powerballen schieten van de agent omhoog naar het brein en terug.
+  Data en regels als office-v2.html (BD-134): bridge-config.js + supabase-js (gedeelde Bridge-login),
+  views v_office_depts / v_office_agents / v_office_tools / v_office_links / v_office_panels, bij een
+  gekozen agent bridge_agent_runs. Status = v_office_agents.state, 'working' met een lege run (NOOP_RE)
+  telt als ok. Subworkflows (schedule_human 'subworkflow') krijgen geen bureau (BD-142); een run toont
+  'via <subworkflow>' boven de aanroeper (callerOf, zelfde regel als v2).
+  Overleg: draait een afnemer (v_office_links) kort na zijn leverancier (<= 20 min), dan loopt de
+  leverancier via de deuren naar het bureau van de afnemer (kort overleg) en staat daar 11 s (20 s als
+  hij nog werkt). Zitten beide in een terugkoppellus (>= 3 agents), dan is het gezamenlijk overleg:
+  tot 4 lusleden lopen naar een statafel in de kantine.
+  Lopen: Manhattan-route bureau -> gangpad -> deur(en) -> gangpad -> doel; de route door de zalen
+  is een BFS over de deuren.
+  Tekenen: een canvas (2:1 isometrisch, HW 26 / HH 13 zoals v2), sprites uit office-v2-assets
+  (desk-v3 / desk-empty-v3 / walker-v4 + *-map, ingekleurd per afdelingskleur x haarkleur).
+  Test: ?overleg=1 start direct een kort en een gezamenlijk overleg; ?demo=1 speelt activiteit na.
+  Deeplink: office-v3.html?agent=<agent_id>. Testhaak: window.OFFICE_TEST = {view: rows} vervangt de REST-laag.
+-->
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Office v3 · The Bridge</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="bridge-config.js"></script>
+<script src="bridge-frame.js"></script>
+<style>
+  :root{
+    --bg:#06090f; --line:#1c2636; --panel:#0b1019; --panel2:#0f1623;
+    --text:#cfe2ec; --dim:#7590a3; --cyan:#00d4ff; --green:#3ee08f; --amber:#ffb547; --red:#ff5d5d;
+    --violet:#b58cff; --gold:#ffd166; --pw:380px; --pm:14px;
+    --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+    --mono:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--text);font:13px/1.45 var(--font);overflow:hidden;-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit}
+  a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
+  :focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:4px}
+  #app{display:flex;flex-direction:column;height:100%}
+  header{display:flex;align-items:center;gap:16px;padding:11px 20px;flex-wrap:wrap;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(0,212,255,.05),transparent)}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 9px var(--green);align-self:center}
+  .brand .ttl{font-weight:700;letter-spacing:3px;font-size:16px}
+  .brand .sub{color:var(--dim);font-size:13px}
+  .brand .ver{font:700 9.5px var(--mono);letter-spacing:.14em;color:var(--cyan);border:1px solid rgba(0,212,255,.4);border-radius:4px;padding:1px 5px;align-self:center}
+  .spacer{flex:1}
+  .tag{font:700 10px var(--mono);letter-spacing:.14em;color:var(--amber);border:1px solid rgba(255,181,71,.5);border-radius:999px;padding:3px 9px}
+  .v2link{font:600 11.5px var(--font);color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+  .v2link:hover{color:var(--text);border-color:var(--cyan);text-decoration:none}
+  .metrics{display:flex;gap:18px}
+  .metric{text-align:right;line-height:1.1}
+  .metric b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+  .metric span{font-size:11px;color:var(--dim)}
+  .metric.m-error b{color:var(--red)} .metric.m-silent b{color:var(--amber)} .metric.m-working b{color:var(--cyan)} .metric.zero b{color:var(--dim)}
+  .upd{color:var(--dim);font-size:11.5px;font-variant-numeric:tabular-nums;min-width:112px;text-align:right}
+  main{flex:1;min-height:0;position:relative}
+  .stage{position:absolute;inset:0;overflow:hidden}
+  #cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  #cv.drag{cursor:grabbing} #cv.pt{cursor:pointer}
+  .hint{position:absolute;left:16px;bottom:12px;font:600 10.5px var(--mono);letter-spacing:.08em;color:var(--dim);background:rgba(7,11,18,.8);border:1px solid var(--line);border-radius:6px;padding:4px 9px;pointer-events:none}
+  .cam{position:absolute;right:calc(var(--pw) + var(--pm) * 2);bottom:12px;display:flex;gap:6px}
+  .cam button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:rgba(7,11,18,.9);cursor:pointer;font-weight:700}
+  .cam button:hover{border-color:var(--cyan)}
+  #tip{position:absolute;pointer-events:none;background:#0b0f14f2;border:1px solid var(--line);border-radius:6px;padding:6px 9px;font:12px var(--mono);white-space:nowrap;z-index:6;display:none}
+  #tip small{display:block;color:var(--dim)}
+  #msg{position:absolute;left:16px;top:14px;max-width:min(520px,calc(100% - var(--pw) - 60px));background:rgba(40,12,12,.92);border:1px solid var(--red);border-radius:8px;padding:8px 12px;display:none;z-index:6}
+  #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);font:12px var(--mono);z-index:7;background:var(--bg)}
+  .gate{display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;max-width:340px;font:13px var(--font)}
+  .gate b{color:var(--text);font-size:15px}
+  .pwrap{position:absolute;top:var(--pm);right:var(--pm);bottom:var(--pm);width:var(--pw);z-index:5;border:1px solid var(--line);border-radius:12px;
+    background:rgba(11,16,25,.86);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 10px 40px -12px rgba(0,0,0,.7);overflow:hidden}
+  .panel{height:100%;overflow:auto;padding:16px 18px 24px}
+  .panel h2{margin:0 0 2px;font-size:18px;line-height:1.2}
+  .panel h3{margin:18px 0 6px;font:700 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .panel p{margin:6px 0}
+  .chip{display:inline-flex;align-items:center;gap:6px;font:700 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--c,var(--line));color:var(--c,var(--text));border-radius:999px;padding:2px 9px}
+  .pill{display:inline-block;font:700 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;border-radius:4px;padding:2px 7px;background:var(--panel2);border:1px solid var(--line)}
+  .pill.working{color:var(--cyan);border-color:rgba(0,212,255,.5)} .pill.error{color:var(--red);border-color:rgba(255,93,93,.55)}
+  .pill.silent{color:var(--amber);border-color:rgba(255,181,71,.5)} .pill.ok{color:var(--green);border-color:rgba(62,224,143,.45)}
+  .pill.paused,.pill.idle{color:var(--dim)}
+  .kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 0}
+  .kv div{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0}
+  .kv b{display:block;font-size:15px;font-variant-numeric:tabular-nums}
+  .kv span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  .kv .w b{color:var(--cyan)} .kv .e b{color:var(--red)} .kv .s b{color:var(--amber)}
+  .sum{font:12px/1.5 var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;white-space:pre-wrap;word-break:break-word}
+  .row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;min-width:0}
+  .row:hover{background:var(--panel2)}
+  .row i{width:8px;height:8px;border-radius:50%;flex:none;background:var(--dim)}
+  .row i.working{background:var(--cyan);box-shadow:0 0 6px var(--cyan)} .row i.error{background:var(--red)} .row i.silent{background:var(--amber)} .row i.ok{background:var(--green)}
+  .row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row small{color:var(--dim);font-size:11px;white-space:nowrap}
+  .run{border-left:2px solid var(--line);padding:2px 0 2px 9px;margin:6px 0;font-size:12px}
+  .run.error{border-color:var(--red)} .run b{font:600 11px var(--mono);color:var(--dim);display:block}
+  .links a{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-weight:600;font-size:11.5px;margin:4px 6px 0 0}
+  .muted{color:var(--dim)}
+  .back{appearance:none;background:none;border:0;color:var(--dim);cursor:pointer;padding:0;margin:0 0 10px;font:600 11px var(--mono);letter-spacing:.08em}
+  .back:hover{color:var(--text)}
+  @media (max-width:880px){
+    body{overflow:auto} #app{height:auto;min-height:100%} main{flex:none}
+    .stage{position:relative;height:68vh;min-height:400px}
+    .pwrap{position:static;width:auto;border-radius:0;border:0;border-top:1px solid var(--line);box-shadow:none;background:var(--panel)}
+    .panel{height:auto} .cam{right:14px} .metrics{gap:13px} .upd,.hint{display:none} #msg{max-width:calc(100% - 32px)}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand"><span class="dot" id="live"></span><span class="ttl">BRIDGE</span><span class="sub">Office</span><span class="ver">V3</span></div>
+    <div class="spacer"></div>
+    <span class="tag" id="modeTag" hidden></span>
+    <a class="v2link" href="office-v2.html">Office v2</a>
+    <div class="metrics" id="metrics"></div>
+    <div class="upd" id="upd"></div>
+  </header>
+  <main>
+    <section class="stage" id="stage" aria-label="Kantoorvloer">
+      <canvas id="cv" aria-label="Isometrische verdieping met alle afdelingen, de kantine en het JARVIS-brein"></canvas>
+      <div class="hint">scroll = zoom · sleep = verschuif · klik = details · dubbelklik = alles</div>
+      <div class="cam"><button type="button" id="zIn" aria-label="Inzoomen">+</button><button type="button" id="zOut" aria-label="Uitzoomen">−</button><button type="button" id="zFit" aria-label="Alles in beeld">⤢</button></div>
+      <div id="tip" role="tooltip"></div>
+      <div id="msg" role="alert"></div>
+      <div id="loading">Office laden…</div>
+    </section>
+    <div class="pwrap" id="pwrap"><aside class="panel" id="panel" aria-label="Details"></aside></div>
+  </main>
+</div>
+<video id="brainVid" muted loop playsinline preload="auto" hidden></video>
+
+<script>
+(function () {
+  "use strict";
+  /* ---------------------------------------------------------------- config */
+  var CFG = window.BRIDGE_CONFIG || {};
+  var SB_URL = CFG.SUPABASE_URL || "https://wuvpbwowdycsdlrqkaoq.supabase.co";
+  var SB_KEY = CFG.SUPABASE_ANON_KEY || "";
+  var N8N = "https://gruposoltura.app.n8n.cloud/workflow/";
+  var ASSETS = "office-v2-assets/";
+  var TEST = window.OFFICE_TEST || null;
+  var sb = (!TEST && window.supabase && SB_KEY) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+  var REFRESH_MS = 60000;
+  var Q = new URLSearchParams(location.search), DEMO = Q.get("demo") === "1";
+  var REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var STATES = { working: "draait", ok: "ok", error: "fout", silent: "stil", paused: "gepauzeerd", idle: "nooit gedraaid" };
+  var NOOP_RE = /\bidle\b|\(stil\)|geen bijvulling|niets te (doen|publiceren)|worklist leeg|^0 nieuwe[^,]*\+ 0 |^geen\b|^0 emails\b/i;
+  var SUBFLOW_RE = /\bsub-?workflow\b/i;
+  var AI_TOOLS = { anthropic: 1, openai: 1 };
+  var HAIR = ["#231c18", "#3a281d", "#5e3f2b", "#8a6240", "#c99b55", "#e3c482", "#8c3a1e", "#9c9c9c", "#d8d8d8"];
+  var CANTEEN_COLOR = "#d6b071";
+
+  var S = { agents: [], byId: {}, byWf: {}, depts: [], links: [], tools: [], toolsByWf: {}, panels: {}, focus: null, first: true, sig: "", prevRun: null };
+
+  /* --------------------------------------------------------------- helpers */
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function isNoop(a) { return NOOP_RE.test(String(a.last_summary || "")); }
+  function isSubflow(a) { return SUBFLOW_RE.test(String(a.schedule_human || "")); }
+  function st(a) {
+    if (DEMO && a._demo && a.state !== "paused") return "working";
+    var s = STATES[a.state] ? a.state : "ok";
+    return s === "working" && isNoop(a) ? "ok" : s;
+  }
+  function ms(t) { return t ? new Date(t).getTime() : 0; }
+  function rel(t) { if (!t) return "nooit"; var s = (Date.now() - ms(t)) / 1000; if (s < 90) return "zojuist"; if (s < 3600) return Math.round(s / 60) + " min geleden"; if (s < 172800) return Math.round(s / 3600) + " u geleden"; return Math.round(s / 86400) + " d geleden"; }
+  var fmtAbs = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Madrid", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  var fmtClock = new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  function abs(t) { return t ? fmtAbs.format(new Date(t)) : "—"; }
+  function hash(s) { var h = 0; s = String(s || ""); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+  function hairOf(a) { return HAIR[hash(a.agent_id || a.agent_name) % HAIR.length]; }
+  function rgbOf(h) { h = String(h || "#8aa0b5").replace("#", ""); if (h.length === 3) h = h.replace(/./g, "$&$&"); var n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+  function mix(a, b, t) { var A = rgbOf(a), B = rgbOf(b); return "rgb(" + A.map(function (v, i) { return Math.round(v * t + B[i] * (1 - t)); }).join(",") + ")"; }
+  function rgba(h, a) { var c = rgbOf(h); return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")"; }
+  function usesBrain(a) { return (S.toolsByWf[a.workflow_name] || []).some(function (t) { return AI_TOOLS[t]; }); }
+  function roomOf(a) { return a._room || null; }
+  function trim(s, n) { s = String(s || "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
+  /* ------------------------------------------------------------------ data */
+  function token() { return sb.auth.getSession().then(function (r) { return r.data && r.data.session ? r.data.session.access_token : null; }); }
+  function rest(path) {
+    if (TEST) { var k = path.split("?")[0]; return Promise.resolve(TEST[k] || []); }
+    return token().then(function (t) {
+      if (!t) { var e = new Error("niet ingelogd"); e.auth = true; throw e; }
+      return fetch(SB_URL + "/rest/v1/" + path, { headers: { apikey: SB_KEY, Authorization: "Bearer " + t } });
+    }).then(function (r) { if (!r.ok) throw new Error(path.split("?")[0] + ": HTTP " + r.status); return r.json(); });
+  }
+  function settle(p) { return p.then(function (v) { return { ok: true, v: v }; }, function (e) { return { ok: false, e: e }; }); }
+  function showMsg(t) { var m = $("msg"); m.textContent = t; m.style.display = t ? "block" : "none"; }
+
+  function load() {
+    return Promise.all([
+      settle(rest("v_office_depts?select=dept_name,dept_color,dept_icon,dept_sort&order=dept_sort")),
+      settle(rest("v_office_agents?select=*")),
+      settle(rest("v_office_tools?select=tool,workflows")),
+      settle(rest("v_office_links?select=from_agent,to_agent,kind,via")),
+      settle(rest("v_office_panels?select=dept_name,agents,doing,next,done,labels,waarden"))
+    ]).then(function (res) {
+      if (!res[0].ok || !res[1].ok) {
+        var e = (res[1].ok ? res[0].e : res[1].e) || {};
+        if (e.auth) { loggedOut(); return; }
+        showMsg("De office-data kon niet geladen worden (" + (e.message || e) + "). Nieuwe poging over een minuut.");
+        $("live").style.background = "var(--red)"; return;
+      }
+      showMsg(""); $("live").style.background = "";
+      S.panels = {}; if (res[4].ok) (res[4].v || []).forEach(function (r) { S.panels[r.dept_name] = r; });
+      ingest(res[0].v || [], res[1].v || [], res[2].ok ? res[2].v || [] : [], res[3].ok ? res[3].v || [] : []);
+    });
+  }
+
+  function ingest(depts, agents, tools, links) {
+    var prevRun = S.prevRun, old = S.byId;
+    S.prevRun = {}; agents.forEach(function (a) { S.prevRun[a.agent_id] = a.last_run_at || ""; });
+    S.agents = agents; S.byId = {}; S.byWf = {};
+    agents.forEach(function (a) {
+      a._sub = isSubflow(a); a._hair = hairOf(a);
+      var o = old[a.agent_id]; if (o) { a._walk = o._walk; a._via = o._via; a._meet = o._meet; a._demo = o._demo; a._head = o._head; }
+      S.byId[a.agent_id] = a; S.byWf[a.workflow_name] = a;
+    });
+    var seen = {}, ds = depts.map(function (d) { seen[d.dept_name] = 1; return { name: d.dept_name, color: d.dept_color || "#8aa0b5", sort: d.dept_sort }; });
+    agents.forEach(function (a) { if (!seen[a.dept_name]) { seen[a.dept_name] = 1; ds.push({ name: a.dept_name, color: a.dept_color || "#8aa0b5", sort: a.dept_sort == null ? 999 : a.dept_sort }); } });
+    ds.forEach(function (d) { d.agents = agents.filter(function (a) { return a.dept_name === d.name && !a._sub; }).sort(function (x, y) { return (x.agent_sort || 0) - (y.agent_sort || 0) || String(x.agent_name).localeCompare(String(y.agent_name)); }); });
+    S.toolsByWf = {}; S.tools = tools.map(function (t) { var ids = []; (t.workflows || []).forEach(function (wf) { var a = S.byWf[wf]; if (!a) return; ids.push(a.agent_id); (S.toolsByWf[wf] = S.toolsByWf[wf] || []).push(t.tool); }); return { tool: t.tool, ids: ids }; });
+    S.links = links.filter(function (l) { return S.byId[l.from_agent] && S.byId[l.to_agent] && l.from_agent !== l.to_agent; });
+    var sig = agents.map(function (a) { return [a.agent_id, a.dept_name, a.agent_sort, a._sub].join("|"); }).sort().join(";") + "#" + ds.map(function (d) { return d.name + d.color; }).join(";");
+    if (sig !== S.sig) { S.sig = sig; S.depts = ds.filter(function (d) { return d.agents.length; }); layout(); fitCam(true); }
+    else { var byName = {}; S.depts.forEach(function (d) { byName[d.name] = d; }); ds.forEach(function (d) { var o = byName[d.name]; if (o) { d.agents.forEach(function (a, i) { var oa = o.agents[i]; if (oa && oa.agent_id === a.agent_id) { a.x = oa.x; a.y = oa.y; a._aisle = oa._aisle; a._room = o; } }); o.agents = d.agents; o.color = d.color; } }); }
+    S._lg = null;
+    S.loadedAt = new Date();
+    if (!DEMO) { queueBalls(prevRun); queueMeets(prevRun); queueVia(prevRun); }
+    renderHeader(); renderPanel();
+    if (S.focus && S.focus.type === "agent") loadRuns(S.byId[S.focus.id]);
+    if (S.first) {
+      S.first = false; $("loading").style.display = "none";
+      var qa = Q.get("agent"); if (qa && S.byId[qa] && !S.byId[qa]._sub) { setFocus({ type: "agent", id: qa }); zoomToAgent(S.byId[qa]); }
+      if (Q.get("overleg") === "1") setTimeout(testMeet, 600);
+    }
+  }
+
+  /* ---------------------------------------------------------------- layout */
+  var HW = 26, HH = 13, EPS = 1e-6, DOOR_W = 1.7, GLASS_H = 30, WALL_H = 72;
+  var DESK_W = 80, DESK_H = DESK_W * 904 / 757;
+  var L = { W: 1, H: 1, rooms: [], doors: [], items: [], canteen: null };
+  function squarify(items, x, y, w, h) {
+    var rest = items.slice();
+    while (rest.length) {
+      var sh = Math.min(w, h);
+      var worst = function (r) { var s = 0, mx = 0, mn = Infinity; r.forEach(function (o) { s += o.area; mx = Math.max(mx, o.area); mn = Math.min(mn, o.area); }); return Math.max(sh * sh * mx / (s * s), s * s / (sh * sh * mn)); };
+      var row = [rest[0]], i = 1;
+      while (i < rest.length && worst(row.concat([rest[i]])) <= worst(row)) { row.push(rest[i]); i++; }
+      var s = row.reduce(function (t, o) { return t + o.area; }, 0);
+      if (w >= h) { var cw = s / h, cy = y; row.forEach(function (o) { var ch = o.area / cw; o.x = x; o.y = cy; o.w = cw; o.h = ch; cy += ch; }); x += cw; w -= cw; }
+      else { var ch2 = s / w, cx = x; row.forEach(function (o) { var cw2 = o.area / ch2; o.x = cx; o.y = y; o.w = cw2; o.h = ch2; cx += cw2; }); y += ch2; h -= ch2; }
+      rest = rest.slice(i);
+    }
+  }
+  function layout() {
+    var rooms = S.depts.slice();
+    var canteen = { name: "KANTINE", color: CANTEEN_COLOR, agents: [], canteen: true, tables: [] };
+    rooms.push(canteen);
+    var maxN = Math.max.apply(null, S.depts.map(function (d) { return d.agents.length; }).concat([1]));
+    rooms.forEach(function (r) { r.area = r.canteen ? Math.max(60, maxN * 2.6) + 16 : r.agents.length * 8.2 + 18; });
+    rooms.sort(function (a, b) { return b.area - a.area; });
+    var tot = rooms.reduce(function (t, r) { return t + r.area; }, 0);
+    L.W = Math.sqrt(tot * 1.25); L.H = tot / L.W; L.rooms = rooms; L.canteen = canteen;
+    squarify(rooms, 0, 0, L.W, L.H);
+    /* bureaus: eilanden van 3 langs x, rijen langs y */
+    rooms.forEach(function (r) {
+      if (r.canteen) return;
+      var n = r.agents.length, ax = r.x + .8, ay = r.y + 1.25, aw = r.w - 1.5, ah = r.h - 1.85, best = null;
+      for (var cols = 1; cols <= n; cols++) { var rows = Math.ceil(n / cols), isl = Math.ceil(cols / 3) - 1, s = Math.min(1, (aw - isl * .7) / (cols * 2.3), ah / (rows * 2.35)); if (!best || s > best.s) best = { cols: cols, rows: rows, s: s }; }
+      var sx = 2.3 * best.s, sy = 2.35 * best.s, isl2 = Math.ceil(best.cols / 3) - 1, gw = best.cols * sx + isl2 * .7 * best.s, gh = best.rows * sy, ox = ax + (aw - gw) / 2, oy = ay + (ah - gh) / 2;
+      r.mats = [];
+      r.agents.forEach(function (a, i) { var c = i % best.cols, rr = Math.floor(i / best.cols); a.x = ox + (c + .5) * sx + Math.floor(c / 3) * .7 * best.s; a.y = oy + (rr + .5) * sy; a._room = r; a._aisle = oy + (rr + 1) * sy - .25 * best.s; });
+      for (var rr = 0; rr < best.rows; rr++) for (var c0 = 0; c0 < best.cols; c0 += 3) {
+        if (rr * best.cols + c0 >= n) continue; var c1 = Math.min(best.cols, c0 + 3), off = Math.floor(c0 / 3) * .7 * best.s;
+        r.mats.push([ox + c0 * sx + off - .15, oy + rr * sy + .1, ox + c1 * sx + off + .15, oy + (rr + 1) * sy - .3]);
+      }
+      r.aisleY = oy + gh - .1;
+    });
+    /* deuren */
+    L.doors = [];
+    rooms.forEach(function (A) { rooms.forEach(function (B) {
+      if (A === B) return;
+      if (Math.abs(A.x + A.w - B.x) < EPS) { var y0 = Math.max(A.y, B.y), y1 = Math.min(A.y + A.h, B.y + B.h); if (y1 - y0 > 2.4) L.doors.push({ v: true, x: B.x, y: (y0 + y1) / 2, a: A, b: B }); }
+      if (Math.abs(A.y + A.h - B.y) < EPS) { var x0 = Math.max(A.x, B.x), x1 = Math.min(A.x + A.w, B.x + B.w); if (x1 - x0 > 2.4) L.doors.push({ v: false, x: (x0 + x1) / 2, y: B.y, a: A, b: B }); }
+    }); });
+    /* items: glazen wandstukken, deurposten, bureaus, kantine, props */
+    var items = [];
+    rooms.forEach(function (r) {
+      var segs = [];
+      if (r.x + r.w < L.W - EPS) segs.push({ v: true, c: r.x + r.w, a: r.y, b: r.y + r.h });
+      if (r.y + r.h < L.H - EPS) segs.push({ v: false, c: r.y + r.h, a: r.x, b: r.x + r.w });
+      segs.forEach(function (s) {
+        var cuts = L.doors.filter(function (d) { return d.v === s.v && Math.abs((s.v ? d.x : d.y) - s.c) < EPS && (s.v ? d.y : d.x) > s.a && (s.v ? d.y : d.x) < s.b; }).map(function (d) { return s.v ? d.y : d.x; }).sort(function (p, q) { return p - q; });
+        var parts = [], from = s.a; cuts.forEach(function (m) { parts.push([from, m - DOOR_W / 2]); from = m + DOOR_W / 2; }); parts.push([from, s.b]);
+        parts.forEach(function (p) { for (var u = p[0]; u < p[1] - 1e-3; u += .5) { var u1 = Math.min(p[1], u + .5), a = s.v ? [s.c, u] : [u, s.c], b = s.v ? [s.c, u1] : [u1, s.c]; items.push({ k: (a[0] + b[0]) / 2 + (a[1] + b[1]) / 2, t: "glass", a: a, b: b }); } });
+      });
+    });
+    L.doors.forEach(function (d) { [-DOOR_W / 2, DOOR_W / 2].forEach(function (o) { var x = d.v ? d.x : d.x + o, y = d.v ? d.y + o : d.y; items.push({ k: x + y + .01, t: "post", x: x, y: y }); }); });
+    S.depts.forEach(function (d) { d.agents.forEach(function (a) { items.push({ k: a.x + a.y, t: "desk", id: a.agent_id }); }); });
+    var r = canteen;
+    items.push({ k: r.x + .5 + r.y + .9, t: "box", b: { x: r.x + .5, y: r.y + .25, w: r.w - 2.0, d: .75, h: 30 }, top: "#3b3530", l: "#2a2420", r: "#1f1a17" });
+    for (var i = 0; i < Math.floor((r.w - 2.4) / 1.6); i++) { var mx = r.x + .8 + i * 1.6; items.push({ k: mx + r.y + 1.05, t: "box", b: { x: mx, y: r.y + .35, w: .42, d: .38, z: 30, h: 17 }, top: "#2d3440", l: "#1c222c", r: "#151a22", led: true }); }
+    items.push({ k: r.x + r.w - 1.1 + r.y + 1.2, t: "box", b: { x: r.x + r.w - 1.2, y: r.y + .25, w: .9, d: .85, h: 72 }, top: "#cfd6de", l: "#aeb6c0", r: "#8d96a1" });
+    r.tables = [];
+    var tn = Math.max(4, Math.min(6, Math.floor(r.w * r.h / 16))), tc = tn > 4 ? 3 : 2, tr = Math.ceil(tn / tc);
+    for (var t = 0; t < tn; t++) { var c = t % tc, rw = Math.floor(t / tc), tx = r.x + r.w * ((c + .5) / tc) * .9 + r.w * .05, ty = r.y + 1.9 + (r.h - 2.7) * ((rw + .5) / tr); r.tables.push({ x: tx, y: ty, used: 0 }); items.push({ k: tx + ty, t: "table", x: tx, y: ty }); }
+    items.push({ k: r.x + .6 + r.y + r.h - .6, t: "sprite", img: "plant", x: r.x + .6, y: r.y + r.h - .6, w: 38 });
+    items.push({ k: r.x + r.w - .6 + r.y + r.h - .6, t: "sprite", img: "plant", x: r.x + r.w - .6, y: r.y + r.h - .6, w: 34 });
+    S.depts.forEach(function (d) {
+      if (d.agents.length >= 6) items.push({ k: d.x + .45 + d.y + .5, t: "sprite", img: "plant", x: d.x + .45, y: d.y + .5, w: 30 });
+      if (d.agents.length >= 10) { var rack = /INFRA/i.test(d.name); items.push({ k: d.x + d.w - .6 + d.y + .5, t: "sprite", img: rack ? "rack" : "board", x: d.x + d.w - .6, y: d.y + .45, w: rack ? 30 : 34 }); }
+    });
+    L.items = items;
+  }
+
+  /* ---------------------------------------------------------------- routes */
+  function route(from, to) {
+    if (from === to) return [];
+    var prev = new Map([[from, null]]), q = [from];
+    while (q.length) { var r = q.shift(); if (r === to) break; L.doors.forEach(function (d) { if (d.a !== r && d.b !== r) return; var n = d.a === r ? d.b : d.a; if (!prev.has(n)) { prev.set(n, { r: r, d: d }); q.push(n); } }); }
+    if (!prev.has(to)) return null;
+    var out = [], cur = to; while (prev.get(cur)) { var p = prev.get(cur); out.unshift({ d: p.d, from: p.r }); cur = p.r; } return out;
+  }
+  function standPt(a) { return [a.x + .85, (a._aisle || a.y + 1) ]; }
+  function doorIn(d, from) { var s = .75; if (d.v) { var dir = from.x < d.x ? 1 : -1; return [[d.x - dir * s, d.y], [d.x + dir * s, d.y]]; } var dir2 = from.y < d.y ? 1 : -1; return [[d.x, d.y - dir2 * s], [d.x, d.y + dir2 * s]]; }
+  /* bureau -> gangpad -> (x dan y) deur -> ... -> deur -> (y dan x) doel */
+  function pathFor(a, target, troom) {
+    var hops = route(a._room, troom); if (!hops) return null;
+    var p0 = [a.x + .85, a.y + .7], s = standPt(a), pts = [p0, s];
+    var cur = s;
+    hops.forEach(function (h, i) {
+      var dp = doorIn(h.d, h.from);
+      if (i === 0) pts.push([dp[0][0], cur[1]]); /* langs het gangpad */
+      pts.push(dp[0], dp[1]); cur = dp[1];
+    });
+    if (hops.length) pts.push([cur[0], target[1]]); else pts.push([target[0], cur[1]]);
+    pts.push(target);
+    return pts;
+  }
+
+  /* ---------------------------------------------------------------- assets */
+  var IMG = {}, TC = {}, AVOK = false;
+  function loadImg(k, f) { return new Promise(function (res) { var i = new Image(); i.onload = function () { IMG[k] = i; res(i); }; i.onerror = function () { res(null); }; i.src = ASSETS + f; }); }
+  Promise.all([loadImg("desk", "desk-v3.webp"), loadImg("deskMap", "desk-v3-map.webp"), loadImg("empty", "desk-empty-v3.webp"), loadImg("walk", "walker-v4.webp"), loadImg("walkMap", "walker-v4-map.webp"),
+    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp")]).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); });
+  var VID = $("brainVid"), vidOk = false;
+  if (!REDUCED) { VID.src = ASSETS + "brain-core.mp4"; VID.addEventListener("canplay", function () { vidOk = true; }); var pp = VID.play(); if (pp && pp.catch) pp.catch(function () {}); }
+  function tint(kind, color, hair) {
+    var key = kind + color + hair; if (TC[key]) return TC[key];
+    var desk = kind === "desk", bi = desk ? IMG.desk : IMG.walk, mi = desk ? IMG.deskMap : IMG.walkMap, w = desk ? 384 : 640, h = desk ? 459 : 480;
+    function g(img) { var c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h); return x.getImageData(0, 0, w, h).data; }
+    var b = g(bi), m = g(mi), c = document.createElement("canvas"); c.width = w; c.height = h;
+    var x = c.getContext("2d"), out = x.createImageData(w, h), o = out.data, C = rgbOf(color), Hh = rgbOf(hair);
+    for (var i = 0; i < o.length; i += 4) { var sh = Math.min(1.25, m[i] / 255 * 1.12), wc = m[i + 1] / 255, wh = m[i + 2] / 255;
+      for (var k = 0; k < 3; k++) { var v = b[i + k] * (1 - wc) + C[k] * sh * wc; o[i + k] = v * (1 - wh) + Hh[k] * sh * 1.1 * wh; } o[i + 3] = b[i + 3]; }
+    x.putImageData(out, 0, 0); return (TC[key] = c);
+  }
+
+  /* ---------------------------------------------------------------- camera */
+  var cv = $("cv"), ctx = cv.getContext("2d"), stage = $("stage");
+  var VW = 0, VH = 0, DPR = 1, cam = { k: 1, ox: 0, oy: 0 }, camT = null, fitV = { k: 1, ox: 0, oy: 0 }, userMoved = 0;
+  function P(x, y, z) { return [(x - y) * HW, (x + y) * HH - (z || 0)]; }
+  function Sx(x, y, z) { var p = P(x, y, z); return [cam.ox + p[0] * cam.k, cam.oy + p[1] * cam.k]; }
+  function freeRect() { var wide = VW > 880, pw = wide ? $("pwrap").offsetWidth + 28 : 0; return { x: 0, y: 0, w: VW - pw, h: VH }; }
+  function ufoTop() { return P(0, 0, WALL_H + 20)[1] - 300; }
+  function boxFor(pts, pad, fr) {
+    var a = 1e9, b = -1e9, c = 1e9, d = -1e9; pts.forEach(function (p) { a = Math.min(a, p[0]); b = Math.max(b, p[0]); c = Math.min(c, p[1]); d = Math.max(d, p[1]); });
+    fr = fr || freeRect(); var k = Math.min((fr.w - 2 * pad) / (b - a), (fr.h - 2 * pad) / (d - c));
+    return { k: k, ox: fr.x + fr.w / 2 - (a + b) / 2 * k, oy: fr.y + fr.h / 2 - (c + d) / 2 * k };
+  }
+  function worldPts() { var cx = P(L.W / 2, L.H / 2)[0]; return [P(0, 0, WALL_H + 30), P(L.W, 0, 0), P(0, L.H, 0), P(L.W, L.H, -24), [cx, ufoTop()]]; }
+  function fitCam(now) { fitV = boxFor(worldPts(), 22); if (now || !cam.k) cam = { k: fitV.k, ox: fitV.ox, oy: fitV.oy }; else camT = fitV; }
+  function zoomToRoom(r) { if (!r) return; camT = boxFor([P(r.x, r.y, WALL_H + 50), P(r.x + r.w, r.y, 0), P(r.x, r.y + r.h, 0), P(r.x + r.w, r.y + r.h, 0)], 40); camT.k = Math.min(camT.k, fitV.k * 4); }
+  function zoomToAgent(a) { if (!a || a.x == null) return; var p = P(a.x, a.y, 40), fr = freeRect(), k = Math.max(cam.k, fitV.k * 3); camT = { k: k, ox: fr.w / 2 - p[0] * k, oy: fr.h / 2 - p[1] * k }; }
+  function resize() { var r = stage.getBoundingClientRect(); DPR = Math.min(2, window.devicePixelRatio || 1); VW = r.width; VH = r.height; cv.width = Math.max(1, VW * DPR); cv.height = Math.max(1, VH * DPR); if (L.rooms.length) { var keep = Math.abs(cam.k - fitV.k) < 1e-3; fitV = boxFor(worldPts(), 22); if (keep || !userMoved) cam = { k: fitV.k, ox: fitV.ox, oy: fitV.oy }; } }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage); else addEventListener("resize", resize);
+  function zoomAt(f, x, y) { camT = null; var nk = Math.max(fitV.k * .6, Math.min(fitV.k * 7, cam.k * f)), r = nk / cam.k; cam.ox = x - (x - cam.ox) * r; cam.oy = y - (y - cam.oy) * r; cam.k = nk; userMoved = Date.now(); }
+  cv.addEventListener("wheel", function (e) { e.preventDefault(); var r = cv.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * .0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+  var drag = null;
+  cv.addEventListener("pointerdown", function (e) { var r = cv.getBoundingClientRect(); drag = { x: e.clientX, y: e.clientY, ox: cam.ox, oy: cam.oy, moved: false, lx: e.clientX - r.left, ly: e.clientY - r.top }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointermove", function (e) {
+    if (drag) { var dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (!drag.moved && Math.hypot(dx, dy) > 4) { drag.moved = true; cv.classList.add("drag"); camT = null; } if (drag.moved) { cam.ox = drag.ox + dx; cam.oy = drag.oy + dy; userMoved = Date.now(); $("tip").style.display = "none"; } return; }
+    hover(e);
+  });
+  cv.addEventListener("pointerup", function (e) { if (drag && !drag.moved) click(drag.lx, drag.ly); drag = null; cv.classList.remove("drag"); });
+  cv.addEventListener("dblclick", function () { userMoved = 0; camT = fitV; });
+  cv.addEventListener("pointerleave", function () { $("tip").style.display = "none"; });
+  $("zIn").onclick = function () { var f = freeRect(); zoomAt(1.35, f.w / 2, f.h / 2); };
+  $("zOut").onclick = function () { var f = freeRect(); zoomAt(1 / 1.35, f.w / 2, f.h / 2); };
+  $("zFit").onclick = function () { userMoved = 0; camT = fitV; };
+
+  /* ---------------------------------------------------------------- tekenen */
+  function poly(p, fill, stroke, lw) { ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]); for (var i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]); ctx.closePath(); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1; ctx.stroke(); } }
+  function box(b, top, l, r) { var x = b.x, y = b.y, w = b.w, d = b.d, z = b.z || 0, h = z + b.h;
+    poly([Sx(x + w, y, z), Sx(x + w, y + d, z), Sx(x + w, y + d, h), Sx(x + w, y, h)], r); poly([Sx(x, y + d, z), Sx(x + w, y + d, z), Sx(x + w, y + d, h), Sx(x, y + d, h)], l); poly([Sx(x, y, h), Sx(x + w, y, h), Sx(x + w, y + d, h), Sx(x, y + d, h)], top); }
+  var HITS = [], CARDS = [];
+  function drawFloor() {
+    var W = L.W, H = L.H, th = 24;
+    poly([Sx(0, H, 0), Sx(W, H, 0), Sx(W, H, -th), Sx(0, H, -th)], "#0d131d"); poly([Sx(W, 0, 0), Sx(W, H, 0), Sx(W, H, -th), Sx(W, 0, -th)], "#090e16");
+    poly([Sx(0, 0), Sx(W, 0), Sx(W, H), Sx(0, H)], "#141b28");
+    var fid = S.focus && S.focus.type === "dept" ? S.focus.name : S.focus && S.focus.type === "canteen" ? "KANTINE" : null;
+    L.rooms.forEach(function (r) {
+      var on = fid === r.name;
+      poly([Sx(r.x, r.y), Sx(r.x + r.w, r.y), Sx(r.x + r.w, r.y + r.h), Sx(r.x, r.y + r.h)], r.canteen ? "#1c1a16" : mix(r.color, "#121b2a", on ? .2 : .1), rgba(r.color, on ? .85 : .28), on ? 2 : 1);
+      if (cam.k > fitV.k * .9) {
+        ctx.strokeStyle = rgba(r.color, .05); ctx.lineWidth = 1; ctx.beginPath();
+        for (var gx = Math.ceil(r.x); gx < r.x + r.w; gx++) { var a = Sx(gx, r.y), b = Sx(gx, r.y + r.h); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
+        for (var gy = Math.ceil(r.y); gy < r.y + r.h; gy++) { var c = Sx(r.x, gy), d = Sx(r.x + r.w, gy); ctx.moveTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); }
+        ctx.stroke();
+      }
+      (r.mats || []).forEach(function (m) { poly([Sx(m[0], m[1]), Sx(m[2], m[1]), Sx(m[2], m[3]), Sx(m[0], m[3])], rgba(r.color, .13), rgba(r.color, .22), .8); });
+    });
+    L.doors.forEach(function (d) { var o = DOOR_W / 2, e = .22, q = d.v ? [[d.x - e, d.y - o], [d.x + e, d.y - o], [d.x + e, d.y + o], [d.x - e, d.y + o]] : [[d.x - o, d.y - e], [d.x + o, d.y - e], [d.x + o, d.y + e], [d.x - o, d.y + e]]; poly(q.map(function (p) { return Sx(p[0], p[1]); }), "#2a3446"); });
+    var s = Sx(L.W / 2, L.H / 2), R = 150 * cam.k; ctx.save(); ctx.translate(s[0], s[1]); ctx.scale(1, .5); var g = ctx.createRadialGradient(0, 0, 0, 0, 0, R); g.addColorStop(0, "rgba(0,0,0,.26)"); g.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R, 0, 7); ctx.fill(); ctx.restore();
+  }
+  function drawBackWalls() {
+    L.rooms.forEach(function (r) {
+      if (r.y < EPS) { var x0 = r.x, x1 = r.x + r.w; poly([Sx(x0, 0, 0), Sx(x1, 0, 0), Sx(x1, 0, WALL_H), Sx(x0, 0, WALL_H)], mix(r.color, "#1c2534", .1));
+        for (var wx = x0 + .9; wx + 1.4 < x1 - .4; wx += 2.6) poly([Sx(wx, 0, 26), Sx(wx + 1.4, 0, 26), Sx(wx + 1.4, 0, 58), Sx(wx, 0, 58)], "#17384f", rgba(r.color, .35), .8);
+        poly([Sx(x0, 0, WALL_H), Sx(x1, 0, WALL_H), Sx(x1, -.25, WALL_H), Sx(x0, -.25, WALL_H)], mix(r.color, "#2a3446", .25)); }
+      if (r.x < EPS) { var y0 = r.y, y1 = r.y + r.h; poly([Sx(0, y0, 0), Sx(0, y1, 0), Sx(0, y1, WALL_H), Sx(0, y0, WALL_H)], mix(r.color, "#151d2a", .07));
+        for (var wy = y0 + .9; wy + 1.4 < y1 - .4; wy += 2.6) poly([Sx(0, wy, 26), Sx(0, wy + 1.4, 26), Sx(0, wy + 1.4, 58), Sx(0, wy, 58)], "#132c3f", rgba(r.color, .3), .8);
+        poly([Sx(0, y0, WALL_H), Sx(0, y1, WALL_H), Sx(-.25, y1, WALL_H), Sx(-.25, y0, WALL_H)], mix(r.color, "#2a3446", .25)); }
+    });
+  }
+  function walkerPos(a, now) {
+    var w = a._walk, el = (now - w.t0) / 1000, tg = w.len / w.v, d, dir = 1;
+    if (el < tg) d = el * w.v; else if (el < tg + w.stay / 1000) return { p: w.pts[w.pts.length - 1], moving: false, dx: -1, dy: -1, arrived: true };
+    else { d = w.len - (el - tg - w.stay / 1000) * w.v; dir = -1; if (d <= 0) return null; }
+    var acc = 0;
+    for (var i = 1; i < w.pts.length; i++) { var p0 = w.pts[i - 1], p1 = w.pts[i], sl = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      if (acc + sl >= d && sl > 0) { var f = (d - acc) / sl, sd = P(p1[0] - p0[0], p1[1] - p0[1]); return { p: [p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f], moving: true, dx: sd[0] * dir, dy: sd[1] * dir }; } acc += sl; }
+    return { p: w.pts[w.pts.length - 1], moving: false, dx: 0, dy: 1 };
+  }
+  var SCREEN_Q = [[.262, .19], [.548, .03], [.548, .215], [.262, .335]];
+  function drawItem(it, now) {
+    var k = cam.k;
+    if (it.t === "glass") { var a = it.a, b = it.b; poly([Sx(a[0], a[1], 0), Sx(b[0], b[1], 0), Sx(b[0], b[1], GLASS_H), Sx(a[0], a[1], GLASS_H)], "rgba(140,190,240,.10)");
+      var t1 = Sx(a[0], a[1], GLASS_H), t2 = Sx(b[0], b[1], GLASS_H); ctx.strokeStyle = "rgba(170,215,255,.5)"; ctx.lineWidth = Math.max(1, 1.4 * k); ctx.beginPath(); ctx.moveTo(t1[0], t1[1]); ctx.lineTo(t2[0], t2[1]); ctx.stroke(); return; }
+    if (it.t === "post") { box({ x: it.x - .07, y: it.y - .07, w: .14, d: .14, h: 40 }, "#5a6a82", "#36425a", "#2a3448"); return; }
+    if (it.t === "box") { box(it.b, it.top, it.l, it.r); if (it.led) { var lp = Sx(it.b.x + .22, it.b.y + it.b.d, 40); ctx.fillStyle = (Math.floor(now / 600 + it.b.x) % 3) ? "#ff6b5f" : "#5fe08f"; ctx.beginPath(); ctx.arc(lp[0], lp[1], Math.max(1, 1.6 * k), 0, 7); ctx.fill(); } return; }
+    if (it.t === "table") { var b0 = Sx(it.x, it.y, 0), tt = Sx(it.x, it.y, 34); ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(b0[0], b0[1], 12 * k, 6 * k, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = "#4a4f58"; ctx.lineWidth = 3 * k; ctx.beginPath(); ctx.moveTo(b0[0], b0[1]); ctx.lineTo(tt[0], tt[1]); ctx.stroke(); ctx.fillStyle = "#e8e2d6"; ctx.beginPath(); ctx.ellipse(tt[0], tt[1], 13 * k, 6.5 * k, 0, 0, 7); ctx.fill(); ctx.strokeStyle = "#b9b1a2"; ctx.lineWidth = 1; ctx.stroke(); return; }
+    if (it.t === "sprite") { var im = IMG[it.img]; if (!im) return; var sp = Sx(it.x, it.y), sw = it.w * k, sh = sw * im.height / im.width; ctx.drawImage(im, sp[0] - sw / 2, sp[1] - sh * .92, sw, sh); return; }
+    if (it.t === "desk") {
+      var ag = S.byId[it.id]; if (!ag || ag.x == null) return; var r = ag._room, s = st(ag), p = Sx(ag.x, ag.y), w = DESK_W * k, h = DESK_H * k;
+      var away = ag._walk || s === "paused" || s === "idle";
+      var foc = S.focus && S.focus.type === "agent" && S.focus.id === ag.agent_id;
+      if ((s === "working" || s === "error") && !ag._walk) { var hc = s === "error" ? "#ff5d5d" : r.color, pul = s === "error" ? .55 + .35 * Math.sin(now / 260) : 1, g = ctx.createRadialGradient(p[0], p[1] - 4 * k, 0, p[0], p[1] - 4 * k, 44 * k); g.addColorStop(0, rgba(hc, .38 * pul)); g.addColorStop(1, rgba(hc, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(p[0], p[1] - 4 * k, 48 * k, 24 * k, 0, 0, 7); ctx.fill(); }
+      if (foc) { ctx.strokeStyle = r.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p[0], p[1] - 2 * k, 40 * k, 20 * k, 0, 0, 7); ctx.stroke(); }
+      var img = away || !AVOK ? IMG.empty : tint("desk", r.color, ag._hair);
+      if (img) { ctx.globalAlpha = s === "paused" ? .55 : 1; ctx.drawImage(img, p[0] - w * .5, p[1] - h * .86, w, h); ctx.globalAlpha = 1; }
+      var sc = { working: "#5fd4ff", error: "#ff4d4d", silent: "#ffb547", ok: "#4f86b8" }[s];
+      if (sc && !ag._walk) { var al = s === "working" ? .55 + .3 * Math.sin(now / 200 + ag.x) : s === "error" ? .5 + .4 * Math.sin(now / 260) : s === "silent" ? .45 : .22;
+        var q = SCREEN_Q.map(function (f) { return [p[0] - w * .5 + f[0] * w, p[1] - h * .86 + f[1] * h]; }); ctx.save(); ctx.globalCompositeOperation = "screen"; poly(q, rgba(sc, al)); ctx.restore(); }
+      if (s === "error" && !ag._walk) { var ex = p[0] + w * .1, ey = p[1] - h * .98; ctx.fillStyle = "#ff5d5d"; ctx.beginPath(); ctx.arc(ex, ey, Math.max(5, 7 * k), 0, 7); ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = "700 " + Math.max(7, 10 * k) + "px " + "system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("!", ex, ey + .5); ctx.textAlign = "start"; ctx.textBaseline = "alphabetic"; }
+      HITS.push({ x: p[0] - w * .4, y: p[1] - h * .8, w: w * .8, h: h * .8, a: ag });
+      if (!ag._walk) ag._head = [p[0] + w * .08, p[1] - h * .72];
+      return;
+    }
+    if (it.t === "walker") {
+      var aw = it.a, ws = it.s, wp = Sx(ws.p[0], ws.p[1]), WH = 84 * k, WW = WH * 2 / 3;
+      ctx.fillStyle = "rgba(10,14,20,.35)"; ctx.beginPath(); ctx.ellipse(wp[0], wp[1], 14 * k, 5.5 * k, 0, 0, 7); ctx.fill();
+      if (AVOK) { var sheet = tint("walk", aw._room.color, aw._hair), row = ws.dy < 0 ? 1 : 0, fr = ws.moving ? Math.floor(now / 125) % 4 : 0;
+        ctx.save(); ctx.translate(wp[0], wp[1]); if (ws.dx > 0) ctx.scale(-1, 1); ctx.drawImage(sheet, fr * 160, row * 240, 160, 240, -WW / 2, -WH * .96, WW, WH); ctx.restore(); }
+      HITS.push({ x: wp[0] - WW / 2, y: wp[1] - WH, w: WW, h: WH, a: aw }); aw._head = [wp[0], wp[1] - WH * .98];
+    }
+  }
+
+  /* brein als UFO */
+  var PORT = null;
+  function drawBrain(now) {
+    var k = cam.k, cx = Sx(L.W / 2, L.H / 2)[0], top = Sx(0, 0, WALL_H + 20)[1], R = 82 * k, bob = REDUCED ? 0 : Math.sin(now / 1400) * 6 * k, cy = top - 210 * k + bob;
+    var g = ctx.createRadialGradient(cx, cy, R * .4, cx, cy, R * 2.6); g.addColorStop(0, "rgba(120,110,255,.22)"); g.addColorStop(1, "rgba(60,180,255,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 2.6, 0, 7); ctx.fill();
+    var sy = cy + R * .62, rx = R * 1.75, ry = R * .42, sg = ctx.createLinearGradient(cx, sy - ry, cx, sy + ry);
+    sg.addColorStop(0, "#3c4a63"); sg.addColorStop(.55, "#1c2433"); sg.addColorStop(1, "#0d121b");
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(cx, sy, rx, ry, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = "#0a0f17"; ctx.beginPath(); ctx.ellipse(cx, sy - ry * .15, rx * .62, ry * .5, 0, 0, 7); ctx.fill();
+    var src = vidOk && VID.readyState >= 2 ? VID : IMG.brain;
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.clip(); ctx.fillStyle = "#05070d"; ctx.fill();
+    if (src) { ctx.globalCompositeOperation = "lighter"; ctx.translate(cx, cy); var bw = R * 2.35, bh = src === VID ? bw * (VID.videoHeight || 9) / (VID.videoWidth || 10) : bw * src.height / src.width; ctx.drawImage(src, -bw / 2, -bh * .5, bw, bh); }
+    ctx.restore();
+    ctx.strokeStyle = "rgba(150,170,255,.45)"; ctx.lineWidth = Math.max(1, 1.5 * k); ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+    ctx.strokeStyle = "#8fa3c4"; ctx.lineWidth = Math.max(1, 2 * k); ctx.beginPath(); ctx.ellipse(cx, sy, rx, ry, 0, 0, Math.PI); ctx.stroke();
+    for (var i = 0; i < 16; i++) { var an = i / 16 * Math.PI * 2 + (REDUCED ? 0 : now / 900), sn = Math.sin(an); if (sn < -.1) continue;
+      var on = (i + Math.floor(now / 250)) % 4 === 0; ctx.fillStyle = on ? "#ffffff" : (i % 2 ? "#5fd4ff" : "#b58cff"); ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = on ? 14 : 6;
+      ctx.beginPath(); ctx.arc(cx + Math.cos(an) * rx * .93, sy + sn * ry * .93, (on ? 3 : 2.2) * Math.max(.6, k), 0, 7); ctx.fill(); }
+    ctx.shadowBlur = 0;
+    var py = sy + ry * .9, pg = ctx.createRadialGradient(cx, py, 0, cx, py, 14 * k); pg.addColorStop(0, "rgba(180,230,255,.9)"); pg.addColorStop(1, "rgba(95,212,255,0)"); ctx.fillStyle = pg; ctx.beginPath(); ctx.arc(cx, py, 14 * k, 0, 7); ctx.fill();
+    PORT = [cx, py];
+    HITS.push({ x: cx - R, y: cy - R, w: 2 * R, h: 2 * R + ry, brain: true });
+  }
+  /* powerballen: omhoog in afdelingskleur, terug wit */
+  var BALLS = [];
+  function fireBall(id) { if (document.hidden || REDUCED) return; var a = S.byId[id]; if (!a) return; var c = a._via && a._via.until > Date.now() ? a._via.by : a; if (!c || c.x == null) return; BALLS.push({ a: c, t0: performance.now() }); }
+  function drawBalls(now) {
+    if (!PORT) return;
+    for (var i = BALLS.length - 1; i >= 0; i--) {
+      var b = BALLS[i], el = now - b.t0; if (el > 3000) { BALLS.splice(i, 1); continue; } var A = b.a._head; if (!A) continue;
+      var p, up = true; if (el < 1300) p = el / 1300; else if (el < 1700) p = 1; else { p = 1 - (el - 1700) / 1300; up = false; }
+      var col = up ? b.a._room.color : "#dff6ff", arc = 40 * cam.k;
+      var at = function (q) { var e = q * q * (3 - 2 * q); return [A[0] + (PORT[0] - A[0]) * e, A[1] + (PORT[1] - A[1]) * e - Math.sin(e * Math.PI) * arc]; };
+      for (var j = 1; j < 6; j++) { var tq = Math.max(0, Math.min(1, p + (up ? -1 : 1) * j * .025)), tp = at(tq); ctx.fillStyle = rgba(col, .35 - j * .05); ctx.beginPath(); ctx.arc(tp[0], tp[1], (4 - j * .5) * Math.max(.7, cam.k), 0, 7); ctx.fill(); }
+      var xp = at(p); ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 16; ctx.beginPath(); ctx.arc(xp[0], xp[1], 4.5 * Math.max(.7, cam.k), 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+    }
+  }
+  /* afdelingskaartjes */
+  function counts(list) { var c = { working: 0, error: 0, silent: 0, ok: 0, paused: 0, idle: 0 }; list.forEach(function (a) { c[st(a)]++; }); return c; }
+  function rrect(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
+  function drawCards() {
+    CARDS = [];
+    var fs = Math.max(8, Math.min(13, 30 * cam.k)), small = fs < 8.6;
+    L.rooms.forEach(function (r) {
+      var back = r.y < EPS || r.x < EPS, anc = Sx(r.x + .55, r.y + .55, back ? WALL_H + 16 : GLASS_H + 22);
+      var title = r.canteen ? "KANTINE" : r.name, n = r.canteen ? meetCount() : r.agents.length, c = r.canteen ? null : counts(r.agents);
+      var sub = r.canteen ? (n ? n + " in overleg" : "statafels vrij") : [c.working ? c.working + " draait" : "", c.error ? c.error + " fout" : "", c.silent ? c.silent + " stil" : ""].filter(Boolean).join(" · ") || "rustig";
+      ctx.font = "700 " + fs + "px " + "ui-monospace,Consolas,monospace"; var tw = ctx.measureText(title + "  " + (r.canteen ? "" : n)).width;
+      ctx.font = "500 " + (fs * .86) + "px system-ui,sans-serif"; var sw = ctx.measureText(sub).width;
+      var w = (small ? tw : Math.max(tw, sw)) + 26, h = fs * (small ? 2.1 : 3.1), x = anc[0] - 8, y = anc[1] - h;
+      var foc = S.focus && ((S.focus.type === "dept" && S.focus.name === r.name) || (S.focus.type === "canteen" && r.canteen));
+      ctx.fillStyle = "rgba(17,26,41,.94)"; rrect(x, y, w, h, 6); ctx.fill(); ctx.strokeStyle = rgba(r.color, foc ? 1 : .6); ctx.lineWidth = foc ? 2 : 1; ctx.stroke();
+      ctx.fillStyle = r.color; ctx.fillRect(x, y + 5, 3, h - 10);
+      ctx.textBaseline = "middle"; ctx.font = "700 " + fs + "px ui-monospace,Consolas,monospace"; ctx.fillStyle = "#e4e9f0"; ctx.fillText(title, x + 12, y + fs * 1.05);
+      if (!r.canteen) { var tw2 = ctx.measureText(title + "  ").width; ctx.fillStyle = r.color; ctx.fillText(String(n), x + 12 + tw2, y + fs * 1.05); }
+      if (!small) { ctx.font = "500 " + (fs * .86) + "px system-ui,sans-serif"; ctx.fillStyle = c && c.error ? "#ff8a8a" : c && c.working ? "#7fe3ff" : "#8a9bb0"; ctx.fillText(sub, x + 12, y + fs * 2.2); } ctx.textBaseline = "alphabetic";
+      CARDS.push({ x: x, y: y, w: w, h: h, r: r });
+    });
+  }
+  var PLACED = [];
+  function bubble(x, y, text, color) {
+    var fs = Math.max(9, Math.min(12, 10.5 * Math.sqrt(cam.k / fitV.k))); ctx.font = "500 " + fs + "px system-ui,sans-serif";
+    var tw = ctx.measureText(text).width, w = tw + 18, h = fs * 1.8, y0 = y;
+    for (var tries = 0; tries < 6; tries++) { var hit = PLACED.some(function (b) { return Math.abs(b[0] - x) < (b[2] + w) / 2 + 4 && Math.abs(b[1] - y) < h + 3; }); if (!hit) break; y -= h + 4; }
+    PLACED.push([x, y, w]);
+    if (y !== y0) { ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y); ctx.stroke(); }
+    ctx.fillStyle = "rgba(240,244,250,.96)"; ctx.strokeStyle = color; ctx.lineWidth = 1.5; rrect(x - w / 2, y - h - 7, w, h, h / 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 4, y - 7.5); ctx.lineTo(x, y); ctx.lineTo(x + 5, y - 7.5); ctx.fill();
+    ctx.fillStyle = "#141b28"; ctx.textBaseline = "middle"; ctx.fillText(text, x - w / 2 + 9, y - h / 2 - 7); ctx.textBaseline = "alphabetic";
+  }
+
+  /* ---------------------------------------------------------------- overleg */
+  var WALK_V = 2.4;
+  function busy(a) { return !!(a._walk || a._meet && a._meet > Date.now()); }
+  function canWalk(a) { var s = st(a); return a && !a._sub && a.x != null && s !== "paused" && s !== "idle" && !busy(a); }
+  function trip(a, target, troom, stay, label) {
+    var pts = pathFor(a, target, troom); if (!pts) return false; var len = 0;
+    for (var i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    a._walk = { pts: pts, len: len, v: WALK_V, t0: performance.now(), stay: stay, label: label }; return true;
+  }
+  function meetCount() { return S.agents.filter(function (a) { return a._walk && a._walk.team; }).length; }
+  function kortOverleg(fr, to, working) {
+    if (!fr || !to || to._sub || to.x == null || !canWalk(fr)) return;
+    var stay = working ? 20000 : 11000;
+    if (trip(fr, [to.x + .85, to._aisle || to.y + 1], to._room, stay, "overleg met " + to.agent_name)) {
+      var tt = fr._walk.len / WALK_V * 1000; to._meet = Date.now() + tt + stay; to._meetWith = fr.agent_name;
+    }
+  }
+  function teamOverleg(ids, working) {
+    var tb = L.canteen.tables.filter(function (t) { return !t.used; }); if (!tb.length) return;
+    var t = tb[Math.floor(Math.random() * tb.length)], spots = [[-.55, .1], [.55, -.1], [0, .6], [0, -.55]], stay = working ? 20000 : 14000, maxEnd = 0, n = 0;
+    ids.forEach(function (id) { var a = S.byId[id]; if (!a || !canWalk(a) || n >= 4) return; var s = spots[n];
+      if (trip(a, [t.x + s[0], t.y + s[1]], L.canteen, stay + n * 400, n === 0 ? "teamoverleg (" + Math.min(4, ids.length) + ")" : null)) { a._walk.team = true; maxEnd = Math.max(maxEnd, a._walk.len / WALK_V * 2000 + stay + n * 400); n++; } });
+    if (n) { t.used = 1; setTimeout(function () { t.used = 0; }, maxEnd + 500); }
+  }
+  function loopGroups() {
+    if (S._lg) return S._lg;
+    var adj = {}, idx = 0, stack = [], on = {}, ix = {}, low = {}, comp = {};
+    S.links.forEach(function (l) { (adj[l.from_agent] = adj[l.from_agent] || []).push(l.to_agent); });
+    function scc(v) { ix[v] = low[v] = idx++; stack.push(v); on[v] = 1;
+      (adj[v] || []).forEach(function (w) { if (ix[w] == null) { scc(w); low[v] = Math.min(low[v], low[w]); } else if (on[w]) low[v] = Math.min(low[v], ix[w]); });
+      if (low[v] === ix[v]) { var c = [], w; do { w = stack.pop(); on[w] = 0; c.push(w); } while (w !== v); if (c.length >= 3) c.forEach(function (x) { comp[x] = c; }); } }
+    Object.keys(adj).forEach(function (v) { if (ix[v] == null) scc(v); });
+    return (S._lg = { comp: comp });
+  }
+  var meetTimers = [];
+  function queueMeets(prevRun) {
+    if (REDUCED || !prevRun) return;
+    meetTimers.forEach(clearTimeout); meetTimers = [];
+    var best = {}, lg = loopGroups();
+    S.links.forEach(function (l) {
+      var to = S.byId[l.to_agent], fr = S.byId[l.from_agent]; if (!to || !fr || to._sub || fr._sub) return;
+      var fresh = to.last_run_at && to.last_run_at !== (prevRun[to.agent_id] || ""), working = st(to) === "working";
+      if ((!fresh && !working) || isNoop(to) || isNoop(fr)) return;
+      var gap = ms(to.last_run_at) - ms(fr.last_run_at);
+      if (!(st(fr) === "working" || (gap >= -60000 && gap <= 20 * 60000))) return;
+      if (!best[to.agent_id] || Math.abs(gap) < best[to.agent_id].gap) best[to.agent_id] = { fr: fr, to: to, gap: Math.abs(gap), working: working };
+    });
+    var claimed = {};
+    Object.keys(best).forEach(function (k) {
+      var b = best[k]; if (claimed[b.fr.agent_id] || claimed[b.to.agent_id]) return;
+      var delay = b.working ? 400 : Math.random() * (REFRESH_MS - 25000), comp = lg.comp[b.fr.agent_id];
+      if (comp && comp === lg.comp[b.to.agent_id]) {
+        var ids = [b.fr.agent_id, b.to.agent_id].concat(comp.filter(function (x) { return x !== b.fr.agent_id && x !== b.to.agent_id && !claimed[x]; }).slice(0, 2));
+        ids.forEach(function (x) { claimed[x] = 1; }); meetTimers.push(setTimeout(function () { teamOverleg(ids, b.working); }, delay));
+      } else { claimed[b.fr.agent_id] = claimed[b.to.agent_id] = 1; meetTimers.push(setTimeout(function () { kortOverleg(S.byId[b.fr.agent_id], S.byId[b.to.agent_id], b.working); }, delay)); }
+    });
+  }
+  /* subworkflow: geen bureau; boven de aanroeper 'via <subworkflow>' */
+  function normKey(x) { return String(x || "").toLowerCase().replace(/[^a-z0-9]/g, ""); }
+  function callerOf(sub) {
+    var s = String(sub.last_summary || ""), m = s.match(/\bvoor\s+([A-Za-z0-9_.-]+)/i) || s.match(/\(([A-Za-z0-9_.-]+)\)/), hit = null;
+    if (m) { hit = S.byWf[m[1]]; if (hit && !hit._sub && hit.agent_id !== sub.agent_id) return hit; hit = null; var key = normKey(m[1]);
+      S.agents.forEach(function (a) { if (!hit && !a._sub && (normKey(a.workflow_name) === key || normKey(a.agent_id) === key || normKey(a.agent_name) === key)) hit = a; }); if (hit) return hit; }
+    var t = ms(sub.last_run_at), bg = Infinity;
+    S.agents.forEach(function (a) { if (a._sub || !a.last_run_at || a.x == null) return; var g = t - ms(a.last_run_at); if (g >= -60000 && g <= 5 * 60000 && Math.abs(g) < bg) { bg = Math.abs(g); hit = a; } });
+    return hit;
+  }
+  function queueVia(prevRun) {
+    if (!prevRun) return;
+    S.agents.forEach(function (sub) {
+      if (!sub._sub) return; var fresh = sub.last_run_at && sub.last_run_at !== (prevRun[sub.agent_id] || ""); if (!fresh || isNoop(sub)) return;
+      var c = callerOf(sub); if (!c || c.x == null) return;
+      var d = Math.random() * (REFRESH_MS - 15000);
+      setTimeout(function () { var cc = S.byId[c.agent_id]; if (!cc) return; cc._via = { label: "via " + sub.agent_name, until: Date.now() + 9000 }; sub._via = { by: cc, until: Date.now() + 9000 }; if (usesBrain(sub)) fireBall(sub.agent_id); }, d);
+    });
+  }
+  var ballTimers = [];
+  function queueBalls(prevRun) {
+    if (REDUCED) return;
+    ballTimers.forEach(clearTimeout); ballTimers = [];
+    S.agents.forEach(function (a) {
+      if (!usesBrain(a) || a._sub) return;
+      var fresh = prevRun && a.last_run_at && a.last_run_at !== (prevRun[a.agent_id] || ""), working = st(a) === "working";
+      if ((!fresh && !working) || isNoop(a)) return;
+      var t = working ? 300 + Math.random() * 1500 : Math.random() * (REFRESH_MS - 8000);
+      ballTimers.push(setTimeout(function () { fireBall(a.agent_id); }, t));
+      if (working) for (var k2 = t + 7000; k2 < REFRESH_MS - 2000; k2 += 6000 + Math.random() * 2500) ballTimers.push(setTimeout(function () { var x = S.byId[a.agent_id]; if (x && st(x) === "working") fireBall(a.agent_id); }, k2));
+    });
+  }
+  function testMeet() {
+    var lg = loopGroups(), big = null; Object.keys(lg.comp).forEach(function (k) { var c = lg.comp[k]; if (!big || c.length > big.length) big = c; });
+    if (big) teamOverleg(big.slice(0, 4), false);
+    var l = S.links.filter(function (x) { var a = S.byId[x.from_agent], b = S.byId[x.to_agent]; return a && b && !a._sub && !b._sub && !busy(a) && a._room !== b._room; })[0];
+    if (l) kortOverleg(S.byId[l.from_agent], S.byId[l.to_agent], false);
+  }
+  /* demo: activiteit naspelen (alleen ?demo=1) */
+  if (DEMO) {
+    setInterval(function () { S.agents.forEach(function (a) { if (a._sub || a.state === "paused") return; if (a._demo && Math.random() < .35) a._demo = false; else if (Math.random() < .07) a._demo = true; }); }, 2000);
+    setInterval(function () { S.agents.forEach(function (a) { if (a._demo && !a._walk && Math.random() < .06) fireBall(a.agent_id); }); }, 450);
+    setInterval(function () { var live = S.agents.filter(function (a) { return !a._sub && a.x != null && !busy(a) && a.state !== "paused"; }); if (live.length < 4) return;
+      if (Math.random() < .65) { var a = live[Math.floor(Math.random() * live.length)], o = live.filter(function (b) { return b._room !== a._room; }), b = o[Math.floor(Math.random() * o.length)]; kortOverleg(a, b, false); }
+      else { var ids = [], used = {}; while (ids.length < 3) { var c = live[Math.floor(Math.random() * live.length)]; if (!used[c.dept_name]) { used[c.dept_name] = 1; ids.push(c.agent_id); } } teamOverleg(ids, false); } }, 3200);
+  }
+
+  /* ---------------------------------------------------------------- interactie */
+  function hitAt(x, y) {
+    for (var i = CARDS.length - 1; i >= 0; i--) { var c = CARDS[i]; if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) return { card: c.r }; }
+    for (var j = HITS.length - 1; j >= 0; j--) { var h = HITS[j]; if (x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) return h; }
+    return null;
+  }
+  function hover(e) {
+    var r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, h = hitAt(x, y), tip = $("tip");
+    cv.classList.toggle("pt", !!h);
+    if (!h || h.card || h.brain) { tip.style.display = "none"; return; }
+    var a = h.a, s = st(a), txt = a._walk ? (a._walk.label || "in overleg") : STATES[s];
+    tip.innerHTML = esc(a.agent_name) + "<small>" + esc(a.dept_name) + " · " + esc(txt) + "</small>"; tip.style.display = "block";
+    tip.style.left = Math.min(VW - tip.offsetWidth - 8, x + 14) + "px"; tip.style.top = (y + 14) + "px";
+  }
+  function click(x, y) {
+    var h = hitAt(x, y);
+    if (!h) { setFocus(null); return; }
+    if (h.card) { if (h.card.canteen) setFocus({ type: "canteen" }); else setFocus({ type: "dept", name: h.card.name }); zoomToRoom(h.card); return; }
+    if (h.brain) { setFocus(null); userMoved = 0; camT = fitV; return; }
+    setFocus({ type: "agent", id: h.a.agent_id });
+  }
+  function setFocus(f) { S.focus = f; renderPanel(); if (f && f.type === "agent") loadRuns(S.byId[f.id]); }
+
+  /* ---------------------------------------------------------------- paneel + kop */
+  function renderHeader() {
+    var c = counts(S.agents.filter(function (a) { return !a._sub; }));
+    var m = [["working", "draait"], ["error", "fout"], ["silent", "stil"]].map(function (x) { var n = c[x[0]]; return '<div class="metric m-' + x[0] + (n ? "" : " zero") + '"><b>' + n + '</b><span>' + x[1] + '</span></div>'; }).join("");
+    $("metrics").innerHTML = '<div class="metric"><b>' + S.agents.length + '</b><span>agents</span></div>' + m;
+    $("upd").textContent = "bijgewerkt " + fmtClock.format(S.loadedAt || new Date());
+    var tag = $("modeTag"); if (DEMO) { tag.hidden = false; tag.textContent = "DEMO"; }
+  }
+  function agentRow(a, note) { var s = st(a); return '<div class="row" data-agent="' + esc(a.agent_id) + '"><i class="' + s + '"></i><span>' + esc(a.agent_name) + '</span><small>' + esc(note || STATES[s]) + '</small></div>'; }
+  function renderPanel() {
+    var f = S.focus, el = $("panel"), h = "";
+    if (f && f.type === "agent" && S.byId[f.id]) {
+      var a = S.byId[f.id], s = st(a), r = a._room, inL = S.links.filter(function (l) { return l.to_agent === a.agent_id; }), outL = S.links.filter(function (l) { return l.from_agent === a.agent_id; });
+      h += '<button class="back" data-back="1">← ' + (r ? esc(r.name) : "overzicht") + '</button>';
+      h += '<h2>' + esc(a.agent_name) + '</h2><p><span class="chip" style="--c:' + esc(a.dept_color || (r && r.color)) + '">' + esc(a.dept_name) + '</span> <span class="pill ' + s + '">' + STATES[s] + '</span></p>';
+      if (a._walk) h += '<p class="muted">Nu: ' + esc(a._walk.label || "in overleg") + '</p>';
+      h += '<div class="kv"><div><b>' + (a.runs_24h || 0) + '</b><span>runs 24 u</span></div><div class="' + (a.fails_24h ? "e" : "") + '"><b>' + (a.fails_24h || 0) + '</b><span>fouten 24 u</span></div><div class="' + (a.open_loops ? "s" : "") + '"><b>' + (a.open_loops || 0) + '</b><span>open issues</span></div></div>';
+      h += '<h3>Laatste run</h3><p>' + esc(rel(a.last_run_at)) + ' <span class="muted">(' + esc(abs(a.last_run_at)) + ')</span> · schema ' + esc(a.schedule_human || "—") + '</p>';
+      if (a.last_summary) h += '<div class="sum">' + esc(a.last_summary) + '</div>';
+      if (inL.length || outL.length) { h += '<h3>Overlegt met</h3>'; inL.forEach(function (l) { var b = S.byId[l.from_agent]; if (b) h += agentRow(b, "levert aan " + a.agent_name.split(" ")[0]); }); outL.forEach(function (l) { var b = S.byId[l.to_agent]; if (b) h += agentRow(b, "krijgt van " + a.agent_name.split(" ")[0]); }); }
+      h += '<h3>Laatste runs</h3><div id="runs" class="muted">laden…</div>';
+      h += '<div class="links">' + (a.n8n_workflow_id ? '<a href="' + N8N + esc(a.n8n_workflow_id) + '" target="_blank" rel="noopener">Open in n8n</a>' : "") + '<a href="office-v2.html?agent=' + esc(a.agent_id) + '">In Office v2</a></div>';
+    } else if (f && f.type === "dept") {
+      var d = S.depts.filter(function (x) { return x.name === f.name; })[0];
+      if (!d) { S.focus = null; return renderPanel(); }
+      var c = counts(d.agents), p = S.panels[d.name];
+      h += '<button class="back" data-back="1">← overzicht</button><h2 style="color:' + esc(d.color) + '">' + esc(d.name) + '</h2><p class="muted">' + d.agents.length + ' agents</p>';
+      h += '<div class="kv"><div class="w"><b>' + c.working + '</b><span>draait</span></div><div class="e"><b>' + c.error + '</b><span>fout</span></div><div class="s"><b>' + c.silent + '</b><span>stil</span></div></div>';
+      if (p) { h += '<div class="kv"><div><b>' + (p.doing || 0) + '</b><span>bezig</span></div><div><b>' + (p.next || 0) + '</b><span>straks</span></div><div><b>' + (p.done || 0) + '</b><span>klaar</span></div></div>';
+        if (p.labels && p.labels.length) h += '<h3>Resultaat</h3>' + p.labels.map(function (lb, i) { var v = (p.waarden || [])[i]; return '<p>' + esc(lb) + ': <b>' + esc(v == null || v === "" ? "—" : v) + '</b></p>'; }).join(""); }
+      h += '<h3>Agents</h3>' + d.agents.slice().sort(function (x, y) { var o = { error: 0, working: 1, silent: 2, ok: 3, idle: 4, paused: 5 }; return o[st(x)] - o[st(y)]; }).map(function (a) { return agentRow(a, rel(a.last_run_at)); }).join("");
+      var subs = S.agents.filter(function (a) { return a._sub && a.dept_name === d.name; });
+      if (subs.length) h += '<h3>Subworkflows (geen vast bureau)</h3>' + subs.map(function (a) { return agentRow(a, rel(a.last_run_at)); }).join("");
+    } else if (f && f.type === "canteen") {
+      var lg = loopGroups(), loops = {}; Object.keys(lg.comp).forEach(function (k) { loops[lg.comp[k].slice().sort().join(",")] = lg.comp[k]; });
+      var inMeet = S.agents.filter(function (a) { return a._walk; });
+      h += '<button class="back" data-back="1">← overzicht</button><h2 style="color:' + CANTEEN_COLOR + '">KANTINE</h2>';
+      h += '<p class="muted">Hier komt een terugkoppellus samen. Draait een agent kort na een agent die hem levert (koppeling in v_office_links), dan loopt de leverancier naar zijn collega. Zitten ze in een lus van drie of meer, dan schuiven tot vier lusleden aan een statafel.</p>';
+      h += '<div class="kv"><div><b>' + S.links.length + '</b><span>koppelingen</span></div><div><b>' + Object.keys(loops).length + '</b><span>lussen</span></div><div class="w"><b>' + inMeet.length + '</b><span>onderweg</span></div></div>';
+      if (inMeet.length) h += '<h3>Nu in overleg</h3>' + inMeet.map(function (a) { return agentRow(a, a._walk.label || "aan tafel"); }).join("");
+      Object.keys(loops).forEach(function (k, i) { h += '<h3>Lus ' + (i + 1) + '</h3>' + loops[k].map(function (id) { return S.byId[id] ? agentRow(S.byId[id]) : ""; }).join(""); });
+    } else {
+      var all = S.agents.filter(function (a) { return !a._sub; }), errs = all.filter(function (a) { return st(a) === "error"; }), work = all.filter(function (a) { return st(a) === "working"; }), walk = all.filter(function (a) { return a._walk; });
+      h += '<h2>Office v3</h2><p class="muted">Een verdieping: elke afdeling een zaal, de kantine ernaast, het brein erboven. Klik op een kaartje, agent of de kantine.</p>';
+      h += '<div class="kv"><div class="w"><b>' + work.length + '</b><span>draait</span></div><div class="e"><b>' + errs.length + '</b><span>fout</span></div><div><b>' + walk.length + '</b><span>in overleg</span></div></div>';
+      if (errs.length) h += '<h3>Fouten</h3>' + errs.map(function (a) { return agentRow(a, a.dept_name); }).join("");
+      if (work.length) h += '<h3>Draait nu</h3>' + work.map(function (a) { return agentRow(a, a.dept_name); }).join("");
+      if (walk.length) h += '<h3>Onderweg</h3>' + walk.map(function (a) { return agentRow(a, a._walk.label || "teamoverleg"); }).join("");
+      h += '<h3>Afdelingen</h3>' + S.depts.map(function (d) { var c = counts(d.agents); return '<div class="row" data-dept="' + esc(d.name) + '"><i style="background:' + esc(d.color) + '"></i><span>' + esc(d.name) + '</span><small>' + d.agents.length + (c.error ? ' · ' + c.error + ' fout' : '') + '</small></div>'; }).join("");
+    }
+    el.innerHTML = h;
+  }
+  $("panel").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-agent],[data-dept],[data-back]"); if (!t) return;
+    if (t.dataset.back) { var f = S.focus; if (f && f.type === "agent" && S.byId[f.id] && S.byId[f.id]._room && !S.byId[f.id]._room.canteen) setFocus({ type: "dept", name: S.byId[f.id]._room.name }); else { setFocus(null); userMoved = 0; camT = fitV; } return; }
+    if (t.dataset.dept) { var d = S.depts.filter(function (x) { return x.name === t.dataset.dept; })[0]; setFocus({ type: "dept", name: t.dataset.dept }); zoomToRoom(d); return; }
+    var a = S.byId[t.dataset.agent]; if (!a) return; setFocus({ type: "agent", id: a.agent_id }); if (!a._sub) zoomToAgent(a);
+  });
+  function loadRuns(a) {
+    if (!a) return; var wf = encodeURIComponent(a.workflow_name || "");
+    rest("bridge_agent_runs?select=run_at,status,summary&workflow=eq." + wf + "&order=run_at.desc&limit=8").then(function (rows) {
+      if (!S.focus || S.focus.id !== a.agent_id) return; var el = $("runs"); if (!el) return;
+      el.className = ""; el.innerHTML = rows.length ? rows.map(function (r) { return '<div class="run ' + (r.status === "error" ? "error" : "") + '"><b>' + esc(abs(r.run_at)) + ' · ' + esc(r.status || "") + '</b>' + esc(trim(r.summary, 220)) + '</div>'; }).join("") : '<span class="muted">Geen runs gevonden.</span>';
+    }, function () { var el = $("runs"); if (el) el.textContent = "Runs konden niet geladen worden."; });
+  }
+
+  /* ---------------------------------------------------------------- lus */
+  var last = 0;
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (document.hidden || !L.rooms.length) return;
+    if (REDUCED && now - last < 500) return; last = now;
+    if (camT) { var e = .14; cam.k += (camT.k - cam.k) * e; cam.ox += (camT.ox - cam.ox) * e; cam.oy += (camT.oy - cam.oy) * e; if (Math.abs(camT.k - cam.k) < 1e-4 && Math.abs(camT.ox - cam.ox) < .3 && Math.abs(camT.oy - cam.oy) < .3) { cam = { k: camT.k, ox: camT.ox, oy: camT.oy }; camT = null; } }
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    var bg = ctx.createRadialGradient(VW * .45, VH * .55, 50, VW / 2, VH / 2, Math.max(VW, VH) * .8); bg.addColorStop(0, "#121a26"); bg.addColorStop(1, "#06090f"); ctx.fillStyle = bg; ctx.fillRect(0, 0, VW, VH);
+    HITS = [];
+    drawFloor(); drawBackWalls();
+    var list = L.items.slice(), bubbles = [], tnow = Date.now();
+    S.agents.forEach(function (a) {
+      if (!a._walk) return; var s = walkerPos(a, now);
+      if (!s) { a._walk = null; if (S.focus && S.focus.type !== "agent") renderPanel(); return; }
+      list.push({ k: s.p[0] + s.p[1] + .3, t: "walker", a: a, s: s }); if (s.arrived && a._walk.label) bubbles.push([a, a._walk.label]);
+    });
+    list.sort(function (p, q) { return p.k - q.k; });
+    list.forEach(function (it) { drawItem(it, now); });
+    drawBrain(now); drawBalls(now); drawCards();
+    /* ballonnen: overleg, via-subworkflow, werkende agents (max 10, korte samenvatting) */
+    var nb = 0;
+    S.agents.forEach(function (a) {
+      if (a._sub || a.x == null || a._walk || !a._head) return;
+      if (a._meet && a._meet > tnow) { bubbles.push([a, "overleg met " + (a._meetWith || "collega")]); return; }
+      if (a._via && a._via.until > tnow && a._via.label) { bubbles.push([a, a._via.label]); return; }
+      if (st(a) === "working" && nb < 10 && a.last_summary && !DEMO) { nb++; bubbles.push([a, trim(a.last_summary, 38)]); }
+    });
+    PLACED = [];
+    var tiny = cam.k < .2;
+    bubbles.forEach(function (b) { if (tiny && !b[0]._walk && !(b[0]._meet > tnow)) return; if (b[0]._head) bubble(b[0]._head[0], b[0]._head[1] - 4, b[1], b[0]._room ? b[0]._room.color : "#8aa0b5"); });
+  }
+
+  /* ---------------------------------------------------------------- start */
+  function loggedOut() { $("loading").innerHTML = '<div class="gate"><b>Niet ingelogd</b><span>Dit paneel deelt de login van The Bridge. Log in op het hoofdscherm en dit paneel vult zich vanzelf.</span><a href="/" target="_top">Naar The Bridge</a></div>'; $("loading").style.display = "flex"; }
+  resize(); requestAnimationFrame(frame);
+  if (!sb && !TEST) { $("loading").style.display = "none"; showMsg("bridge-config.js of supabase-js is niet geladen: geen Supabase-verbinding."); return; }
+  if (sb) sb.auth.onAuthStateChange(function (ev, session) { if (session && ev === "SIGNED_IN" && !S.agents.length) load(); });
+  load();
+  setInterval(function () { if (!document.hidden) load(); }, REFRESH_MS);
+  setInterval(function () { if (!document.hidden && S.agents.length && (!S.focus || S.focus.type !== "agent")) renderPanel(); }, 2500);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && S.loadedAt && Date.now() - S.loadedAt.getTime() > REFRESH_MS) load(); });
+})();
+</script>
+</body>
+</html>
