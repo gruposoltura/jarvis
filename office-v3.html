@@ -352,9 +352,52 @@
   var IMG = {}, TC = {}, AVOK = false;
   function loadImg(k, f) { return new Promise(function (res) { var i = new Image(); i.onload = function () { IMG[k] = i; res(i); }; i.onerror = function () { res(null); }; i.src = ASSETS + f; }); }
   Promise.all([loadImg("desk", "desk-v3.webp"), loadImg("deskMap", "desk-v3-map.webp"), loadImg("empty", "desk-empty-v3.webp"), loadImg("walk", "walker-v4.webp"), loadImg("walkMap", "walker-v4-map.webp"),
-    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp")]).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); });
+    loadImg("brain", "brain-core.webp"), loadImg("plant", "prop-plant.webp"), loadImg("board", "prop-board.webp"), loadImg("rack", "prop-rack.webp")]).then(function () { AVOK = !!(IMG.desk && IMG.deskMap && IMG.walk && IMG.walkMap); if (IMG.desk && IMG.deskMap) { try { buildHands(); } catch (e) { HANDS.ready = false; } } });
   var VID = $("brainVid"), vidOk = false;
   if (!REDUCED) { VID.src = ASSETS + "brain-core.mp4"; VID.addEventListener("canplay", function () { vidOk = true; }); var pp = VID.play(); if (pp && pp.catch) pp.catch(function () {}); }
+  /* typende handen (zoals v2, 24-10): handen uit de bureausprite knippen (huidskleur in twee vakken boven het
+     toetsenbord, grootste vlek, gaten gevuld, 1 px verbreed); een variant zonder handen per afdeling x haar,
+     daarover de twee handen die om en om tikken (typeL / typeR uit v2). Vakken in pixels van de 757 x 904-bron. */
+  var HANDS = { ready: false, cache: {}, layers: null, mask: null };
+  var HAND_BOX = [[295, 318, 398, 402], [380, 276, 478, 352]];
+  var TYPE_L = [[0, 0, 0], [.10, 0, -.85], [.20, 0, 0], [.38, .12, -.6], [.48, 0, 0], [.70, 0, -.95], [.80, 0, 0], [1, 0, 0]];
+  var TYPE_R = [[0, 0, 0], [.14, -.1, -.8], [.26, 0, 0], [.52, 0, -.7], [.62, 0, 0], [.84, 0, -.9], [.92, 0, 0], [1, 0, 0]];
+  function kf(fr, t) { for (var i = 1; i < fr.length; i++) if (t <= fr[i][0]) { var a = fr[i - 1], b = fr[i], f = (t - a[0]) / (b[0] - a[0] || 1); return [a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; } return [0, 0]; }
+  function deskPixels() { var w = 384, h = 459; function g(img) { var c = document.createElement("canvas"); c.width = w; c.height = h; var x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h); return x.getImageData(0, 0, w, h).data; } return { w: w, h: h, d: g(IMG.desk), m: g(IMG.deskMap) }; }
+  function buildHands() {
+    var P0 = deskPixels(), w = P0.w, h = P0.h, d = P0.d, m = P0.m, k = w / 757, all = new Uint8Array(w * h);
+    HANDS.px = P0;
+    HANDS.layers = HAND_BOX.map(function (bx) {
+      var x0 = Math.floor(bx[0] * k), y0 = Math.floor(bx[1] * k), x1 = Math.ceil(bx[2] * k), y1 = Math.ceil(bx[3] * k), sk = new Uint8Array(w * h), x, y, i;
+      for (y = y0; y < y1; y++) for (x = x0; x < x1; x++) { i = (y * w + x) * 4; var r = d[i], g = d[i + 1], b = d[i + 2];
+        if (d[i + 3] > 100 && r > 60 && r - b > 14 && r - b > 0.17 * r && r >= g && g >= b - 4 && m[i + 1] < 80 && m[i + 2] < 80) sk[y * w + x] = 1; }
+      var lab = new Int32Array(w * h), best = 0, bestN = 0, id = 0;
+      for (y = y0; y < y1; y++) for (x = x0; x < x1; x++) { var p0 = y * w + x; if (!sk[p0] || lab[p0]) continue; id++; var stk = [p0], n = 0; lab[p0] = id;
+        while (stk.length) { var q = stk.pop(), qx = q % w; n++; [q - 1, q + 1, q - w, q + w].forEach(function (z) { if (z >= 0 && z < w * h && Math.abs((z % w) - qx) <= 1 && sk[z] && !lab[z]) { lab[z] = id; stk.push(z); } }); }
+        if (n > bestN) { bestN = n; best = id; } }
+      var f = new Uint8Array(w * h), mk = new Uint8Array(w * h);
+      for (y = y0; y < y1; y++) { var lo = -1, hi = -1; for (x = x0; x < x1; x++) if (lab[y * w + x] === best) { if (lo < 0) lo = x; hi = x; } for (x = lo; lo >= 0 && x <= hi; x++) f[y * w + x] = 1; }
+      for (y = y0 - 1; y <= y1; y++) for (x = x0 - 1; x <= x1; x++) { if (y < 1 || x < 1 || y >= h - 1 || x >= w - 1) continue; var o = y * w + x; if (f[o] || f[o - 1] || f[o + 1] || f[o - w] || f[o + w]) { mk[o] = 1; all[o] = 1; } }
+      var c = document.createElement("canvas"); c.width = w; c.height = h; var cx = c.getContext("2d"), out = cx.createImageData(w, h), od = out.data;
+      for (i = 0; i < w * h; i++) if (mk[i]) { od[i * 4] = d[i * 4]; od[i * 4 + 1] = d[i * 4 + 1]; od[i * 4 + 2] = d[i * 4 + 2]; od[i * 4 + 3] = d[i * 4 + 3]; }
+      cx.putImageData(out, 0, 0); return c;
+    });
+    HANDS.mask = all; HANDS.ready = true;
+  }
+  function noHands(cloth, hair) {
+    var key = cloth + hair; if (HANDS.cache[key]) return HANDS.cache[key];
+    var w = HANDS.px.w, h = HANDS.px.h, b = HANDS.px.d, M = HANDS.px.m, mk = HANDS.mask, c = document.createElement("canvas"); c.width = w; c.height = h;
+    var x = c.getContext("2d"), out = x.createImageData(w, h), o = out.data, C = rgbOf(cloth), Hh = rgbOf(hair);
+    for (var i = 0; i < o.length; i += 4) { var sh = Math.min(1.25, M[i] / 255 * 1.12), wc = M[i + 1] / 255, wh = M[i + 2] / 255;
+      for (var k = 0; k < 3; k++) { var v = b[i + k] * (1 - wc) + C[k] * sh * wc; o[i + k] = v * (1 - wh) + Hh[k] * sh * 1.1 * wh; } o[i + 3] = b[i + 3]; }
+    function cl(p) { return M[p * 4 + 1] > 80; }
+    for (var y = 1; y < h - 1; y++) for (var xx = 1; xx < w - 1; xx++) {
+      if (!mk[y * w + xx]) continue; var a = xx; while (xx < w - 1 && mk[y * w + xx]) xx++;
+      var L = y * w + a - 1, R = y * w + xx, useL = !cl(L), useR = !cl(R); if (!useL && !useR) useL = true;
+      for (var q = a; q < xx; q++) { var t = (q - a + 1) / (xx - a + 1), P = (y * w + q) * 4; for (var k2 = 0; k2 < 4; k2++) { var lv = o[L * 4 + k2], rv = o[R * 4 + k2]; o[P + k2] = useL && useR ? lv * (1 - t) + rv * t : useL ? lv : rv; } }
+    }
+    x.putImageData(out, 0, 0); return (HANDS.cache[key] = c);
+  }
   function tint(kind, color, hair) {
     var key = kind + color + hair; if (TC[key]) return TC[key];
     var desk = kind === "desk", bi = desk ? IMG.desk : IMG.walk, mi = desk ? IMG.deskMap : IMG.walkMap, w = desk ? 384 : 640, h = desk ? 459 : 480;
@@ -458,8 +501,11 @@
       var foc = S.focus && S.focus.type === "agent" && S.focus.id === ag.agent_id;
       if ((s === "working" || s === "error") && !ag._walk) { var hc = s === "error" ? "#ff5d5d" : r.color, pul = s === "error" ? .55 + .35 * Math.sin(now / 260) : 1, g = ctx.createRadialGradient(p[0], p[1] - 4 * k, 0, p[0], p[1] - 4 * k, 44 * k); g.addColorStop(0, rgba(hc, .38 * pul)); g.addColorStop(1, rgba(hc, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(p[0], p[1] - 4 * k, 48 * k, 24 * k, 0, 0, 7); ctx.fill(); }
       if (foc) { ctx.strokeStyle = r.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p[0], p[1] - 2 * k, 40 * k, 20 * k, 0, 0, 7); ctx.stroke(); }
-      var img = away || !AVOK ? IMG.empty : tint("desk", r.color, ag._hair);
+      var typing = !away && s === "working" && HANDS.ready && AVOK && !REDUCED;
+      var img = away || !AVOK ? IMG.empty : typing ? noHands(r.color, ag._hair) : tint("desk", r.color, ag._hair);
       if (img) { ctx.globalAlpha = s === "paused" ? .55 : 1; ctx.drawImage(img, p[0] - w * .5, p[1] - h * .86, w, h); ctx.globalAlpha = 1; }
+      if (typing) { var dl = (hash(ag.agent_id) % 100) / 100, u = k * 1.5, tl = kf(TYPE_L, ((now / 820) + dl) % 1), tr = kf(TYPE_R, ((now / 740) + dl + .5) % 1);
+        ctx.drawImage(HANDS.layers[0], p[0] - w * .5 + tl[0] * u, p[1] - h * .86 + tl[1] * u, w, h); ctx.drawImage(HANDS.layers[1], p[0] - w * .5 + tr[0] * u, p[1] - h * .86 + tr[1] * u, w, h); }
       var sc = { working: "#5fd4ff", error: "#ff4d4d", silent: "#ffb547", ok: "#4f86b8" }[s];
       if (sc && !ag._walk) { var al = s === "working" ? .55 + .3 * Math.sin(now / 200 + ag.x) : s === "error" ? .5 + .4 * Math.sin(now / 260) : s === "silent" ? .45 : .22;
         var q = SCREEN_Q.map(function (f) { return [p[0] - w * .5 + f[0] * w, p[1] - h * .86 + f[1] * h]; }); ctx.save(); ctx.globalCompositeOperation = "screen"; poly(q, rgba(sc, al)); ctx.restore(); }
