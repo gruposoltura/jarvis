@@ -23,8 +23,9 @@ const MISS={client_first:["voornaam klant","client first name"],client_last:["ac
   first_name:["voornaam","first name"],last_name:["achternaam","last name"],company:["bedrijfsnaam","agency"],email:["e-mail","email"],mobile:["mobiel","mobile"]};
 const OUT={registration_requested:["Registratie gevraagd","Registration requested"],registration_incomplete:["Registratie incompleet","Registration incomplete"],
   agent_registered:["Makelaar geregistreerd","Agent registered"],incomplete:["Aanvraag incompleet","Request incomplete"],ref_not_found:["Referentie onbekend","Unknown reference"],
-  not_available:["Woning niet beschikbaar","Property not available"],processed:["Verwerkt","Processed"],nexus_failed:["NEXUS-fout","NEXUS error"],skipped:["Overgeslagen","Skipped"]};
-const MAILK={confirmation:["Bevestiging","Confirmation"],rep_notification:["Verkoper","Sales rep"],incomplete:["Ontbreekt","Missing"],ref_not_found:["Ref. onbekend","Unknown ref"],
+  not_available:["Woning niet beschikbaar","Property not available"],processed:["Verwerkt","Processed"],nexus_failed:["NEXUS-fout","NEXUS error"],skipped:["Overgeslagen","Skipped"],
+  client_known:["Klant al bekend","Client already known"]};
+const MAILK={confirmation:["Bevestiging","Confirmation"],rep_notification:["Salesrep","Sales rep"],incomplete:["Ontbreekt","Missing"],ref_not_found:["Ref. onbekend","Unknown ref"],
   not_available:["Niet beschikbaar","Not available"],registration_requested:["Registratieverzoek","Registration request"],registration_incomplete:["Registratie incompleet","Registration incomplete"],agent_registered:["Registratie bevestigd","Registration confirmed"]};
 const missTxt=a=>(a||[]).map(k=>tr(MISS[k]||[k,k])).join(", ");
 
@@ -56,17 +57,19 @@ function model(c){
   else if(pv.outcome==="not_available")S.push({k:"wo",st:"stop",t:tr(["Niet beschikbaar","Not available"]),d:(pv.ref||"")+tr([" · onder bod / uit verkoop"," · under offer / off market"]),ref:pv.ref});
   else S.push({k:"wo",st:"done",t:pv.ref||tr(["Woning","Property"]),d:tr(["gevonden","found"]),ref:pv.ref});
   // NEXUS
-  const nf=lastOf(s=>s.outcome==="nexus_failed");
-  if(proc)S.push({k:"nx",st:"done",t:tr(["Suspect + aanvraag","Suspect + request"]),d:proc.client_name||"",cid:proc.client_contact_id});
+  const nf=lastOf(s=>s.outcome==="nexus_failed"), ck=lastOf(s=>s.outcome==="client_known");
+  if(proc)S.push({k:"nx",st:"done",t:tr(["Claimed + aanvraag","Claimed + request"]),d:proc.client_name||"",cid:proc.client_contact_id});
+  else if(ck)S.push({k:"nx",st:"stop",t:tr(["Klant al bekend","Client already known"]),d:tr(["aanvraag geweigerd","request refused"])});
   else if(nf)S.push({k:"nx",st:"fail",t:tr(["Mislukt","Failed"]),d:tr(["handmatig aanmaken","create manually"])});
   else S.push({k:"nx",st:"todo",t:"NEXUS",d:""});
   // bevestigd
   if(proc){const r=c.rep||{};S.push({k:"ok",st:"done",t:tr(["Bevestigd & doorgestuurd","Confirmed & forwarded"]),d:(r.name||proc.rep_email||"")+(proc.at?" · "+dmyt(proc.at):""),rep:r})}
-  else if(nf)S.push({k:"ok",st:"fail",t:tr(["Niet bevestigd","Not confirmed"]),d:tr(["verkoper gewaarschuwd","sales rep alerted"])});
+  else if(ck)S.push({k:"ok",st:"stop",t:tr(["Geweigerd","Refused"]),d:tr(["klant loopt via ons eigen team","client goes through our own team"])});
+  else if(nf)S.push({k:"ok",st:"fail",t:tr(["Niet bevestigd","Not confirmed"]),d:tr(["salesrep gewaarschuwd","sales rep alerted"])});
   else S.push({k:"ok",st:"todo",t:tr(["Bevestiging","Confirmation"]),d:""});
   // status van de hele aanvraag
   let state="wait";
-  if(proc)state="done";else if(nf)state="fail";else if(has("not_available"))state="stop";else if(st.length&&st.every(s=>s.outcome==="skipped"))state="skip";
+  if(proc)state="done";else if(nf)state="fail";else if(has("client_known")||has("not_available"))state="stop";else if(st.length&&st.every(s=>s.outcome==="skipped"))state="skip";
   return {S,state,last,known};
 }
 const STATE={done:["Afgerond","Done"],wait:["Wacht op makelaar","Waiting for agent"],fail:["Actie nodig","Action needed"],stop:["Afgewezen","Declined"],skip:["Overgeslagen","Skipped"]};
@@ -114,7 +117,7 @@ function render(){
         <div class="vw-state"><span class="vw-pill ${m.state}">${esc(tr(STATE[m.state]))}</span><small>${esc(ago(c.last_at))}</small></div>
         ${OPEN===c.chain_id?`<div class="vw-detwrap">${detail(c)}</div>`:""}</div>`).join("")}
     </div></div>`;
-  ROOT.innerHTML=`<div class="vw">${head}<p class="vw-lead">${esc(tr(["Elke rij is één bezichtigingsaanvraag van een makelaar via het makelaarsportaal agents.gruposoltura.com (gesprek met Sola). Sinds 28-10-2026 is dat de enige route; rijen met een mail als bron zijn van daarvoor. De flow loopt van links (binnengekomen) naar rechts (bevestigd en doorgestuurd naar de verkoper). Klik op een rij voor alle mails.","Each row is one viewing request from an agent via the agent portal agents.gruposoltura.com (chat with Sola). Since 28-10-2026 that is the only route; rows with email as source are from before. The flow runs from left (received) to right (confirmed and forwarded to the sales rep). Click a row for every email."]))}</p>${body}</div>`;
+  ROOT.innerHTML=`<div class="vw">${head}<p class="vw-lead">${esc(tr(["Elke rij is één bezichtigingsaanvraag van een makelaar via het makelaarsportaal agents.gruposoltura.com (gesprek met Sola). Sinds 28-10-2026 is dat de enige route; rijen met een mail als bron zijn van daarvoor. De flow loopt van links (binnengekomen) naar rechts (bevestigd en doorgestuurd naar de salesrep). Klik op een rij voor alle mails.","Each row is one viewing request from an agent via the agent portal agents.gruposoltura.com (chat with Sola). Since 28-10-2026 that is the only route; rows with email as source are from before. The flow runs from left (received) to right (confirmed and forwarded to the sales rep). Click a row for every email."]))}</p>${body}</div>`;
   wire();
 }
 function wire(){
