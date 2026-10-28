@@ -391,7 +391,7 @@ async function loadContacts(reset){
   const html=r.rows.map(c=>`<div class="row ${ctSel===String(c.key||c.wp_id)?"sel":""}" data-c="${esc(c.key||c.wp_id)}">
      <div class="ini" style="background:${hue(c.name||c.email)}">${esc(initials(c.name||c.email))}</div>
      <div style="min-width:0"><div class="nm">${esc(c.name||c.email||t("noname"))}</div>
-       <div class="sub">${(c.roles||[]).map(roleTag).join(" ")} <span>${esc([c.city,c.country].filter(Boolean).join(", ")||c.email||"")}</span>${c.partner?` <span class="muted">· 💑 ${esc(c.partner)}</span>`:""}</div></div>
+       <div class="sub">${(c.roles||[]).map(roleTag).join(" ")} <span>${esc([c.city,c.country].filter(Boolean).join(", ")||c.email||"")}</span>${c.partner?` <span class="muted">· 💑 ${esc(c.partner)}</span>`:""}</div>${c.intro&&(c.intro.company||c.intro.name)?(()=>{const v=[c.intro.company,c.intro.name].filter(Boolean).join(" · ");return `<div class="via" title="${esc(t("intro.by")+": "+v)}">🤝 ${esc(v)}</div>`})():""}</div>
      <div style="text-align:right"><div class="sm" style="color:${REPC[c.rep]||"#64748b"}">${esc(rep(c.rep))}</div><div class="sm muted">${c.last?ago(c.last):""}</div></div></div>`).join("");
   if(reset)box.innerHTML=html||`<div class="empty">${t("nocontacts")}</div>`;else{box.querySelector(".more")?.remove();box.insertAdjacentHTML("beforeend",html)}
   ctOff+=r.rows.length;

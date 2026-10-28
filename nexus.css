@@ -127,6 +127,8 @@ main{height:calc(100vh - var(--hdr) - var(--tabs));padding:14px 18px;overflow:hi
 .row.sel{background:color-mix(in srgb,var(--acc) 14%,var(--card));box-shadow:inset 3px 0 0 var(--acc)}
 .row .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .sub{font-size:calc(12px*var(--fs,1));color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .via{margin-top:2px;font-size:calc(12px*var(--fs,1));font-weight:600;color:#d8b4fe;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-theme="light"] .row .via{color:#7c3aed}
 .ini{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:700;font-size:calc(13px*var(--fs,1));color:#fff}
 .more{padding:10px;text-align:center}
 .detail{display:flex;flex-direction:column;min-height:0;overflow:hidden}
