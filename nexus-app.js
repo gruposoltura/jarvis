@@ -297,6 +297,8 @@ function renderOverview(){
    <div class="card ov-act"><div class="hd"><h3>${t("ov.activity")}</h3><a class="sm muted" href="#ac">${t("ov.all")}</a></div>
      <div class="scroll feed" style="flex:1">${feedHtml(o.activity)}</div></div>
    <div class="ov-side">
+     <div class="card ov-recent" id="ovRecent" style="flex:1.4;display:flex;flex-direction:column;min-height:0"><div class="hd"><h3>${L2("Laatst bekeken op de site","Recently viewed on the site")}</h3><span class="sm muted" id="ovRecentN"></span></div>
+       <div class="scroll feed" style="flex:1" id="ovRecentL"><div class="loader sm"></div></div></div>
      <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0"><div class="hd"><h3>${t("ov.viewings")}</h3><span class="sm muted">${(o.viewings||[]).length||""}</span></div>
        <div class="scroll feed" style="flex:1">${viewingsHtml(o.viewings)}</div></div>
      <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0"><div class="hd"><h3>${t("ov.notaries")}</h3><span class="sm muted">${(o.notaries||[]).length||""}</span></div>
@@ -311,31 +313,50 @@ function renderOverview(){
   if(window.NEXUS_TOM)NEXUS_TOM.open($("#ovTom"),{rpc,lang:()=>LANG,num});
 }
 /* ---------- websitecijfers op Overzicht: eigen meting (web_events) + formulieren (core.requests) ---------- */
-let SITE=null, siteDays=(()=>{try{return +localStorage.getItem("nexus-site-days")||7}catch(e){return 7}})();
+let SITE=null, siteDays=1, siteTimer=null; /* standaard Vandaag (Rick, 28-10-2026); 7 d / 30 d per klik */
+function siteAuto(){clearInterval(siteTimer);siteTimer=setInterval(()=>{if(curTab==="ov"&&!document.hidden&&$("#ovWeb"))loadSiteStrip(true)},60000)}
 async function loadSiteStrip(force){
   const box=$("#ovWeb");if(!box)return;
-  if(!SITE||force||SITE.days!==siteDays){try{SITE=await rpc("nexus_site_overview",{p_days:siteDays})}catch(e){box.innerHTML=`<div class="empty sm">${esc(e.message)}</div>`;return}}
-  renderSiteStrip();
+  if(!SITE||force||SITE.days!==siteDays){try{SITE=await rpc("nexus_site_overview",{p_days:siteDays})}catch(e){if(!SITE)box.innerHTML=`<div class="empty sm">${esc(e.message)}</div>`;return}}
+  renderSiteStrip();if(!siteTimer)siteAuto();
 }
 function renderSiteStrip(){
   const box=$("#ovWeb");if(!box||!SITE)return;
-  const S=SITE, c=S.cur||{}, pv=S.prev||{}, dl=S.daily||[], oy=S.own_yesterday||{};
+  const S=SITE, c=S.cur||{}, pv=S.prev||{}, oy=S.own_yesterday||{}, today=S.days===1;
+  /* vandaag: staven per uur (toekomstige uren leeg), anders per dag */
+  const dl=today?(S.hourly||[]).map(h=>Object.assign({},h,h.future?{visitors:null,home:null,prop_views:null,searches:null,forms:null}:{})):(S.daily||[]);
+  const lbl=x=>today?`${String(x.h).padStart(2,"0")}:00`:fdate(x.day);
   const dlt=(a,b)=>{if(!b||a==null)return"";const x=Math.round((a-b)/b*100);if(!isFinite(x)||x===0)return"";return ` <span class="dl ${x>0?"up":"dn"}">${x>0?"▲":"▼"} ${Math.abs(x)}%</span>`};
   const bars=(k,col)=>{const v=dl.map(x=>x[k]==null?null:+x[k]), mx=Math.max(1,...v.filter(x=>x!=null));
-    return `<div class="wb-bars" style="--bc:${col}">${dl.map((x,i)=>`<i title="${fdate(x.day)}: ${v[i]==null?"—":num(v[i])}" style="height:${v[i]==null?0:Math.max(4,v[i]/mx*100)}%" class="${v[i]==null?"na":""}"></i>`).join("")}</div>`};
+    return `<div class="wb-bars" style="--bc:${col}">${dl.map((x,i)=>`<i title="${lbl(x)}: ${v[i]==null?"—":num(v[i])}" style="height:${v[i]==null?0:Math.max(4,v[i]/mx*100)}%" class="${v[i]==null?"na":""}"></i>`).join("")}</div>`};
   const tile=(lab,val,sub,k,col,go)=>`<div class="wb-t" ${go?`data-go="${go}"`:""} style="--bc:${col}"><div class="l">${lab}</div><div class="v">${val}</div><div class="s">${sub}</div>${bars(k,col)}</div>`;
-  const per=L2(`${S.days} d`,`${S.days} d`);
-  box.innerHTML=`<div class="hd"><h3>${L2("Website","Website")} · <span class="muted" style="font-weight:500">${L2("laatste","last")} ${S.days} ${L2("dagen","days")}</span></h3>
-     <div class="seg sm" id="wbDays">${[7,30].map(n=>`<button data-n="${n}" class="${S.days===n?"on":""}">${n} d</button>`).join("")}</div></div>
+  const per=today?L2("vandaag","today"):L2(`${S.days} d`,`${S.days} d`);
+  const tnow=new Date(S.now||Date.now()).toLocaleTimeString(LOC(),{hour:"2-digit",minute:"2-digit"});
+  const sub1=today?`${L2("nu op de site","on the site now")}: <b>${num(S.live||0)}</b> · ${L2("gisteren tot","yesterday until")} ${tnow}: ${num(pv.visitors||0)}`
+    :`${num(c.sessions)} ${L2("sessies","sessions")} · ${L2("nu","now")}: ${num(S.live||0)} · ${L2("gisteren","yesterday")}: ${num(oy.visitors||0)}`;
+  box.innerHTML=`<div class="hd"><h3>${L2("Website","Website")} · <span class="muted" style="font-weight:500">${today?`${L2("vandaag t/m","today until")} ${tnow} <span class="sm">· ${L2("vergeleken met gisteren op hetzelfde tijdstip","compared with yesterday at the same time")}</span>`:`${L2("laatste","last")} ${S.days} ${L2("dagen","days")}`}</span></h3>
+     <div class="seg sm" id="wbDays">${[1,7,30].map(n=>`<button data-n="${n}" class="${S.days===n?"on":""}">${n===1?L2("Vandaag","Today"):n+" d"}</button>`).join("")}</div></div>
    <div class="wb-grid">
-    ${tile(L2("Bezoekers","Visitors")+` ${per}`,num(c.visitors)+dlt(c.visitors,pv.visitors),`${num(c.sessions)} ${L2("sessies","sessions")} · ${L2("gisteren","yesterday")}: ${num(oy.visitors||0)}`,"visitors","#3b82f6")}
-    ${tile(L2("Startpagina","Home page"),num(c.home),L2("bezoeken (sessies)","visits (sessions)"),"home","#22c55e")}
-    ${tile(L2("Woningpagina's","Property pages"),num(c.prop_views),`${L2("bekeken in","viewed in")} ${num(c.prop_sessions)} ${L2("sessies","sessions")}`,"prop_views","#f59e0b","pr")}
-    ${tile(L2("Zoekopdrachten","Searches"),num(c.searches),L2("ingetypt op de site","typed on the site"),"searches","#a855f7")}
+    ${tile(L2("Bezoekers","Visitors")+` ${per}`,num(c.visitors)+dlt(c.visitors,pv.visitors),sub1,"visitors","#3b82f6")}
+    ${tile(L2("Startpagina","Home page"),num(c.home)+dlt(c.home,pv.home),L2("bezoeken (sessies)","visits (sessions)"),"home","#22c55e")}
+    ${tile(L2("Woningpagina's","Property pages"),num(c.prop_views)+dlt(c.prop_views,pv.prop_views),`${L2("bekeken in","viewed in")} ${num(c.prop_sessions)} ${L2("sessies","sessions")}`,"prop_views","#f59e0b","pr")}
+    ${tile(L2("Zoekopdrachten","Searches"),num(c.searches)+dlt(c.searches,pv.searches),L2("ingetypt op de site","typed on the site"),"searches","#a855f7")}
     ${tile(L2("Formulieren","Forms"),num(c.forms),`${num(c.intents)} ${L2("contactklikken","contact clicks")}`,"forms","#ec4899","ac")}
    </div>`;
-  box.querySelectorAll("#wbDays button").forEach(b=>b.onclick=()=>{siteDays=+b.dataset.n;try{localStorage.setItem("nexus-site-days",siteDays)}catch(e){};loadSiteStrip(true)});
+  box.querySelectorAll("#wbDays button").forEach(b=>b.onclick=()=>{siteDays=+b.dataset.n;loadSiteStrip(true)});
   box.querySelectorAll("[data-go]").forEach(k=>k.onclick=()=>{location.hash=k.dataset.go});
+  renderRecent();
+}
+/* laatste 10 bekeken woningen op de site (web_events view_property, zonder bots/team), klik opent de woning */
+function renderRecent(){
+  const l=$("#ovRecentL");if(!l||!SITE)return;const R=SITE.recent||[];
+  $("#ovRecentN").textContent=R.length?L2("ververst elke minuut","refreshes every minute"):"";
+  l.innerHTML=R.length?R.map(x=>{const h=(LANG==="nl"?x.heading_nl:x.heading)||x.heading||x.slug||"";
+    return `<div class="it" ${x.ref?`data-p="${esc(x.ref)}"`:'style="cursor:default"'}><div class="ic" style="--ic:${x.is_own?"#f59e0b":"#3b82f6"}">⌂</div>
+    <div style="min-width:0"><div class="t">${esc(x.ref||"—")} <span class="muted sm" style="font-weight:500">${eur(x.price)}</span></div>
+    <div class="d" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h)}</div></div>
+    <span class="sm muted" style="text-align:right;white-space:nowrap">${ago(x.at)}${x.sess_today>1?`<br>${x.sess_today}× ${L2("vandaag","today")}`:""}</span></div>`}).join("")
+    :`<div class="empty">${L2("Nog geen woningen bekeken.","No properties viewed yet.")}</div>`;
 }
 /* komende afspraken uit nexus_agenda (agenda-scans van ViewingLogger en ModeloReminder) */
 const ownerName=e=>{const m=String(e||"").match(/^([a-z]+)@gruposoltura\.com$/i);return m?m[1][0].toUpperCase()+m[1].slice(1):(e||"")};
