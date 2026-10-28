@@ -3,7 +3,7 @@
   --tx:#e6ecf7; --tx2:#9fb0cc; --tx3:#6b7c99; --hi:#fff;
   --c-ov:#14b8a6; --c-ct:#3b82f6; --c-pr:#f59e0b; --c-ac:#ec4899; --c-en:#a855f7; --c-mp:#22c55e;
   --acc:var(--c-ov);
-  --r-suspect:#64748b; --r-prospect:#06b6d4; --r-seller:#f59e0b; --r-buyer:#22c55e; --r-agent:#a855f7; --r-suspect-seller:#f97316;
+  --r-suspect:#64748b; --r-agent-client:#7c3aed; --r-prospect:#06b6d4; --r-seller:#f59e0b; --r-buyer:#22c55e; --r-agent:#a855f7; --r-suspect-seller:#f97316;
   --hdr:58px; --tabs:46px;
 }
 *{box-sizing:border-box}
