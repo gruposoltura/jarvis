@@ -1,4 +1,4 @@
-/* NEXUS · Bezichtiging — elke bezichtigingsaanvraag via viewing@gruposoltura.com of het makelaarsportaal (agents.gruposoltura.com, sinds 24-10-2026) als flow van links naar rechts (Rick, 20-10-2026).
+/* NEXUS · Bezichtiging — elke bezichtigingsaanvraag via het makelaarsportaal (agents.gruposoltura.com; viewing@ is sinds 28-10-2026 uit, BD-169) als flow van links naar rechts (Rick, 20-10-2026).
    Bron: RPC nexus_viewing_board(p_days, p_test) (migratie 046) over core.viewing_intake; één rij = één aanvraag (chain),
    d.w.z. alle mails van dezelfde makelaar tot de aanvraag verwerkt is. Gevuld door n8n JARVIS-AppointmentAgent-v2.
    Stappen: Ontvangen → Makelaar → Gegevens compleet → Woning → NEXUS → Bevestigd & doorgestuurd.
@@ -106,7 +106,7 @@ function render(){
     <button class="btn vw-re" type="button" id="vwRe">↻</button></div>`;
   const cols=[["Makelaar","Agent"],["Ontvangen","Received"],["Makelaar","Agent"],["Gegevens","Details"],["Woning","Property"],["NEXUS","NEXUS"],["Bevestigd","Confirmed"]];
   const body=!D?`<div class="loader">${esc(tr(["Aanvragen laden…","Loading requests…"]))}</div>`
-    :!vis.length?`<div class="empty vw-empty">${esc(rows.length?tr(["Geen aanvragen met dit filter.","No requests match this filter."]):tr(["Nog geen bezichtigingsaanvragen in deze periode. Zodra een makelaar mailt naar viewing@gruposoltura.com verschijnt de aanvraag hier.","No viewing requests in this period yet. As soon as an agent emails viewing@gruposoltura.com the request appears here."]))}</div>`
+    :!vis.length?`<div class="empty vw-empty">${esc(rows.length?tr(["Geen aanvragen met dit filter.","No requests match this filter."]):tr(["Nog geen bezichtigingsaanvragen in deze periode. Zodra een makelaar via het makelaarsportaal (agents.gruposoltura.com) een bezichtiging aanvraagt, verschijnt de aanvraag hier.","No viewing requests in this period yet. As soon as an agent books a viewing via the agent portal (agents.gruposoltura.com), the request appears here."]))}</div>`
     :`<div class="vw-scroll"><div class="vw-grid">
       <div class="vw-hd">${cols.map((c,i)=>`<span${i===0?' class="sticky"':""}>${esc(tr(c))}</span>`).join("")}<span>${esc(tr(["Status","Status"]))}</span></div>
       ${vis.map(({c,m})=>`<div class="vw-row s-${m.state}${OPEN===c.chain_id?" open":""}" data-id="${esc(c.chain_id)}">
@@ -114,7 +114,7 @@ function render(){
         <div class="vw-state"><span class="vw-pill ${m.state}">${esc(tr(STATE[m.state]))}</span><small>${esc(ago(c.last_at))}</small></div>
         ${OPEN===c.chain_id?`<div class="vw-detwrap">${detail(c)}</div>`:""}</div>`).join("")}
     </div></div>`;
-  ROOT.innerHTML=`<div class="vw">${head}<p class="vw-lead">${esc(tr(["Elke rij is één aanvraag van een makelaar via viewing@gruposoltura.com of het makelaarsportaal op de website (Sola). De flow loopt van links (binnengekomen) naar rechts (bevestigd en doorgestuurd naar de verkoper). Klik op een rij voor alle mails.","Each row is one request from an agent via viewing@gruposoltura.com or the agent portal on the website (Sola). The flow runs from left (received) to right (confirmed and forwarded to the sales rep). Click a row for every email."]))}</p>${body}</div>`;
+  ROOT.innerHTML=`<div class="vw">${head}<p class="vw-lead">${esc(tr(["Elke rij is één bezichtigingsaanvraag van een makelaar via het makelaarsportaal agents.gruposoltura.com (gesprek met Sola). Sinds 28-10-2026 is dat de enige route; rijen met een mail als bron zijn van daarvoor. De flow loopt van links (binnengekomen) naar rechts (bevestigd en doorgestuurd naar de verkoper). Klik op een rij voor alle mails.","Each row is one viewing request from an agent via the agent portal agents.gruposoltura.com (chat with Sola). Since 28-10-2026 that is the only route; rows with email as source are from before. The flow runs from left (received) to right (confirmed and forwarded to the sales rep). Click a row for every email."]))}</p>${body}</div>`;
   wire();
 }
 function wire(){
