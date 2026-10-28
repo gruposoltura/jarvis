@@ -277,14 +277,6 @@ function renderOverview(){
   const d=o.req_daily_30d||[], mx=Math.max(1,...d.map(x=>x.n));
   const pts=d.map((x,i)=>`${(i/(d.length-1||1))*300},${66-(x.n/mx)*60}`).join(" ");
   p.innerHTML=`<div class="ov">
-   <div class="kpis">
-    ${kp(num(o.contacts_total),t("kpi.contacts"),t("kpi.contacts.s",{n:num(o.contacts_new_30d)}),"--c-ct","ct")}
-    ${kp(num(o.contacts_mine),t("kpi.mine"),t("kpi.mine.s",{n:esc(ME.display_name)}),"--c-ov","ct:mine")}
-    ${kp(num(pr.current),t("kpi.props"),t("kpi.props.s",{a:num(pr.own),b:num(pr.external)}),"--c-pr","pr:current")}
-    ${kp(num(pr.under_offer),t("kpi.offer"),t("kpi.offer.s",{n:num(pr.sold)}),"--c-pr","pr:under_offer")}
-    ${kp(num(o.requests_7d),t("kpi.req"),t("kpi.req.s",{a:num(o.requests_30d),b:num(o.leads_7d)}),"--c-ac","ac")}
-    ${kp(num(o.viewings_upcoming),t("kpi.view"),t("kpi.view.s",{n:num(o.hot_pending)}),"--c-ac",null)}
-   </div>
    <div class="card ov-web" id="ovWeb"><div class="loader sm">${L2("Websitecijfers laden…","Loading website figures…")}</div></div>
    <div class="ov-col"><div class="card ov-tom" id="ovTom"></div><div class="card ov-roles"><div class="hd"><h3>${t("ov.roles")}</h3><span class="sm muted">${t("ov.clickfilter")}</span></div>
      <div class="scroll" style="flex:1;padding:6px 0">${order.map(r=>`<div class="rolebar" data-role="${r}" style="--rc:var(${(ROLE[r]||[])[1]})">
@@ -297,11 +289,11 @@ function renderOverview(){
    <div class="card ov-act"><div class="hd"><h3>${t("ov.activity")}</h3><a class="sm muted" href="#ac">${t("ov.all")}</a></div>
      <div class="scroll feed" style="flex:1">${feedHtml(o.activity)}</div></div>
    <div class="ov-side">
-     <div class="card ov-recent" id="ovRecent" style="flex:1.4;display:flex;flex-direction:column;min-height:0"><div class="hd"><h3>${L2("Laatst bekeken op de site","Recently viewed on the site")}</h3><span class="sm muted" id="ovRecentN"></span></div>
+     <div class="card ov-recent" id="ovRecent"><div class="hd"><h3>${L2("Laatst bekeken op de site","Recently viewed on the site")}</h3><span class="sm muted" id="ovRecentN"></span></div>
        <div class="scroll feed" style="flex:1" id="ovRecentL"><div class="loader sm"></div></div></div>
-     <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0"><div class="hd"><h3>${t("ov.viewings")}</h3><span class="sm muted">${(o.viewings||[]).length||""}</span></div>
+     <div class="card"><div class="hd"><h3>${t("ov.viewings")}</h3><span class="sm muted">${(o.viewings||[]).length||""}</span></div>
        <div class="scroll feed" style="flex:1">${viewingsHtml(o.viewings)}</div></div>
-     <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0"><div class="hd"><h3>${t("ov.notaries")}</h3><span class="sm muted">${(o.notaries||[]).length||""}</span></div>
+     <div class="card"><div class="hd"><h3>${t("ov.notaries")}</h3><span class="sm muted">${(o.notaries||[]).length||""}</span></div>
        <div class="scroll feed" style="flex:1">${notariesHtml(o.notaries)}</div></div>
    </div></div>`;
   p.querySelectorAll("[data-go]").forEach(k=>k.onclick=()=>{const [tb,a]=k.dataset.go.split(":");
