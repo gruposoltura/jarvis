@@ -1,4 +1,4 @@
-/* v11 (25-10-2026): list() filtert interne mails (New Lead, JARVIS) uit Mail klant; nexus_flow_obj sluit ze ook server-side uit. v10 (25-10-2026): list() - Aanvragen/Portalen tonen alle aanvragen als flowkaarten (bron: nexus_request_flows), met contactnaam en rep. v9 (25-10-2026): aangeklikte aanvraag bovenaan met label en accentrand; portaalbron in eigen kleur (NEXUS_SRC). v8 (25-10-2026): interne mails (JARVIS, New Lead, ook met emoji vooraf) niet als losse mailflow. v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
+/* v12 (28-10-2026): inlogcode-mails van het makelaarsportaal (AUTH_SUBJ) net als interne mails nooit bij Mail klant of als losse mailflow; nexus_flow_obj sluit ze ook server-side uit. v11 (25-10-2026): list() filtert interne mails (New Lead, JARVIS) uit Mail klant; nexus_flow_obj sluit ze ook server-side uit. v10 (25-10-2026): list() - Aanvragen/Portalen tonen alle aanvragen als flowkaarten (bron: nexus_request_flows), met contactnaam en rep. v9 (25-10-2026): aangeklikte aanvraag bovenaan met label en accentrand; portaalbron in eigen kleur (NEXUS_SRC). v8 (25-10-2026): interne mails (JARVIS, New Lead, ook met emoji vooraf) niet als losse mailflow. v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
 /* NEXUS · Contact › Contactmomenten — formulierflows per contact (Rick, 22-10-2026).
    Klik in Binnenkomend op een aanvraag: het contact opent altijd op Contactmomenten, met bovenaan alle aanvragen van dat contact
    als compacte flow onder elkaar, van het formulier (links) tot afgerond (rechts); de aangeklikte aanvraag is gemarkeerd. Kleur = kwalificatie van de lead (Hot / Warm / Cold / geen lead).
@@ -66,6 +66,9 @@ const CHAN={idealista:{n:"Idealista",wf:"IdealistaLeadIntake"},"idealista-messag
 
 /* ---------- mailnode-status ---------- */
 const INTERNAL_SUBJ=/^[^A-Za-z0-9\[]*(New Lead\b|JARVIS\b|\[Website\]|Lead ?card\b)/i; /* emoji/teken vooraf toegestaan: '🔵 New Lead — …' (25-10-2026) */
+/* inlog-/verificatiecodes (makelaarsportaal, BD-169) zijn geen contactmoment en tonen een code: nooit als mail in NEXUS (Rick, 28-10-2026) */
+const AUTH_SUBJ=/(inlogcode|sign-in code|login code|c[o\u00f3]digo de acceso|inloggningskod|verificatiecode|verification code)/i;
+const hideSubj=s=>INTERNAL_SUBJ.test(String(s||""))||AUTH_SUBJ.test(String(s||""));
 /* Brevo-events leesbaar, in volgorde van de reis van de mail */
 const EVN={request:["verstuurd","sent"],delivered:["afgeleverd","delivered"],unique_opened:["geopend","opened"],opened:["geopend","opened"],click:["geklikt","clicked"],
   soft_bounce:["soft bounce","soft bounce"],hard_bounce:["hard bounce","hard bounce"],blocked:["geblokkeerd","blocked"],invalid_email:["ongeldig adres","invalid address"],spam:["als spam gemeld","reported as spam"],deferred:["uitgesteld","deferred"],error:["fout","error"]};
@@ -288,7 +291,7 @@ function fold(list,data){
   const fl=(data&&data.flows)||[], ids=new Set(fl.map(f=>String(f.id))), T=x=>new Date(x).getTime();
   /* interne mails (leadcard 'New Lead', JARVIS-meldingen) horen niet bij 'Mail klant'; ze kwamen erbij als de klant zelf
      een teamlid is (test op rick@) en in hetzelfde tijdvenster viel (Rick, 25-10-2026) */
-  fl.forEach(f=>{f._mailUuids=[];f._sends=[];if(Array.isArray(f.mails))f.mails=f.mails.filter(m=>!INTERNAL_SUBJ.test(String(m.subject||"")))});
+  fl.forEach(f=>{f._mailUuids=[];f._sends=[];if(Array.isArray(f.mails))f.mails=f.mails.filter(m=>!hideSubj(m.subject))});
   const byTs=fl.slice().sort((a,b)=>T(a.ts)-T(b.ts));
   const origin=m=>{const t=T(m.ts),before=byTs.filter(f=>T(f.ts)<=t);
     return before.filter(isOptin).pop()||before.pop()||null};
@@ -298,10 +301,10 @@ function fold(list,data){
   const M={};
   /* interne mails aan het team (JARVIS-meldingen, leadcard 'New Lead') zijn geen contactmoment met de klant: ook als losse mail
      niet tonen, met alle Brevo-events van dezelfde uuid. Ze verschenen bij contacten die zelf teamlid zijn (rick@) (Rick, 25-10-2026). */
-  const intU=new Set((list||[]).filter(e=>e.kind==="mail"&&e.uuid&&INTERNAL_SUBJ.test(String(e.text||""))).map(e=>e.uuid));
+  const intU=new Set((list||[]).filter(e=>e.kind==="mail"&&e.uuid&&hideSubj(e.text)).map(e=>e.uuid));
   const rest=(list||[]).filter(e=>{
     if(e.kind==="mailing")return false;
-    if(e.kind==="mail"&&(INTERNAL_SUBJ.test(String(e.text||""))||(e.uuid&&intU.has(e.uuid))))return false;
+    if(e.kind==="mail"&&(hideSubj(e.text)||(e.uuid&&intU.has(e.uuid))))return false;
     /* opens en clicks op een mailing (Brevo-event met het mailingtype als tekst) tellen al mee in die mailing */
     if(e.kind==="mail"&&/^[a-z_]+$/.test(String(e.text||"")))return false;
     if(e.kind==="request")return !ids.has(String(e.id));
@@ -325,7 +328,7 @@ function fold(list,data){
    flows komen uit nexus_request_flows (zelfde opbouw als nexus_contact_flows via nexus_flow_obj, plus contact_id/contact_name/rep). */
 function list(root,flows,ctx,opt){X=ctx;const fl=flows||[];opt=opt||{};
   /* interne mails (New Lead, JARVIS) nooit bij Mail klant, ook niet in de lijstweergave (Rick, 25-10-2026) */
-  fl.forEach(f=>{if(Array.isArray(f.mails))f.mails=f.mails.filter(m=>!INTERNAL_SUBJ.test(String(m.subject||"")))});
+  fl.forEach(f=>{if(Array.isArray(f.mails))f.mails=f.mails.filter(m=>!hideSubj(m.subject))});
   if(!fl.length){root.innerHTML=`<div class="empty">${esc(opt.empty||tr(["Geen aanvragen","No requests"]))}</div>`;return}
   root.innerHTML=`<div class="fl-wrap fl-all">${opt.legend===false?"":`<div class="fl-top"><span></span><div class="fl-leg">${["hot","warm","cold","none"].map(q=>`<span class="fl-lg q-${q}">${esc(tr(QL[q]))}</span>`).join("")}</div></div>`}
     <div class="fl-list">${fl.map((f,i)=>flowHtml(f,i,true)).join("")}</div></div>`;
