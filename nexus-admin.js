@@ -19,7 +19,7 @@ const DRAFT_KEY="nexus-admin-draft-v1";
 const TEAM=[{wp:2,name:"Rick",email:"rick@gruposoltura.com",c:"#f97316"},{wp:3,name:"Marco",email:"marco@gruposoltura.com",c:"#3b82f6"},
   {wp:4,name:"Ingrid",email:"ingrid@gruposoltura.com",c:"#a855f7"},{wp:6,name:"Lisette",email:"lisette@gruposoltura.com",c:"#ec4899"}];
 /* Contactlabels = CPR-taxonomie cpr_contact_tag; alleen deze vijf bestaan (Rick, 17-10-2026) */
-const ROLES=[["suspect","Suspect","--r-suspect"],["seller","Seller","--r-seller"],["buyer","Buyer","--r-buyer"],["suspect_seller","Suspect-Seller","--r-suspect-seller"],["agent","Agent","--r-agent"],["claimed","Claimed","--r-claimed"]];
+const ROLES=[["suspect","Suspect","--r-suspect"],["seller","Seller","--r-seller"],["buyer","Buyer","--r-buyer"],["suspect_seller","Suspect-Seller","--r-suspect-seller"],["agent","Agent","--r-agent"],["agent_lead","AgentLead","--r-agent-lead"]];
 const LANGS=[["nl","Nederlands","Dutch"],["en","Engels","English"],["es","Spaans","Spanish"],["de","Duits","German"],["fr","Frans","French"],
   ["sv","Zweeds","Swedish"],["no","Noors","Norwegian"],["da","Deens","Danish"],["fi","Fins","Finnish"],["ru","Russisch","Russian"],["other","Anders","Other"]];
 /* Zoekprofiel-keuzes gelijk aan nexus-edit.js (SP_BUDGET/SP_PERIOD), 22-10-2026 */
@@ -449,7 +449,7 @@ function validateProp(p,media,stepNo,out){
   if(p.cadastral_ref&&!/^[0-9A-Z]{20}$/i.test(p.cadastral_ref.replace(/\s/g,"")))add(["Kadastrale referentie heeft 20 tekens","Cadastral reference has 20 characters"],"tip","pf-kost");
 }
 /* makelaar brengt een suspect aan → e-mail/telefoon niet verplicht (Rick, 20-10-2026) */
-const agentSuspect=()=>(S.c.roles||[]).some(r=>r==="claimed")||(S.agentMode!=="none"&&(S.c.roles||[]).some(r=>r==="suspect"||r==="suspect-seller"||r==="suspect_seller"));
+const agentSuspect=()=>(S.c.roles||[]).some(r=>r==="agent-lead"||r==="agent_lead")||(S.agentMode!=="none"&&(S.c.roles||[]).some(r=>r==="suspect"||r==="suspect-seller"||r==="suspect_seller"));
 function validate(flow){
   const out=[], add=(msg,level,step,jump)=>out.push({msg:tr(msg),level,step,jump});
   if(flow==="wizard"){

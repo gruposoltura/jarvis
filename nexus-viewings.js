@@ -58,7 +58,7 @@ function model(c){
   else S.push({k:"wo",st:"done",t:pv.ref||tr(["Woning","Property"]),d:tr(["gevonden","found"]),ref:pv.ref});
   // NEXUS
   const nf=lastOf(s=>s.outcome==="nexus_failed"), ck=lastOf(s=>s.outcome==="client_known");
-  if(proc)S.push({k:"nx",st:"done",t:tr(["Claimed + aanvraag","Claimed + request"]),d:proc.client_name||"",cid:proc.client_contact_id});
+  if(proc)S.push({k:"nx",st:"done",t:tr(["AgentLead + aanvraag","AgentLead + request"]),d:proc.client_name||"",cid:proc.client_contact_id});
   else if(ck)S.push({k:"nx",st:"stop",t:tr(["Klant al bekend","Client already known"]),d:tr(["aanvraag geweigerd","request refused"])});
   else if(nf)S.push({k:"nx",st:"fail",t:tr(["Mislukt","Failed"]),d:tr(["handmatig aanmaken","create manually"])});
   else S.push({k:"nx",st:"todo",t:"NEXUS",d:""});

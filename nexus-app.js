@@ -60,7 +60,7 @@ function rerender(){
 
 const eur=v=>v==null||v===""?"—":"€ "+Number(v).toLocaleString(LOC(),{maximumFractionDigits:0});
 const num=v=>v==null?"—":Number(v).toLocaleString(LOC());
-const ROLE={suspect:["Suspect","--r-suspect"],prospect:["Prospect","--r-prospect"],seller:["Seller","--r-seller"],buyer:["Buyer","--r-buyer"],agent:["Agent","--r-agent"],"suspect-seller":["Suspect-Seller","--r-suspect-seller"],claimed:["Claimed","--r-claimed"]};
+const ROLE={suspect:["Suspect","--r-suspect"],prospect:["Prospect","--r-prospect"],seller:["Seller","--r-seller"],buyer:["Buyer","--r-buyer"],agent:["Agent","--r-agent"],"suspect-seller":["Suspect-Seller","--r-suspect-seller"],"agent-lead":["AgentLead","--r-agent-lead"]};
 const roleTag=r=>{const x=ROLE[r]||[r,"--tx3"];return `<span class="role" style="--rc:var(${x[1]})">${esc(x[0])}</span>`};
 const REPC={Rick:"#f97316",Marco:"#3b82f6",Ingrid:"#a855f7",Lisette:"#ec4899",Kantoor:"#475569"};
 const rep=r=>r==="Kantoor"?t("Kantoor"):r;
@@ -273,7 +273,7 @@ function renderOverview(){
   $("#cntCt").textContent=num(o.contacts_total);$("#cntPr").textContent=num(pr.current);
   const kp=(v,l,s,c,act)=>`<div class="card kpi${act?"":" static"}" style="--kc:var(${c})"${act?` data-go="${act}"`:""}><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
   const maxR=Math.max(1,...Object.values(roles));
-  const order=["suspect","seller","buyer","suspect-seller","agent","claimed"];
+  const order=["suspect","seller","buyer","suspect-seller","agent","agent-lead"];
   const d=o.req_daily_30d||[], mx=Math.max(1,...d.map(x=>x.n));
   const pts=d.map((x,i)=>`${(i/(d.length-1||1))*300},${66-(x.n/mx)*60}`).join(" ");
   p.innerHTML=`<div class="ov">
@@ -379,7 +379,7 @@ function feedHtml(list){
 
 /* ================= CONTACTEN ================= */
 let ctLoaded=false, ctRole="", ctScope="all", ctOff=0, ctSel=null;
-function buildRoleChips(){const order=["","suspect","seller","buyer","suspect-seller","agent","claimed"];
+function buildRoleChips(){const order=["","suspect","seller","buyer","suspect-seller","agent","agent-lead"];
   $("#ctRoles").innerHTML=order.map(r=>`<span class="chip ${ctRole===r?"on":""}" data-r="${r}" style="--cc:var(${r?ROLE[r][1]:"--c-ct"})">${r?ROLE[r][0]:t("allroles")}${OV&&r&&OV.roles?` <b>${num(OV.roles[r]||0)}</b>`:""}</span>`).join("");
   $$("#ctRoles .chip").forEach(c=>c.onclick=()=>{ctRole=c.dataset.r;buildRoleChips();loadContacts(true)})}
 $$("#ctScope button").forEach(b=>b.onclick=()=>{ctScope=b.dataset.v;$$("#ctScope button").forEach(x=>x.classList.toggle("on",x===b));loadContacts(true)});
