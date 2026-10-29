@@ -960,6 +960,8 @@ function propFeatures(p,raw,o,K,XL,m){
       [L2("Vraagprijs","Asking price"),`<b class="pk-price">${eur(price)}</b>${p.price_from||D.price_from?` <span class="muted sm">(${L2("vanafprijs","from-price")})</span>`:""}`,1],
       [t("p.prevprice"),prev?`${eur(prev)} <span class="muted sm">· ${L2("gewijzigd","changed")} ${fdate(p.price_changedate)}${chg!=null?` · ${chg>0?"+":""}${chg}%`:""}</span>`:null,1],
       [L2("Per m²","Per m²"),m2?eur(m2):null],
+      [L2("Gemeenschapskosten","Community fees"),Number(D.cost_community)>0?`${eur(D.cost_community)} <span class="muted sm">${L2("per jaar","per year")}</span>`:null,1],
+      [L2("IBI","IBI"),Number(D.cost_ibi)>0?`${eur(D.cost_ibi)} <span class="muted sm">${L2("per jaar","per year")}</span>`:null,1],
       [L2("Prijsweergave","Price display"),priceMode||null]]))}
     ${pkSec("loc",L2("Locatie","Location"),kv([
       [L2("Gemeente","Municipality"),D.loc_municipality||town],

@@ -333,7 +333,8 @@ function propForm(base,media){
     +`<datalist id="adRefPfx">${REF_PFX.map(x=>`<option value="${x}">`).join("")}</datalist>`,{id:"pf-basis"})}
   ${sec(["Prijs","Price"],row(inp(B("price"),["Vraagprijs (€)","Asking price (€)"],{type:"number",min:0,step:1000,req:"save"}),
       inp(B("price_original"),["Oorspronkelijke vraagprijs (€)","Original price (€)"],{type:"number",min:0,step:1000}),
-      inp(B("cost_community"),["Gemeenschapskosten per JAAR (€)","Community fees per YEAR (€)"],{type:"number",min:0,step:1,hint:["Altijd het jaarbedrag (uitzondering op geen vaste lasten, Rick 20-10-2026)","Always the yearly amount"]}))
+      inp(B("cost_community"),["Gemeenschapskosten per JAAR (€)","Community fees per YEAR (€)"],{type:"number",min:0,step:1,hint:["Altijd het jaarbedrag (uitzondering op geen vaste lasten, Rick 20-10-2026)","Always the yearly amount"]}),
+      inp(B("cost_ibi"),["IBI per JAAR (€)","IBI per YEAR (€)"],{type:"number",min:0,step:1,hint:["Onroerendezaakbelasting, jaarbedrag (BD-178)","Property tax, yearly amount"]}))
     +`<div class="ad-multi c3">${chk(B("price_hidden"),["Prijs verbergen","Hide price"])}${chk(B("price_fixed"),["Vaste prijs","Price FIXED"])}${chk(B("price_from"),["Prijs vanaf","Price FROM"])}
       ${chk(B("price_on_request"),["Prijs op aanvraag","Price ON REQUEST"])}</div>`,{id:"pf-prijs"})}
   ${sec(["Locatie","Location"],row(`<label class="ad-f w2"><span>${esc(tr(["Gemeente","Municipality"]))}${mark("save")}</span><select data-k="${B("municipality")}" id="adMuni"><option value="">${esc(tr(["— kies —","— choose —"]))}</option>
