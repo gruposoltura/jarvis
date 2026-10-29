@@ -166,9 +166,10 @@ async function loadTabBadges(){
     const set=(id,n,nl,en,win=true)=>{const el=$(id);if(!el)return;n=Number(n||0);el.textContent=n>0?(n>99?"99+":String(n)):"";
       el.title=n>0?(LANG==="en"?`${n} ${en}${win?" in the last 12 hours":""}`:`${n} ${nl}${win?" in de afgelopen 12 uur":""}`):""};
     /* Bezichtiging = nieuw binnengekomen aanvragen in de laatste 12 uur, net als Aanvragen (Rick, 27-10-2026; was: open aanvragen, 24-10) */
-    set("#nbVw",b.viewings_new,"nieuwe bezichtigingsaanvragen","new viewing requests");
-    set("#nbAc",b.incoming,"nieuwe aanvragen","new requests");
-    set("#nbPo",b.portals,"nieuwe portaalaanvragen","new portal requests");
+    /* sinds migratie 080 (29-10-2026): alleen nieuw EN nog open; afgehandeld (status closed) of weggegooid telt niet mee (Rick) */
+    set("#nbVw",b.viewings_new,"nieuwe, nog open bezichtigingsaanvragen","new, still open viewing requests");
+    set("#nbAc",b.incoming,"nieuwe, nog open aanvragen","new, still open requests");
+    set("#nbPo",b.portals,"nieuwe, nog open portaalaanvragen","new, still open portal requests");
   }catch(e){}
   badgeTimer=setTimeout(loadTabBadges,120000);
 }
