@@ -153,7 +153,7 @@ html[data-theme="light"] .row .via{color:#7c3aed}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .kv{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;padding:12px 14px;font-size:calc(13px*var(--fs,1))}
-.kv dt{color:var(--tx3)} .kv dd{margin:0;word-break:break-word}
+.kv dt{color:var(--tx3);min-width:0;overflow-wrap:anywhere;hyphens:manual} .kv dd{margin:0;min-width:0;word-break:break-word}
 .note{white-space:pre-wrap;font-size:calc(12.5px*var(--fs,1));color:var(--tx2);padding:12px 14px;max-height:180px;overflow:auto}
 .pcard{display:grid;grid-template-columns:92px 1fr;gap:12px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg2);cursor:pointer}
 .pcard:hover{border-color:var(--c-pr)}

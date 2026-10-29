@@ -960,8 +960,10 @@ function propFeatures(p,raw,o,K,XL,m){
       [L2("Vraagprijs","Asking price"),`<b class="pk-price">${eur(price)}</b>${p.price_from||D.price_from?` <span class="muted sm">(${L2("vanafprijs","from-price")})</span>`:""}`,1],
       [t("p.prevprice"),prev?`${eur(prev)} <span class="muted sm">· ${L2("gewijzigd","changed")} ${fdate(p.price_changedate)}${chg!=null?` · ${chg>0?"+":""}${chg}%`:""}</span>`:null,1],
       [L2("Per m²","Per m²"),m2?eur(m2):null],
-      [L2("Gemeenschapskosten","Community fees"),Number(D.cost_community)>0?`${eur(D.cost_community)} <span class="muted sm">${L2("per jaar","per year")}</span>`:null,1],
+      [L2("Gemeenschaps&shy;kosten","Community fees"),Number(D.cost_community)>0?`${eur(D.cost_community)} <span class="muted sm">${L2("per jaar","per year")}</span>`:null,1],
       [L2("IBI","IBI"),Number(D.cost_ibi)>0?`${eur(D.cost_ibi)} <span class="muted sm">${L2("per jaar","per year")}</span>`:null,1],
+      [L2("Afvalstoffen&shy;heffing","Waste tax"),Number(D.cost_garbage)>0?`${eur(D.cost_garbage)} <span class="muted sm">${L2("per jaar","per year")}</span>`:null,1],
+      [L2("Opstal&shy;verzekering","Building insurance"),Number(D.cost_insurance)>0?`${eur(D.cost_insurance)} <span class="muted sm">${L2("per jaar","per year")}</span>`:null,1],
       [L2("Prijsweergave","Price display"),priceMode||null]]))}
     ${pkSec("loc",L2("Locatie","Location"),kv([
       [L2("Gemeente","Municipality"),D.loc_municipality||town],
@@ -989,8 +991,8 @@ function propFeatures(p,raw,o,K,XL,m){
         [L2("Inschrijving","Inscription"),[D.registry_tomo&&"Tomo "+D.registry_tomo,D.registry_libro&&"Libro "+D.registry_libro,D.registry_folio&&"Folio "+D.registry_folio,D.registry_inscription&&L2("Inscr. ","Inscr. ")+D.registry_inscription].filter(Boolean).join(" · ")||null]])
       +grp(L2("Oppervlakte volgens akte","Areas per deed"),[[L2("Bebouwd","Built"),m2u(D.deed_build_area)],[L2("Kavel","Plot"),m2u(D.deed_plot_area)]])
       +grp(L2("Aankoop huidige eigenaar","Purchase by current owner"),[[L2("Datum aankoop","Purchase date"),D.purchase_date?fdate(D.purchase_date):null],[L2("Aankoopprijs","Purchase price"),D.purchase_price!=null?eur(D.purchase_price):null],
-        [L2("Overdrachtsbelasting","Transfer tax"),D.purchase_tax!=null?eur(D.purchase_tax)+(D.purchase_tax_type?` <span class="muted sm">· ${esc(D.purchase_tax_type)}</span>`:""):null,1],
-        [L2("Notaris","Notary"),D.purchase_notary],[L2("Protocolnummer","Protocol number"),D.purchase_notary_protocol]])
+        [L2("Overdrachts&shy;belasting","Transfer tax"),D.purchase_tax!=null?eur(D.purchase_tax)+(D.purchase_tax_type?` <span class="muted sm">· ${esc(D.purchase_tax_type)}</span>`:""):null,1],
+        [L2("Notaris","Notary"),D.purchase_notary],[L2("Protocol&shy;nummer","Protocol number"),D.purchase_notary_protocol]])
       +(D.deed_read_at?`<div class="muted sm" style="margin:0 14px 10px">📄 ${L2("Akte ingelezen op ","Deed read on ")}${fdate(D.deed_read_at)}</div>`:"")
       ||`<div class="empty sm" style="padding:14px">${L2("Nog geen aktegegevens. Lees de akte in via Bewerken.","No deed data yet. Read the deed via Edit.")}</div>`)}
     ${kadPanel(K,p)}

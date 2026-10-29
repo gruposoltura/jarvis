@@ -132,6 +132,8 @@ function secPrice(){const h=D.price_history||[];
   return sec("prijs",["Prijs","Price"],row(inp("price",["Vraagprijs (€)","Asking price (€)"],{type:"number",min:0,step:1000}),inp("price_previous",["Vorige prijs (€)","Previous price (€)"],{type:"number",min:0,step:1000,hint:["Wordt automatisch gevuld bij een prijswijziging","Filled automatically when the price changes"]}),
       inp("cost_community",["Gemeenschapskosten per JAAR (€)","Community fees per YEAR (€)"],{type:"number",min:0,step:1,hint:["Altijd het jaarbedrag","Always the yearly amount"]}),
       inp("cost_ibi",["IBI per JAAR (€)","IBI per YEAR (€)"],{type:"number",min:0,step:1,hint:["Onroerendezaakbelasting, jaarbedrag","Property tax, yearly amount"]}))
+    +row(inp("cost_garbage",["Afvalstoffenheffing per JAAR (€)","Waste tax per YEAR (€)"],{type:"number",min:0,step:1,hint:["Basura, jaarbedrag","Basura, yearly amount"]}),
+      inp("cost_insurance",["Opstalverzekering per JAAR (€)","Building insurance per YEAR (€)"],{type:"number",min:0,step:1,hint:["Jaarpremie","Yearly premium"]}),`<div></div>`,`<div></div>`)
     +`<div class="ad-multi c4">${chk("price_hidden",["Prijs verbergen","Hide price"])}${chk("price_fixed",["Vaste prijs","Price FIXED"])}${chk("price_from",["Prijs vanaf","Price FROM"])}${chk("price_on_request",["Prijs op aanvraag","Price ON REQUEST"])}</div>`
     +(h.length?`<div class="pe-hist">${h.map(x=>`<span>${NEXUS_DMY(x.at)} · <b>€ ${Number(x.price).toLocaleString("nl-NL")}</b> <span class="muted">${esc(x.source||"")}</span></span>`).join("")}</div>`:""))}
 function secLoc(){const l=LS(), locs=D.locations||[], cur=locs.find(x=>x.id===Number(P.location_id));
@@ -172,7 +174,7 @@ function secMedia(){
 function secCosts(){
   /* BESLUIT Rick 18/19-10-2026: geen kosten koper en geen vaste lasten in NEXUS. Niet terugzetten.
      Uitzondering 20-10-2026 (Rick): gemeenschapskosten PER JAAR (cost_community) staan bij Prijs, voor de Idealista-feed.
-     Uitzondering 29-10-2026 (Rick, BD-178): IBI PER JAAR (cost_ibi) ook bij Prijs; beide jaarbedragen staan op de woningpagina van de site.
+     Uitzondering 29-10-2026 (Rick, BD-178): IBI, afvalstoffenheffing en opstalverzekering PER JAAR (cost_ibi/cost_garbage/cost_insurance) ook bij Prijs; alle vier jaarbedragen staan op de woningpagina van de site.
      20-10-2026: aktegegevens (registro, inschrijving, oppervlakte volgens akte, aankoop huidige eigenaar) + knop Akte inlezen. */
   return sec("kost",["Eigendomsakte","Title deed"],`<div class="dd-bar">${window.NEXUS_DEED?NEXUS_DEED.button(tr):""}<span class="sm muted">${esc(tr(["PDF of foto van de escritura; je ziet eerst wat er gevonden is.","PDF or photo of the escritura; you review what was found first."]))}${P.deed_read_at?" · "+esc(tr(["laatst ingelezen ","last read "]))+NEXUS_DMY(P.deed_read_at):""}</span></div>
     ${PERS.length?`<div class="dd-pend">👤 ${esc(tr(["Bij Opslaan bijgewerkt: ","Updated on Save: "]))}${PERS.map(x=>`<b>${esc(x.label||"—")}</b>${x.contact_id?"":esc(tr([" (nieuw contact)"," (new contact)"]))} <span class="muted">(${esc(Object.keys(x.patch).filter(k=>!["street_number","postcode","city","state","country"].includes(k)).map(k=>({nie:"NIE",passport:tr(["paspoort","passport"]),marital:tr(["burgerlijke staat","marital status"]),street:tr(["adres","address"])})[k]||k).join(", ")||"—")})</span>`).join(" · ")} <button type="button" class="btn sm" data-act="perscancel">${esc(tr(["Niet doen","Discard"]))}</button></div>`:""}
