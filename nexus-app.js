@@ -1457,8 +1457,6 @@ async function loadActivity(tb){
   if(st.sel){const card=P.querySelector(`.feed .fl-card[data-rid="${CSS.escape(st.sel)}"]`);if(card){acPick(card);try{card.scrollIntoView({block:"center"})}catch(e){}}else acClose(tb)}
 }
 
-})();
-
 /* ---------- live-bezoekers in de header (alle tabbladen); bron = web_events laatste 30 min, gelijk aan 'nu op de site' ---------- */
 var liveTimer=null, liveVal=null;
 function liveSet(n){const pill=$("#livePill");if(!pill||n==null)return;liveVal=+n||0;
@@ -1469,3 +1467,5 @@ async function liveLoad(){if(document.hidden)return;try{liveSet(await rpc("nexus
 function liveStart(){const pill=$("#livePill");if(pill)pill.onclick=()=>{location.hash="ov"};
   liveLoad();clearInterval(liveTimer);liveTimer=setInterval(liveLoad,60000);
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)liveLoad()});}
+
+})();
