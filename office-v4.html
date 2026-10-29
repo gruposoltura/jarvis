@@ -11,7 +11,7 @@
   v_office_depts / v_office_agents / v_office_tools / v_office_links / v_office_panels, bridge_agent_runs bij een agent.
   Status = v_office_agents.state, 'working' met een lege run (NOOP_RE) telt als ok. Subworkflows krijgen geen bureau (BD-142).
   Eilanden van 4 bureaus per cluster_label (BD-173); achterste rij kijkt naar voren.
-  Test: ?overleg=1 start direct een overleg op de verdieping, een via de lift en een teamoverleg in de kantine.
+  Test: ?demo=1 zet iedereen aan het werk (typen, schermlicht). ?overleg=1 start direct een overleg op de verdieping, een via de lift en een teamoverleg in de kantine.
   Deeplinks: ?agent=<agent_id>, ?floor=<n>. Testhaak: window.OFFICE_TEST = {view: rows} vervangt de REST-laag.
 -->
 <html lang="nl">
@@ -215,7 +215,8 @@ const S = { agents: [], byId: {}, byWf: {}, depts: [], links: [], tools: [], too
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function isNoop(a) { return NOOP_RE.test(String(a.last_summary || "")); }
 function isSubflow(a) { return SUBFLOW_RE.test(String(a.schedule_human || "")); }
-function st(a) { const s = STATES[a.state] ? a.state : "ok"; return s === "working" && isNoop(a) ? "ok" : s; }
+const DEMO = Q.get("demo") === "1"; /* ?demo=1: iedereen aan het werk (om te kijken) */
+function st(a) { const s = STATES[a.state] ? a.state : "ok"; if (DEMO && s !== "paused" && s !== "idle") return "working"; return s === "working" && isNoop(a) ? "ok" : s; }
 function ms(t) { return t ? new Date(t).getTime() : 0; }
 function rel(t) { if (!t) return "nooit"; const s = (Date.now() - ms(t)) / 1000; if (s < 90) return "zojuist"; if (s < 3600) return Math.round(s / 60) + " min geleden"; if (s < 172800) return Math.round(s / 3600) + " u geleden"; return Math.round(s / 86400) + " d geleden"; }
 const fmtAbs = new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -621,12 +622,13 @@ function makePerson(a) {
   /* heupgewricht ~12 cm voor de rugleuning en ~9 cm boven het kussen */
   const seat = PROTO.chair && PROTO.chair.seat;
   const sitY = seat ? seat.y + 0.09 - R.hipY * sc : R.sitY, sitZ = seat ? Math.min(0.05, seat.backZ + 0.13) - R.hipZ * sc : R.sitZ;
+  const bones = {}; model.traverse((o) => { if (o.isBone) bones[o.name] = o; });
   const mixer = new THREE.AnimationMixer(model), acts = {};
   Object.keys(R.clips).forEach((n) => { acts[n] = mixer.clipAction(R.clips[n]); });
   if (acts.walk) acts.walk.timeScale = 1.1;
   if (acts.sit) { acts.sit.setLoop(THREE.LoopPingPong, Infinity); acts.sit.time = (h % 97) / 97 * R.clips.sit.duration; acts.sit.timeScale = 0.6; }
   const sitX = -(R.hipX || 0) * sc;
-  return { root, body, rig: R, kind, sitX, sitY, sitZ, mixer, acts, cur: null, proxy, ph: (h % 100) / 16, typePh: 0, a, limbs: [], lod: false, mixT: 0 };
+  return { root, body, rig: R, kind, sitX, sitY, sitZ, bones, mixer, acts, cur: null, proxy, ph: (h % 100) / 16, typePh: 0, a, limbs: [], lod: false, mixT: 0 };
 }
 function makeProcPerson(a) {
   const h = hash(a.agent_id || a.agent_name), r = rnd(a.agent_id);
@@ -987,7 +989,7 @@ function island(fl, f, s, members, m, r) {
     const a = members[p[2]];
     const mz = s.rz + (p[1] < 0 ? -0.23 : 0.23), mry = p[1] < 0 ? Math.PI : 0, seatX0 = s.cx + p[0];
     if (!place(fl, "monitor", seatX0, 0.753, mz, mry)) monitor(dsk, 0, 0.16, 0);
-    keyboardMouse(dsk, 0, -0.14, 0, r);
+    keyboardMouse(dsk, 0, -0.25, 0, r);
     if (r() < 0.7) mug(dsk, 0.5 + r() * 0.15, 0.753, -0.05 + r() * 0.1, ["#ffffff", "#e07a3f", "#2f7a61", "#3d5a80", "#f2c14e"][Math.floor(r() * 5)]);
     if (r() < 0.45) deskLamp(dsk, -0.62, 0.24, 0.4 + Math.PI);
     if (r() < 0.5) papers(dsk, -0.45, -0.12, 0.3 * r(), 2 + Math.floor(r() * 4));
@@ -1000,7 +1002,7 @@ function island(fl, f, s, members, m, r) {
     else { scr.scale.set(0.52, 0.31, 1); scr.position.set(seatX, 0.753 + 0.42, s.rz + (p[1] < 0 ? -0.247 : 0.247)); }
     scr.rotation.y = p[1] < 0 ? Math.PI : 0;
     fl.grp.add(scr);
-    if (a) { a._seat = { floor: fl.i, x: seatX, z: seatZ, face, cx: s.cx, rz: s.rz, lane: seatX < s.cx ? s.laneL : s.laneR, side: seatX < s.cx ? -1 : 1 }; a._screen = scr; W_.screens.push(scr); }
+    if (a) { a._seat = { floor: fl.i, x: seatX, z: seatZ, face, kbZ: s.rz + (p[1] < 0 ? -0.64 : 0.64), cx: s.cx, rz: s.rz, lane: seatX < s.cx ? s.laneL : s.laneR, side: seatX < s.cx ? -1 : 1 }; a._screen = scr; W_.screens.push(scr); }
   });
 }
 function decorSlot(fl, f, s, kind, m, r) {
@@ -1248,7 +1250,8 @@ function updatePeople(now, dt) {
     if (!p.present) return;
     if (p.rig) { p.mixT += dt; const far = p.lod; if (p.root.visible && (!far || (frameN + (p.ph * 10 | 0)) % 4 === 0)) { p.mixer.update(p.mixT); p.mixT = 0; } }
     const tr = p.trip;
-    if (!tr) { const look = p.meetUntil > Date.now() && p.meetFace ? lookAt(p, p.meetFace) : 0; poseSit(p, t, p.typing && !(p.meetUntil > Date.now()), look); return; }
+    if (!tr) { const meet = p.meetUntil > Date.now(), look = meet && p.meetFace ? lookAt(p, p.meetFace) : 0; poseSit(p, t, p.typing && !meet, look);
+      if (p.rig && p.typing && !meet && p.root.visible) typeIK(p, t); return; }
     const sg = tr.segs[tr.i]; if (!sg) return;
     if (sg.t === "walk") {
       sg.d += WALK_V * dt; const w = walkAt(sg.pts, sg.d);
@@ -1268,6 +1271,59 @@ function updatePeople(now, dt) {
         if (L.job === J && L.state === "openB") { sg.phase = "out"; sg.d = 0; sg.pts = [spot, [spot[0], LIFT_Z0 + 0.2], door]; sg.len = lineLen(sg.pts); } }
       else if (sg.phase === "out") { sg.d += WALK_V * dt; const w = walkAt(sg.pts, sg.d); p.baseY = J.to * FH; p.root.position.set(w.x, p.baseY, w.z); p.root.rotation.y = lerpAng(p.root.rotation.y, w.dir, Math.min(1, dt * 10)); p.ph += WALK_V * dt * 5.2; poseWalk(p, p.ph); if (sg.d >= sg.len) { p.inCar = false; p.floor = J.to; nextSeg(p); } }
     }
+  });
+}
+/* typen: twee-bots-IK (Arm -> ForeArm -> Hand) naar het toetsenbord, met kleine tikbewegingen */
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _q1 = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+function aimBone(b, child, target) {
+  b.updateWorldMatrix(true, false); child.updateWorldMatrix(false, false);
+  const bp = b.getWorldPosition(_v1), cp = child.getWorldPosition(_v2);
+  const from = cp.sub(bp).normalize(), to = _v3.copy(target).sub(bp).normalize();
+  _q1.setFromUnitVectors(from, to);
+  b.getWorldQuaternion(_q2); _q2.premultiply(_q1);
+  const pq = new THREE.Quaternion(); b.parent.getWorldQuaternion(pq); b.quaternion.copy(pq.invert().multiply(_q2));
+  b.updateWorldMatrix(false, true);
+}
+/* schermlicht: vaste pool lampjes (vast aantal = geen shader-hercompilatie), naar de dichtstbijzijnde werkende agents */
+const GLOW_TEX = glowTex("rgba(90,200,255,.9)");
+const SCREEN_LIGHTS = [];
+function initScreenLights() {
+  for (let i = 0; i < 6; i++) { const l = new THREE.PointLight(0x7fd0ff, 0, 2.6, 1.6); scene.add(l); SCREEN_LIGHTS.push(l); }
+}
+function updateScreenLights(t) {
+  const work = W_.persons.filter((p) => p.typing && p.present && p.root.visible && !p.trip && p.a._screen);
+  work.forEach((p) => {
+    const sc = p.a._screen;
+    if (!p.glow) { p.glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color: 0x9fe0ff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.55 })); p.glow.scale.set(1.3, 0.9, 1); sc.parent.add(p.glow); }
+    p.glow.position.copy(sc.position); p.glow.position.z += (p.a._seat.z - sc.position.z) * 0.12; p.glow.visible = true;
+    p.glow.material.opacity = 0.45 + Math.sin(t * 3 + p.ph) * 0.08;
+  });
+  W_.persons.forEach((p) => { if (p.glow && !work.includes(p)) p.glow.visible = false; });
+  const cp = camera.position;
+  work.sort((a, b) => a.root.position.distanceToSquared(cp) - b.root.position.distanceToSquared(cp));
+  SCREEN_LIGHTS.forEach((l, i) => { const p = work[i];
+    if (!p) { l.intensity = 0; return; }
+    const sc = p.a._screen, wp = sc.getWorldPosition(_v1); l.position.set(wp.x, wp.y + 0.05, wp.z + (p.a._seat.z - sc.position.z) * 0.35);
+    l.color.set(p.a.dept_color || "#7fd0ff").lerp(new THREE.Color("#bfe8ff"), 0.5); l.intensity = 2.2 + Math.sin(t * 7 + p.ph) * 0.25; });
+}
+function typeIK(p, t) {
+  const B = p.bones, s = p.a._seat; if (!B.LeftArm || !B.LeftForeArm || !B.LeftHand || !s || s.kbZ == null) return;
+  p.root.updateWorldMatrix(true, true);
+  const y = p.baseY + 0.79, fwd = Math.sign(s.kbZ - s.z) || 1, ph = p.ph * 3;
+  [["Left", -1], ["Right", 1]].forEach(([side, sx]) => {
+    const arm = B[side + "Arm"], fore = B[side + "ForeArm"], hand = B[side + "Hand"];
+    /* doel: links/rechts op het toetsenbord (in wereldcoordinaten; persoon kijkt langs fwd) */
+    const tap = Math.max(0, Math.sin(t * 13 + ph + (sx > 0 ? 1.7 : 0))) * 0.018, slide = Math.sin(t * 2.1 + ph + sx) * 0.03;
+    const S0 = arm.getWorldPosition(new THREE.Vector3()), E0 = fore.getWorldPosition(new THREE.Vector3()), H0 = hand.getWorldPosition(new THREE.Vector3());
+    const T = new THREE.Vector3(s.x + Math.sign(S0.x - s.x || sx) * 0.11 + slide, y + tap, s.kbZ - fwd * 0.03);
+    const a = S0.distanceTo(E0), b = E0.distanceTo(H0); let dvec = T.clone().sub(S0); let dist = dvec.length();
+    dist = Math.min(dist, (a + b) * 0.98); dvec.normalize();
+    const cosA = Math.max(-1, Math.min(1, (a * a + dist * dist - b * b) / (2 * a * dist))), sinA = Math.sqrt(1 - cosA * cosA);
+    /* elleboog naar buiten en iets omlaag */
+    const pole = new THREE.Vector3(Math.sign(S0.x - s.x || sx), -0.8, -fwd * 0.3).normalize();
+    const n = pole.sub(dvec.clone().multiplyScalar(pole.dot(dvec))).normalize();
+    const E = S0.clone().add(dvec.clone().multiplyScalar(a * cosA)).add(n.multiplyScalar(a * sinA));
+    aimBone(arm, fore, E); aimBone(fore, hand, T);
   });
 }
 function lookAt(p, tgt) { const want = Math.atan2(tgt[0] - p.root.position.x, tgt[1] - p.root.position.z); let d = want - p.root.rotation.y; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return Math.max(-0.9, Math.min(0.9, d)); }
@@ -1673,14 +1729,14 @@ function frame(now) {
     camera.position.lerpVectors(A.p0, A.p1, e); controls.target.lerpVectors(A.t0, A.t1, e); if (k >= 1) VIEW.anim = null; }
   controls.update();
   const sdt = dt * SPEED; SIM += sdt * 1000;
-  updateLifts(sdt); updatePeople(now, sdt); updateBalls(now);
+  updateLifts(sdt); updatePeople(now, sdt); updateBalls(now); if (frameN % 2 === 0) updateScreenLights(now / 1000);
   if (VIEW.focusFloor != null) W_.lifts.forEach((L) => { L.car.visible = L.y <= VIEW.focusFloor * FH + 0.5; });
   W_.persons.forEach((p) => { if (p.present) p.root.visible = VIEW.focusFloor == null || p.floor === VIEW.focusFloor || (!!p.trip && p.floor <= VIEW.focusFloor); if (p.sprite.visible) { const s = 0.2 + Math.sin(now / 300 + p.ph) * 0.03 * (p.typing ? 1 : 0); p.sprite.scale.set(s, s, 1); } });
   const ws = SCREEN_MATS; for (const k in ws) if (k.endsWith("working") && ws[k].map) ws[k].map.offset.y = (now / 9000) % 1;
   if (W_.ufo) { const u = W_.ufo; u.rotation.y += dt * 0.25; u.position.y = W_.roofY + 10.5 + Math.sin(now / 1400) * 0.35; u.userData.lights.rotation.y -= dt * 0.8;
     const pulse = u.userData.pulse && now - u.userData.pulse < 600 ? 1 - (now - u.userData.pulse) / 600 : 0; u.userData.core.material.emissiveIntensity = 2.2 + pulse * 3 + Math.sin(now / 500) * 0.3; u.userData.beam.material.opacity = 0.08 + pulse * 0.12; }
   if (frameN % (VIEW.focusFloor == null ? 30 : 2) === 0) renderer.shadowMap.needsUpdate = true;
-  if (frameN % 10 === 0) W_.persons.forEach((p) => { const far = camera.position.distanceTo(p.root.position) > 62 && !p.trip; if (far !== p.lod) { p.lod = far; p.limbs.forEach((l) => { l.visible = !far; }); } });
+  if (frameN % 10 === 0) W_.persons.forEach((p) => { const far = camera.position.distanceTo(p.root.position) > (p.rig ? 95 : 62) && !p.trip; if (far !== p.lod) { p.lod = far; p.limbs.forEach((l) => { l.visible = !far; }); } });
   updateLabels();
   if (composer) composer.render(); else renderer.render(scene, camera);
   if (S.agents.length && !S.readyFrame) S.readyFrame = frameN;
@@ -1690,7 +1746,7 @@ const STOP_AT = +Q.get("frames") || 0; /* alleen voor tests: na N frames stoppen
 controls.addEventListener("start", () => { VIEW.userMoved = true; });
 
 /* =================================================================== start */
-setupComposer(); paintAO(); resize();
+setupComposer(); paintAO(); resize(); initScreenLights();
 renderFloors(); renderCard(); renderPanel();
 renderer.setAnimationLoop(frame);
 renderer.info.autoReset = false;
