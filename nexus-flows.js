@@ -1,4 +1,4 @@
-/* v12 (28-10-2026): inlogcode-mails van het makelaarsportaal (AUTH_SUBJ) net als interne mails nooit bij Mail klant of als losse mailflow; nexus_flow_obj sluit ze ook server-side uit. v11 (25-10-2026): list() filtert interne mails (New Lead, JARVIS) uit Mail klant; nexus_flow_obj sluit ze ook server-side uit. v10 (25-10-2026): list() - Aanvragen/Portalen tonen alle aanvragen als flowkaarten (bron: nexus_request_flows), met contactnaam en rep. v9 (25-10-2026): aangeklikte aanvraag bovenaan met label en accentrand; portaalbron in eigen kleur (NEXUS_SRC). v8 (25-10-2026): interne mails (JARVIS, New Lead, ook met emoji vooraf) niet als losse mailflow. v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
+/* v13 (29-10-2026): makelaarsbezichtiging (agent-portal / viewing@) heeft een eigen route "viewing" uit f.viewing (migratie 079): Sola/viewing@ -> NEXUS -> leadcard salesrep -> bevestiging makelaar -> afgehandeld door salesrep; geen LeadProcessor-stap meer die rood "geen run" gaf terwijl de aanvraag al was afgehandeld (Rick). v12 (28-10-2026): inlogcode-mails van het makelaarsportaal (AUTH_SUBJ) net als interne mails nooit bij Mail klant of als losse mailflow; nexus_flow_obj sluit ze ook server-side uit. v11 (25-10-2026): list() filtert interne mails (New Lead, JARVIS) uit Mail klant; nexus_flow_obj sluit ze ook server-side uit. v10 (25-10-2026): list() - Aanvragen/Portalen tonen alle aanvragen als flowkaarten (bron: nexus_request_flows), met contactnaam en rep. v9 (25-10-2026): aangeklikte aanvraag bovenaan met label en accentrand; portaalbron in eigen kleur (NEXUS_SRC). v8 (25-10-2026): interne mails (JARVIS, New Lead, ook met emoji vooraf) niet als losse mailflow. v7 (25-10-2026): mailpopup compact (kolom fit-content, onderwerp als eigen regel, Brevo-status leesbaar), interne mails niet bij Mail klant. v6 (25-10-2026): intake overgeslagen als de aanvraag niet via web-contact binnenkwam. v5 (23-10-2026): losse automatische mails als flow met één node. */
 /* NEXUS · Contact › Contactmomenten — formulierflows per contact (Rick, 22-10-2026).
    Klik in Binnenkomend op een aanvraag: het contact opent altijd op Contactmomenten, met bovenaan alle aanvragen van dat contact
    als compacte flow onder elkaar, van het formulier (links) tot afgerond (rechts); de aangeklikte aanvraag is gemarkeerd. Kleur = kwalificatie van de lead (Hot / Warm / Cold / geen lead).
@@ -45,6 +45,7 @@ function qual(f){
    geen route: die werd hier ten onrechte als route gelezen, waardoor elke onbekende soort als BackOnMarket getekend werd (fix 22-10-2026). */
 const ROUTES=["leadprocessor","newsletter","favorites","none"];
 function route(f){
+  if(f.viewing||f.source==="agent-portal"||f.source==="appointment-agent")return"viewing";
   const k=String(f.kind||f.type||"").toLowerCase();
   const isNotify=k==="notify"||k==="notify-back";
   const ir=f.intake&&f.intake.wf==="WebFormIntakeV2"?String(f.intake.route||""):"";
@@ -107,12 +108,22 @@ function steps(f){
     if(!w&&!f.intake)S.push({id:"intake",st:"skip",t:"Intake",s:tr(["niet via intake","not via intake"])});
     else S.push({id:"intake",st:ierr?"fail":(w&&w.processed_at)||f.intake?"done":(late?"fail":"wait"),t:"Intake",
       s:ierr?tr(["fout","error"]):w&&w.processed_at?dur(mins(w.at,w.processed_at)):tr(["wacht","waiting"])});
+  } else if(f.viewing||route(f)==="viewing"){
+    const v=f.viewing||{};
+    S.push({id:"vin",st:f.viewing?"done":"skip",t:v.channel==="email"||f.source==="appointment-agent"?"viewing@":tr(["Sola · portaal","Sola · portal"]),s:v.at?hm(v.at):tr(["makelaar","agent"])});
   } else {
     S.push({id:"bridge",st:f.intake?"done":"skip",t:tr(["Doorgifte","Hand-over"]),s:f.intake?hm(f.intake.at):((CHAN[f.source]&&CHAN[f.source].n)||f.source||"")});
   }
   S.push({id:"nexus",st:"done",t:"NEXUS",s:tr(["contact + aanvraag","contact + request"])});
   const r=route(f), mail=(f.mails||[])[0];
-  if(r==="leadprocessor"){
+  if(r==="viewing"){
+    const v=f.viewing||{}, vm=k=>(v.mails||[]).find(m=>m.kind===k), card=vm("rep_notification"), conf=vm("confirmation");
+    const mst=m=>!m?(f.viewing?"skip":"wait"):m.error||m.sent===false?"fail":"done";
+    S.push({id:"vcard",st:mst(card),t:tr(["Leadcard","Lead card"]),s:card?"→ "+repName(card.to||v.rep):(v.rep?"→ "+repName(v.rep):"—")});
+    S.push({id:"vconf",st:mst(conf),t:tr(["Bevestiging makelaar","Agent confirmation"]),s:conf?(conf.error?tr(["fout","error"]):tr(["verstuurd","sent"])):"—"});
+    const closed=f.status==="closed", by=v.handled_by||null, at=v.handled_at||f.processed_at;
+    S.push({id:"vdone",st:closed?"done":"wait",t:tr(["Afgehandeld","Handled"]),s:closed?(by?repName(by)+" ":"")+(at?hm(at):""):tr(["door salesrep","by sales rep"])});
+  } else if(r==="leadprocessor"){
     const lp=f.lp, lpErr=lp&&(lp.status==="error"||lp.error);
     S.push({id:"lp",st:lp?(lpErr?"fail":"done"):(late?"fail":"wait"),t:"LeadProcessor",s:lp?tr(["score ","score "])+String(lp.score||"?"):(late?tr(["geen run","no run"]):tr(["wacht","waiting"])),q:true});
     S.push({id:"rep",st:lp?(lp.leadcard==="sent"?"done":"skip"):"skip",t:tr(["Leadcard","Lead card"]),s:lp&&lp.rep?"→ "+repName(lp.rep):"—"});
@@ -190,6 +201,19 @@ const INFO={
     "This lead came through a portal without the client's email address. JARVIS therefore sends no email; the lead card asks the rep to call or WhatsApp. If the client replies through the portal, the answer goes there."]],facts:[[tr(["Bron","Source"]),f.source],[tr(["Rep","Rep"]),f.lp&&repName(f.lp.rep)]]}),
   hot:f=>({h:["Hot: agenda en cc Rick","Hot: calendar and cc Rick"],p:[["Bij een Hot lead staat Rick in cc op de leadcard en komt er een afspraak in de agenda van de rep: bij terugbellen 2 uur na binnenkomst, anders 10:00 op de eerstvolgende werkdag.",
     "For a Hot lead Rick is cc'd on the lead card and the rep gets a calendar event: for a call-back 2 hours after arrival, otherwise 10:00 on the next working day."]],facts:[[tr(["Rep","Rep"]),f.lp&&repName(f.lp.rep)]]}),
+  vin:f=>{const v=f.viewing||{};return {h:["Bezichtigingsaanvraag van een makelaar","Viewing request from an agent"],p:[
+    ["Een samenwerkende makelaar vroeg deze bezichtiging aan via het makelaarsportaal agents.gruposoltura.com (gesprek met Sola), of vóór 28-10-2026 via viewing@. Deze aanvraag gaat niet via LeadProcessor: de portaalagent maakt de leadcard voor de salesrep en bevestigt aan de makelaar. Het volledige verloop staat op het tabblad Bezichtiging.",
+     "A partner agent requested this viewing through the agent portal agents.gruposoltura.com (conversation with Sola), or before 28 Oct 2026 through viewing@. This request does not go through LeadProcessor: the portal agent creates the lead card for the sales rep and confirms to the agent. The full flow is on the Viewing tab."]],
+    facts:[[tr(["Makelaar","Agent"]),v.agent],[tr(["Ontvangen","Received"]),v.at?dmyt(v.at):null],[tr(["Kanaal","Channel"]),v.channel==="email"?"viewing@":v.channel?"portal":f.source],[tr(["Woning","Property"]),f.ref],[tr(["Ontbrak","Missing"]),(v.missing||[]).join(", ")||null],[tr(["Notitie","Note"]),v.note]]}},
+  vcard:f=>{const v=f.viewing||{}, m=(v.mails||[]).find(x=>x.kind==="rep_notification");return {h:["Leadcard naar de salesrep","Lead card to the sales rep"],p:[
+    ["De salesrep krijgt de aanvraag met knop Afgehandeld en Open in NEXUS. Na 24 uur zonder afmelding volgt een herinnering.","The sales rep receives the request with a Handled button and Open in NEXUS. After 24 hours without sign-off a reminder follows."]],
+    facts:[[tr(["Aan","To"]),repName((m&&m.to)||v.rep)],[tr(["Onderwerp","Subject"]),m&&m.subject],[tr(["Fout","Error"]),m&&m.error]]}},
+  vconf:f=>{const m=((f.viewing||{}).mails||[]).find(x=>x.kind==="confirmation");return {h:["Bevestiging aan de makelaar","Confirmation to the agent"],p:[
+    ["De makelaar krijgt bevestigd dat de aanvraag ontvangen en doorgestuurd is.","The agent gets confirmation that the request was received and forwarded."]],
+    facts:[[tr(["Aan","To"]),m&&m.to],[tr(["Onderwerp","Subject"]),m&&m.subject],[tr(["Fout","Error"]),m&&m.error]]}},
+  vdone:f=>{const v=f.viewing||{};return {h:["Afgehandeld door de salesrep","Handled by the sales rep"],p:[
+    ["De aanvraag is gesloten zodra de salesrep op Afgehandeld klikt (leadcard of herinnering). Tot dan staat de stap op wachten; dat is geen fout.","The request is closed once the sales rep clicks Handled (lead card or reminder). Until then the step is waiting; that is not an error."]],
+    facts:[["Status",f.status],[tr(["Door","By"]),v.handled_by?repName(v.handled_by):null],[tr(["Tijd","Time"]),v.handled_at?dmyt(v.handled_at):null]]}},
   end:f=>({h:["Afgerond","Done"],p:[["Het formulier is als verwerkt gemarkeerd en elke run staat in jarvis_runs. Blijft een formulier 30 minuten liggen, dan meldt JARVIS dat direct.",
     "The form is marked as processed and every run is in jarvis_runs. If a form sits for 30 minutes, JARVIS reports it right away."]],facts:[[tr(["Verwerkt","Processed"]),f.processed_at?dmyt(f.processed_at):"—"]]})
 };
