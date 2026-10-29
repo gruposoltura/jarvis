@@ -618,11 +618,15 @@ function makePerson(a) {
   model.traverse((o) => { if (o.isMesh) { o.material = mat; o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; o.userData.agentId = a.agent_id; } });
   body.add(model);
   const proxy = new THREE.Mesh(G.box, new THREE.MeshBasicMaterial({ visible: false })); proxy.scale.set(0.6, 1.8, 0.6); proxy.position.y = 0.9; proxy.visible = false; proxy.userData.agentId = a.agent_id; root.add(proxy);
+  /* heupgewricht ~12 cm voor de rugleuning en ~9 cm boven het kussen */
+  const seat = PROTO.chair && PROTO.chair.seat;
+  const sitY = seat ? seat.y + 0.09 - R.hipY * sc : R.sitY, sitZ = seat ? Math.min(0.05, seat.backZ + 0.13) - R.hipZ * sc : R.sitZ;
   const mixer = new THREE.AnimationMixer(model), acts = {};
   Object.keys(R.clips).forEach((n) => { acts[n] = mixer.clipAction(R.clips[n]); });
   if (acts.walk) acts.walk.timeScale = 1.1;
   if (acts.sit) { acts.sit.setLoop(THREE.LoopPingPong, Infinity); acts.sit.time = (h % 97) / 97 * R.clips.sit.duration; acts.sit.timeScale = 0.6; }
-  return { root, body, rig: R, kind, mixer, acts, cur: null, proxy, ph: (h % 100) / 16, typePh: 0, a, limbs: [], lod: false, mixT: 0 };
+  const sitX = -(R.hipX || 0) * sc;
+  return { root, body, rig: R, kind, sitX, sitY, sitZ, mixer, acts, cur: null, proxy, ph: (h % 100) / 16, typePh: 0, a, limbs: [], lod: false, mixT: 0 };
 }
 function makeProcPerson(a) {
   const h = hash(a.agent_id || a.agent_name), r = rnd(a.agent_id);
@@ -676,7 +680,7 @@ function makeProcPerson(a) {
   return p;
 }
 function poseSit(p, t, typing, look) {
-  if (p.rig) { p.root.position.y = p.baseY + p.rig.sitY; p.body.position.z = p.rig.sitZ; setAnim(p, "sit"); return; }
+  if (p.rig) { p.root.position.y = p.baseY + p.sitY; p.body.position.set(p.sitX, 0, p.sitZ); setAnim(p, "sit"); return; }
   p.root.position.y = p.baseY - 0.36;
   p.legs.forEach((l, i) => { l.hip.rotation.set(-1.52, 0, (i ? -1 : 1) * 0.06); l.kn.rotation.set(1.45, 0, 0); });
   p.arms.forEach((ar, i) => {
@@ -686,7 +690,7 @@ function poseSit(p, t, typing, look) {
   p.headPivot.rotation.set(typing ? 0.12 : 0.02 + Math.sin(t * 0.4 + p.ph) * 0.03, look || Math.sin(t * 0.23 + p.ph) * (typing ? 0.05 : 0.25), 0);
 }
 function poseWalk(p, ph) {
-  if (p.rig) { p.root.position.y = p.baseY; p.body.position.z = 0; setAnim(p, "walk", 0.25); return; }
+  if (p.rig) { p.root.position.y = p.baseY; p.body.position.set(0, 0, 0); setAnim(p, "walk", 0.25); return; }
   const s = Math.sin(ph);
   p.root.position.y = p.baseY + Math.abs(Math.cos(ph)) * 0.025;
   p.legs[0].hip.rotation.set(s * 0.5, 0, 0); p.legs[1].hip.rotation.set(-s * 0.5, 0, 0);
@@ -696,7 +700,7 @@ function poseWalk(p, ph) {
   p.headPivot.rotation.set(0.02, 0, 0);
 }
 function poseStand(p, t, talk) {
-  if (p.rig) { p.root.position.y = p.baseY; p.body.position.z = 0; setAnim(p, talk ? "talk" : "idle"); return; }
+  if (p.rig) { p.root.position.y = p.baseY; p.body.position.set(0, 0, 0); setAnim(p, talk ? "talk" : "idle"); return; }
   p.root.position.y = p.baseY;
   p.legs.forEach((l, i) => { l.hip.rotation.set(0, 0, (i ? -1 : 1) * 0.04); l.kn.rotation.set(0.02, 0, 0); });
   const g = talk ? Math.sin(t * 2.2 + p.ph) * 0.25 : 0;
@@ -741,6 +745,13 @@ function makeProto(root, spec) {
     const m = o.material; if (m && m.isMeshStandardMaterial) { if (spec[0].startsWith("hf_")) { m.roughness = spec[0] === "hf_espresso" ? 0.32 : 0.62; m.metalness = spec[0] === "hf_espresso" ? 0.75 : 0.05; } m.envMapIntensity = 0.9; }
     parts.push({ geo: g, mat: m, M: base.clone().multiply(o.matrixWorld) }); });
   const proto = { parts, size: size.clone().multiplyScalar(k) };
+  /* zitting (stoel): kussenhoogte en voorkant rugleuning, om de heupen goed te plaatsen */
+  if (spec[0] === "hf_chair") { const v = new THREE.Vector3(), H = proto.size.y; let seatY = 0, backZ = -1e9, zs = [];
+    parts.forEach((pt) => { const pos = pt.geo.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(pt.M);
+      if (Math.abs(v.x) < 0.12 && v.y > H * 0.36 && v.y < H * 0.56 && Math.abs(v.z) < 0.2) seatY = Math.max(seatY, v.y);
+      if (Math.abs(v.x) < 0.12 && v.y > H * 0.66 && v.y < H * 0.9) zs.push(v.z); } });
+    zs.sort((a, b) => a - b); backZ = zs.length ? zs[Math.floor(zs.length * 0.9)] : -0.2; /* voorkant van de rugleuning (achterzijde = -z) */
+    proto.seat = { y: seatY || 0.48, backZ }; }
   /* schermvlak (monitor): hoogste 45% van het model, voorste z */
   if (spec[0] === "hf_monitor") { let zmax = -1e9, y0 = 1e9, y1 = -1e9, x0 = 1e9, x1 = -1e9; const v = new THREE.Vector3();
     parts.forEach((pt) => { const pos = pt.geo.attributes.position; for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(pt.M); if (v.y > proto.size.y * 0.4) { zmax = Math.max(zmax, v.z); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); } } });
@@ -788,7 +799,7 @@ function makeRig(g, mask) {
     act.time = 0.05; mx.update(0); tmp.updateMatrixWorld(true); hp = hips.getWorldPosition(new THREE.Vector3());
     clips.sit = THREE.AnimationUtils.subclip(clips.sit, "sit", 0, Math.max(18, Math.round(end * 30)), 30);
   }
-  R.sitY = 0.56 - hp.y; R.sitZ = -hp.z - 0.07; /* heupen iets achter het midden van de zitting */
+  R.hipY = hp.y; R.hipZ = hp.z; R.hipX = hp.x; R.sitY = 0.56 - hp.y; R.sitZ = -hp.z - 0.07;
   return R;
 }
 function rigMat(kind, color) {
@@ -1683,6 +1694,7 @@ setupComposer(); paintAO(); resize();
 renderFloors(); renderCard(); renderPanel();
 renderer.setAnimationLoop(frame);
 renderer.info.autoReset = false;
+window.OFFICE4_DBG = { PROTO, RIG };
 window.OFFICE4 = { snap: (c) => { if (c) { camera.position.set(c[0], c[1], c[2]); camera.lookAt(c[3], c[4], c[5]); camera.updateMatrixWorld(); } if (composer) composer.render(); else renderer.render(scene, camera); return renderer.domElement.toDataURL("image/jpeg", 0.9); }, stats: () => ({ frameN, calls: renderer.info.render.calls, tris: renderer.info.render.triangles, progs: renderer.info.programs.length, tex: renderer.info.memory.textures }), S, W_, VIEW, focusFloor, goHome, testMeet, kortOverleg, teamOverleg, fireBall, renderer, scene, camera };
 let assetsDone = 0;
 const AS = loadAssets(() => { assetsDone++; if (S.first) $("loading").textContent = "Office laden… modellen " + assetsDone + "/" + AS.total; });
