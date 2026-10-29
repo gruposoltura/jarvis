@@ -24,6 +24,7 @@ async function setLang(l,persist){
   if(!DICT[l]||l===LANG&&!persist)return;
   LANG=l;try{localStorage.setItem("nexus-lang",l)}catch(e){}
   applyStatic();
+  if(liveVal!=null)liveSet(liveVal);
   if(booted){buildRoleChips();buildStatusChips();buildBuildSeg();if(mpMap)buildMpSeg();rerender();if(persist!==false)sb.rpc("nexus_set_lang",{p_lang:l}).then(()=>{},()=>{})}
 }
 $$("[data-lang-switch] button").forEach(b=>b.onclick=()=>setLang(b.dataset.l,true));
@@ -138,7 +139,7 @@ async function boot(){
     showForm("newpass");lgMsg("msg.mustchange");return}
   if(ME.lang&&ME.lang!==LANG){LANG=ME.lang;try{localStorage.setItem("nexus-lang",LANG)}catch(e){}applyStatic()}
   $("#login").classList.add("hidden");$("#app").classList.remove("hidden");
-  $("#meName").textContent=ME.display_name;const av=$("#meAv");av.textContent=initials(ME.display_name);av.style.background=ME.color||"#14b8a6";
+  liveStart();$("#meName").textContent=ME.display_name;const av=$("#meAv");av.textContent=initials(ME.display_name);av.style.background=ME.color||"#14b8a6";
   buildRoleChips();buildStatusChips();buildBuildSeg();
   /* Admin (invoerschermen, nog niet gekoppeld): voorlopig alleen voor de rol admin */
   $("#tabRp").classList.toggle("hidden",ME.role!=="admin");
@@ -315,6 +316,7 @@ async function loadSiteStrip(force){
 function renderSiteStrip(){
   const box=$("#ovWeb");if(!box||!SITE)return;
   const S=SITE, c=S.cur||{}, pv=S.prev||{}, oy=S.own_yesterday||{}, today=S.days===1;
+  if(S.live!=null&&typeof liveSet==="function")liveSet(S.live);
   /* vandaag: staven per uur (toekomstige uren leeg), anders per dag */
   const dl=today?(S.hourly||[]).map(h=>Object.assign({},h,h.future?{visitors:null,home:null,prop_views:null,searches:null,forms:null}:{})):(S.daily||[]);
   const lbl=x=>today?`${String(x.h).padStart(2,"0")}:00`:fdate(x.day);
@@ -1456,3 +1458,14 @@ async function loadActivity(tb){
 }
 
 })();
+
+/* ---------- live-bezoekers in de header (alle tabbladen); bron = web_events laatste 30 min, gelijk aan 'nu op de site' ---------- */
+var liveTimer=null, liveVal=null;
+function liveSet(n){const pill=$("#livePill");if(!pill||n==null)return;liveVal=+n||0;
+  pill.classList.remove("hidden");pill.classList.toggle("on",liveVal>0);
+  $("#liveN").textContent=num(liveVal);$("#liveL").textContent=L2("nu op de site","on the site now");
+  pill.title=L2("Bezoekers op gruposoltura.com in de laatste 30 minuten (zonder bots en team)","Visitors on gruposoltura.com in the last 30 minutes (excl. bots and team)");}
+async function liveLoad(){if(document.hidden)return;try{liveSet(await rpc("nexus_site_live"))}catch(e){}}
+function liveStart(){const pill=$("#livePill");if(pill)pill.onclick=()=>{location.hash="ov"};
+  liveLoad();clearInterval(liveTimer);liveTimer=setInterval(liveLoad,60000);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)liveLoad()});}
