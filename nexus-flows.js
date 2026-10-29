@@ -229,7 +229,8 @@ const dm=ts=>{if(!ts)return"";const d=new Date(ts);return String(d.getDate()).pa
 const canDel=f=>!!(X&&X.canDel&&X.canDel()&&X.delReq&&f&&f.id&&!f._synthetic&&!f._mail&&!String(f.id).startsWith("_"));
 const bindDel=root=>root.querySelectorAll(".fl-del").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();X.delReq(b.dataset.del)});
 function flowHtml(f,i,lst){
-  const q=qual(f), S=steps(f), o=f._mail?"mail":f._synthetic?"optin":origin(f), G=sendGroups(f);
+  /* niet-toepasselijke stappen (skip) niet tonen: korter spoor, minder horizontaal scrollen (Rick, 29-10-2026) */
+  const q=qual(f), S=steps(f).filter(s=>s.st!=="skip"), o=f._mail?"mail":f._synthetic?"optin":origin(f), G=sendGroups(f);
   const PORT={idealista:"Idealista",thinkspain:"thinkSPAIN","agent-portal":"Makelaarsportaal (Sola)","appointment-agent":"viewing@ (e-mail)"};
   const ORIG={old:["Oude site","Old site"],web:["Website","Website"],optin:["Oude CPR","Old CPR"],mail:["Automatische mail","Automatic email"],other:[PORT[f.source]||f.source||"Overig",PORT[f.source]||f.source||"Other"]};
   const title=f._mail?(f.subject||tr(["Mail","Email"])):f._synthetic?tr(["Opt-in voor mailings","Mailing opt-in"]):fTitle(f);
