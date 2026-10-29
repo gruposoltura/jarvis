@@ -145,7 +145,7 @@
     .pwrap.min{height:auto} .ptoggle{display:none}
     .panel{height:auto} .cam{right:14px} .metrics{gap:13px} .upd,.hint{display:none} #msg{left:14px;max-width:calc(100% - 28px);top:auto;bottom:14px}
     .floors{max-height:calc(100% - 28px);padding:4px} .fl{width:auto;grid-template-columns:22px auto} .fl span,.fl em,.fl .sw{display:none} .fl.top{grid-template-columns:22px}
-    .card{display:none}
+    .card{display:none} .v3link{display:none}
   }
 </style>
 </head>
@@ -155,7 +155,7 @@
     <div class="brand"><span class="dot" id="live"></span><span class="ttl">BRIDGE</span><span class="sub">Office</span><span class="ver">V4 · 3D</span></div>
     <div class="spacer"></div>
     <button type="button" class="hbtn" id="aoBtn" aria-pressed="false" title="Zachte schaduwen in hoeken (ambient occlusion). Zwaarder voor de videokaart."><i></i>Diepte</button>
-    <a class="v3link" href="office-v3.html">Office v3</a>
+    <a class="v3link" href="office-v3.html" title="Vorige versie (2D)">vorige versie</a>
     <div class="metrics" id="metrics"></div>
     <div class="upd" id="upd"></div>
   </header>
@@ -241,7 +241,7 @@ function showMsg(t) { const m = $("msg"); m.textContent = t; m.style.display = t
 /* =================================================================== maten (meters) */
 const W = 30.5, D = 15, FH = 3.8, SLAB = 0.3, CEIL = FH - SLAB;
 const AISLE = 7.2, PART_X = 23.4, OFF_X0 = 0.6, OFF_X1 = 22.6;
-const ROWS = [4.4, 10.0], SEAT_DZ = 1.12;
+const ROWS = [4.4, 10.0], SEAT_DZ = 1.04;
 const LIFTS = [{ x: 26.0 }, { x: 28.95 }], LIFT_Z0 = 12.0, LIFT_Z1 = 14.6, LIFT_DOOR_Z = 11.3, LIFT_W = 2.3;
 const TABLES = [[13.6, 9.9], [18.0, 9.9], [13.6, 12.7], [18.0, 12.7]];
 const WALK_V = 1.35;
@@ -621,6 +621,7 @@ function makePerson(a) {
   const mixer = new THREE.AnimationMixer(model), acts = {};
   Object.keys(R.clips).forEach((n) => { acts[n] = mixer.clipAction(R.clips[n]); });
   if (acts.walk) acts.walk.timeScale = 1.1;
+  if (acts.sit) { acts.sit.setLoop(THREE.LoopPingPong, Infinity); acts.sit.time = (h % 97) / 97 * R.clips.sit.duration; acts.sit.timeScale = 0.6; }
   return { root, body, rig: R, kind, mixer, acts, cur: null, proxy, ph: (h % 100) / 16, typePh: 0, a, limbs: [], lod: false, mixT: 0 };
 }
 function makeProcPerson(a) {
@@ -775,12 +776,19 @@ function makeRig(g, mask) {
     clips[c.name] = c; });
   let mesh = null; g.scene.traverse((o) => { if (o.isSkinnedMesh && !mesh) mesh = o; });
   const R = { scene: g.scene, clips, mask, img: mesh && mesh.material.map ? mesh.material.map.image : null, mats: {} };
-  /* kalibratie: waar zitten de heupen in de zit-animatie */
+  /* de zit-clip bevat een fase waarin het personage voorover hangt: alleen het rechtop-deel gebruiken (heen en weer) */
   const tmp = SkeletonUtils.clone(g.scene), mx = new THREE.AnimationMixer(tmp);
-  if (clips.sit) { mx.clipAction(clips.sit).play(); mx.update(0.05); }
-  tmp.updateMatrixWorld(true); let hips = null; tmp.traverse((o) => { if (o.isBone && /Hips$/.test(o.name)) hips = o; });
-  const hp = hips ? hips.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(0, 0.9, 0);
-  R.sitY = 0.56 - hp.y; R.sitZ = -hp.z + 0.04;
+  let hips = null, head = null; tmp.traverse((o) => { if (o.isBone && /^Hips$/.test(o.name)) hips = o; if (o.isBone && /^Head$/.test(o.name)) head = o; });
+  let hp = new THREE.Vector3(0, 0.9, 0);
+  if (clips.sit && hips && head) {
+    const act = mx.clipAction(clips.sit); act.play(); let end = clips.sit.duration, base = null;
+    for (let t = 0; t <= clips.sit.duration; t += 0.1) { act.time = t; mx.update(0); tmp.updateMatrixWorld(true);
+      const lean = head.getWorldPosition(new THREE.Vector3()).z - hips.getWorldPosition(new THREE.Vector3()).z;
+      if (base == null) base = lean; if (lean - base > 0.06) { end = Math.max(0.6, t - 0.3); break; } }
+    act.time = 0.05; mx.update(0); tmp.updateMatrixWorld(true); hp = hips.getWorldPosition(new THREE.Vector3());
+    clips.sit = THREE.AnimationUtils.subclip(clips.sit, "sit", 0, Math.max(18, Math.round(end * 30)), 30);
+  }
+  R.sitY = 0.56 - hp.y; R.sitZ = -hp.z - 0.07; /* heupen iets achter het midden van de zitting */
   return R;
 }
 function rigMat(kind, color) {
@@ -1187,7 +1195,8 @@ function segTime(segs) { let t = 0; segs.forEach((s) => { if (s.t === "walk") t 
 function startSeg(p) {
   const sg = p.trip.segs[p.trip.i]; if (!sg) { p.trip = null; seatPerson(p); return; }
   sg.t0 = SIM; sg.d = 0;
-  if (sg.t === "walk") { sg.len = lineLen(sg.pts); p.floor = sg.floor; p.baseY = sg.floor * FH; }
+  if (sg.t === "walk") { if (!sg.off) { sg.off = 1; const h = hash(p.a.agent_id), ox = ((h % 7) - 3) * 0.11, oz = (((h >> 3) % 7) - 3) * 0.11; sg.pts = sg.pts.map((q, i) => (i === 0 || i === sg.pts.length - 1) ? q : [q[0] + ox, q[1] + oz]); }
+    sg.len = lineLen(sg.pts); p.floor = sg.floor; p.baseY = sg.floor * FH; }
   if (sg.t === "lift") { sg.phase = "wait"; requestLift(sg, p);
     if (sg.k !== sg.k0) { sg.phase = "shift"; sg.d = 0; sg.pts = [[LIFTS[sg.k0].x, LIFT_DOOR_Z], [LIFTS[sg.k].x, LIFT_DOOR_Z]]; sg.len = lineLen(sg.pts); }
     const nx = p.trip.segs[p.trip.i + 1]; if (sg.k !== sg.k0 && nx && nx.t === "walk") nx.pts.splice(0, 4, ...fromLift(sg.k)); }
@@ -1265,7 +1274,10 @@ function teamOverleg(ids, working) {
   const fl0 = W_.floors[0]; if (!fl0) return; const tb = fl0.tables.filter((t) => !t.used); if (!tb.length) return;
   const t = tb[Math.floor(Math.random() * tb.length)], spots = [[-0.6, 0.05], [0.6, -0.05], [0, 0.62], [0, -0.6]], stay = working ? 20000 : 14000; let n = 0, maxT = 0;
   ids.forEach((id) => { const a = S.byId[id]; if (!a || !canWalk(a) || n >= 4) return; const sp = spots[n], g = [t.x + sp[0], t.z + sp[1]];
-    const tt = planTrip(W_.people[id], { floor: 0, pts: [[g[0], AISLE], g], face: [t.x, t.z], x: g[0] }, stay + n * 400, "teamoverleg");
+    /* via een laan naast de tafel, nooit dwars door een andere statafel */
+    const lx = t.x + (sp[0] < 0 ? -1.3 : 1.3), az = t.z + (sp[1] === 0 ? 0 : (sp[1] < 0 ? -1.15 : 1.15));
+    const pts = sp[0] !== 0 ? [[lx, AISLE], [lx, g[1]], g] : [[lx, AISLE], [lx, az], [g[0], az], g];
+    const tt = planTrip(W_.people[id], { floor: 0, pts, face: [t.x, t.z], x: g[0] }, stay + n * 400, "teamoverleg");
     if (n === 0) addLabel(W_.people[id], "teamoverleg (" + Math.min(4, ids.length) + ")", CANTEEN_COLOR, tt + 2000);
     maxT = Math.max(maxT, tt * 2); n++; });
   if (n) { t.used = 1; setTimeout(() => { t.used = 0; }, maxT + 4000); }
@@ -1671,7 +1683,7 @@ setupComposer(); paintAO(); resize();
 renderFloors(); renderCard(); renderPanel();
 renderer.setAnimationLoop(frame);
 renderer.info.autoReset = false;
-window.OFFICE4 = { snap: () => { if (composer) composer.render(); else renderer.render(scene, camera); return renderer.domElement.toDataURL("image/jpeg", 0.9); }, stats: () => ({ frameN, calls: renderer.info.render.calls, tris: renderer.info.render.triangles, progs: renderer.info.programs.length, tex: renderer.info.memory.textures }), S, W_, VIEW, focusFloor, goHome, testMeet, kortOverleg, teamOverleg, fireBall, renderer, scene, camera };
+window.OFFICE4 = { snap: (c) => { if (c) { camera.position.set(c[0], c[1], c[2]); camera.lookAt(c[3], c[4], c[5]); camera.updateMatrixWorld(); } if (composer) composer.render(); else renderer.render(scene, camera); return renderer.domElement.toDataURL("image/jpeg", 0.9); }, stats: () => ({ frameN, calls: renderer.info.render.calls, tris: renderer.info.render.triangles, progs: renderer.info.programs.length, tex: renderer.info.memory.textures }), S, W_, VIEW, focusFloor, goHome, testMeet, kortOverleg, teamOverleg, fireBall, renderer, scene, camera };
 let assetsDone = 0;
 const AS = loadAssets(() => { assetsDone++; if (S.first) $("loading").textContent = "Office laden… modellen " + assetsDone + "/" + AS.total; });
 if (!sb && !TEST) { $("loading").style.display = "none"; showMsg("bridge-config.js of supabase-js is niet geladen: geen Supabase-verbinding."); }
