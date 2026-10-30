@@ -34,7 +34,7 @@ let fsIdx=(()=>{try{const v=parseFloat(localStorage.getItem("nexus-fs"));const i
 function applyFs(){document.documentElement.style.setProperty("--fs",FS[fsIdx]);try{localStorage.setItem("nexus-fs",String(FS[fsIdx]))}catch(e){}
   $$("[data-fs-switch]").forEach(w=>{w.title=t("fs.title")+" "+Math.round(FS[fsIdx]*100)+"%";w.querySelector('[data-fs="-"]').disabled=fsIdx===0;w.querySelector('[data-fs="+"]').disabled=fsIdx===FS.length-1});
   setTimeout(()=>{try{if(mpMap)mpMap.invalidateSize()}catch(e){}},50)}
-$$("[data-fs-switch] button").forEach(b=>b.onclick=()=>{fsIdx=Math.max(0,Math.min(FS.length-1,fsIdx+(b.dataset.fs==="+"?1:-1)));applyFs()});
+$$("[data-fs-switch] button").forEach(b=>b.onclick=()=>{fsIdx=Math.max(0,Math.min(FS.length-1,fsIdx+(b.dataset.fs==="+"?1:-1)));applyFs();if(typeof fitOvAct==="function")fitOvAct()});
 applyFs();
 /* dag/nacht (per gebruiker, in deze browser) */
 function applyTheme(th){const light=th==="light";if(light)document.documentElement.setAttribute("data-theme","light");else document.documentElement.removeAttribute("data-theme");
@@ -184,7 +184,7 @@ let adFrom="ct";
 function setTab(t_,ref){if(isAcTab(t_)&&curTab!==t_)acReset(t_);curTab=t_;if(!isAcTab(t_))ctDetailHome();const onT=t_==="ad"?adFrom:t_;$$(".tab").forEach(b=>b.classList.toggle("on",b.dataset.tab===onT));
   $$(".pane").forEach(p=>p.classList.toggle("hidden",p.id!=="p-"+t_));
   document.documentElement.style.setProperty("--acc",`var(${TABC[t_]})`);
-  if(t_==="ov"&&!ovLoaded)loadOverview();
+  if(t_==="ov"&&!ovLoaded)loadOverview();else if(t_==="ov")fitOvAct();
   if(t_==="ct"&&!ctLoaded)loadContacts(true);
   if(t_==="pr"&&!prLoaded)loadProps(true);
   if(t_==="mp")loadMap();
@@ -274,22 +274,19 @@ function renderOverview(){
   const p=$("#p-ov"), o=OV, pr=o.props||{}, roles=o.roles||{};
   $("#cntCt").textContent=num(o.contacts_total);$("#cntPr").textContent=num(pr.current);
   const kp=(v,l,s,c,act)=>`<div class="card kpi${act?"":" static"}" style="--kc:var(${c})"${act?` data-go="${act}"`:""}><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
-  const maxR=Math.max(1,...Object.values(roles));
-  const order=["suspect","seller","buyer","suspect-seller","agent","agent-lead"];
+  /* Rollen in NEXUS verwijderd van Overzicht (Rick 30-10-2026): geen toegevoegde waarde */
   const d=o.req_daily_30d||[], mx=Math.max(1,...d.map(x=>x.n));
   const pts=d.map((x,i)=>`${(i/(d.length-1||1))*300},${66-(x.n/mx)*60}`).join(" ");
   p.innerHTML=`<div class="ov">
    <div class="card ov-web" id="ovWeb"><div class="loader sm">${L2("Websitecijfers laden…","Loading website figures…")}</div></div>
-   <div class="ov-col"><div class="card ov-hr" id="ovHr"><div class="loader sm"></div></div><div class="card ov-tom" id="ovTom"></div><div class="card ov-roles"><div class="hd"><h3>${t("ov.roles")}</h3><span class="sm muted">${t("ov.clickfilter")}</span></div>
-     <div class="scroll" style="flex:1;padding:6px 0">${order.map(r=>`<div class="rolebar" data-role="${r}" style="--rc:var(${(ROLE[r]||[])[1]})">
-       <span>${roleTag(r)}</span><div class="bar"><span style="width:${((roles[r]||0)/maxR*100).toFixed(1)}%"></span></div><span class="n">${num(roles[r]||0)}</span></div>`).join("")}
-     <div class="hd" style="border-top:1px solid var(--line);margin-top:6px"><h3>${t("ov.req30")}</h3><span class="sm muted">${t("ov.max",{n:mx})}</span></div>
+   <div class="ov-col"><div class="card ov-hr" id="ovHr"><div class="loader sm"></div></div><div class="card ov-tom" id="ovTom"></div><div class="card ov-roles"><div class="scroll" style="flex:1;padding:0 0 6px">
+     <div class="hd"><h3>${t("ov.req30")}</h3><span class="sm muted">${t("ov.max",{n:mx})}</span></div>
      <div class="spark"><svg viewBox="0 0 300 70" preserveAspectRatio="none"><defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ec4899" stop-opacity=".45"/><stop offset="1" stop-color="#ec4899" stop-opacity="0"/></linearGradient></defs>
        <polygon points="0,70 ${pts} 300,70" fill="url(#sg)"/><polyline points="${pts}" fill="none" stroke="#ec4899" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${(o.req_types_30d||[]).map(x=>`<span class="tag">${esc(rq(x.t))} · ${x.n}</span>`).join("")}</div></div>
      </div></div></div>
    <div class="card ov-act"><div class="hd"><h3>${t("ov.activity")}</h3><a class="sm muted" href="#ac">${t("ov.all")}</a></div>
-     <div class="scroll feed" style="flex:1">${feedHtml(o.activity)}</div></div>
+     <div class="scroll feed" id="ovActL">${feedHtml(o.activity)}</div></div>
    <div class="ov-side">
      <div class="card ov-recent" id="ovRecent"><div class="hd"><h3>${L2("Laatst bekeken op de site","Recently viewed on the site")}</h3><span class="sm muted" id="ovRecentN"></span></div>
        <div class="scroll feed" style="flex:1" id="ovRecentL"><div class="loader sm"></div></div></div>
@@ -303,9 +300,14 @@ function renderOverview(){
     if(tb==="pr"&&a){prStatus=a;prBuild="";buildStatusChips();buildBuildSeg();prLoaded=false}
     location.hash=tb;});
   p.querySelectorAll("[data-role]").forEach(r=>r.onclick=()=>{ctRole=r.dataset.role;buildRoleChips();ctLoaded=false;location.hash="ct"});
-  loadSiteStrip();loadHourly();
+  fitOvAct();loadSiteStrip();loadHourly();
   if(window.NEXUS_TOM)NEXUS_TOM.open($("#ovTom"),{rpc,lang:()=>LANG,num});
 }
+/* Aanvragen-paneel Overzicht: precies 10 regels hoog, meer = scrollen (Rick 30-10-2026) */
+function fitOvAct(){const l=$("#ovActL");if(!l)return;const its=[...l.children].slice(0,10);
+  if(l.children.length<=10){l.style.maxHeight="";return}
+  const h=its.reduce((a,e)=>a+e.offsetHeight,0);if(h>0)l.style.maxHeight=h+"px"}
+window.addEventListener("resize",()=>{if(curTab==="ov")fitOvAct()});
 /* ---------- websitecijfers op Overzicht: eigen meting (web_events) + formulieren (core.requests) ---------- */
 let SITE=null, siteDays=1, siteTimer=null; /* standaard Vandaag (Rick, 28-10-2026); 7 d / 30 d per klik */
 function siteAuto(){clearInterval(siteTimer);siteTimer=setInterval(()=>{if(curTab==="ov"&&!document.hidden&&$("#ovWeb")){loadSiteStrip(true);loadHourly()}},60000)}
