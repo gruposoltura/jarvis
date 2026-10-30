@@ -312,6 +312,8 @@ function setupComposer() {
   gtao = new GTAOPass(scene, camera, r.width, r.height);
   gtao.updateGtaoMaterial({ radius: 0.9, distanceExponent: 1, thickness: 1.2, scale: 1.25, samples: MOBILE ? 8 : 12, distanceFallOff: 1, screenSpaceRadius: false });
   gtao.blendIntensity = 0.85; gtao.enabled = AO;
+  /* sprites en gloed-effecten (brein, vuurballetjes, halo's) niet in de AO-normalenpass: anders tekenen ze een donker vlak */
+  const ov = gtao.overrideVisibility.bind(gtao); gtao.overrideVisibility = function () { ov(); scene.traverse((o) => { if (o.isSprite || o.userData.noAO) o.visible = false; }); };
   composer.addPass(gtao);
   composer.addPass(new OutputPass());
 }
@@ -1187,24 +1189,67 @@ function buildNeon(grp) {
     }
     /* halo: additief vlak net achter de letters, groter dan de tekst */
     const halo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: neonHaloTex(TXT), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
-    halo.scale.set(w * 1.42, w * 1.42 / 4, 1); halo.position.set(0, LH * 0.52, -0.16); halo.renderOrder = 5; sg.add(halo);
+    halo.scale.set(w * 1.42, w * 1.42 / 4, 1); halo.position.set(0, LH * 0.52, -0.16); halo.renderOrder = 5; halo.userData.noAO = true; sg.add(halo);
     if (!font) { halo.material.opacity = 1; halo.scale.multiplyScalar(0.8); }
     W_.neonHalo = halo;
   });
 }
+/* JARVIS-brein: het levende brein uit Office v2 (office-v2-assets/brain-core.mp4, zwarte achtergrond) als
+   billboard met additieve menging, zodat zwart wegvalt. Overzicht: boven het dak. Verdieping open: boven die afdeling. */
+let BRAIN_VIDEO = null, BRAIN_TEX = null;
+function brainTexture() {
+  if (BRAIN_TEX) return BRAIN_TEX;
+  const poster = new THREE.TextureLoader().load("office-v2-assets/brain-core.webp"); poster.colorSpace = THREE.SRGBColorSpace;
+  const mat = { tex: poster };
+  if (REDUCED) { BRAIN_TEX = mat; return mat; }
+  const v = document.createElement("video"); v.src = "office-v2-assets/brain-core.mp4"; v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute("playsinline", ""); v.crossOrigin = "anonymous"; v.preload = "auto";
+  BRAIN_VIDEO = v;
+  v.addEventListener("playing", () => { if (mat.vt) return; const vt = new THREE.VideoTexture(v); vt.colorSpace = THREE.SRGBColorSpace; mat.vt = vt; if (mat.onvideo) mat.onvideo(vt); }, { once: true });
+  const go = () => { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); };
+  go(); addEventListener("pointerdown", go, { once: true });
+  BRAIN_TEX = mat; return mat;
+}
+function edgeMask() {
+  const c = cvs(128, 128), x = c.getContext("2d"), g = x.createRadialGradient(64, 60, 0, 64, 60, 64);
+  g.addColorStop(0, "#fff"); g.addColorStop(0.72, "#fff"); g.addColorStop(1, "#000"); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return tex(c);
+}
+function spotTex() {
+  const c = cvs(128, 128), x = c.getContext("2d"), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, "rgba(0,150,255,.55)"); g.addColorStop(0.45, "rgba(0,170,255,.3)"); g.addColorStop(0.8, "rgba(0,190,255,.18)"); g.addColorStop(0.86, "rgba(80,220,255,.6)"); g.addColorStop(0.92, "rgba(0,190,255,0)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128); return tex(c);
+}
 function buildUfo(y) {
   const g = new THREE.Group(); g.position.set(W / 2, y, D / 2); world.add(g); W_.ufo = g;
-  const prof = [[0, -0.55], [1.2, -0.5], [2.6, -0.2], [3.4, 0], [2.6, 0.22], [1.6, 0.42], [0, 0.48]].map((p) => new THREE.Vector2(p[0], p[1]));
-  const body = new THREE.Mesh(new THREE.LatheGeometry(prof, 48), std("#c9d3dc", 0.25, 0.85)); body.castShadow = true; g.add(body);
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(1.25, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x9fe9ff, emissive: 0x22c8ff, emissiveIntensity: 0.9, transparent: true, opacity: 0.75, roughness: 0.05, metalness: 0.2 }));
-  dome.position.y = 0.42; g.add(dome);
-  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 2), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x7fe6ff, emissiveIntensity: 2.2 })); core.position.y = 0.85; g.add(core); g.userData.core = core;
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(3.0, 0.07, 8, 64), new THREE.MeshStandardMaterial({ color: 0x00d4ff, emissive: 0x00d4ff, emissiveIntensity: 2.5 })); ring.rotation.x = Math.PI / 2; ring.position.y = -0.02; g.add(ring);
-  const lights = new THREE.Group(); for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, s = new THREE.Mesh(G.sph6, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: k % 2 ? 0x00d4ff : 0xb58cff, emissiveIntensity: 2.5 })); s.scale.setScalar(0.11); s.position.set(Math.cos(a) * 2.75, -0.24, Math.sin(a) * 2.75); lights.add(s); } g.add(lights); g.userData.lights = lights;
-  const glow = new THREE.Mesh(new THREE.CircleGeometry(1.4, 32), new THREE.MeshBasicMaterial({ color: 0x8ff0ff, transparent: true, opacity: 0.85 })); glow.rotation.x = Math.PI / 2; glow.position.y = -0.56; g.add(glow);
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 3.4, 10, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0x7fe6ff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-  beam.position.y = -5.5; g.add(beam); g.userData.beam = beam;
-  g.traverse((o) => { if (o.isMesh) o.userData.brain = true; });
+  const t = brainTexture();
+  /* zwart -> transparant op basis van helderheid, zodat het brein ook op een lichte vloer goed leesbaar blijft */
+  const bm = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide,
+    uniforms: { map: { value: t.tex }, mask: { value: edgeMask() }, boost: { value: 1.25 }, glow: { value: 0 } },
+    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+    fragmentShader: "uniform sampler2D map; uniform sampler2D mask; uniform float boost; uniform float glow; varying vec2 vUv;\n" +
+      "void main(){ vec3 c = texture2D(map, vUv).rgb; float l = max(c.r, max(c.g, c.b)); float m = texture2D(mask, vUv).g;\n" +
+      " float a = smoothstep(0.035, 0.30, l) * m; vec3 col = c / max(l, 0.08) * mix(0.55, 1.0, smoothstep(0.05, 0.6, l)) * (boost + glow);\n" +
+      " gl_FragColor = vec4(col, a); }" });
+  bm.uniforms.map.value.colorSpace = THREE.SRGBColorSpace;
+  t.onvideo = (vt) => { bm.uniforms.map.value = vt; }; if (t.vt) t.onvideo(t.vt);
+  const brain = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.9), bm); brain.renderOrder = 6; brain.userData.noAO = true; g.add(brain); g.userData.core = brain;
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex("rgba(0,180,255,.55)"), color: 0x6fdcff, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false, opacity: 0.35 }));
+  halo.scale.set(1.7, 1.7, 1); halo.renderOrder = 5; g.add(halo); g.userData.halo = halo;
+  /* zachte lichtbundel van het brein omlaag naar de vloer (dak of open verdieping) */
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.55, 1, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0x7fe6ff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+  beam.userData.noAO = true; g.add(beam); g.userData.beam = beam;
+  beam.material.blending = THREE.NormalBlending; beam.material.color.set(0x3fc4ff);
+  /* lichtvlek op de vloer onder het brein: maakt zichtbaar dat het boven de afdeling zweeft */
+  const spot = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ map: spotTex(), transparent: true, opacity: 0.8, depthWrite: false, toneMapped: false }));
+  spot.rotation.x = -Math.PI / 2; spot.userData.noAO = true; spot.renderOrder = 2; g.add(spot); g.userData.spot = spot;
+  brain.userData.brain = true; halo.userData.brain = true;
+  g.userData.cur = null;
+}
+/* doelpositie en -grootte van het brein voor het huidige beeld */
+function brainTarget() {
+  const ff = VIEW.focusFloor;
+  if (ff == null) return { x: W / 2, y: W_.roofY + 9, z: D / 2, s: 11, floorY: W_.roofY };
+  /* naar voren en hoog: vanuit de standaardcamera zweeft het dan midden boven de open afdeling */
+  return { x: (OFF_X0 + OFF_X1) / 2, y: ff * FH + FH + 3.6, z: D * 0.72, s: 4.6, floorY: ff * FH };
 }
 function buildLifts(n) {
   LIFTS.forEach((L, k) => {
@@ -1348,7 +1393,7 @@ function updatePeople(now, dt) {
       else if (sg.phase === "in") { sg.d += WALK_V * dt; const w = walkAt(sg.pts, sg.d); p.root.position.set(w.x, L.y, w.z); p.root.rotation.y = lerpAng(p.root.rotation.y, w.dir, Math.min(1, dt * 10)); p.ph += WALK_V * dt * 5.2; poseWalk(p, p.ph); p.baseY = L.y; if (sg.d >= sg.len) { p.inCar = true; sg.phase = "ride"; } }
       else if (sg.phase === "ride") { p.baseY = L.y; p.root.position.set(spot[0], L.y, spot[1]); p.root.rotation.y = lerpAng(p.root.rotation.y, Math.PI, Math.min(1, dt * 5)); poseStand(p, t, false); p.floor = Math.round(L.y / FH);
         if (L.job === J && L.state === "openB") { sg.phase = "out"; sg.d = 0; sg.pts = [spot, [spot[0], LIFT_Z0 + 0.2], door]; sg.len = lineLen(sg.pts); } }
-      else if (sg.phase === "out") { sg.d += WALK_V * dt; const w = walkAt(sg.pts, sg.d); p.baseY = J.to * FH; p.root.position.set(w.x, p.baseY, w.z); p.root.rotation.y = lerpAng(p.root.rotation.y, w.dir, Math.min(1, dt * 10)); p.ph += WALK_V * dt * 5.2; poseWalk(p, p.ph); if (sg.d >= sg.len) { p.inCar = false; p.floor = J.to; nextSeg(p); } }
+      else if (sg.phase === "out") { sg.d += WALK_V * dt; const w = walkAt(sg.pts, sg.d); p.baseY = J.to * FH; p.floor = J.to; p.root.position.set(w.x, p.baseY, w.z); p.root.rotation.y = lerpAng(p.root.rotation.y, w.dir, Math.min(1, dt * 10)); p.ph += WALK_V * dt * 5.2; poseWalk(p, p.ph); if (sg.d >= sg.len) { p.inCar = false; p.floor = J.to; nextSeg(p); } }
     }
   });
 }
@@ -1517,25 +1562,35 @@ function queueBalls(prevRun) {
     if (working) for (let k2 = t0 + 7000; k2 < REFRESH_MS - 2000; k2 += 6000 + Math.random() * 2500) ballTimers.push(setTimeout(() => { const x = S.byId[a.agent_id]; if (x && st(x) === "working") fireBall(a.agent_id); }, k2));
   });
 }
-/* powerballen: agent -> gevel -> brein -> terug */
-const BALLS = [], BALL_TEX = glowTex("rgba(0,212,255,.9)");
+/* vuurballetjes: agent -> brein -> agent, in een boog. Op een open verdieping alleen voor agents op die verdieping;
+   in het overzicht recht omhoog door het gebouw naar het brein boven het dak (niet meer langs de gevel) */
+const BALLS = [], BALL_TEX = glowTex("rgba(0,212,255,.9)"), BALL_TEX2 = glowTex("rgba(0,150,255,.85)");
 function fireBall(id) {
   if (document.hidden || REDUCED || !W_.ufo) return; const p = W_.people[id]; if (!p || !p.present) return;
-  const make = (s) => { const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: BALL_TEX, color: 0x9ff3ff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); m.scale.setScalar(s); scene.add(m); return m; };
-  const head = make(0.75), trail = [make(0.5), make(0.36), make(0.24)];
-  BALLS.push({ p, head, trail, t0: performance.now(), dur: 4200 });
+  const ff = VIEW.focusFloor; if (ff != null && p.floor !== ff) return;
+  const k = ff == null ? 1 : 0.9;
+  /* kern additief (gloeit op donker), schil normaal gemengd zodat het balletje ook op de lichte vloer zichtbaar blijft */
+  const make = (sz, col, add) => { const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: add ? BALL_TEX : BALL_TEX2, color: col, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false, depthTest: false, transparent: true, toneMapped: false })); m.scale.setScalar(sz * k); m.renderOrder = 7; scene.add(m); return m; };
+  const shell = make(1.0, 0x22b8ff, false), head = make(0.62, 0xe8fdff, true), trail = [make(0.55, 0x3fc8ff, false), make(0.42, 0x2fb0ff, false), make(0.31, 0x1f98ff, false), make(0.22, 0x1580ff, false)];
+  head.userData.shell = shell;
+  BALLS.push({ p, head, trail, t0: performance.now(), dur: ff == null ? 4200 : 2800, side: Math.random() < 0.5 ? -1 : 1 });
 }
+const _ba = new THREE.Vector3(), _bu = new THREE.Vector3(), _bm = new THREE.Vector3();
 function ballPos(b, f, out) {
-  const P = b.p.root.position, a = new THREE.Vector3(P.x, P.y + 1.4, P.z), fa = new THREE.Vector3(P.x, P.y + 1.8, D + 1.2), u = W_.ufo.position.clone().add(new THREE.Vector3(0, -0.8, 0));
-  const up = f < 0.5 ? f * 2 : (1 - f) * 2; /* heen en terug */
-  if (up < 0.18) out.lerpVectors(a, fa, up / 0.18); else { const k = (up - 0.18) / 0.82, mid = new THREE.Vector3((fa.x + u.x) / 2 + 6, (fa.y + u.y) / 2, D + 7); const q = 1 - k; out.set(q * q * fa.x + 2 * q * k * mid.x + k * k * u.x, q * q * fa.y + 2 * q * k * mid.y + k * k * u.y, q * q * fa.z + 2 * q * k * mid.z + k * k * u.z); }
+  const P = b.p.root.position; _ba.set(P.x, b.p.baseY + 1.35, P.z); _bu.copy(W_.ufo.position);
+  const back = f >= 0.5, k = back ? (f - 0.5) * 2 : f * 2; /* heen en terug, terug via de andere kant van de boog */
+  const from = back ? _bu : _ba, to = back ? _ba : _bu;
+  _bm.set((_ba.x + _bu.x) / 2 + b.side * (back ? -1 : 1) * 1.6, Math.max(_ba.y, _bu.y) + (VIEW.focusFloor == null ? 2 : 0.8), (_ba.z + _bu.z) / 2 + 1.2);
+  if (VIEW.focusFloor == null) _bm.set(_ba.x + b.side * (back ? -1 : 1) * 1.2, (_ba.y + _bu.y) / 2, _ba.z);
+  const q = 1 - k; out.set(q * q * from.x + 2 * q * k * _bm.x + k * k * to.x, q * q * from.y + 2 * q * k * _bm.y + k * k * to.y, q * q * from.z + 2 * q * k * _bm.z + k * k * to.z);
   return out;
 }
 function updateBalls(now) {
   for (let i = BALLS.length - 1; i >= 0; i--) { const b = BALLS[i], f = (now - b.t0) / b.dur;
-    if (f >= 1) { [b.head].concat(b.trail).forEach((m) => { scene.remove(m); m.material.dispose(); }); BALLS.splice(i, 1); continue; }
-    ballPos(b, f, b.head.position); b.trail.forEach((m, k) => ballPos(b, Math.max(0, f - (k + 1) * 0.012), m.position));
-    if (W_.ufo && Math.abs(f - 0.5) < 0.02) W_.ufo.userData.pulse = now; }
+    if (f >= 1) { [b.head, b.head.userData.shell].filter(Boolean).concat(b.trail).forEach((m) => { scene.remove(m); m.material.dispose(); }); BALLS.splice(i, 1); continue; }
+    ballPos(b, f, b.head.position); if (b.head.userData.shell) b.head.userData.shell.position.copy(b.head.position); b.trail.forEach((m, k) => ballPos(b, Math.max(0, f - (k + 1) * 0.014), m.position));
+    const vis = isFloorVisible(b.p.floor) && (VIEW.focusFloor == null || b.p.floor === VIEW.focusFloor); b.head.visible = vis; if (b.head.userData.shell) b.head.userData.shell.visible = vis; b.trail.forEach((m) => { m.visible = vis; });
+    if (W_.ufo && Math.abs(f - 0.5) < 0.03) W_.ufo.userData.pulse = now; }
 }
 
 /* =================================================================== zwevende labels (HTML) */
@@ -1561,7 +1616,6 @@ function applyCut() {
   const ff = VIEW.focusFloor;
   W_.floors.forEach((fl) => { if (fl) { fl.grp.visible = ff == null || fl.i <= ff; fl.ceil.visible = fl.i !== ff; fl.ig.visible = ff == null || fl.i === ff; (fl.small || []).forEach((m) => { m.visible = ff != null; }); (fl.instMeshes || []).forEach((m) => { m.castShadow = fl.i === ff; }); } });
   if (W_.roof) W_.roof.visible = ff == null;
-  if (W_.ufo) W_.ufo.visible = ff == null;
   W_.lifts.forEach((L) => { L.car.visible = ff == null || L.y <= ff * FH + 0.5; });
   W_.persons.forEach((p) => { p.root.visible = p.present && (ff == null || p.floor === ff || (p.trip && p.floor <= ff)); const cs = ff != null && p.floor === ff; p.root.traverse((o) => { if (o.isMesh) o.castShadow = cs; }); });
   if (ff != null) { interior.position.set(W / 2, ff * FH + 3.0, D / 2 + 1); interior.intensity = 9; } else interior.intensity = 0;
@@ -1611,7 +1665,7 @@ function focusAgent(a) {
 let MARK = null;
 function markAgent(p, color) {
   if (!MARK) { MARK = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.78, 48), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9, depthWrite: false, depthTest: false, toneMapped: false, side: THREE.DoubleSide }));
-    MARK.rotation.x = -Math.PI / 2; MARK.renderOrder = 3; scene.add(MARK); }
+    MARK.rotation.x = -Math.PI / 2; MARK.renderOrder = 3; MARK.userData.noAO = true; scene.add(MARK); }
   MARK.material.color.set(color || "#00d4ff"); MARK.userData.p = p; MARK.visible = true;
 }
 function updateMark(now) {
@@ -1631,7 +1685,7 @@ function pick(ev) {
   const objs = [];
   W_.persons.forEach((p) => { if (!p.root.visible) return; if (p.proxy) objs.push(p.proxy); else p.root.traverse((o) => { if (o.isMesh) objs.push(o); }); });
   W_.floorPick.forEach((m) => { if (m.parent && m.parent.visible) objs.push(m); });
-  if (W_.ufo) W_.ufo.traverse((o) => { if (o.isMesh) objs.push(o); });
+  if (W_.ufo) W_.ufo.traverse((o) => { if (o.isMesh || o.isSprite) objs.push(o); });
   const hits = ray.intersectObjects(objs, false);
   for (const h of hits) { const o = h.object; if (o.userData.agentId) return { type: "agent", id: o.userData.agentId }; if (o.userData.brain) return { type: "brain" }; if (o.userData.floor != null) return { type: "floor", i: o.userData.floor }; }
   return null;
@@ -1867,8 +1921,13 @@ function frame(now) {
   const ws = SCREEN_MATS; for (const k in ws) if (k.endsWith("working") && ws[k].map) ws[k].map.offset.y = (now / 9000) % 1;
   updateMark(now);
   if (W_.neonHalo) W_.neonHalo.material.opacity = 0.86 + Math.sin(now / 260) * 0.05 + (Math.sin(now / 37) > 0.995 ? -0.25 : 0);
-  if (W_.ufo) { const u = W_.ufo; u.rotation.y += dt * 0.25; u.position.y = W_.roofY + 10.5 + Math.sin(now / 1400) * 0.35; u.userData.lights.rotation.y -= dt * 0.8;
-    const pulse = u.userData.pulse && now - u.userData.pulse < 600 ? 1 - (now - u.userData.pulse) / 600 : 0; u.userData.core.material.emissiveIntensity = 2.2 + pulse * 3 + Math.sin(now / 500) * 0.3; u.userData.beam.material.opacity = 0.08 + pulse * 0.12; }
+  if (W_.ufo) { const u = W_.ufo, T = brainTarget(), c = u.userData.cur || (u.userData.cur = { x: T.x, y: T.y, z: T.z, s: T.s }), e = Math.min(1, dt * 3.2);
+    c.x += (T.x - c.x) * e; c.y += (T.y - c.y) * e; c.z += (T.z - c.z) * e; c.s += (T.s - c.s) * e;
+    u.position.set(c.x, c.y + Math.sin(now / 1400) * c.s * 0.04, c.z); u.userData.core.scale.set(c.s, c.s, 1); u.userData.core.quaternion.copy(camera.quaternion);
+    const bh = Math.max(0.5, u.position.y - T.floorY - c.s * 0.3), bw = c.s * 0.7; u.userData.beam.scale.set(bw, bh, bw); u.userData.beam.position.y = -c.s * 0.3 - bh / 2;
+    const sp = u.userData.spot; sp.position.y = T.floorY + 0.03 - u.position.y; sp.scale.setScalar(c.s * 0.75);
+    const pulse = u.userData.pulse && now - u.userData.pulse < 700 ? 1 - (now - u.userData.pulse) / 700 : 0;
+    u.userData.halo.scale.setScalar(c.s * (1.5 + pulse * 0.35)); u.userData.halo.material.opacity = 0.22 + pulse * 0.5 + Math.sin(now / 900) * 0.04; u.userData.core.material.uniforms.glow.value = pulse * 0.6; u.userData.beam.material.opacity = 0.1 + pulse * 0.12; u.userData.spot.material.opacity = 0.7 + pulse * 0.3; }
   if (frameN % (VIEW.focusFloor == null ? 30 : 2) === 0) renderer.shadowMap.needsUpdate = true;
   if (frameN % 10 === 0) W_.persons.forEach((p) => { const far = camera.position.distanceTo(p.root.position) > (p.rig ? 95 : 62) && !p.trip; if (far !== p.lod) { p.lod = far; p.limbs.forEach((l) => { l.visible = !far; }); } });
   updateLabels();
