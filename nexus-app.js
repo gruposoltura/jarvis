@@ -280,7 +280,7 @@ function renderOverview(){
   const pts=d.map((x,i)=>`${(i/(d.length-1||1))*300},${66-(x.n/mx)*60}`).join(" ");
   p.innerHTML=`<div class="ov">
    <div class="card ov-web" id="ovWeb"><div class="loader sm">${L2("Websitecijfers laden…","Loading website figures…")}</div></div>
-   <div class="ov-col"><div class="card ov-tom" id="ovTom"></div><div class="card ov-roles"><div class="hd"><h3>${t("ov.roles")}</h3><span class="sm muted">${t("ov.clickfilter")}</span></div>
+   <div class="ov-col"><div class="card ov-hr" id="ovHr"><div class="loader sm"></div></div><div class="card ov-tom" id="ovTom"></div><div class="card ov-roles"><div class="hd"><h3>${t("ov.roles")}</h3><span class="sm muted">${t("ov.clickfilter")}</span></div>
      <div class="scroll" style="flex:1;padding:6px 0">${order.map(r=>`<div class="rolebar" data-role="${r}" style="--rc:var(${(ROLE[r]||[])[1]})">
        <span>${roleTag(r)}</span><div class="bar"><span style="width:${((roles[r]||0)/maxR*100).toFixed(1)}%"></span></div><span class="n">${num(roles[r]||0)}</span></div>`).join("")}
      <div class="hd" style="border-top:1px solid var(--line);margin-top:6px"><h3>${t("ov.req30")}</h3><span class="sm muted">${t("ov.max",{n:mx})}</span></div>
@@ -303,12 +303,35 @@ function renderOverview(){
     if(tb==="pr"&&a){prStatus=a;prBuild="";buildStatusChips();buildBuildSeg();prLoaded=false}
     location.hash=tb;});
   p.querySelectorAll("[data-role]").forEach(r=>r.onclick=()=>{ctRole=r.dataset.role;buildRoleChips();ctLoaded=false;location.hash="ct"});
-  loadSiteStrip();
+  loadSiteStrip();loadHourly();
   if(window.NEXUS_TOM)NEXUS_TOM.open($("#ovTom"),{rpc,lang:()=>LANG,num});
 }
 /* ---------- websitecijfers op Overzicht: eigen meting (web_events) + formulieren (core.requests) ---------- */
 let SITE=null, siteDays=1, siteTimer=null; /* standaard Vandaag (Rick, 28-10-2026); 7 d / 30 d per klik */
-function siteAuto(){clearInterval(siteTimer);siteTimer=setInterval(()=>{if(curTab==="ov"&&!document.hidden&&$("#ovWeb"))loadSiteStrip(true)},60000)}
+function siteAuto(){clearInterval(siteTimer);siteTimer=setInterval(()=>{if(curTab==="ov"&&!document.hidden&&$("#ovWeb")){loadSiteStrip(true);loadHourly()}},60000)}
+/* bezoekers per uur: vandaag (lijn) tegen gisteren (stippellijn), 24 uur, Madrid-tijd; rpc nexus_site_hourly (Rick 30-10-2026) */
+let HR=null;
+async function loadHourly(){const box=$("#ovHr");if(!box)return;
+  try{HR=await rpc("nexus_site_hourly")}catch(e){if(!HR){box.innerHTML=`<div class="empty sm">${esc(e.message)}</div>`;return}}
+  renderHourly()}
+function renderHourly(){
+  const box=$("#ovHr");if(!box||!HR)return;
+  const H=HR.hours||[], W=300, Ht=90, P=4;
+  const mx=Math.max(1,...H.map(x=>Math.max(x.today||0,x.yesterday||0)));
+  const X=i=>(i/23)*W, Y=v=>Ht-P-(v/mx)*(Ht-2*P);
+  const line=k=>H.filter(x=>x[k]!=null).map(x=>`${X(x.h).toFixed(1)},${Y(x[k]).toFixed(1)}`).join(" ");
+  const tl=line("today"), last=H.filter(x=>x.today!=null).pop();
+  const hh=h=>`${String(h).padStart(2,"0")}:00`;
+  box.innerHTML=`<div class="hd"><h3>${L2("Bezoekers per uur","Visitors per hour")}</h3>
+     <span class="sm muted hr-lg"><i class="hr-k t"></i>${L2("vandaag","today")} <b>${num(HR.today_total||0)}</b> <i class="hr-k y"></i>${L2("gisteren","yesterday")} <b>${num(HR.yesterday_total||0)}</b></span></div>
+   <div class="hr-ch"><svg viewBox="0 0 ${W} ${Ht}" preserveAspectRatio="none">
+     ${[0,6,12,18].map(h=>`<line x1="${X(h)}" x2="${X(h)}" y1="0" y2="${Ht}" class="hr-g"/>`).join("")}
+     <polyline points="${line("yesterday")}" class="hr-y" vector-effect="non-scaling-stroke"/>
+     ${tl?`<polygon points="0,${Ht} ${tl} ${X(last.h).toFixed(1)},${Ht}" class="hr-a"/><polyline points="${tl}" class="hr-t" vector-effect="non-scaling-stroke"/>`:""}
+     ${H.map(x=>`<rect x="${(X(x.h)-W/48).toFixed(1)}" y="0" width="${(W/24).toFixed(1)}" height="${Ht}" fill="transparent"><title>${hh(x.h)} · ${L2("vandaag","today")}: ${x.today==null?"—":num(x.today)} · ${L2("gisteren","yesterday")}: ${num(x.yesterday)}</title></rect>`).join("")}
+   </svg>${last?`<span class="hr-dot" style="left:${(X(last.h)/W*100).toFixed(2)}%;top:${(Y(last.today)/Ht*100).toFixed(2)}%"></span>`:""}</div>
+   <div class="hr-ax">${[0,6,12,18,23].map(h=>`<span style="left:${(X(h)/W*100).toFixed(2)}%">${hh(h)}</span>`).join("")}</div>`;
+}
 async function loadSiteStrip(force){
   const box=$("#ovWeb");if(!box)return;
   if(!SITE||force||SITE.days!==siteDays){try{SITE=await rpc("nexus_site_overview",{p_days:siteDays})}catch(e){if(!SITE)box.innerHTML=`<div class="empty sm">${esc(e.message)}</div>`;return}}

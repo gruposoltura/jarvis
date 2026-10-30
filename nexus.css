@@ -1585,3 +1585,17 @@ html[data-theme="light"] .fl-pop{background:rgba(15,23,42,.35)}
 @keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
 @media (prefers-reduced-motion:reduce){.live-pill.on i{animation:none}}
 @media (max-width:700px){.live-pill span{display:none}.live-pill{margin-right:8px}}
+
+/* Overzicht: bezoekers per uur vandaag vs gisteren (30-10-2026) */
+.ov-hr{flex:none;padding-bottom:10px}
+.hr-lg{display:flex;align-items:center;gap:5px;white-space:nowrap}.hr-lg b{color:var(--tx);margin-right:6px}
+.hr-k{display:inline-block;width:14px;height:0;border-top:2px solid #3b82f6}.hr-k.y{border-top:2px dashed var(--tx3)}
+.hr-ch{position:relative;height:96px;margin:4px 12px 0}
+.hr-ch svg{width:100%;height:100%;display:block;overflow:visible}
+.hr-g{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.hr-y{fill:none;stroke:var(--tx3);stroke-width:1.5;stroke-dasharray:4 3}
+.hr-t{fill:none;stroke:#3b82f6;stroke-width:2;stroke-linejoin:round}
+.hr-a{fill:#3b82f6;opacity:.12}
+.hr-dot{position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.25);pointer-events:none}
+.hr-ax{position:relative;height:14px;margin:4px 12px 0;font-size:calc(10px*var(--fs,1));color:var(--tx3)}
+.hr-ax span{position:absolute;transform:translateX(-50%)}.hr-ax span:first-child{transform:none}.hr-ax span:last-child{transform:translateX(-100%)}
