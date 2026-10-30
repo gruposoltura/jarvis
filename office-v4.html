@@ -1016,6 +1016,83 @@ function deptInterior(fl, f, d, m) {
   for (let k = si, j = 0; k < slots.length; k++, j++) decorSlot(fl, f, slots[k], decor[(j + hash(d.name)) % decor.length], m, r);
   backZone(fl, f, m, r, d.name);
   frontZone(fl, f, m, r, d.name);
+  brainStation(fl, f, d, m, r);
+}
+/* The Brain-terminal in de hoek rechtsachter, tegen de achterwand en met het scherm naar de camera:
+   breed bureau, groot gebogen scherm, stoel ervoor, bordje THE BRAIN op een stokje boven het scherm. Lokale vloercoordinaten. */
+const BS = { x: 21.0, wallZ: 0.42, deskZ: 0.9, seatZ: 1.6, R: 2.0, L: 1.12, H: 0.82, Y0: 0.98 };
+function brainStation(fl, f, d, m, r) {
+  const xc = BS.x, R = BS.R, cz = BS.wallZ + R;
+  /* bureau 2,5 m breed langs de achterwand; lokaal -z = kant van de gebruiker (wereld +z) */
+  const dk = f.sub(xc, 0, BS.deskZ, Math.PI);
+  dk.box(2.5, 0.04, 0.85, M_.oak, 0, 0.735, 0);
+  [-1.18, 1.18].forEach((lx) => { dk.box(0.05, 0.71, 0.05, M_.steel, lx, 0.36, -0.36).box(0.05, 0.71, 0.05, M_.steel, lx, 0.36, 0.36).box(0.06, 0.03, 0.78, M_.steel, lx, 0.015, 0); });
+  dk.box(2.3, 0.08, 0.2, m.felt, 0, 0.6, 0.3);
+  keyboardMouse(dk, 0, -0.25, 0, () => 0.9);
+  mug(dk, -0.85, 0.753, -0.12, "#ffffff");
+  /* schermvoet */
+  dk.box(0.36, 0.014, 0.22, M_.steel, 0, 0.76, 0.3).box(0.06, 0.32, 0.05, M_.steel, 0, 0.92, 0.36);
+  realChair(fl, f, xc, BS.seatZ, Math.PI, m.color, m.fabric);
+  /* gebogen scherm: cilindersegment rond het hoofd van de gebruiker */
+  const g = new THREE.Group(); g.position.set(xc, 0, cz); fl.grp.add(g);
+  const th0 = Math.PI - BS.L / 2, yc = BS.Y0 + BS.H / 2;
+  const cvsS = cvs(1024, 380), tx = new THREE.CanvasTexture(cvsS); tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = THREE.RepeatWrapping; tx.repeat.x = -1; tx.offset.x = 1;
+  const scrMat = new THREE.MeshBasicMaterial({ map: tx, toneMapped: false, side: THREE.DoubleSide, color: 0x8a96a8 });
+  const scr = new THREE.Mesh(new THREE.CylinderGeometry(R, R, BS.H, 40, 1, true, th0, BS.L), scrMat); scr.position.y = yc; g.add(scr);
+  const back = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.03, R + 0.03, BS.H + 0.05, 40, 1, true, th0 - 0.012, BS.L + 0.024), new THREE.MeshStandardMaterial({ color: 0x15181d, roughness: 0.45, metalness: 0.5, side: THREE.DoubleSide })); back.position.y = yc; back.castShadow = true; g.add(back);
+  /* gloed aan de buitenrand: groter, achter het scherm, additief */
+  const glowM = new THREE.MeshBasicMaterial({ map: glowTex("rgba(0,190,255,.85)"), color: new THREE.Color(d.color).lerp(new THREE.Color("#7fe6ff"), 0.55), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+  const glow = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.08, R + 0.08, BS.H * 1.75, 40, 1, true, th0 - BS.L * 0.14, BS.L * 1.28), glowM); glow.position.y = yc; glow.renderOrder = 4; glow.userData.noAO = true; g.add(glow);
+  /* lichtrand boven en onder het scherm (gaat aan tijdens het raadplegen) */
+  const rimM = new THREE.MeshBasicMaterial({ color: 0x26313b, toneMapped: false, side: THREE.DoubleSide });
+  [BS.Y0 - 0.012, BS.Y0 + BS.H + 0.012].forEach((y) => { const rim = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.004, R - 0.004, 0.022, 40, 1, true, th0, BS.L), rimM); rim.position.y = y; g.add(rim); });
+  /* stokje + bordje THE BRAIN, met lampje */
+  const topZ = BS.wallZ + 0.03;
+  f.box(0.025, 0.42, 0.025, M_.steel, xc, BS.Y0 + BS.H + 0.23, topZ);
+  const sg = sign(fl.grp, "THE BRAIN", d.color, 1.5, 0.36, xc, BS.Y0 + BS.H + 0.6, topZ + 0.03, 0, { scale: 0.56 });
+  const led = new THREE.Mesh(G.sph6, new THREE.MeshBasicMaterial({ color: 0x24303a, toneMapped: false })); led.scale.setScalar(0.035); led.position.set(xc + 0.68, BS.Y0 + BS.H + 0.6 - 0.12, topZ + 0.06); fl.grp.add(led);
+  const ledBezel = new THREE.Mesh(G.sph6, led.material); ledBezel.scale.setScalar(0.022); ledBezel.position.set(xc, BS.Y0 + 0.03, BS.wallZ + 0.1); fl.grp.add(ledBezel);
+  /* looproute vanaf het gangpad: langs de tussenwand naar achteren, achter de eilanden langs, dan achter de stoel */
+  const path = [[PART_X - 0.48, AISLE], [PART_X - 0.48, 2.25], [xc, 2.25], [xc, BS.seatZ]];
+  fl.brain = { fl, d, tex: tx, cvs: cvsS, scrMat, glowM, rimM, led, sign: sg, seat: { floor: fl.i, x: xc, z: BS.seatZ, fwd: [0, -1], kbD: BS.seatZ - (BS.deskZ + 0.25), ry: Math.PI }, path, user: null, reserved: null, act: 0, lastDraw: 0, lines: null };
+  drawBrainScreen(fl.brain, 0, null);
+}
+const BRAIN_LINES = ["context ophalen", "The Bible: scorecard top 3", "playbook-items gefilterd", "eerdere runs vergeleken", "prompt opgebouwd", "model: antwoord ontvangen", "toon- en merkregels getoetst", "resultaat samengevat", "bronnen gekoppeld", "klaar - terug naar bureau"];
+function drawBrainScreen(bs, k, p) {
+  const c = bs.cvs, x = c.getContext("2d"), w = c.width, h = c.height, col = bs.d.color;
+  const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#0a1626"); g.addColorStop(1, "#06101c"); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  x.fillStyle = col; x.fillRect(0, 0, w, 34); x.fillStyle = "#ffffff"; x.font = "700 22px 'Segoe UI', system-ui, sans-serif"; x.textBaseline = "middle"; x.fillText("THE BRAIN  ·  JARVIS", 22, 18);
+  x.textAlign = "right"; x.fillText(bs.d.name, w - 22, 18); x.textAlign = "left";
+  if (!p) { /* rust: logo-achtig motief */
+    x.strokeStyle = "rgba(90,200,255,.35)"; x.lineWidth = 2; for (let i = 0; i < 5; i++) { x.beginPath(); x.ellipse(w / 2, h / 2 + 16, 60 + i * 34, 40 + i * 20, 0, 0, 7); x.stroke(); }
+    x.fillStyle = "rgba(160,220,255,.6)"; x.font = "600 26px 'Segoe UI', system-ui, sans-serif"; x.textAlign = "center"; x.fillText("wacht op een vraag", w / 2, h / 2 + 16); x.textAlign = "left";
+  } else {
+    if (!bs.lines) { const r = rnd(p.a.agent_id + Date.now()); bs.lines = ["> vraag van " + p.a.agent_name].concat(BRAIN_LINES.slice(0, 9).filter(() => r() < 0.78)).concat(["✓ " + BRAIN_LINES[9]]); }
+    const L = bs.lines, per = 1 / L.length; x.font = "500 25px ui-monospace, Consolas, monospace";
+    L.forEach((ln, i) => { const f0 = i * per; if (k < f0) return; const n = Math.min(ln.length, Math.floor(((k - f0) / per) * ln.length * 1.4)), y = 64 + i * 30; if (y > h - 12) return;
+      x.fillStyle = i === 0 ? "#ffd479" : i === L.length - 1 ? "#7dffb0" : "#8fe3ff"; x.fillText(ln.slice(0, n) + (n < ln.length && Math.floor(performance.now() / 250) % 2 ? "▌" : ""), 24, y); });
+    x.fillStyle = "rgba(143,227,255,.18)"; x.fillRect(24, h - 18, (w - 48), 6); x.fillStyle = col; x.fillRect(24, h - 18, (w - 48) * Math.min(1, k), 6);
+  }
+  bs.tex.needsUpdate = true;
+}
+/* scherm, gloed, lampje en licht van de terminals bijwerken */
+let BRAIN_LIGHT = null;
+function updateBrainStations(now) {
+  if (!BRAIN_LIGHT) { BRAIN_LIGHT = new THREE.PointLight(0x7fe0ff, 0, 5, 1.4); scene.add(BRAIN_LIGHT); }
+  let lit = null;
+  W_.floors.forEach((fl) => { const bs = fl && fl.brain; if (!bs) return;
+    const p = bs.user, sg = p && p.trip && p.trip.segs[p.trip.i], on = !!(sg && sg.t === "brain" && sg.seated);
+    bs.act += ((on ? 1 : 0) - bs.act) * Math.min(1, 0.06 * (1 + (on ? 1 : 2)));
+    const vis = isFloorVisible(fl.i) && (VIEW.focusFloor == null || VIEW.focusFloor === fl.i);
+    bs.glowM.opacity = bs.act * (0.95 + Math.sin(now / 300) * 0.05);
+    bs.rimM.color.set("#26313b").lerp(bs.glowM.color, bs.act);
+    bs.scrMat.color.setScalar(0.55 + bs.act * 0.45);
+    bs.led.material.color.set(bs.act > 0.5 ? "#39ff9a" : "#24303a");
+    if (on && vis && now - bs.lastDraw > 110) { bs.lastDraw = now; drawBrainScreen(bs, Math.min(1, (SIM - sg.t0) / sg.ms), p); }
+    else if (!on && bs.lines) { bs.lines = null; drawBrainScreen(bs, 0, null); }
+    if (bs.act > 0.05 && vis && (!lit || fl.i === VIEW.focusFloor)) lit = bs;
+  });
+  if (lit) { BRAIN_LIGHT.position.set(BS.x, lit.fl.i * FH + BS.Y0 + BS.H / 2, BS.wallZ + 0.6); BRAIN_LIGHT.color.set(lit.d.color).lerp(new THREE.Color("#9fe8ff"), 0.6); BRAIN_LIGHT.intensity = lit.act * 6; } else BRAIN_LIGHT.intensity = 0;
 }
 function island(fl, f, s, members, m, r) {
   const isl = f.sub(s.cx, 0, s.rz, 0);
@@ -1075,7 +1152,7 @@ function decorSlot(fl, f, s, kind, m, r) {
 function backZone(fl, f, m, r, seed) {
   const items = ["side", "printer", "plant", "flip", "lockers", "side", "plant", "cooler"];
   let x = 1.4; const rr = rnd("bz" + seed);
-  for (let k = 0; k < items.length && x < PART_X - 1; k++) {
+  for (let k = 0; k < items.length && x < 16.9; k++) { /* rechtsachter staat de The Brain-terminal */
     const it = items[(k + hash(seed)) % items.length];
     if (it === "side") { if (place(fl, "sideboard", x + 1.0, 0, 0.32, 0)) { place(fl, "vase", x + 0.4, PROTO.sideboard.size.y, 0.3, 0); place(fl, "succulent", x + 1.6, PROTO.sideboard.size.y, 0.3, 1); } else sideboard(f.sub(x + 1.0, 0, 0.45, 0), 2.0, 14); x += 2.6; }
     else if (it === "printer") { if (!place(fl, "printer", x + 0.3, 0, 0.45, 0)) printer(f.sub(x + 0.3, 0, 0.55, 0)); x += 1.0; }
@@ -1150,7 +1227,6 @@ function buildRoof(i) {
   b.build(grp);
   W_.roofY = y;
   buildNeon(grp);
-  buildUfo(y + 10.5);
 }
 /* neon-logo SOLTURA op de dakrand, Soltura-rood #C63232 (brandcard), gloed zonder bloom: kern + halo-vlak + rood licht */
 const NEON_RED = "#C63232";
@@ -1193,63 +1269,6 @@ function buildNeon(grp) {
     if (!font) { halo.material.opacity = 1; halo.scale.multiplyScalar(0.8); }
     W_.neonHalo = halo;
   });
-}
-/* JARVIS-brein: het levende brein uit Office v2 (office-v2-assets/brain-core.mp4, zwarte achtergrond) als
-   billboard met additieve menging, zodat zwart wegvalt. Overzicht: boven het dak. Verdieping open: boven die afdeling. */
-let BRAIN_VIDEO = null, BRAIN_TEX = null;
-function brainTexture() {
-  if (BRAIN_TEX) return BRAIN_TEX;
-  const poster = new THREE.TextureLoader().load("office-v2-assets/brain-core.webp"); poster.colorSpace = THREE.SRGBColorSpace;
-  const mat = { tex: poster };
-  if (REDUCED) { BRAIN_TEX = mat; return mat; }
-  const v = document.createElement("video"); v.src = "office-v2-assets/brain-core.mp4"; v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute("playsinline", ""); v.crossOrigin = "anonymous"; v.preload = "auto";
-  BRAIN_VIDEO = v;
-  v.addEventListener("playing", () => { if (mat.vt) return; const vt = new THREE.VideoTexture(v); vt.colorSpace = THREE.SRGBColorSpace; mat.vt = vt; if (mat.onvideo) mat.onvideo(vt); }, { once: true });
-  const go = () => { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); };
-  go(); addEventListener("pointerdown", go, { once: true });
-  BRAIN_TEX = mat; return mat;
-}
-function edgeMask() {
-  const c = cvs(128, 128), x = c.getContext("2d"), g = x.createRadialGradient(64, 60, 0, 64, 60, 64);
-  g.addColorStop(0, "#fff"); g.addColorStop(0.72, "#fff"); g.addColorStop(1, "#000"); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return tex(c);
-}
-function spotTex() {
-  const c = cvs(128, 128), x = c.getContext("2d"), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
-  g.addColorStop(0, "rgba(0,150,255,.55)"); g.addColorStop(0.45, "rgba(0,170,255,.3)"); g.addColorStop(0.8, "rgba(0,190,255,.18)"); g.addColorStop(0.86, "rgba(80,220,255,.6)"); g.addColorStop(0.92, "rgba(0,190,255,0)"); g.addColorStop(1, "rgba(0,0,0,0)");
-  x.fillStyle = g; x.fillRect(0, 0, 128, 128); return tex(c);
-}
-function buildUfo(y) {
-  const g = new THREE.Group(); g.position.set(W / 2, y, D / 2); world.add(g); W_.ufo = g;
-  const t = brainTexture();
-  /* zwart -> transparant op basis van helderheid, zodat het brein ook op een lichte vloer goed leesbaar blijft */
-  const bm = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide,
-    uniforms: { map: { value: t.tex }, mask: { value: edgeMask() }, boost: { value: 1.25 }, glow: { value: 0 } },
-    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-    fragmentShader: "uniform sampler2D map; uniform sampler2D mask; uniform float boost; uniform float glow; varying vec2 vUv;\n" +
-      "void main(){ vec3 c = texture2D(map, vUv).rgb; float l = max(c.r, max(c.g, c.b)); float m = texture2D(mask, vUv).g;\n" +
-      " float a = smoothstep(0.035, 0.30, l) * m; vec3 col = c / max(l, 0.08) * mix(0.55, 1.0, smoothstep(0.05, 0.6, l)) * (boost + glow);\n" +
-      " gl_FragColor = vec4(col, a); }" });
-  bm.uniforms.map.value.colorSpace = THREE.SRGBColorSpace;
-  t.onvideo = (vt) => { bm.uniforms.map.value = vt; }; if (t.vt) t.onvideo(t.vt);
-  const brain = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.9), bm); brain.renderOrder = 6; brain.userData.noAO = true; g.add(brain); g.userData.core = brain;
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex("rgba(0,180,255,.55)"), color: 0x6fdcff, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false, opacity: 0.35 }));
-  halo.scale.set(1.7, 1.7, 1); halo.renderOrder = 5; g.add(halo); g.userData.halo = halo;
-  /* zachte lichtbundel van het brein omlaag naar de vloer (dak of open verdieping) */
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.55, 1, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0x7fe6ff, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
-  beam.userData.noAO = true; g.add(beam); g.userData.beam = beam;
-  beam.material.blending = THREE.NormalBlending; beam.material.color.set(0x3fc4ff);
-  /* lichtvlek op de vloer onder het brein: maakt zichtbaar dat het boven de afdeling zweeft */
-  const spot = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ map: spotTex(), transparent: true, opacity: 0.8, depthWrite: false, toneMapped: false }));
-  spot.rotation.x = -Math.PI / 2; spot.userData.noAO = true; spot.renderOrder = 2; g.add(spot); g.userData.spot = spot;
-  brain.userData.brain = true; halo.userData.brain = true;
-  g.userData.cur = null;
-}
-/* doelpositie en -grootte van het brein voor het huidige beeld */
-function brainTarget() {
-  const ff = VIEW.focusFloor;
-  if (ff == null) return { x: W / 2, y: W_.roofY + 9, z: D / 2, s: 11, floorY: W_.roofY };
-  /* naar voren en hoog: vanuit de standaardcamera zweeft het dan midden boven de open afdeling */
-  return { x: (OFF_X0 + OFF_X1) / 2, y: ff * FH + FH + 3.6, z: D * 0.72, s: 4.6, floorY: ff * FH };
 }
 function buildLifts(n) {
   LIFTS.forEach((L, k) => {
@@ -1328,7 +1347,7 @@ function chooseLift(from, to, seed) {
   const load = W_.lifts.map((L) => L.queue.length + (L.job ? 1 : 0));
   return load[0] === load[1] ? hash(seed) & 1 : (load[0] < load[1] ? 0 : 1);
 }
-function segTime(segs) { let t = 0; segs.forEach((s) => { if (s.t === "walk") t += lineLen(s.pts) / WALK_V * 1000; else if (s.t === "lift") t += 9000 + Math.abs(s.to - s.from) * FH / 3.2 * 1000; else if (s.t === "stay") t += s.ms; }); return t / SPEED; }
+function segTime(segs) { let t = 0; segs.forEach((s) => { if (s.t === "walk") t += lineLen(s.pts) / WALK_V * 1000; else if (s.t === "lift") t += 9000 + Math.abs(s.to - s.from) * FH / 3.2 * 1000; else if (s.t === "stay" || s.t === "brain") t += s.ms; }); return t / SPEED; }
 function startSeg(p) {
   const sg = p.trip.segs[p.trip.i]; if (!sg) { p.trip = null; seatPerson(p); return; }
   sg.t0 = SIM; sg.d = 0;
@@ -1337,6 +1356,7 @@ function startSeg(p) {
   if (sg.t === "lift") { sg.phase = "wait"; requestLift(sg, p);
     if (sg.k !== sg.k0) { sg.phase = "shift"; sg.d = 0; sg.pts = [[LIFTS[sg.k0].x, LIFT_DOOR_Z], [LIFTS[sg.k].x, LIFT_DOOR_Z]]; sg.len = lineLen(sg.pts); }
     const nx = p.trip.segs[p.trip.i + 1]; if (sg.k !== sg.k0 && nx && nx.t === "walk") nx.pts.splice(0, 4, ...fromLift(sg.k)); }
+  if (sg.t === "brain") { sg.seated = false; sg.bs.user = p; sg.bs.reserved = null; }
   if (sg.t === "home") { p.trip = null; seatPerson(p); }
 }
 function nextSeg(p) { p.trip.i++; startSeg(p); }
@@ -1382,6 +1402,11 @@ function updatePeople(now, dt) {
       p.root.position.set(w.x, p.baseY, w.z); p.root.rotation.y = lerpAng(p.root.rotation.y, w.dir, Math.min(1, dt * 10));
       p.ph += WALK_V * dt * 5.2; poseWalk(p, p.ph);
       if (sg.d >= sg.len) nextSeg(p);
+    } else if (sg.t === "brain") {
+      /* aan de terminal: zitten, typen; daarna weer op en terug */
+      const bs = sg.bs, S2 = bs.seat; p.root.position.set(S2.x, p.baseY, S2.z); p.root.rotation.y = S2.ry; sg.seated = true;
+      poseSit(p, t, true, 0); if (p.rig && p.root.visible) typeIK(p, t, S2);
+      if (SIM - sg.t0 >= sg.ms) { bs.user = null; sg.seated = false; nextSeg(p); }
     } else if (sg.t === "stay") {
       if (sg.face) p.root.rotation.y = lerpAng(p.root.rotation.y, Math.atan2(sg.face[0] - p.root.position.x, sg.face[1] - p.root.position.z), Math.min(1, dt * 6));
       poseStand(p, t, sg.talk);
@@ -1430,22 +1455,26 @@ function updateScreenLights(t) {
     const sc = p.a._screen, wp = sc.getWorldPosition(_v1); l.position.set(wp.x, wp.y + 0.05, wp.z + (p.a._seat.z - sc.position.z) * 0.35);
     l.color.set(p.a.dept_color || "#7fd0ff").lerp(new THREE.Color("#bfe8ff"), 0.5); l.intensity = 2.2 + Math.sin(t * 7 + p.ph) * 0.25; });
 }
-function typeIK(p, t) {
-  const B = p.bones, s = p.a._seat; if (!B.LeftArm || !B.LeftForeArm || !B.LeftHand || !s || s.kbZ == null) return;
+function typeIK(p, t, seat) {
+  const B = p.bones, s = seat || p.a._seat; if (!B.LeftArm || !B.LeftForeArm || !B.LeftHand || !s || (s.kbZ == null && !s.fwd)) return;
   p.root.updateWorldMatrix(true, true);
-  const y = p.baseY + 0.79, fwd = Math.sign(s.kbZ - s.z) || 1, ph = p.ph * 3;
+  const y = p.baseY + 0.79, ph = p.ph * 3;
+  /* kijkrichting F en zijas Rv (werkt voor bureaus langs z en de terminal langs x) */
+  const F = s.fwd ? new THREE.Vector3(s.fwd[0], 0, s.fwd[1]) : new THREE.Vector3(0, 0, Math.sign(s.kbZ - s.z) || 1), Rv = new THREE.Vector3(F.z, 0, -F.x);
+  const kbD = s.fwd ? s.kbD : Math.abs(s.kbZ - s.z), seatP = new THREE.Vector3(s.x, 0, s.z);
   [["Left", -1], ["Right", 1]].forEach(([side, sx]) => {
     const arm = B[side + "Arm"], fore = B[side + "ForeArm"], hand = B[side + "Hand"];
     /* doel: links/rechts op het toetsenbord (in wereldcoordinaten; persoon kijkt langs fwd) */
     /* onderarm staat stil op het toetsenbord; alleen de pols/hand tikt (zie onder) */
     const S0 = arm.getWorldPosition(new THREE.Vector3()), E0 = fore.getWorldPosition(new THREE.Vector3()), H0 = hand.getWorldPosition(new THREE.Vector3());
     /* doel = pols; vingers steken ~12 cm verder uit, dus pols net voor het toetsenbord */
-    const T = new THREE.Vector3(s.x + Math.sign(S0.x - s.x || sx) * 0.14, y + 0.01, s.kbZ - fwd * 0.13);
+    const sd = Math.sign(S0.clone().sub(seatP).dot(Rv)) || sx;
+    const T = seatP.clone().addScaledVector(Rv, sd * 0.14).addScaledVector(F, kbD - 0.13); T.y = y + 0.01;
     const a = S0.distanceTo(E0), b = E0.distanceTo(H0); let dvec = T.clone().sub(S0); let dist = dvec.length();
     dist = Math.min(dist, (a + b) * 0.98); dvec.normalize();
     const cosA = Math.max(-1, Math.min(1, (a * a + dist * dist - b * b) / (2 * a * dist))), sinA = Math.sqrt(1 - cosA * cosA);
     /* elleboog naar buiten en iets omlaag */
-    const pole = new THREE.Vector3(Math.sign(S0.x - s.x || sx), -0.8, -fwd * 0.3).normalize();
+    const pole = Rv.clone().multiplyScalar(sd).add(new THREE.Vector3(0, -0.8, 0)).addScaledVector(F, -0.3).normalize();
     const n = pole.sub(dvec.clone().multiplyScalar(pole.dot(dvec))).normalize();
     const E = S0.clone().add(dvec.clone().multiplyScalar(a * cosA)).add(n.multiplyScalar(a * sinA));
     aimBone(arm, fore, E); aimBone(fore, hand, T);
@@ -1562,36 +1591,22 @@ function queueBalls(prevRun) {
     if (working) for (let k2 = t0 + 7000; k2 < REFRESH_MS - 2000; k2 += 6000 + Math.random() * 2500) ballTimers.push(setTimeout(() => { const x = S.byId[a.agent_id]; if (x && st(x) === "working") fireBall(a.agent_id); }, k2));
   });
 }
-/* vuurballetjes: agent -> brein -> agent, in een boog. Op een open verdieping alleen voor agents op die verdieping;
-   in het overzicht recht omhoog door het gebouw naar het brein boven het dak (niet meer langs de gevel) */
-const BALLS = [], BALL_TEX = glowTex("rgba(0,212,255,.9)"), BALL_TEX2 = glowTex("rgba(0,150,255,.85)");
+/* The Brain-terminal: wie het brein raadpleegt (AI-aanroep) loopt naar de terminal in de hoek van zijn afdeling,
+   gaat zitten, typt een paar seconden (scherm gloeit, tekst verschijnt) en loopt terug */
+const BRAIN_SIT_MS = 7000, BRAIN_COOLDOWN = 45000;
 function fireBall(id) {
-  if (document.hidden || REDUCED || !W_.ufo) return; const p = W_.people[id]; if (!p || !p.present) return;
-  const ff = VIEW.focusFloor; if (ff != null && p.floor !== ff) return;
-  const k = ff == null ? 1 : 0.9;
-  /* kern additief (gloeit op donker), schil normaal gemengd zodat het balletje ook op de lichte vloer zichtbaar blijft */
-  const make = (sz, col, add) => { const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: add ? BALL_TEX : BALL_TEX2, color: col, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false, depthTest: false, transparent: true, toneMapped: false })); m.scale.setScalar(sz * k); m.renderOrder = 7; scene.add(m); return m; };
-  const shell = make(1.0, 0x22b8ff, false), head = make(0.62, 0xe8fdff, true), trail = [make(0.55, 0x3fc8ff, false), make(0.42, 0x2fb0ff, false), make(0.31, 0x1f98ff, false), make(0.22, 0x1580ff, false)];
-  head.userData.shell = shell;
-  BALLS.push({ p, head, trail, t0: performance.now(), dur: ff == null ? 4200 : 2800, side: Math.random() < 0.5 ? -1 : 1 });
+  if (document.hidden || REDUCED) return;
+  const a = S.byId[id], p = W_.people[id]; if (!a || !p || !a._seat || !canWalk(a)) return;
+  const fl = W_.floors[a._seat.floor], bs = fl && fl.brain; if (!bs || bs.user || bs.reserved) return;
+  if (p.brainAt && Date.now() - p.brainAt < BRAIN_COOLDOWN) return;
+  p.brainAt = Date.now(); bs.reserved = p;
+  const s = a._seat, out = seatOut(s), go = bs.path.slice();
+  const segs = [{ t: "walk", floor: s.floor, pts: out.concat(go) }, { t: "brain", bs, ms: BRAIN_SIT_MS }, { t: "walk", floor: s.floor, pts: go.slice().reverse().concat(out.slice().reverse()) }, { t: "home" }];
+  p.trip = { segs, i: 0, t0: performance.now(), label: "haalt info uit The Brain" };
+  startSeg(p);
+  addLabel(p, "→ The Brain", a.dept_color, segTime(segs.slice(0, 2)) + 800);
 }
-const _ba = new THREE.Vector3(), _bu = new THREE.Vector3(), _bm = new THREE.Vector3();
-function ballPos(b, f, out) {
-  const P = b.p.root.position; _ba.set(P.x, b.p.baseY + 1.35, P.z); _bu.copy(W_.ufo.position);
-  const back = f >= 0.5, k = back ? (f - 0.5) * 2 : f * 2; /* heen en terug, terug via de andere kant van de boog */
-  const from = back ? _bu : _ba, to = back ? _ba : _bu;
-  _bm.set((_ba.x + _bu.x) / 2 + b.side * (back ? -1 : 1) * 1.6, Math.max(_ba.y, _bu.y) + (VIEW.focusFloor == null ? 2 : 0.8), (_ba.z + _bu.z) / 2 + 1.2);
-  if (VIEW.focusFloor == null) _bm.set(_ba.x + b.side * (back ? -1 : 1) * 1.2, (_ba.y + _bu.y) / 2, _ba.z);
-  const q = 1 - k; out.set(q * q * from.x + 2 * q * k * _bm.x + k * k * to.x, q * q * from.y + 2 * q * k * _bm.y + k * k * to.y, q * q * from.z + 2 * q * k * _bm.z + k * k * to.z);
-  return out;
-}
-function updateBalls(now) {
-  for (let i = BALLS.length - 1; i >= 0; i--) { const b = BALLS[i], f = (now - b.t0) / b.dur;
-    if (f >= 1) { [b.head, b.head.userData.shell].filter(Boolean).concat(b.trail).forEach((m) => { scene.remove(m); m.material.dispose(); }); BALLS.splice(i, 1); continue; }
-    ballPos(b, f, b.head.position); if (b.head.userData.shell) b.head.userData.shell.position.copy(b.head.position); b.trail.forEach((m, k) => ballPos(b, Math.max(0, f - (k + 1) * 0.014), m.position));
-    const vis = isFloorVisible(b.p.floor) && (VIEW.focusFloor == null || b.p.floor === VIEW.focusFloor); b.head.visible = vis; if (b.head.userData.shell) b.head.userData.shell.visible = vis; b.trail.forEach((m) => { m.visible = vis; });
-    if (W_.ufo && Math.abs(f - 0.5) < 0.03) W_.ufo.userData.pulse = now; }
-}
+function updateBalls() { /* vervallen: vervangen door The Brain-terminal */ }
 
 /* =================================================================== zwevende labels (HTML) */
 const LABELS = [];
@@ -1685,9 +1700,8 @@ function pick(ev) {
   const objs = [];
   W_.persons.forEach((p) => { if (!p.root.visible) return; if (p.proxy) objs.push(p.proxy); else p.root.traverse((o) => { if (o.isMesh) objs.push(o); }); });
   W_.floorPick.forEach((m) => { if (m.parent && m.parent.visible) objs.push(m); });
-  if (W_.ufo) W_.ufo.traverse((o) => { if (o.isMesh || o.isSprite) objs.push(o); });
   const hits = ray.intersectObjects(objs, false);
-  for (const h of hits) { const o = h.object; if (o.userData.agentId) return { type: "agent", id: o.userData.agentId }; if (o.userData.brain) return { type: "brain" }; if (o.userData.floor != null) return { type: "floor", i: o.userData.floor }; }
+  for (const h of hits) { const o = h.object; if (o.userData.agentId) return { type: "agent", id: o.userData.agentId }; if (o.userData.floor != null) return { type: "floor", i: o.userData.floor }; }
   return null;
 }
 let downAt = null;
@@ -1697,7 +1711,6 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   const h = pick(e); if (!h) return;
   if (h.type === "agent") { setFocus({ type: "agent", id: h.id }); focusAgent(S.byId[h.id]); }
   else if (h.type === "floor") { const d = S.depts[h.i - 1]; if (h.i === 0) { setFocus({ type: "canteen" }); focusFloor(0); } else if (d) { setFocus({ type: "dept", name: d.name }); focusFloor(h.i); } }
-  else if (h.type === "brain") setFocus(null);
 });
 renderer.domElement.addEventListener("dblclick", () => { setFocus(null); goHome(); });
 let hovT = 0;
@@ -1708,7 +1721,6 @@ renderer.domElement.addEventListener("pointermove", (e) => {
   stage.classList.toggle("pt", !!h);
   if (h && h.type === "agent") { const a = S.byId[h.id], p = W_.people[h.id]; tip.innerHTML = esc(a.agent_name) + "<small>" + esc(a.dept_name) + " · " + STATES[st(a)] + (p && p.trip ? " · " + esc(p.trip.label || "onderweg") : "") + "</small>"; }
   else if (h && h.type === "floor") { const d = S.depts[h.i - 1]; tip.innerHTML = h.i === 0 ? "Lobby + kantine<small>begane grond · teamoverleg aan de statafels</small>" : esc(d ? d.name : "") + "<small>verdieping " + h.i + " · " + (d ? d.agents.length : 0) + " agents</small>"; }
-  else if (h && h.type === "brain") tip.innerHTML = "JARVIS-brein<small>powerballen = AI-aanroepen (Anthropic/OpenAI)</small>";
   else { tip.style.display = "none"; return; }
   tip.style.display = "block"; tip.style.left = Math.min(r.width - 240, e.clientX - r.left + 14) + "px"; tip.style.top = (e.clientY - r.top + 14) + "px";
 });
@@ -1805,7 +1817,7 @@ function renderPanel() {
     Object.keys(loops).forEach((k, i) => { h += '<h3>Lus ' + (i + 1) + '</h3>' + loops[k].map((id) => (S.byId[id] ? agentRow(S.byId[id]) : "")).join(""); });
   } else {
     const all = S.agents.filter((a) => !a._sub), errs = all.filter((a) => st(a) === "error"), work = all.filter((a) => st(a) === "working"), walk = W_.persons.filter((p) => p.trip);
-    h += '<h2>Office v4</h2><p class="muted">De JARVIS-toren: elke afdeling een eigen verdieping, verbonden met twee glazen liften. Lobby en kantine op de begane grond, het brein zweeft boven het dak. Klik op een verdieping of een agent.</p>';
+    h += '<h2>Office v4</h2><p class="muted">De JARVIS-toren: elke afdeling een eigen verdieping, verbonden met twee glazen liften. Lobby en kantine op de begane grond. Elke afdeling heeft rechtsachter een The Brain-terminal: een agent die het brein (AI) raadpleegt loopt erheen, typt even en loopt terug. Klik op een verdieping of een agent.</p>';
     h += '<div class="kv"><div class="w"><b>' + work.length + '</b><span>draait</span></div><div class="e"><b>' + errs.length + '</b><span>fout</span></div><div><b>' + walk.length + '</b><span>onderweg</span></div></div>';
     if (errs.length) h += '<h3>Fouten</h3>' + errs.map((a) => agentRow(a, a.dept_name)).join("");
     if (work.length) h += '<h3>Draait nu</h3>' + work.map((a) => agentRow(a, a.dept_name)).join("");
@@ -1921,13 +1933,7 @@ function frame(now) {
   const ws = SCREEN_MATS; for (const k in ws) if (k.endsWith("working") && ws[k].map) ws[k].map.offset.y = (now / 9000) % 1;
   updateMark(now);
   if (W_.neonHalo) W_.neonHalo.material.opacity = 0.86 + Math.sin(now / 260) * 0.05 + (Math.sin(now / 37) > 0.995 ? -0.25 : 0);
-  if (W_.ufo) { const u = W_.ufo, T = brainTarget(), c = u.userData.cur || (u.userData.cur = { x: T.x, y: T.y, z: T.z, s: T.s }), e = Math.min(1, dt * 3.2);
-    c.x += (T.x - c.x) * e; c.y += (T.y - c.y) * e; c.z += (T.z - c.z) * e; c.s += (T.s - c.s) * e;
-    u.position.set(c.x, c.y + Math.sin(now / 1400) * c.s * 0.04, c.z); u.userData.core.scale.set(c.s, c.s, 1); u.userData.core.quaternion.copy(camera.quaternion);
-    const bh = Math.max(0.5, u.position.y - T.floorY - c.s * 0.3), bw = c.s * 0.7; u.userData.beam.scale.set(bw, bh, bw); u.userData.beam.position.y = -c.s * 0.3 - bh / 2;
-    const sp = u.userData.spot; sp.position.y = T.floorY + 0.03 - u.position.y; sp.scale.setScalar(c.s * 0.75);
-    const pulse = u.userData.pulse && now - u.userData.pulse < 700 ? 1 - (now - u.userData.pulse) / 700 : 0;
-    u.userData.halo.scale.setScalar(c.s * (1.5 + pulse * 0.35)); u.userData.halo.material.opacity = 0.22 + pulse * 0.5 + Math.sin(now / 900) * 0.04; u.userData.core.material.uniforms.glow.value = pulse * 0.6; u.userData.beam.material.opacity = 0.1 + pulse * 0.12; u.userData.spot.material.opacity = 0.7 + pulse * 0.3; }
+  updateBrainStations(now);
   if (frameN % (VIEW.focusFloor == null ? 30 : 2) === 0) renderer.shadowMap.needsUpdate = true;
   if (frameN % 10 === 0) W_.persons.forEach((p) => { const far = camera.position.distanceTo(p.root.position) > (p.rig ? 95 : 62) && !p.trip; if (far !== p.lod) { p.lod = far; p.limbs.forEach((l) => { l.visible = !far; }); } });
   updateLabels();
@@ -1944,7 +1950,7 @@ renderFloors(); renderCard(); renderPanel();
 renderer.setAnimationLoop(frame);
 renderer.info.autoReset = false;
 window.OFFICE4_DBG = { PROTO, RIG };
-window.OFFICE4 = { snap: (c) => { if (c) { camera.position.set(c[0], c[1], c[2]); camera.lookAt(c[3], c[4], c[5]); camera.updateMatrixWorld(); } if (composer) composer.render(); else renderer.render(scene, camera); return renderer.domElement.toDataURL("image/jpeg", 0.9); }, stats: () => ({ frameN, calls: renderer.info.render.calls, tris: renderer.info.render.triangles, progs: renderer.info.programs.length, tex: renderer.info.memory.textures }), S, W_, VIEW, focusFloor, goHome, testMeet, kortOverleg, teamOverleg, fireBall, renderer, scene, camera };
+window.OFFICE4 = { snap: (c) => { if (c) { camera.position.set(c[0], c[1], c[2]); camera.lookAt(c[3], c[4], c[5]); camera.updateMatrixWorld(); } if (composer) composer.render(); else renderer.render(scene, camera); return renderer.domElement.toDataURL("image/jpeg", 0.9); }, stats: () => ({ frameN, calls: renderer.info.render.calls, tris: renderer.info.render.triangles, progs: renderer.info.programs.length, tex: renderer.info.memory.textures }), S, W_, VIEW, focusFloor, goHome, testMeet, kortOverleg, teamOverleg, fireBall, brainNow: (id, ms, force) => { const q = W_.people[id]; if (q) q.brainAt = 0; const b0 = q && W_.floors[q.floor] && W_.floors[q.floor].brain; if (b0 && (b0.user || b0.reserved)) { if (!force) return "busy"; b0.user = null; b0.reserved = null; } fireBall(id); const p = W_.people[id]; if (!p || !p.trip) return false; p.trip.i = 1; p.trip.segs[1].ms = ms || 60000; const pr = p.trip.segs[0].pts; p.baseY = p.floor * FH; startSeg(p); return true; }, renderer, scene, camera };
 let assetsDone = 0;
 const AS = loadAssets(() => { assetsDone++; if (S.first) $("loading").textContent = "Office laden… modellen " + assetsDone + "/" + AS.total; });
 if (!sb && !TEST) { $("loading").style.display = "none"; showMsg("bridge-config.js of supabase-js is niet geladen: geen Supabase-verbinding."); }
