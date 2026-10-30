@@ -487,10 +487,15 @@ function monitor(f, x, z, ry) { /* lokaal: -z = kant van de gebruiker */
 }
 function keyboardMouse(f, x, z, ry, rr) {
   const k = f.sub(x, 0.753, z, ry);
-  k.box(0.42, 0.016, 0.13, M_.keyb, 0, 0.008, 0).box(0.38, 0.004, 0.1, M_.plastic, 0, 0.018, 0.005);
-  k.box(0.06, 0.02, 0.1, M_.keyb, 0.29, 0.01, 0.01).box(0.22, 0.003, 0.18, plain("#2d3a48"), 0.29, 0.0015, 0.01);
-  if (rr() < 0.35) k.box(0.12, 0.01, 0.07, M_.black, -0.38, 0.005, 0.05);
+  /* lokaal: -z = gebruiker, gebruiker kijkt naar +z, dus zijn rechterhand is -x */
+  k.box(0.44, 0.018, 0.145, M_.plastic, 0, 0.009, 0).box(0.42, 0.006, 0.125, keyMat(), 0, 0.021, 0.002, 0, 0.06);
+  k.box(0.065, 0.025, 0.11, M_.black, -0.33, 0.0125, 0.01).box(0.24, 0.003, 0.2, plain("#2d3a48"), -0.33, 0.0015, 0.01);
+  if (rr() < 0.35) k.box(0.13, 0.01, 0.075, M_.black, 0.36, 0.005, 0.06);
 }
+let KEY_MAT = null;
+function keyMat() { if (KEY_MAT) return KEY_MAT; const c = cvs(256, 80), x = c.getContext("2d"); x.fillStyle = "#15171a"; x.fillRect(0, 0, 256, 80);
+  x.fillStyle = "#3a3e45"; for (let r = 0; r < 5; r++) for (let k = 0; k < 15; k++) x.fillRect(4 + k * 16.6 + (r % 2) * 4, 5 + r * 14.6, 13, 11);
+  x.fillRect(60, 5 + 4 * 14.6, 110, 11); return (KEY_MAT = new THREE.MeshStandardMaterial({ map: tex(c), roughness: 0.6 })); }
 function mug(f, x, y, z, color) { const m = f.sub(x, y, z, 0); m.cyl(0.04, 0.095, plain(color, 0.35), 0, 0.0475, 0, 0, 0, true).geo(G.torus, plain(color, 0.35), 0.045, 0.05, 0, 0, Math.PI / 2, 0, 0.026, 0.026, 0.026); }
 function deskLamp(f, x, z, ry) {
   const l = f.sub(x, 0.753, z, ry);
@@ -1328,7 +1333,8 @@ function typeIK(p, t) {
     /* doel: links/rechts op het toetsenbord (in wereldcoordinaten; persoon kijkt langs fwd) */
     /* onderarm staat stil op het toetsenbord; alleen de pols/hand tikt (zie onder) */
     const S0 = arm.getWorldPosition(new THREE.Vector3()), E0 = fore.getWorldPosition(new THREE.Vector3()), H0 = hand.getWorldPosition(new THREE.Vector3());
-    const T = new THREE.Vector3(s.x + Math.sign(S0.x - s.x || sx) * 0.11, y, s.kbZ - fwd * 0.03);
+    /* doel = pols; vingers steken ~12 cm verder uit, dus pols net voor het toetsenbord */
+    const T = new THREE.Vector3(s.x + Math.sign(S0.x - s.x || sx) * 0.14, y + 0.01, s.kbZ - fwd * 0.13);
     const a = S0.distanceTo(E0), b = E0.distanceTo(H0); let dvec = T.clone().sub(S0); let dist = dvec.length();
     dist = Math.min(dist, (a + b) * 0.98); dvec.normalize();
     const cosA = Math.max(-1, Math.min(1, (a * a + dist * dist - b * b) / (2 * a * dist))), sinA = Math.sqrt(1 - cosA * cosA);
