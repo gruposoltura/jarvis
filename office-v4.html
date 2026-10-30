@@ -187,6 +187,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
+import { FontLoader } from "three/addons/loaders/FontLoader.js";
+import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
 
 /* =================================================================== config + data (als v3) */
 const CFG = window.BRIDGE_CONFIG || {};
@@ -1129,7 +1131,50 @@ function buildRoof(i) {
   LIFTS.forEach((L) => { [[-1, LIFT_Z0], [1, LIFT_Z0], [-1, LIFT_Z1], [1, LIFT_Z1]].forEach((c) => f.box(0.08, 1.6, 0.08, M_.steel, L.x + c[0] * LIFT_W / 2, 0.8, c[1])); f.box(LIFT_W + 0.1, 0.14, LIFT_Z1 - LIFT_Z0 + 0.1, M_.steel, L.x, 1.6, (LIFT_Z0 + LIFT_Z1) / 2); });
   b.build(grp);
   W_.roofY = y;
+  buildNeon(grp);
   buildUfo(y + 10.5);
+}
+/* neon-logo SOLTURA op de dakrand, Soltura-rood #C63232 (brandcard), gloed zonder bloom: kern + halo-vlak + rood licht */
+const NEON_RED = "#C63232";
+let FONT_P = null;
+function neonFont() {
+  if (!FONT_P) FONT_P = new Promise((res) => new FontLoader().load("https://cdn.jsdelivr.net/npm/three@0.170.0/examples/fonts/helvetiker_bold.typeface.json", res, undefined, () => res(null)));
+  return FONT_P;
+}
+function neonHaloTex(txt) {
+  const c = document.createElement("canvas"); c.width = 2048; c.height = 512; const x = c.getContext("2d");
+  x.font = "bold 300px Helvetica, Arial, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
+  x.fillStyle = "rgba(255,30,24,0.5)"; x.shadowColor = "rgba(255,16,12,1)";
+  for (const b of [90, 50, 24]) { x.shadowBlur = b; x.fillText(txt, 1024, 270); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function buildNeon(grp) {
+  const TXT = "SOLTURA", LH = 3.2, z0 = D + 0.95, y0 = 1.25;
+  const sg = new THREE.Group(); sg.position.set(W / 2, y0, z0); grp.add(sg); W_.neon = sg;
+  /* draagframe: twee liggers en staanders op de borstwering */
+  const b = new Batch(), f = new Frame(b, 0, 0, 0, 0), RW = 18.6;
+  f.box(RW, 0.12, 0.12, M_.steel, 0, 0.1, -0.22).box(RW, 0.12, 0.12, M_.steel, 0, LH - 0.2, -0.22);
+  for (let k = -3; k <= 3; k++) { const x = k * RW / 6.4; f.box(0.1, LH + 0.35, 0.1, M_.steel, x, (LH - 0.35) / 2 - 0.1, -0.22).box(0.08, 0.08, 1.0, M_.steel, x, -0.3, -0.7); }
+  b.build(sg);
+  /* rood licht op dak en gevel */
+  const L = new THREE.PointLight(0xff2a22, 30, 18, 1.6); L.position.set(0, LH * 0.45, -1.2); sg.add(L);
+  neonFont().then((font) => {
+    if (!sg.parent) return;
+    const core = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.035, 0.03), toneMapped: false });
+    const side = new THREE.MeshStandardMaterial({ color: 0x3a0e0e, roughness: 0.5, metalness: 0.5, emissive: new THREE.Color(NEON_RED), emissiveIntensity: 0.18 });
+    let w = 16.5;
+    if (font) {
+      const g = new TextGeometry(TXT, { font, size: LH, depth: 0.22, curveSegments: 6, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.025, bevelSegments: 2 });
+      g.computeBoundingBox(); const bb = g.boundingBox; w = bb.max.x - bb.min.x;
+      g.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -0.11);
+      const m = new THREE.Mesh(g, [core, side]); m.castShadow = true; sg.add(m);
+    }
+    /* halo: additief vlak net achter de letters, groter dan de tekst */
+    const halo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: neonHaloTex(TXT), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+    halo.scale.set(w * 1.42, w * 1.42 / 4, 1); halo.position.set(0, LH * 0.52, -0.16); halo.renderOrder = 5; sg.add(halo);
+    if (!font) { halo.material.opacity = 1; halo.scale.multiplyScalar(0.8); }
+    W_.neonHalo = halo;
+  });
 }
 function buildUfo(y) {
   const g = new THREE.Group(); g.position.set(W / 2, y, D / 2); world.add(g); W_.ufo = g;
@@ -1758,6 +1803,7 @@ function frame(now) {
   if (VIEW.focusFloor != null) W_.lifts.forEach((L) => { L.car.visible = L.y <= VIEW.focusFloor * FH + 0.5; });
   W_.persons.forEach((p) => { if (p.present) p.root.visible = VIEW.focusFloor == null || p.floor === VIEW.focusFloor || (!!p.trip && p.floor <= VIEW.focusFloor); if (p.sprite.visible) { const s = 0.2 + Math.sin(now / 300 + p.ph) * 0.03 * (p.typing ? 1 : 0); p.sprite.scale.set(s, s, 1); } });
   const ws = SCREEN_MATS; for (const k in ws) if (k.endsWith("working") && ws[k].map) ws[k].map.offset.y = (now / 9000) % 1;
+  if (W_.neonHalo) W_.neonHalo.material.opacity = 0.86 + Math.sin(now / 260) * 0.05 + (Math.sin(now / 37) > 0.995 ? -0.25 : 0);
   if (W_.ufo) { const u = W_.ufo; u.rotation.y += dt * 0.25; u.position.y = W_.roofY + 10.5 + Math.sin(now / 1400) * 0.35; u.userData.lights.rotation.y -= dt * 0.8;
     const pulse = u.userData.pulse && now - u.userData.pulse < 600 ? 1 - (now - u.userData.pulse) / 600 : 0; u.userData.core.material.emissiveIntensity = 2.2 + pulse * 3 + Math.sin(now / 500) * 0.3; u.userData.beam.material.opacity = 0.08 + pulse * 0.12; }
   if (frameN % (VIEW.focusFloor == null ? 30 : 2) === 0) renderer.shadowMap.needsUpdate = true;
