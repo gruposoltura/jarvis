@@ -9,3 +9,4 @@ Assets voor `office-v4.html` (BD-181).
 - `man_shirt.png` / `woman_shirt.png` - maskers voor het inkleuren van het shirt in de afdelingskleur.
 
 Alle modellen zijn verkleind met gltf-transform (weld, simplify, webp-textures, meshopt).
+- Begroeiing (Poly Haven, CC0, 31-10-2026): `fern_02`, `flower_gazania`, `crystalline_iceplant`, `pachira_aquatica_01`, `periwinkle_plant` (sterk vereenvoudigd). `tex/frond.webp` (blad met alpha uit de jacaranda_tree-bladtextuur) en `tex/bark.webp` (jacaranda-stam) voor de procedurele bomen en struiken (bladkaarten).
