@@ -898,7 +898,7 @@ function screenMat(color, mode) {
 
 function clearWorld() {
   world.traverse((o) => { if (o.isMesh && o.geometry && !Object.values(G).includes(o.geometry)) o.geometry.dispose(); });
-  world.clear(); W_.floors = []; W_.people = {}; W_.persons = []; W_.screens = []; W_.floorPick = []; W_.lifts = []; W_.sprites = [];
+  world.clear(); W_.neonHalos = []; W_.entry = null; W_.floors = []; W_.people = {}; W_.persons = []; W_.screens = []; W_.floorPick = []; W_.lifts = []; W_.sprites = [];
 }
 function buildWorld() {
   clearWorld();
@@ -991,21 +991,39 @@ function buildFloor(i, d) {
   f.geo(G.plane, M_.glassSide, W + 0.01, CEIL / 2, D / 2, 0, Math.PI / 2, 0, D, CEIL, 1);
   for (let z = 0; z <= D; z += 2.5) f.box(0.06, CEIL, 0.06, M_.steel, W, CEIL / 2, z);
   /* voorgevel: glas + regel op borsthoogte, plantenbak op de rand */
-  f.geo(G.plane, M_.glass, W / 2, CEIL / 2, D + 0.04, 0, 0, 0, W, CEIL, 1);
-  f.box(W, 0.05, 0.06, M_.steel, W / 2, 1.05, D + 0.08).box(W, 0.06, 0.08, M_.steel, W / 2, CEIL - 0.03, D + 0.05).box(W, 0.06, 0.08, M_.steel, W / 2, 0.03, D + 0.05);
+  const EO = 1.2, DH = 2.55; /* deuropening op G: breedte 2x EO, hoogte DH */
+  if (i === 0) { const a = ENTRY_X - EO, b2 = ENTRY_X + EO;
+    f.geo(G.plane, M_.glass, a / 2, CEIL / 2, D + 0.04, 0, 0, 0, a, CEIL, 1).geo(G.plane, M_.glass, (b2 + W) / 2, CEIL / 2, D + 0.04, 0, 0, 0, W - b2, CEIL, 1).geo(G.plane, M_.glass, ENTRY_X, (DH + CEIL) / 2, D + 0.04, 0, 0, 0, 2 * EO, CEIL - DH, 1);
+    f.box(a, 0.05, 0.06, M_.steel, a / 2, 1.05, D + 0.08).box(W - b2, 0.05, 0.06, M_.steel, (b2 + W) / 2, 1.05, D + 0.08);
+  } else { f.geo(G.plane, M_.glass, W / 2, CEIL / 2, D + 0.04, 0, 0, 0, W, CEIL, 1); f.box(W, 0.05, 0.06, M_.steel, W / 2, 1.05, D + 0.08); }
+  f.box(W, 0.06, 0.08, M_.steel, W / 2, CEIL - 0.03, D + 0.05).box(W, 0.06, 0.08, M_.steel, W / 2, 0.03, D + 0.05);
   const flx = { i, inst: null }, rp = rnd("gevel" + i);
   if (i > 0) { [[1.2, 9.5], [11.2, 10.2]].forEach((p) => { f.box(p[1], 0.42, 0.5, M_.concrete, p[0] + p[1] / 2, 0.21, D + 0.62);
     if (!M_.frond) { for (let k = 0; k < p[1] * 1.8; k++) plant(f, k % 4 === 0 ? "sansevieria" : "struik", p[0] + 0.3 + k * 0.55, D + 0.62, 0.9, "rand" + i + p[0] + k); return; }
     /* gevelbak: struikjes, varens en hangende maagdenpalm over de rand */
     for (let k = 0; k < p[1] * 1.2; k++) { const x = p[0] + 0.35 + k * 0.82; if ((k + i) % 3 === 1) place(flx, "fern", x, 0.42, D + 0.62, rp() * 6.3, 1.0 + rp() * 0.4); else bush(f, x, 0.4, D + 0.62 + (rp() - 0.5) * 0.12, 0.75 + rp() * 0.35, rp); } }); }
-  /* entree op de begane grond: schuifdeuren (open) met luifel */
+  /* entree op de begane grond: grote glazen schuifdeur (opent naar links en rechts), luifel met neonletters */
   if (i === 0) { const ex = ENTRY_X;
-    f.box(0.12, 2.6, 0.14, M_.steel, ex - 1.05, 1.3, D + 0.06).box(0.12, 2.6, 0.14, M_.steel, ex + 1.05, 1.3, D + 0.06).box(2.22, 0.16, 0.16, M_.steel, ex, 2.62, D + 0.06);
-    f.geo(G.plane, M_.glassDoor, ex - 1.45, 1.25, D + 0.12, 0, 0, 0, 0.95, 2.45, 1).geo(G.plane, M_.glassDoor, ex + 1.45, 1.25, D + 0.12, 0, 0, 0, 0.95, 2.45, 1);
-    f.box(3.4, 0.08, 1.6, M_.steel, ex, 2.95, D + 0.8).box(2.0, 0.02, 1.2, M_.paver, ex, 0.19, D + 0.75);
-    sign(grp, "ENTREE", "#2f8f8b", 1.2, 0.26, ex, 2.78, D + 0.15, 0, { scale: 0.6 }); }
+    f.box(0.16, DH + 0.1, 0.18, M_.steel, ex - EO - 0.08, (DH + 0.1) / 2, D + 0.06).box(0.16, DH + 0.1, 0.18, M_.steel, ex + EO + 0.08, (DH + 0.1) / 2, D + 0.06).box(2 * EO + 0.32, 0.22, 0.24, M_.steel, ex, DH + 0.11, D + 0.08);
+    f.box(2 * EO + 2.4, 0.03, 0.06, M_.steel, ex, DH - 0.02, D + 0.17); /* rail */
+    const mkPanel = (sx) => { const g2 = new THREE.Group(); g2.position.set(ex + sx * EO / 2, 0, D + 0.12); grp.add(g2);
+      const gl = new THREE.Mesh(G.plane, M_.glassDoor); gl.scale.set(EO - 0.04, DH - 0.06, 1); gl.position.y = (DH - 0.06) / 2 + 0.02; g2.add(gl);
+      [[0, 0.03, EO, 0.05], [0, DH - 0.06, EO, 0.05], [-sx * (EO / 2 - 0.02), DH / 2, 0.05, DH - 0.04], [sx * (EO / 2 - 0.02), DH / 2, 0.05, DH - 0.04]].forEach((q) => { const fr = new THREE.Mesh(G.box, M_.steel); fr.scale.set(q[2], q[3], 0.05); fr.position.set(q[0], q[1], 0); g2.add(fr); });
+      const hd = new THREE.Mesh(G.box, M_.chrome || M_.steel); hd.scale.set(0.03, 0.6, 0.05); hd.position.set(-sx * (EO / 2 - 0.12), 1.05, 0.04); g2.add(hd);
+      return g2; };
+    W_.entry = { l: mkPanel(-1), r: mkPanel(1), x: ex, open: 0, EO };
+    /* luifel */
+    f.box(4.6, 0.14, 2.0, M_.steel, ex, DH + 0.36, D + 1.0).box(4.6, 0.02, 1.96, M_.ceiling, ex, DH + 0.28, D + 1.0);
+    [-2.1, 2.1].forEach((dx) => f.box(0.04, 0.04, 2.1, M_.steel, ex + dx, DH + 0.5, D + 0.95));
+    for (let k = 0; k < 3; k++) f.box(0.5, 0.02, 0.5, M_.led, ex - 1.2 + k * 1.2, DH + 0.27, D + 1.0);
+    f.box(2.6, 0.02, 1.6, M_.paver, ex, 0.19, D + 0.9);
+    /* SOLTURA in rode neonletters op de luifel */
+    const ng = new THREE.Group(); ng.position.set(ex, DH + 0.43, D + 1.85); grp.add(ng);
+    f.box(3.9, 0.06, 0.06, M_.steel, ex, DH + 0.46, D + 1.75);
+    neonText(ng, "SOLTURA", 0.62, 0.09, 3.2);
+    const nl = new THREE.PointLight(0xff2a22, 4, 5, 1.6); nl.position.set(ex, DH + 0.6, D + 2.6); grp.add(nl); }
   /* gevelkolommen, lamellen en liftstijlen per verdieping (verdwijnen mee bij de doorsnede) */
-  for (let k = 0; k <= 12; k++) f.box(k % 12 === 0 ? 0.16 : 0.09, FH, k % 12 === 0 ? 0.16 : 0.1, M_.steel, k * W / 12, FH / 2 - SLAB, D + 0.02);
+  for (let k = 0; k <= 12; k++) { if (i === 0 && Math.abs(k * W / 12 - ENTRY_X) < EO + 0.9) continue; f.box(k % 12 === 0 ? 0.16 : 0.09, FH, k % 12 === 0 ? 0.16 : 0.1, M_.steel, k * W / 12, FH / 2 - SLAB, D + 0.02); }
   for (let z = 0.2; z < D; z += 0.38) f.box(0.1, FH, 0.14, M_.oakDark, -0.33, FH / 2 - SLAB, z);
   for (let x = 0.12; x < 3.3; x += 0.24) f.box(0.09, FH, 0.16, M_.oakDark, x, FH / 2 - SLAB, D + 0.24);
   LIFTS.forEach((L) => [[-1, LIFT_Z0], [1, LIFT_Z0], [-1, LIFT_Z1], [1, LIFT_Z1]].forEach((c) => f.box(0.08, FH, 0.08, M_.steel, L.x + c[0] * LIFT_W / 2, FH / 2 - SLAB, c[1])));
@@ -1337,22 +1355,26 @@ function buildNeon(grp) {
   b.build(sg);
   /* rood licht op dak en gevel */
   const L = new THREE.PointLight(0xff2a22, 30, 18, 1.6); L.position.set(0, LH * 0.45, -1.2); sg.add(L);
+  neonText(sg, "SOLTURA", LH, 0.22, 16.5);
+}
+/* 3D-neonletters (Soltura-rood) met halo achter de letters; sg = groep, basislijn op y 0, gecentreerd op x 0 */
+function neonText(sg, TXT, LH, depth, wGuess) {
   neonFont().then((font) => {
     if (!sg.parent) return;
     const core = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.035, 0.03), toneMapped: false });
     const side = new THREE.MeshStandardMaterial({ color: 0x3a0e0e, roughness: 0.5, metalness: 0.5, emissive: new THREE.Color(NEON_RED), emissiveIntensity: 0.18 });
-    let w = 16.5;
+    let w = wGuess;
     if (font) {
-      const g = new TextGeometry(TXT, { font, size: LH, depth: 0.22, curveSegments: 6, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.025, bevelSegments: 2 });
+      const g = new TextGeometry(TXT, { font, size: LH, depth, curveSegments: 6, bevelEnabled: true, bevelThickness: depth * 0.14, bevelSize: LH * 0.008, bevelSegments: 2 });
       g.computeBoundingBox(); const bb = g.boundingBox; w = bb.max.x - bb.min.x;
-      g.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -0.11);
+      g.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -depth / 2);
       const m = new THREE.Mesh(g, [core, side]); m.castShadow = true; sg.add(m);
     }
     /* halo: additief vlak net achter de letters, groter dan de tekst */
     const halo = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: neonHaloTex(TXT), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
-    halo.scale.set(w * 1.42, w * 1.42 / 4, 1); halo.position.set(0, LH * 0.52, -0.16); halo.renderOrder = 5; halo.userData.noAO = true; sg.add(halo);
+    halo.scale.set(w * 1.42, w * 1.42 / 4, 1); halo.position.set(0, LH * 0.52, -depth * 0.75); halo.renderOrder = 5; halo.userData.noAO = true; sg.add(halo);
     if (!font) { halo.material.opacity = 1; halo.scale.multiplyScalar(0.8); }
-    W_.neonHalo = halo;
+    (W_.neonHalos = W_.neonHalos || []).push(halo);
   });
 }
 function buildLifts(n) {
@@ -1371,6 +1393,13 @@ function buildLifts(n) {
 }
 
 /* =================================================================== mensen plaatsen + status */
+/* schuifdeur: open zodra een bezoeker binnen ~3 m van de deur is */
+function updateEntry(dt) {
+  const E = W_.entry; if (!E) return;
+  const near = EXTRAS.some((p) => p.guest && p.present && p.floor === 0 && Math.abs(p.root.position.x - E.x) < 2.6 && Math.abs(p.root.position.z - D) < 3.2);
+  E.open += ((near ? 1 : 0) - E.open) * Math.min(1, dt * 3);
+  const o = E.open * (E.EO - 0.1); E.l.position.x = E.x - E.EO / 2 - o; E.r.position.x = E.x + E.EO / 2 + o;
+}
 /* figuranten zonder agent: twee receptionisten in uniform en bezoekers bij een nieuwe aanvraag */
 const EXTRAS = [];
 function makeExtra(a, floor) {
@@ -2073,7 +2102,8 @@ function frame(now) {
   W_.persons.forEach((p) => { if (p.present) p.root.visible = VIEW.focusFloor == null || p.floor === VIEW.focusFloor || (!!p.trip && p.floor <= VIEW.focusFloor); if (p.sprite.visible) { const s = 0.2 + Math.sin(now / 300 + p.ph) * 0.03 * (p.typing ? 1 : 0); p.sprite.scale.set(s, s, 1); } });
   const ws = SCREEN_MATS; for (const k in ws) if (k.endsWith("working") && ws[k].map) ws[k].map.offset.y = (now / 9000) % 1;
   updateMark(now);
-  if (W_.neonHalo) W_.neonHalo.material.opacity = 0.86 + Math.sin(now / 260) * 0.05 + (Math.sin(now / 37) > 0.995 ? -0.25 : 0);
+  if (W_.neonHalos) { const o = 0.86 + Math.sin(now / 260) * 0.05 + (Math.sin(now / 37) > 0.995 ? -0.25 : 0); W_.neonHalos.forEach((h) => { h.material.opacity = o; }); }
+  updateEntry(dt);
   updateBrainStations(now);
   if (frameN % (VIEW.focusFloor == null ? 30 : 2) === 0) renderer.shadowMap.needsUpdate = true;
   if (frameN % 10 === 0) W_.persons.forEach((p) => { const far = camera.position.distanceTo(p.root.position) > (p.rig ? 95 : 62) && !p.trip; if (far !== p.lod) { p.lod = far; p.limbs.forEach((l) => { l.visible = !far; }); } });
