@@ -792,7 +792,7 @@ function place(fl, key, x, y, z, ry, sc, tint) {
 function buildInstances(fl, parent) {
   if (!fl.inst) return; const col = new THREE.Color();
   Object.keys(fl.inst).forEach((key) => { const list = fl.inst[key], pr = PROTO[key];
-    pr.parts.forEach((pt) => { const im = new THREE.InstancedMesh(pt.geo, pt.mat, list.length);
+    pr.parts.forEach((pt) => { const im = new THREE.InstancedMesh(pt.geo, pt.mat, list.length); ((fl.instIM = fl.instIM || {})[key] = fl.instIM[key] || []).push({ im, M: pt.M });
       list.forEach((it, i) => { im.setMatrixAt(i, it.M.clone().multiply(pt.M)); if (list.some((q) => q.tint)) im.setColorAt(i, col.set(it.tint || "#ffffff")); });
       im.castShadow = false; im.receiveShadow = true; im.userData.interior = true; if (SMALL[key]) (fl.small = fl.small || []).push(im); im.computeBoundingSphere(); parent.add(im); (fl.instMeshes = fl.instMeshes || []).push(im); }); });
   fl.inst = null;
@@ -854,6 +854,12 @@ function rigMat(kind, color) {
     x.drawImage(t, 0, 0);
     const tx = new THREE.CanvasTexture(c); tx.flipY = false; tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 4; m.map = tx;
   }
+  /* schoenen donker: de witte sneakers vielen weg tegen de lichte vloer. Positie is gequantiseerd (-1..1, voeten bij -1) */
+  m.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying float vBindY;").replace("#include <begin_vertex>", "#include <begin_vertex>\nvBindY = position.y;");
+    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying float vBindY;").replace("#include <map_fragment>", "#include <map_fragment>\ndiffuseColor.rgb = mix(vec3(0.055, 0.045, 0.04), diffuseColor.rgb, smoothstep(-0.905, -0.875, vBindY));");
+  };
+  m.customProgramCacheKey = () => "rig-shoes";
   return (R.mats[key] = m);
 }
 function setAnim(p, name, fade) {
@@ -990,7 +996,12 @@ function bigPlant(fl, f, kind, x, z, sc, seed) {
   plant(f, kind, x, z, sc, seed);
 }
 function chairTint(color) { return "#" + new THREE.Color(color).lerp(new THREE.Color("#ffffff"), 0.55).getHexString(); }
-function realChair(fl, f, x, z, ry, color, fallbackMat) { if (!place(fl, "chair", x, 0, z, ry, 1, chairTint(color))) chair(f.sub(x, 0, z, 0), fallbackMat, ry); }
+function realChair(fl, f, x, z, ry, color, fallbackMat) { if (!place(fl, "chair", x, 0, z, ry, 1, chairTint(color))) { chair(f.sub(x, 0, z, 0), fallbackMat, ry); return -1; } return fl.inst.chair.length - 1; }
+/* bureaustoel draaien (instanced): alle onderdelen van stoel idx op nieuwe hoek */
+function setChairRy(fl, idx, x, z, ry) {
+  const parts = fl && fl.instIM && fl.instIM.chair; if (!parts || idx < 0) return;
+  const M = MX(x, 0, z, 0, ry, 0, 1, 1, 1); parts.forEach((pt) => { pt.im.setMatrixAt(idx, M.clone().multiply(pt.M)); pt.im.instanceMatrix.needsUpdate = true; });
+}
 
 /* eilanden van 4 per cluster_label (BD-173), daarna decor in de lege vakken */
 function islandSlots(nIsl) {
@@ -1110,14 +1121,14 @@ function island(fl, f, s, members, m, r) {
     if (r() < 0.5) papers(dsk, -0.45, -0.12, 0.3 * r(), 2 + Math.floor(r() * 4));
     if (r() < 0.3) { const sx = seatX0 + (p[1] < 0 ? -0.62 : 0.62), sz = s.rz + (p[1] < 0 ? -0.15 : 0.15); if (!place(fl, "succulent", sx, 0.753, sz, r() * 6)) succulent(dsk, 0.62, 0.753, 0.25); }
     const seatX = s.cx + p[0], seatZ = s.rz + p[1] * SEAT_DZ, face = p[1] < 0 ? 1 : -1;
-    realChair(fl, f, seatX, seatZ, face > 0 ? 0 : Math.PI, m.color, m.fabric);
+    const chairIdx = realChair(fl, f, seatX, seatZ, face > 0 ? 0 : Math.PI, m.color, m.fabric);
     /* scherm als losse mesh (status), kijkt naar de stoel */
     const scr = new THREE.Mesh(G.plane, M_.screenOff), SP = PROTO.monitor && PROTO.monitor.screen;
     if (SP) { scr.scale.set(SP.w, SP.h, 1); scr.position.set(seatX, 0.753 + SP.y, mz + (p[1] < 0 ? -1 : 1) * (SP.z + 0.004)); }
     else { scr.scale.set(0.52, 0.31, 1); scr.position.set(seatX, 0.753 + 0.42, s.rz + (p[1] < 0 ? -0.247 : 0.247)); }
     scr.rotation.y = p[1] < 0 ? Math.PI : 0;
     fl.grp.add(scr);
-    if (a) { a._seat = { floor: fl.i, x: seatX, z: seatZ, face, kbZ: s.rz + (p[1] < 0 ? -0.64 : 0.64), cx: s.cx, rz: s.rz, lane: seatX < s.cx ? s.laneL : s.laneR, side: seatX < s.cx ? -1 : 1 }; a._screen = scr; W_.screens.push(scr); }
+    if (a) { a._seat = { floor: fl.i, x: seatX, z: seatZ, face, kbZ: s.rz + (p[1] < 0 ? -0.64 : 0.64), cx: s.cx, rz: s.rz, lane: seatX < s.cx ? s.laneL : s.laneR, side: seatX < s.cx ? -1 : 1, chairIdx, ry: face > 0 ? 0 : Math.PI }; a._screen = scr; W_.screens.push(scr); }
   });
 }
 function decorSlot(fl, f, s, kind, m, r) {
@@ -1297,7 +1308,7 @@ function placePeople() {
   });
   updateStatus();
 }
-function seatPerson(p) { if (p.trip) return; const s = p.a._seat; p.floor = s.floor; p.baseY = s.floor * FH; p.root.position.set(s.x, p.baseY, s.z + s.face * (p.rig ? 0 : 0.06)); p.root.rotation.y = s.face > 0 ? 0 : Math.PI; p.mode = "sit"; }
+function seatPerson(p) { if (p.trip) return; const s = p.a._seat; p.floor = s.floor; p.baseY = s.floor * FH; p.root.position.set(s.x, p.baseY, s.z + s.face * (p.rig ? 0 : 0.06)); p.root.rotation.y = s.face > 0 ? 0 : Math.PI; p.mode = "sit"; if (p.swivel) { p.swivel = 0; setChairRy(W_.floors[s.floor], s.chairIdx, s.x, s.z, s.ry); } }
 function updateStatus() {
   S.agents.forEach((a) => {
     if (a._sub || !a._seat) return; const p = W_.people[a.agent_id], s = st(a), col = a.dept_color || "#8aa0b5";
@@ -1312,7 +1323,7 @@ function updateStatus() {
 /* =================================================================== lopen, lift, overleg */
 function lineLen(pts) { let l = 0; for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return l; }
 function seatOut(s) { return [[s.x, s.z - s.face * 0.55], [s.lane, s.z - s.face * 0.55], [s.lane, AISLE]]; }
-function visitIn(s) { const vx = s.x + s.side * 0.66, vz = s.z - s.face * 0.12; return { pts: [[s.lane, AISLE], [s.lane, s.z - s.face * 0.55], [vx, s.z - s.face * 0.55], [vx, vz]], face: [s.x, s.z] }; }
+function visitIn(s) { const vx = s.x + s.side * 1.08, vz = s.z - s.face * 0.22; /* ruimte zodat de zittende collega zijn stoel kan draaien */ return { pts: [[s.lane, AISLE], [s.lane, s.z - s.face * 0.55], [vx, s.z - s.face * 0.55], [vx, vz]], face: [s.x, s.z] }; }
 function toLift(k) { const x = LIFTS[k].x; return [[PART_X - 0.6, AISLE], [PART_X + 0.6, AISLE], [x, AISLE], [x, LIFT_DOOR_Z]]; }
 function fromLift(k) { return toLift(k).slice().reverse(); }
 function nearestLift(x) { return Math.abs(x - LIFTS[0].x) < Math.abs(x - LIFTS[1].x) ? 0 : 1; }
@@ -1394,8 +1405,17 @@ function updatePeople(now, dt) {
     if (!p.present) return;
     if (p.rig) { p.mixT += dt; const far = p.lod; if (p.root.visible && (!far || (frameN + (p.ph * 10 | 0)) % 4 === 0)) { p.mixer.update(p.mixT); p.mixT = 0; } }
     const tr = p.trip;
-    if (!tr) { const meet = p.meetUntil > Date.now(), look = meet && p.meetFace ? lookAt(p, p.meetFace) : 0; poseSit(p, t, p.typing && !meet, look);
-      if (p.rig && p.typing && !meet && p.root.visible) typeIK(p, t); return; }
+    if (!tr) { const mv = p.meetBy && p.meetBy.trip, mvSeg = mv && mv.segs[mv.i], mvStay = mv ? mv.segs.findIndex((x) => x.t === "stay") : -1;
+      const meet = (p.meetUntil > Date.now() && (!p.meetBy || !!mv)) || !!(mvSeg && mvSeg.t === "stay" && mv.i === mvStay), look = meet && p.meetFace ? lookAt(p, p.meetFace) : 0;
+      /* overleg: zittende agent draait met stoel en al naar de bezoeker; daarna terug naar het bureau */
+      const s0 = p.a._seat; if (s0) { let want = 0;
+        const near = !p.meetBy || !mv || (mv.i <= mvStay && Math.hypot(p.meetBy.root.position.x - s0.x, p.meetBy.root.position.z - s0.z) < 2.4);
+        if (meet && p.meetFace && near) { want = Math.atan2(p.meetFace[0] - s0.x, p.meetFace[1] - s0.z) - s0.ry; while (want > Math.PI) want -= Math.PI * 2; while (want < -Math.PI) want += Math.PI * 2; want = Math.max(-2.0, Math.min(2.0, want)); }
+        const sw0 = p.swivel || 0, sw = sw0 + (want - sw0) * Math.min(1, dt * 2.2);
+        if (Math.abs(sw - sw0) > 1e-4) { p.swivel = Math.abs(sw) < 2e-3 && !meet ? 0 : sw; p.root.rotation.y = s0.ry + p.swivel; setChairRy(W_.floors[s0.floor], s0.chairIdx, s0.x, s0.z, s0.ry + p.swivel); } }
+      const turned = Math.abs(p.swivel || 0) > 0.05;
+      poseSit(p, t, p.typing && !meet && !turned, look);
+      if (p.rig && p.typing && !meet && !turned && p.root.visible) typeIK(p, t); return; }
     const sg = tr.segs[tr.i]; if (!sg) return;
     if (sg.t === "walk") {
       sg.d += WALK_V * dt; const w = walkAt(sg.pts, sg.d);
@@ -1494,7 +1514,7 @@ function kortOverleg(fr, to, working) {
   const p = W_.people[fr.agent_id], v = visitIn(to._seat);
   const stay = working ? 20000 : 11000;
   const tt = planTrip(p, { floor: to._seat.floor, pts: v.pts, face: v.face, x: to._seat.x }, stay, "overleg met " + to.agent_name);
-  const q = W_.people[to.agent_id]; if (q) { q.meetUntil = Date.now() + tt + 500; q.meetFace = [v.pts[v.pts.length - 1][0], v.pts[v.pts.length - 1][1]]; }
+  const q = W_.people[to.agent_id]; if (q) { q.meetUntil = Date.now() + tt + 500; q.meetFace = [v.pts[v.pts.length - 1][0], v.pts[v.pts.length - 1][1]]; q.meetBy = p; }
   addLabel(p, "overleg met " + to.agent_name, fr.dept_color, tt + 1500);
 }
 function teamOverleg(ids, working) {
